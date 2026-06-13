@@ -116,6 +116,24 @@ textarea{resize:vertical;min-height:60px;}
 .feeling-btn{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:24px;min-width:64px;}
 .feeling-btn span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
 .feeling-btn.selected{border-color:var(--accent);background:rgba(230,63,31,0.08);}
+.ex-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;}
+.ex-btn-info{flex:1;}
+.ex-btn-name{font-size:14px;font-weight:700;color:var(--text);}
+.ex-btn-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.ex-btn-arrow{color:var(--muted);font-size:18px;margin-left:8px;}
+.ex-btn-done{border-color:var(--green);}
+.ex-btn-done .ex-btn-name{color:var(--green);}
+.ex-order-btns{display:flex;flex-direction:column;gap:2px;margin-right:8px;}
+.ex-order-btn{background:var(--surface);border:1px solid var(--border);border-radius:4px;width:24px;height:20px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);}
+.ex-detail-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.ex-detail-img{width:100%;aspect-ratio:16/9;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden;}
+.ex-detail-img span{font-size:12px;color:var(--muted);}
+.week-btn{width:100%;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;display:flex;justify-content:space-between;align-items:center;}
+.week-btn.current-week{border-color:var(--accent);background:rgba(230,63,31,0.06);}
+.week-btn.done-week{border-color:var(--green);background:rgba(45,122,79,0.06);}
+.week-btn-title{font-size:14px;font-weight:700;color:var(--text);}
+.week-btn-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+.week-btn-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
@@ -217,11 +235,22 @@ textarea{resize:vertical;min-height:60px;}
 
 <!-- REGISTRAR -->
 <div id="pane-log" class="pane">
-  <div class="card">
-    <label>Selecciona la sesión</label>
-    <div id="session-list" style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;"></div>
+  <!-- Vista semanas -->
+  <div id="week-list-view">
+    <div id="week-buttons-container"></div>
   </div>
-  <div id="session-form" style="display:none;">
+
+  <!-- Vista sesiones de la semana -->
+  <div id="session-list-view" style="display:none;">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:15px;font-weight:800;" id="week-detail-title"></div>
+        <button class="btn-sm" onclick="closeWeekDetail()">← Semanas</button>
+      </div>
+      <div id="session-list" style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;"></div>
+    </div>
+  </div>
+ <div id="session-form" style="display:none;">
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div>
@@ -231,45 +260,82 @@ textarea{resize:vertical;min-height:60px;}
         <button class="btn-sm" onclick="closeForm()">← Volver</button>
       </div>
       <label>Descanso entre series (seg)</label>
-      <input type="text" inputmode="numeric" id="rest" value="90" style="margin-bottom:12px;">
+      <input type="text" inputmode="numeric" id="rest" value="90">
     </div>
 
-    <div class="section-title">Ejercicios</div>
-    <div id="exercises-container"></div>
-    <button class="btn btn-secondary" onclick="addExercise()">+ Añadir ejercicio</button>
-
-    <div class="card" style="margin-top:12px;">
-      <div class="section-title">Cardio</div>
-      <div style="margin-bottom:8px;">
-        <label>Tipo</label>
-        <select id="c-tipo">
-          <option>Caminadora</option><option>Bicicleta</option>
-          <option>Elíptica</option><option>HIIT</option><option>Remo</option>
-        </select>
+    <!-- Lista de ejercicios -->
+    <div id="ex-list-view">
+      <div class="section-title">Ejercicios</div>
+      <div id="ex-buttons-container"></div>
+      <button class="btn btn-secondary" onclick="addExerciseAndOpen()">+ Añadir ejercicio</button>
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="openCardioPanel()">🏃 Cardio</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="openNotaPanel()">📝 Nota</button>
       </div>
-      <div class="grid2">
-        <div><label>Tiempo (min)</label><input type="text" inputmode="numeric" id="c-time" placeholder="30"></div>
-        <div><label>Calorías</label><input type="text" inputmode="numeric" id="c-kcal" placeholder="450"></div>
-        <div><label>FC media (bpm)</label><input type="text" inputmode="numeric" id="c-fc" placeholder="125"></div>
-        <div><label>Distancia (km)</label><input type="text" inputmode="decimal" id="c-dist" placeholder="2.8"></div>
+      <div class="card" style="margin-top:8px;">
+        <div class="section-title">¿Cómo te has sentido?</div>
+        <div style="display:flex;justify-content:space-around;padding:8px 0;">
+          <button class="feeling-btn" onclick="selectFeeling('😴')" id="feel-0">😴<span>Cansado</span></button>
+          <button class="feeling-btn" onclick="selectFeeling('😐')" id="feel-1">😐<span>Normal</span></button>
+          <button class="feeling-btn" onclick="selectFeeling('💪')" id="feel-2">💪<span>Fuerte</span></button>
+          <button class="feeling-btn" onclick="selectFeeling('🔥')" id="feel-3">🔥<span>En racha</span></button>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveSession()">💾 Guardar sesión</button>
+    </div>
+
+    <!-- Detalle de ejercicio -->
+    <div id="ex-detail-view" style="display:none;">
+      <div class="card">
+        <div class="ex-detail-header">
+          <button class="btn-sm" onclick="closeExDetail()">← Ejercicios</button>
+          <div style="font-size:15px;font-weight:800;flex:1;" id="ex-detail-title"></div>
+          <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
+        </div>
+        <div class="ex-detail-img" id="ex-detail-img">
+          <span>Imagen próximamente</span>
+        </div>
+      </div>
+      <div class="section-title">Series</div>
+      <div id="exercises-container"></div>
+      <button class="btn btn-secondary" onclick="addSetToCurrentEx()">+ Serie</button>
+    </div>
+
+    <!-- Panel cardio -->
+    <div id="cardio-panel" style="display:none;">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:15px;font-weight:800;">Cardio</div>
+          <button class="btn-sm" onclick="closeCardioPanel()">← Volver</button>
+        </div>
+        <div style="margin-bottom:8px;">
+          <label>Tipo</label>
+          <select id="c-tipo">
+            <option>Caminadora</option><option>Bicicleta</option>
+            <option>Elíptica</option><option>HIIT</option><option>Remo</option>
+          </select>
+        </div>
+        <div class="grid2">
+          <div><label>Tiempo (min)</label><input type="text" inputmode="numeric" id="c-time" placeholder="30"></div>
+          <div><label>Calorías</label><input type="text" inputmode="numeric" id="c-kcal" placeholder="450"></div>
+          <div><label>FC media (bpm)</label><input type="text" inputmode="numeric" id="c-fc" placeholder="125"></div>
+          <div><label>Distancia (km)</label><input type="text" inputmode="decimal" id="c-dist" placeholder="2.8"></div>
+        </div>
+        <button class="btn btn-primary" onclick="closeCardioPanel()">Guardar cardio</button>
       </div>
     </div>
 
-    <div class="card" style="margin-top:0;">
-      <label>Nota de la sesión</label>
-      <textarea id="sess-note" placeholder="Cómo fue, sensaciones..."></textarea>
-    </div>
-
-    <div class="card" style="margin-top:0;">
-      <div class="section-title">¿Cómo te has sentido?</div>
-      <div style="display:flex;justify-content:space-around;padding:8px 0;">
-        <button class="feeling-btn" onclick="selectFeeling('😴')" id="feel-0">😴<span>Cansado</span></button>
-        <button class="feeling-btn" onclick="selectFeeling('😐')" id="feel-1">😐<span>Normal</span></button>
-        <button class="feeling-btn" onclick="selectFeeling('💪')" id="feel-2">💪<span>Fuerte</span></button>
-        <button class="feeling-btn" onclick="selectFeeling('🔥')" id="feel-3">🔥<span>En racha</span></button>
+    <!-- Panel nota -->
+    <div id="nota-panel" style="display:none;">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:15px;font-weight:800;">Nota de sesión</div>
+          <button class="btn-sm" onclick="closeNotaPanel()">← Volver</button>
+        </div>
+        <textarea id="sess-note" placeholder="Cómo fue, sensaciones..."></textarea>
+        <button class="btn btn-primary" onclick="closeNotaPanel()">Guardar nota</button>
       </div>
     </div>
-    <button class="btn btn-primary" onclick="saveSession()">💾 Guardar sesión</button>
   </div>
 </div>
 
@@ -627,19 +693,70 @@ function calcMaxStreak(){
 function findDay(n){const p=getActivePlan();if(!p)return null;for(const w of p)for(const d of w.days)if(d.s===n)return d;return null;}
 
 function buildSessionList(){
-  const c=document.getElementById('session-list');
+  renderWeekButtons();
+}
+
+function renderWeekButtons(){
   const plan=getActivePlan();
-if(!plan.length){c.innerHTML='<div style="padding:16px;color:var(--muted);font-size:13px;">Ninguna rutina seleccionada.</div>';return;}
-c.innerHTML=plan.map(w=>`
-    <div style="padding:8px 12px;background:var(--surface);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);">Semana ${w.num} — ${w.title}</div>
-    ${w.days.map(d=>{
-      const done=!!getActiveSessions()[d.s];
-      return `<div class="session-sel-item" onclick="openSession(${d.s})">
-        <span style="font-size:13px;font-weight:${done?'700':'400'}">${d.name}</span>
-        <span>${done?'<span class="done-check">✓</span>':'<span style="color:var(--muted);font-size:12px;">→</span>'}</span>
-      </div>`;
-    }).join('')}
-  `).join('');
+  const sessions=getActiveSessions();
+  const c=document.getElementById('week-buttons-container');
+  if(!c)return;
+  if(!plan.length){c.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;">Ninguna rutina seleccionada.</p></div>';return;}
+
+  // Encuentra la semana actual (primera con sesiones incompletas)
+  let currentWeek=null;
+  for(const w of plan){
+    const done=w.days.filter(d=>sessions[d.s]).length;
+    if(done<w.days.length){currentWeek=w.num;break;}
+  }
+
+  c.innerHTML=plan.map(w=>{
+    const done=w.days.filter(d=>sessions[d.s]).length;
+    const total=w.days.length;
+    const isComplete=done===total;
+    const isCurrent=w.num===currentWeek;
+    let cls='week-btn';
+    if(isComplete)cls+=' done-week';
+    else if(isCurrent)cls+=' current-week';
+    const badgeColor=isComplete?'var(--green)':isCurrent?'var(--accent)':'var(--muted)';
+    const badgeBg=isComplete?'rgba(45,122,79,0.12)':isCurrent?'rgba(230,63,31,0.12)':'rgba(0,0,0,0.06)';
+    return`<button class="${cls}" onclick="openWeekDetail(${w.num})">
+      <div>
+        <div class="week-btn-title">${isCurrent?'⚡ ':''}Semana ${w.num} — ${w.title}</div>
+        <div class="week-btn-meta">${done}/${total} sesiones completadas</div>
+      </div>
+      <span class="week-btn-badge" style="color:${badgeColor};background:${badgeBg};">${isComplete?'✓ Lista':isCurrent?'Actual':done+'/'+total}</span>
+    </button>`;
+  }).join('');
+}
+
+function openWeekDetail(weekNum){
+  const plan=getActivePlan();
+  const sessions=getActiveSessions();
+  const week=plan.find(w=>w.num===weekNum);
+  if(!week)return;
+  document.getElementById('week-detail-title').textContent='Semana '+weekNum+' — '+week.title;
+  document.getElementById('week-list-view').style.display='none';
+  document.getElementById('session-list-view').style.display='block';
+  const c=document.getElementById('session-list');
+  c.innerHTML=week.days.map(d=>{
+    const done=!!sessions[d.s];
+    return`<div class="session-sel-item" onclick="openSession(${d.s})" style="${done?'border-left:3px solid var(--green);':''}">
+      <div>
+        <div style="font-size:13px;font-weight:${done?'700':'400'}">${d.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${d.type}${done?' · ✓ Completada':''}</div>
+      </div>
+      <span>${done?'<span class="done-check">✓</span>':'<span style="color:var(--muted);font-size:12px;">›</span>'}</span>
+    </div>`;
+  }).join('');
+  window.scrollTo(0,0);
+}
+
+function closeWeekDetail(){
+  document.getElementById('session-list-view').style.display='none';
+  document.getElementById('week-list-view').style.display='block';
+  renderWeekButtons();
+  window.scrollTo(0,0);
 }
 
 function getPrevKgs(day){
@@ -680,41 +797,65 @@ if(curFeeling){const map={'😴':'feel-0','😐':'feel-1','💪':'feel-2','🔥'
       return{name,sets:Array.from({length:n},()=>({kg,reps:''}))};
     });
   }
-  renderEx();
-  document.getElementById('session-form').style.display='block';
-  document.getElementById('session-list').closest('.card').style.display='none';
+  document.getElementById('ex-list-view').style.display='block';
+document.getElementById('ex-detail-view').style.display='none';
+document.getElementById('cardio-panel').style.display='none';
+document.getElementById('nota-panel').style.display='none';
+renderExButtons();
+document.getElementById('session-form').style.display='block';
+document.getElementById('session-list-view').style.display='none';
+document.getElementById('week-list-view').style.display='none';
   window.scrollTo(0,0);
 }
 
 function closeForm(){
   document.getElementById('session-form').style.display='none';
-  document.getElementById('session-list').closest('.card').style.display='block';
-  buildSessionList();
+  document.getElementById('session-list-view').style.display='block';
+  document.getElementById('week-list-view').style.display='none';
+  renderWeekButtons();
+  const act=getActive();
+  if(act)openWeekDetail(getCurrentWeekNum());
+}
+
+function getCurrentWeekNum(){
+  const plan=getActivePlan();
+  const sessions=getActiveSessions();
+  for(const w of plan){
+    const done=w.days.filter(d=>sessions[d.s]).length;
+    if(done<w.days.length)return w.num;
+  }
+  return plan.length?plan[plan.length-1].num:1;
 }
 
 function renderEx(){
+  if(curExIndex===null)return;
+  const ex=curEx[curExIndex];
+  document.getElementById('ex-detail-title').textContent=ex.name||'Ejercicio';
   const c=document.getElementById('exercises-container');
-  c.innerHTML=curEx.map((ex,ei)=>`
+  c.innerHTML=`
     <div class="ex-card">
       <div class="ex-header">
-        <input class="ex-name" type="text" value="${ex.name.replace(/"/g,'&quot;')}" onchange="curEx[${ei}].name=this.value" placeholder="Nombre ejercicio">
-        <button class="btn-sm btn-danger" onclick="removeEx(${ei})">×</button>
+        <input class="ex-name" type="text" value="${ex.name.replace(/"/g,'&quot;')}" onchange="curEx[${curExIndex}].name=this.value;document.getElementById('ex-detail-title').textContent=this.value" placeholder="Nombre ejercicio">
       </div>
-      <div id="sets-${ei}">
+      <div id="sets-container">
         ${ex.sets.map((set,si)=>`
           <div class="set-row">
             <span class="set-label">S${si+1}</span>
-            <input type="text" inputmode="decimal" class="set-inp" value="${set.kg||''}" placeholder="kg" onchange="curEx[${ei}].sets[${si}].kg=this.value">
+            <input type="text" inputmode="decimal" class="set-inp" value="${set.kg||''}" placeholder="kg" onchange="curEx[${curExIndex}].sets[${si}].kg=this.value">
             <span class="set-unit">kg</span>
-            <input type="text" inputmode="numeric" class="set-inp" value="${set.reps||''}" placeholder="reps" onchange="curEx[${ei}].sets[${si}].reps=this.value;if(this.value)startTimer(parseInt(document.getElementById('rest').value)||90)">
+            <input type="text" inputmode="numeric" class="set-inp" value="${set.reps||''}" placeholder="reps" onchange="curEx[${curExIndex}].sets[${si}].reps=this.value;if(this.value)startTimer(parseInt(document.getElementById('rest').value)||90)">
             <span class="set-unit">reps</span>
-            <button class="btn-sm" onclick="removeSet(${ei},${si})" style="padding:6px 8px;">−</button>
+            <button class="btn-sm" onclick="removeSetFromCurrent(${si})" style="padding:6px 8px;">−</button>
           </div>
         `).join('')}
       </div>
-      <button class="btn-sm" style="margin-top:4px;" onclick="addSet(${ei})">+ Serie</button>
     </div>
-  `).join('');
+  `;
+}
+
+function removeSetFromCurrent(si){
+  if(curExIndex===null)return;
+  if(curEx[curExIndex].sets.length>1){curEx[curExIndex].sets.splice(si,1);renderEx();}
 }
 
 function addSet(ei){curEx[ei].sets.push({kg:'',reps:''});renderEx();}
@@ -1116,6 +1257,91 @@ function selectFeeling(emoji){
   const map={'😴':'feel-0','😐':'feel-1','💪':'feel-2','🔥':'feel-3'};
   const el=document.getElementById(map[emoji]);
   if(el)el.classList.add('selected');
+}
+
+let curExIndex=null;
+
+function renderExButtons(){
+  const c=document.getElementById('ex-buttons-container');
+  c.innerHTML=curEx.map((ex,ei)=>{
+    const done=ex.sets.some(s=>s.kg!==''&&s.reps!=='');
+    const scheme=ex.sets.length+'×'+( ex.sets[0]?.reps||'?');
+    return`<div class="ex-btn${done?' ex-btn-done':''}" >
+      <div class="ex-order-btns">
+        <button class="ex-order-btn" onclick="moveEx(${ei},-1)">▲</button>
+        <button class="ex-order-btn" onclick="moveEx(${ei},1)">▼</button>
+      </div>
+      <div class="ex-btn-info" onclick="openExDetail(${ei})">
+        <div class="ex-btn-name">${ex.name||'Ejercicio sin nombre'}</div>
+        <div class="ex-btn-meta">${ex.sets.length} series${done?' · ✓ Registrado':''}</div>
+      </div>
+      <span class="ex-btn-arrow" onclick="openExDetail(${ei})">›</span>
+    </div>`;
+  }).join('');
+}
+
+function moveEx(ei,dir){
+  const ni=ei+dir;
+  if(ni<0||ni>=curEx.length)return;
+  const tmp=curEx[ei];curEx[ei]=curEx[ni];curEx[ni]=tmp;
+  renderExButtons();
+}
+
+function openExDetail(ei){
+  curExIndex=ei;
+  const ex=curEx[ei];
+  document.getElementById('ex-detail-title').textContent=ex.name||'Ejercicio';
+  document.getElementById('ex-list-view').style.display='none';
+  document.getElementById('ex-detail-view').style.display='block';
+  renderEx();
+  window.scrollTo(0,0);
+}
+
+function closeExDetail(){
+  curExIndex=null;
+  document.getElementById('ex-detail-view').style.display='none';
+  document.getElementById('ex-list-view').style.display='block';
+  renderExButtons();
+  window.scrollTo(0,0);
+}
+
+function removeCurrentEx(){
+  if(curExIndex===null)return;
+  if(!confirm('¿Eliminar este ejercicio?'))return;
+  curEx.splice(curExIndex,1);
+  closeExDetail();
+}
+
+function addSetToCurrentEx(){
+  if(curExIndex===null)return;
+  curEx[curExIndex].sets.push({kg:'',reps:''});
+  renderEx();
+}
+
+function addExerciseAndOpen(){
+  curEx.push({name:'',sets:[{kg:'',reps:''},{kg:'',reps:''},{kg:'',reps:''}]});
+  openExDetail(curEx.length-1);
+}
+
+function openCardioPanel(){
+  document.getElementById('ex-list-view').style.display='none';
+  document.getElementById('cardio-panel').style.display='block';
+  window.scrollTo(0,0);
+}
+function closeCardioPanel(){
+  document.getElementById('cardio-panel').style.display='none';
+  document.getElementById('ex-list-view').style.display='block';
+  window.scrollTo(0,0);
+}
+function openNotaPanel(){
+  document.getElementById('ex-list-view').style.display='none';
+  document.getElementById('nota-panel').style.display='block';
+  window.scrollTo(0,0);
+}
+function closeNotaPanel(){
+  document.getElementById('nota-panel').style.display='none';
+  document.getElementById('ex-list-view').style.display='block';
+  window.scrollTo(0,0);
 }
 
 load();
