@@ -101,17 +101,54 @@ textarea{resize:vertical;min-height:60px;}
 .session-sel-item:hover{background:var(--surface);}
 .session-sel-item:last-child{border-bottom:none;}
 .done-check{color:var(--green);font-weight:700;font-size:14px;}
+.routine-panel{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;background:var(--bg);z-index:300;display:flex;flex-direction:column;transition:transform .3s ease;}
+.routine-panel.hidden{transform:translate(-50%,-110%);}
+.routine-panel-header{background:var(--dark);color:#f5f0e8;padding:16px;display:flex;justify-content:space-between;align-items:center;}
+.routine-panel-header h2{font-size:16px;font-weight:800;letter-spacing:1px;}
+.routine-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card);}
+.routine-item.active-routine{border-left:3px solid var(--accent);}
+.routine-item-name{font-size:14px;font-weight:700;}
+.routine-item-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.routine-actions{display:flex;gap:6px;}
 </style>
 </head>
 <body>
 
+
 <header>
-  <div class="header-title">PLAN <span>DEFINICIÓN</span></div>
-  <div class="header-sub">Jhon · 40 sesiones · 8 semanas</div>
+  <div class="header-title">PLAN <span id="header-routine-name">DEFINICIÓN</span></div>
+  <div class="header-sub" id="header-routine-sub">Jhon · 40 sesiones · 8 semanas</div>
   <div class="sync-row">
     <div class="sync-dot" id="sync-dot"></div>
     <span id="sync-txt">Cargando...</span>
   </div>
+  <button onclick="toggleRoutinePanel()" style="margin-top:8px;width:100%;padding:8px;background:rgba(230,63,31,0.15);border:1px dashed var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">
+    ⚡ Cambiar rutina o añadir nueva
+  </button>
+</header>
+
+
+<div id="routine-panel" class="routine-panel hidden">
+  <div class="routine-panel-header">
+    <h2>MIS RUTINAS</h2>
+    <button class="btn-sm" onclick="toggleRoutinePanel()">✕ Cerrar</button>
+  </div>
+  <div style="padding:12px;flex:1;overflow-y:auto;">
+    <div id="routine-list"></div>
+    <div class="card" style="margin-top:12px;">
+      <div class="section-title">Nueva rutina</div>
+      <div style="margin-bottom:8px;">
+        <label>Nombre</label>
+        <input type="text" id="new-routine-name" placeholder="Ej: Volumen, Tren inferior...">
+      </div>
+      <div style="margin-bottom:8px;">
+        <label>Plan JSON (opcional — generado por Claude)</label>
+        <textarea id="new-routine-json" placeholder='Pega aquí el JSON del plan...' style="min-height:80px;font-size:12px;"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="createRoutine()">+ Crear rutina</button>
+    </div>
+  </div>
+</div>
 </header>
 
 <div class="tabs">
@@ -485,9 +522,10 @@ function load(){
     };
   }
   sync('ok');
-  buildSessionList();
+buildSessionList();
   buildMedSel();
   updateHome();
+  updateHeaderRoutine();
 }
 function calcStreak(){
   const dates=[...new Set(
@@ -842,6 +880,84 @@ const lastM=medidas.length?medidas[medidas.length-1]:null;
   set('hc-hist-sub',done+' sesiones'+(streak>1?' · 🔥 '+streak+' días':''));
   set('hc-res-sub',totalKcal.toLocaleString('es-ES')+' kcal de cardio');
   set('hc-med-sub',lastM?('Última: Sem '+lastM.semana+(lastM.peso?' · '+lastM.peso+'kg':'')):'Sin medidas aún');
+}
+function toggleRoutinePanel(){
+  const p=document.getElementById('routine-panel');
+  p.classList.toggle('hidden');
+  if(!p.classList.contains('hidden'))renderRoutineList();
+}
+
+function renderRoutineList(){
+  const c=document.getElementById('routine-list');
+  if(!DB.routines.length){c.innerHTML='<p style="color:var(--muted);font-size:13px;padding:8px 0;">Sin rutinas. Crea una abajo.</p>';return;}
+  c.innerHTML=DB.routines.map(r=>{
+    const isActive=r.id===DB.activeRoutine;
+    const totalSess=r.plan.reduce((s,w)=>s+w.days.length,0);
+    const done=Object.keys(r.sessions).length;
+    return`<div class="routine-item${isActive?' active-routine':''}">
+      <div>
+        <div class="routine-item-name">${r.name}${isActive?' <span style="color:var(--accent);font-size:11px;">● activa</span>':''}</div>
+        <div class="routine-item-meta">${done}/${totalSess} sesiones · ${r.plan.length} semanas</div>
+      </div>
+      <div class="routine-actions">
+        ${!isActive?`<button class="btn-sm" onclick="activateRoutine('${r.id}')">Activar</button>`:''}
+        <button class="btn-sm btn-danger" onclick="deleteRoutine('${r.id}')">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function activateRoutine(id){
+  DB.activeRoutine=id;
+  save();
+  updateHeaderRoutine();
+  buildSessionList();
+  updateHome();
+  renderRoutineList();
+}
+
+function deleteRoutine(id){
+  if(!confirm('¿Eliminar esta rutina y todos sus datos?'))return;
+  DB.routines=DB.routines.filter(r=>r.id!==id);
+  if(DB.activeRoutine===id)DB.activeRoutine=DB.routines.length?DB.routines[0].id:null;
+  save();
+  renderRoutineList();
+  updateHeaderRoutine();
+  buildSessionList();
+  updateHome();
+}
+
+function createRoutine(){
+  const name=document.getElementById('new-routine-name').value.trim();
+  if(!name){alert('Escribe un nombre para la rutina');return;}
+  const jsonTxt=document.getElementById('new-routine-json').value.trim();
+  let plan=[];
+  if(jsonTxt){
+    try{plan=JSON.parse(jsonTxt);}
+    catch{alert('El JSON del plan no es válido');return;}
+  }
+  const id='r_'+Date.now();
+  DB.routines.push({id,name,plan,sessions:{},medidas:[]});
+  if(!DB.activeRoutine)DB.activeRoutine=id;
+  save();
+  document.getElementById('new-routine-name').value='';
+  document.getElementById('new-routine-json').value='';
+  renderRoutineList();
+  alert('Rutina "'+name+'" creada ✓');
+}
+
+function updateHeaderRoutine(){
+  const act=getActive();
+  const nameEl=document.getElementById('header-routine-name');
+  const subEl=document.getElementById('header-routine-sub');
+  if(!act){
+    if(nameEl)nameEl.textContent='SIN RUTINA';
+    if(subEl)subEl.textContent='Selecciona o crea una rutina';
+    return;
+  }
+  const totalSess=act.plan.reduce((s,w)=>s+w.days.length,0);
+  if(nameEl)nameEl.textContent=act.name.toUpperCase();
+  if(subEl)subEl.textContent='Jhon · '+totalSess+' sesiones · '+act.plan.length+' semanas';
 }
 
 load();
