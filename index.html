@@ -528,7 +528,7 @@ function calcMaxStreak(){
   return max;
 }
 
-function findDay(n){for(const w of PLAN)for(const d of w.days)if(d.s===n)return d;return null;}
+function findDay(n){const p=getActivePlan();if(!p)return null;for(const w of p)for(const d of w.days)if(d.s===n)return d;return null;}
 
 function buildSessionList(){
   const c=document.getElementById('session-list');
@@ -547,9 +547,9 @@ c.innerHTML=plan.map(w=>`
 }
 
 function getPrevKgs(day){
-  const sameType=PLAN.flatMap(w=>w.days).filter(d=>d.type===day.type&&d.s<day.s&&DB.sessions[d.s]);
+  const sameType=getActivePlan().flatMap(w=>w.days).filter(d=>d.type===day.type&&d.s<day.s&&getActiveSessions()[d.s]);
   if(!sameType.length)return{};
-  const last=DB.sessions[sameType[sameType.length-1].s];
+  const last=getActiveSessions()[sameType[sameType.length-1].s];
   const map={};
   last.exercises.forEach(ex=>{
     const sets=ex.sets.filter(s=>s.kg!==''&&s.kg!==0);
@@ -561,9 +561,9 @@ function getPrevKgs(day){
 function openSession(n){
   curSession=n;
   const day=findDay(n);
-  const saved=DB.sessions[n];
+  const saved=getActiveSessions()[n];
   document.getElementById('form-title').textContent=day.name;
-  document.getElementById('form-type').textContent=day.type+' · Semana '+PLAN.find(w=>w.days.some(d=>d.s===n)).num;
+  document.getElementById('form-type').textContent=day.type+' · Semana '+getActivePlan().find(w=>w.days.some(d=>d.s===n)).num;
   document.getElementById('rest').value=saved?saved.rest:90;
   document.getElementById('c-tipo').value=saved?.cardio?.tipo||'Caminadora';
   document.getElementById('c-time').value=saved?.cardio?.tiempo||'';
@@ -624,7 +624,7 @@ function addExercise(){curEx.push({name:'',sets:[{kg:'',reps:''},{kg:'',reps:''}
 function removeEx(ei){curEx.splice(ei,1);renderEx();}
 
 function saveSession(){
-  DB.sessions[curSession]={
+  getActive().sessions[curSession]={
     rest:parseInt(document.getElementById('rest').value)||90,
     exercises:curEx,
     cardio:{
@@ -643,11 +643,13 @@ function saveSession(){
 }
 
 function renderHist(){
-  const keys=Object.keys(DB.sessions).map(Number).sort((a,b)=>b-a);
-  const c=document.getElementById('hist-content');
-  if(!keys.length){c.innerHTML='<p style="color:var(--muted);font-size:13px;">Sin sesiones registradas.</p>';return;}
-  c.innerHTML='<div class="card">'+keys.map(n=>{
-    const s=DB.sessions[n];
+const act=getActive();
+const c=document.getElementById('hist-content');
+if(!act){c.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;">Ninguna rutina seleccionada.</p></div>';return;}
+const keys=Object.keys(act.sessions).map(Number).sort((a,b)=>b-a);
+if(!keys.length){c.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;">Sin sesiones registradas.</p></div>';return;}
+c.innerHTML='<div class="card">'+keys.map(n=>{
+    const s=act.sessions[n];
     const day=findDay(n);
     if(!day)return'';
     const exRows=s.exercises.map(ex=>{
@@ -671,17 +673,20 @@ function renderHist(){
 
 function delSession(n){
   if(!confirm('¿Eliminar sesión '+n+'?'))return;
-  delete DB.sessions[n];
+  delete getActive().sessions[n];
   save();
   renderHist();
 }
 
 function renderResumen(){
-  const keys=Object.keys(DB.sessions).map(Number);
-  const done=keys.length;
-  const pct=Math.round(done/40*100);
-  const kcal=keys.reduce((s,n)=>s+(DB.sessions[n].cardio?.kcal||0),0);
-  const mins=keys.reduce((s,n)=>s+(DB.sessions[n].cardio?.tiempo||0),0);
+const act=getActive();
+const c2=document.getElementById('resumen-content');
+if(!act){c2.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;">Ninguna rutina seleccionada.</p></div>';return;}
+const keys=Object.keys(act.sessions).map(Number);
+const done=keys.length;
+const pct=Math.round(done/act.plan.reduce((s,w)=>s+w.days.length,0)*100);
+const kcal=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.kcal||0),0);
+const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
   const c=document.getElementById('resumen-content');
   c.innerHTML=`
     <div class="stat-grid">
@@ -693,11 +698,11 @@ function renderResumen(){
       <div class="stat"><div class="stat-val">${calcMaxStreak()}</div><div class="stat-lbl">Mejor racha</div></div>
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
-    ${PLAN.map(w=>{
-      const wd=w.days.filter(d=>DB.sessions[d.s]).length;
+    ${act.plan.map(w=>{
+      const wd=w.days.filter(d=>act.sessions[d.s]).length;
       return`<div class="week-row">
         <div><div style="font-size:13px;font-weight:700;">Sem ${w.num} — ${w.title}</div>
-        <div style="margin-top:4px;">${w.days.map(d=>`<span class="dot ${DB.sessions[d.s]?'dot-done':'dot-todo'}" title="S${d.s}"></span>`).join('')}</div></div>
+        <div style="margin-top:4px;">${w.days.map(d=>`<span class="dot ${act.sessions[d.s]?'dot-done':'dot-todo'}" title="S${d.s}"></span>`).join('')}</div></div>
         <span class="badge ${wd===5?'badge-green':'badge-accent'}">${wd}/5</span>
       </div>`;
     }).join('')}
@@ -715,9 +720,9 @@ function saveMedida(){
   const cin=parseFloat(document.getElementById('med-cin').value);
   const fecha=document.getElementById('med-fecha').value||new Date().toLocaleDateString('es-ES');
   if(isNaN(peso)&&isNaN(cin)){alert('Introduce al menos un valor');return;}
-  DB.medidas=DB.medidas.filter(m=>m.semana!==sem);
-  DB.medidas.push({semana:sem,peso:isNaN(peso)?null:peso,cintura:isNaN(cin)?null:cin,fecha});
-  DB.medidas.sort((a,b)=>a.semana-b.semana);
+getActive().medidas=getActive().medidas.filter(m=>m.semana!==sem);
+getActive().medidas.push({semana:sem,peso:isNaN(peso)?null:peso,cintura:isNaN(cin)?null:cin,fecha});
+getActive().medidas.sort((a,b)=>a.semana-b.semana);
   save();
   renderMedidas();
   document.getElementById('med-peso').value='';
@@ -727,9 +732,10 @@ function saveMedida(){
 
 function renderMedidas(){
   const c=document.getElementById('medidas-content');
-  if(!DB.medidas.length){c.innerHTML='<p style="color:var(--muted);font-size:13px;">Sin medidas aún.</p>';return;}
-  c.innerHTML=DB.medidas.map((m,i)=>{
-    const prev=i>0?DB.medidas[i-1]:{peso:110,cintura:113};
+  const med=getActiveMedidas();
+if(!med.length){c.innerHTML='<p style="color:var(--muted);font-size:13px;">Sin medidas aún.</p>';return;}
+  c.innerHTML=med.map((m,i)=>{
+    const prev=i>0?med[i-1]:{peso:110,cintura:113};
     const dp=m.peso&&prev.peso?(m.peso-prev.peso).toFixed(1):null;
     const dc=m.cintura&&prev.cintura?(m.cintura-prev.cintura).toFixed(1):null;
     return`<div class="medida-row">
@@ -748,15 +754,17 @@ function renderMedidas(){
 
 function delMedida(sem){
   if(!confirm('¿Eliminar medida semana '+sem+'?'))return;
-  DB.medidas=DB.medidas.filter(m=>m.semana!==sem);
+  getActive().medidas=getActive().medidas.filter(m=>m.semana!==sem);
   save();renderMedidas();
 }
 
 function copyForChat(){
-  const keys=Object.keys(DB.sessions).map(Number).sort((a,b)=>a-b);
-  let txt='=== PLAN DEFINICIÓN JHON — '+new Date().toLocaleDateString('es-ES')+' ===\n\n';
-  keys.forEach(n=>{
-    const s=DB.sessions[n];const day=findDay(n);if(!day)return;
+const act=getActive();
+if(!act){alert('Ninguna rutina seleccionada');return;}
+const keys=Object.keys(act.sessions).map(Number).sort((a,b)=>a-b);
+let txt='=== '+act.name.toUpperCase()+' — '+new Date().toLocaleDateString('es-ES')+' ===\n\n';
+keys.forEach(n=>{
+    const s=act.sessions[n];const day=findDay(n);if(!day)return;
     txt+='── SESIÓN #'+n+' · '+day.name+' · '+day.type+' ──\n';
     txt+='Fecha: '+(s.date||'')+'\n';
     s.exercises.forEach(ex=>{
@@ -769,9 +777,9 @@ function copyForChat(){
     if(s.note)txt+='  Nota: '+s.note+'\n';
     txt+='\n';
   });
-  if(DB.medidas.length){
+  if(act.medidas.length){
     txt+='=== MEDIDAS ===\n';
-    DB.medidas.forEach(m=>txt+='Sem '+m.semana+': '+(m.peso||'—')+'kg · '+(m.cintura||'—')+'cm ('+m.fecha+')\n');
+    act.medidas.forEach(m=>txt+='Sem '+m.semana+': '+(m.peso||'—')+'kg · '+(m.cintura||'—')+'cm ('+m.fecha+')\n');
   }
   if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>alert('¡Copiado! Pégalo en el chat con Claude.')).catch(()=>alert(txt));}
   else{alert(txt);}
