@@ -333,7 +333,7 @@ const INITIAL={
   medidas:[{semana:1,peso:110,cintura:113,fecha:"25/05/2026"}]
 }
 
-let DB={sessions:{},medidas:[]};
+let DB={routines:[],activeRoutine:null};
 let curSession=null;
 let curEx=[];
 
@@ -413,33 +413,76 @@ function vibrateEnd(){
   if(navigator.vibrate){navigator.vibrate([200,100,200,100,400]);}
 }
 
+function getActive(){
+  if(!DB.activeRoutine||!DB.routines)return null;
+  return DB.routines.find(r=>r.id===DB.activeRoutine)||null;
+}
+function getActiveSessions(){
+  const r=getActive();return r?r.sessions:{};
+}
+function getActiveMedidas(){
+  const r=getActive();return r?r.medidas:[];
+}
+function getActivePlan(){
+  const r=getActive();return r?r.plan:[];
+}
+
 function load(){
   sync('load');
   if(!storageAvailable()){
     const banner=document.createElement('div');
     banner.style.cssText='background:#e63f1f;color:#fff;padding:10px 16px;font-size:12px;line-height:1.5;text-align:center;';
-    banner.innerHTML='⚠️ El guardado automático no está disponible en este entorno. Usa <b>Exportar JSON</b> antes de cerrar para no perder datos.';
+    banner.innerHTML='⚠️ El guardado automático no está disponible. Usa <b>Exportar JSON</b> para no perder datos.';
     document.body.insertBefore(banner,document.body.firstChild);
   }
   try{
     const r=localStorage.getItem('jhon_db_v2');
     if(r){
-      DB=JSON.parse(r);
-      // Merge: las sesiones de INITIAL completan lo que falte en lo guardado
-      const ref=JSON.parse(JSON.stringify(INITIAL));
-      Object.keys(ref.sessions).forEach(n=>{
-        if(!DB.sessions[n]){
-          DB.sessions[n]=ref.sessions[n];
-        }
-      });
-      if((!DB.medidas||!DB.medidas.length)&&ref.medidas.length){
-        DB.medidas=ref.medidas;
+      const parsed=JSON.parse(r);
+      if(parsed.routines){
+        DB=parsed;
+      }else{
+        DB={
+          routines:[{
+            id:'def_jhon',
+            name:'Definición Jhon',
+            plan:JSON.parse(JSON.stringify(PLAN)),
+            sessions:parsed.sessions||{},
+            medidas:parsed.medidas||[]
+          }],
+          activeRoutine:'def_jhon'
+        };
+        const ref=JSON.parse(JSON.stringify(INITIAL));
+        Object.keys(ref.sessions).forEach(n=>{
+          if(!DB.routines[0].sessions[n])DB.routines[0].sessions[n]=ref.sessions[n];
+        });
+        if(!DB.routines[0].medidas.length)DB.routines[0].medidas=ref.medidas;
+        save();
       }
     }else{
-      DB=JSON.parse(JSON.stringify(INITIAL));
+      DB={
+        routines:[{
+          id:'def_jhon',
+          name:'Definición Jhon',
+          plan:JSON.parse(JSON.stringify(PLAN)),
+          sessions:JSON.parse(JSON.stringify(INITIAL.sessions)),
+          medidas:JSON.parse(JSON.stringify(INITIAL.medidas))
+        }],
+        activeRoutine:'def_jhon'
+      };
+      save();
     }
   }catch(e){
-    DB=JSON.parse(JSON.stringify(INITIAL));
+    DB={
+      routines:[{
+        id:'def_jhon',
+        name:'Definición Jhon',
+        plan:JSON.parse(JSON.stringify(PLAN)),
+        sessions:JSON.parse(JSON.stringify(INITIAL.sessions)),
+        medidas:JSON.parse(JSON.stringify(INITIAL.medidas))
+      }],
+      activeRoutine:'def_jhon'
+    };
   }
   sync('ok');
   buildSessionList();
@@ -448,7 +491,7 @@ function load(){
 }
 function calcStreak(){
   const dates=[...new Set(
-    Object.values(DB.sessions)
+    Object.values(getActiveSessions())
       .map(s=>s.date)
       .filter(Boolean)
   )].map(d=>{
@@ -489,10 +532,12 @@ function findDay(n){for(const w of PLAN)for(const d of w.days)if(d.s===n)return 
 
 function buildSessionList(){
   const c=document.getElementById('session-list');
-  c.innerHTML=PLAN.map(w=>`
+  const plan=getActivePlan();
+if(!plan.length){c.innerHTML='<div style="padding:16px;color:var(--muted);font-size:13px;">Ninguna rutina seleccionada.</div>';return;}
+c.innerHTML=plan.map(w=>`
     <div style="padding:8px 12px;background:var(--surface);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);">Semana ${w.num} — ${w.title}</div>
     ${w.days.map(d=>{
-      const done=!!DB.sessions[d.s];
+      const done=!!getActiveSessions()[d.s];
       return `<div class="session-sel-item" onclick="openSession(${d.s})">
         <span style="font-size:13px;font-weight:${done?'700':'400'}">${d.name}</span>
         <span>${done?'<span class="done-check">✓</span>':'<span style="color:var(--muted);font-size:12px;">→</span>'}</span>
@@ -772,13 +817,14 @@ function goTo(id){
 }
 
 function updateHome(){
-  const done=Object.keys(DB.sessions).length;
+  const done=Object.keys(getActiveSessions()).length;
   const pct=Math.round(done/40*100);
   let next=null;
-  for(let i=1;i<=40;i++){if(!DB.sessions[i]){next=i;break;}}
+  for(let i=1;i<=40;i++){if(!getActiveSessions()[i]){next=i;break;}}
   const nd=next?findDay(next):null;
-  const lastM=DB.medidas.length?DB.medidas[DB.medidas.length-1]:null;
-  const totalKcal=Object.values(DB.sessions).reduce((s,x)=>s+(x.cardio&&x.cardio.kcal?x.cardio.kcal:0),0);
+  const medidas=getActiveMedidas();
+const lastM=medidas.length?medidas[medidas.length-1]:null;
+  const totalKcal=Object.values(getActiveSessions()).reduce((s,x)=>s+(x.cardio&&x.cardio.kcal?x.cardio.kcal:0),0);
   const set=(id,txt)=>{const e=document.getElementById(id);if(e)e.textContent=txt;};
   set('home-prog-txt',done+'/40 · '+pct+'%');
   const pf=document.getElementById('home-prog-fill');
