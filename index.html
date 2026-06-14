@@ -440,6 +440,26 @@ textarea{resize:vertical;min-height:60px;}
   <button class="timer-btn" onclick="skipTimer()">Saltar ▶</button>
 </div>
 
+<div id="new-routine-panel" class="routine-panel hidden">
+  <div class="routine-panel-header">
+    <h2>NUEVA RUTINA</h2>
+    <button class="btn-sm" onclick="closeNewRoutinePanel()">✕ Cerrar</button>
+  </div>
+  <div style="padding:12px;flex:1;overflow-y:auto;">
+    <div class="card">
+      <div style="margin-bottom:8px;">
+        <label>Nombre de la rutina</label>
+        <input type="text" id="nr-name" placeholder="Ej: Mi rutina de volumen...">
+      </div>
+      <div style="margin-bottom:8px;">
+        <label>Plan JSON (opcional)</label>
+        <textarea id="nr-json" placeholder='Pega aquí el JSON generado por Claude...' style="min-height:80px;font-size:12px;"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="createNewRoutine()">+ Crear rutina</button>
+    </div>
+  </div>
+</div>
+
 <script>
 
 const PRESET_ROUTINES=[
@@ -2058,6 +2078,37 @@ function obFinish(){
   updateHeaderRoutine();
   buildSessionList();
   updateHome();
+}
+
+function openNewRoutinePanel(){
+  document.getElementById('new-routine-panel').classList.remove('hidden');
+  document.getElementById('nr-name').value='';
+  document.getElementById('nr-json').value='';
+}
+
+function closeNewRoutinePanel(){
+  document.getElementById('new-routine-panel').classList.add('hidden');
+}
+
+function createNewRoutine(){
+  const name=document.getElementById('nr-name').value.trim();
+  if(!name){alert('Escribe un nombre para la rutina');return;}
+  const jsonTxt=document.getElementById('nr-json').value.trim();
+  let plan=[];
+  if(jsonTxt){
+    try{plan=JSON.parse(jsonTxt);}
+    catch{alert('El JSON del plan no es válido');return;}
+  }
+  const id='r_'+Date.now();
+  DB.routines.push({id,name,plan,sessions:{},medidas:[]});
+  if(!DB.activeRoutine)DB.activeRoutine=id;
+  save();
+  closeNewRoutinePanel();
+  document.getElementById('routine-panel').classList.add('hidden');
+  updateHeaderRoutine();
+  buildSessionList();
+  updateHome();
+  alert('Rutina "'+name+'" creada ✓');
 }
 
 document.addEventListener('DOMContentLoaded', load);
