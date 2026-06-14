@@ -223,7 +223,7 @@ textarea{resize:vertical;min-height:60px;}
 <!-- INICIO -->
 <div id="pane-inicio" class="pane active">
   <div class="home-prog">
-    <div class="home-prog-head"><span>Plan Definición · 8 semanas</span><span id="home-prog-txt">—</span></div>
+    <div class="home-prog-head"><span id="home-prog-name">—</span><span id="home-prog-txt">—</span></div>
     <div class="prog-bar"><div class="prog-fill" id="home-prog-fill" style="width:0%"></div></div>
   </div>
   <div class="home-grid">
@@ -1571,6 +1571,9 @@ function updateHome(){
 const lastM=medidas.length?medidas[medidas.length-1]:null;
   const totalKcal=Object.values(getActiveSessions()||{}).reduce((s,x)=>s+(x.cardio&&x.cardio.kcal?x.cardio.kcal:0),0);
   const set=(id,txt)=>{const e=document.getElementById(id);if(e)e.textContent=txt;};
+  const act2=getActive();
+const progName=document.getElementById('home-prog-name');
+if(progName&&act2)progName.textContent=act2.name+' · '+act2.plan.length+' semanas';
   set('home-prog-txt',done+'/40 · '+pct+'%');
   const pf=document.getElementById('home-prog-fill');
   if(pf)pf.style.width=pct+'%';
@@ -1656,6 +1659,8 @@ function updateHeaderRoutine(){
   }
   const totalSess=act.plan.reduce((s,w)=>s+w.days.length,0);
   if(subEl)subEl.textContent=totalSess+' sesiones · '+act.plan.length+' semanas';
+const nameEl2=document.getElementById('header-routine-name');
+if(nameEl2)nameEl2.textContent=act.name.toUpperCase();
 }
 
 function renderMedidasChart(){
