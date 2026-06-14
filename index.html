@@ -1579,7 +1579,7 @@ function toggleRoutinePanel(){
 function renderRoutineList(){
   const c=document.getElementById('routine-list');
   if(!DB.routines.length){c.innerHTML='<p style="color:var(--muted);font-size:13px;padding:8px 0;">Sin rutinas. Crea una abajo.</p>';return;}
-  c.innerHTML=`<button class="btn btn-secondary" style="margin-bottom:12px;" onclick="openPresetPanel()">🏋️ Explorar rutinas prediseñadas</button>`+DB.routines.map(r=>{
+  c.innerHTML=DB.routines.map(r=>{
     const isActive=r.id===DB.activeRoutine;
     const totalSess=r.plan.reduce((s,w)=>s+w.days.length,0);
     const done=Object.keys(r.sessions).length;
