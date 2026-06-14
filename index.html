@@ -382,9 +382,7 @@ textarea{resize:vertical;min-height:60px;}
       <button class="btn-sm btn-danger" onclick="deletePhoto('before')">× Eliminar antes</button>
       <button class="btn-sm btn-danger" onclick="deletePhoto('after')">× Eliminar ahora</button>
     </div>
-    <button class="btn btn-primary" style="margin-top:10px;" onclick="analyzeProgress()">🤖 Analizar progreso</button>
-    <div id="progress-analysis" style="display:none;margin-top:10px;padding:12px;background:var(--surface);border-radius:var(--radius-sm);font-size:13px;line-height:1.6;color:var(--text);"></div>
-  </div>
+    </div>
 </div>
 
 <!-- MEDIDAS -->
@@ -598,41 +596,6 @@ function getActivePlan(){
   const r=getActive();return r?r.plan:[];
 }
 
-async function analyzeProgress(){
-  const act=getActive();
-  if(!act?.photos?.before||!act?.photos?.after){
-    alert('Necesitas tener ambas fotos para analizar el progreso.');
-    return;
-  }
-  const el=document.getElementById('progress-analysis');
-  el.style.display='block';
-  el.textContent='Analizando...';
-  const beforeUrl=act.photos.before.url||act.photos.before;
-  const afterUrl=act.photos.after.url||act.photos.after;
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:300,
-        messages:[{
-          role:'user',
-          content:[
-            {type:'image',source:{type:'base64',media_type:'image/jpeg',data:beforeUrl.split(',')[1]}},
-            {type:'image',source:{type:'base64',media_type:'image/jpeg',data:afterUrl.split(',')[1]}},
-            {type:'text',text:'Compara estas dos fotos de progreso físico. La primera es el antes y la segunda el ahora. Escribe un párrafo corto en español resaltando los cambios físicos más notorios que se observan entre ambas fotos. Sé específico y motivador.'}
-          ]
-        }]
-      })
-    });
-    const data=await res.json();
-    const text=data?.content?.[0]?.text||'No se pudo analizar.';
-    el.textContent=text;
-  }catch(e){
-    el.textContent='Error al analizar. Inténtalo de nuevo.';
-  }
-}
 
 function load(){
   sync('load');
