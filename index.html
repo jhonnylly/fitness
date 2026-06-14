@@ -1132,7 +1132,13 @@ function renderWeekButtons(){
   const sessions=getActiveSessions();
   const c=document.getElementById('week-buttons-container');
   if(!c)return;
-  if(!plan.length){c.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;">Ninguna rutina seleccionada.</p></div>';return;}
+if(!plan.length){
+  c.innerHTML=`<div class="card">
+    <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Esta rutina no tiene sesiones aún.</p>
+    <button class="btn btn-primary" onclick="addEmptySession()">+ Añadir primera sesión</button>
+  </div>`;
+  return;
+}
 
   // Encuentra la semana actual (primera con sesiones incompletas)
   let currentWeek=null;
@@ -2104,11 +2110,23 @@ function createNewRoutine(){
   if(!DB.activeRoutine)DB.activeRoutine=id;
   save();
   closeNewRoutinePanel();
-  document.getElementById('routine-panel').classList.add('hidden');
-  updateHeaderRoutine();
+  renderRoutineList();
+}
+
+function addEmptySession(){
+  const act=getActive();
+  if(!act)return;
+  if(!act.plan)act.plan=[];
+  const weekNum=act.plan.length+1;
+  const sessNum=(act.plan.reduce((s,w)=>s+w.days.length,0))+1;
+  act.plan.push({
+    num:weekNum,
+    title:'Semana '+weekNum,
+    days:[{s:sessNum,name:'S'+sessNum+' · Sesión',type:'Full',ex:[]}]
+  });
+  save();
   buildSessionList();
-  updateHome();
-  alert('Rutina "'+name+'" creada ✓');
+  openWeekDetail(weekNum);
 }
 
 document.addEventListener('DOMContentLoaded', load);
