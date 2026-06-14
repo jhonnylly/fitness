@@ -148,13 +148,24 @@ textarea{resize:vertical;min-height:60px;}
 
 
 <header>
-  <div class="header-title">PLAN <span id="header-routine-name">DEFINICIÓN</span></div>
-  <div class="header-sub" id="header-routine-sub">Jhon · 40 sesiones · 8 semanas</div>
-  <div class="sync-row">
-    <div class="sync-dot" id="sync-dot"></div>
-    <span id="sync-txt">Cargando...</span>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+    <div style="flex:1;">
+      <div class="header-title">PLAN <span id="header-routine-name">DEFINICIÓN</span></div>
+      <div class="header-sub" id="header-routine-sub">Jhon · 40 sesiones · 8 semanas</div>
+      <div class="sync-row">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-txt">Cargando...</span>
+      </div>
+    </div>
+    <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <div id="profile-pic" onclick="document.getElementById('profile-input').click()" style="width:56px;height:56px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:22px;">👤</span>
+      </div>
+      <input type="file" id="profile-input" accept="image/*" onchange="saveProfilePic(this)" style="display:none;">
+      <span style="font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:0.5px;">JHON</span>
+    </div>
   </div>
-  <button onclick="toggleRoutinePanel()" style="margin-top:8px;width:100%;padding:8px;background:rgba(230,63,31,0.15);border:1px dashed var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">
+  <button onclick="toggleRoutinePanel()" style="margin-top:8px;width:100%;padding:6px;background:rgba(230,63,31,0.15);border:1px dashed var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">
     ⚡ Cambiar rutina o añadir nueva
   </button>
 </header>
@@ -596,6 +607,26 @@ function getActivePlan(){
   const r=getActive();return r?r.plan:[];
 }
 
+function saveProfilePic(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    DB.profilePic=ev.target.result;
+    save();
+    renderProfilePic();
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderProfilePic(){
+  const el=document.getElementById('profile-pic');
+  if(!el)return;
+  if(DB.profilePic){
+    el.innerHTML=`<img src="${DB.profilePic}" style="width:100%;height:100%;object-fit:cover;">`;
+  }else{
+    el.innerHTML='<span style="font-size:22px;">👤</span>';
+  }
+}
 
 function load(){
   sync('load');
@@ -658,6 +689,7 @@ function load(){
 buildSessionList();
   buildMedSel();
   updateHome();
+  renderProfilePic();
   updateHeaderRoutine();
 }
 function calcStreak(){
