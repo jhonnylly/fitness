@@ -1574,6 +1574,21 @@ function renderRoutineList(){
       </div>
     </div>`;
   }).join('');
+c.innerHTML+=`
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Añadir rutina</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button onclick="openNewRoutinePanel()" style="background:linear-gradient(135deg,#e63f1f,#9c2810);border:none;border-radius:16px;padding:20px 12px;cursor:pointer;text-align:left;color:#fff;font-family:inherit;min-height:100px;display:flex;flex-direction:column;justify-content:flex-end;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;">Personalizada</span>
+          <span style="font-size:16px;font-weight:800;margin-top:4px;">Nueva rutina</span>
+        </button>
+        <button onclick="openPresetPanel()" style="background:linear-gradient(135deg,#2d7a4f,#1a4d30);border:none;border-radius:16px;padding:20px 12px;cursor:pointer;text-align:left;color:#fff;font-family:inherit;min-height:100px;display:flex;flex-direction:column;justify-content:flex-end;">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;">Biblioteca</span>
+          <span style="font-size:16px;font-weight:800;margin-top:4px;">Explorar</span>
+        </button>
+      </div>
+    </div>
+  `;
 }
 
 function activateRoutine(id){
