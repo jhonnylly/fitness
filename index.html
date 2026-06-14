@@ -141,6 +141,22 @@ textarea{resize:vertical;min-height:60px;}
 .gif-item{aspect-ratio:1;border-radius:var(--radius-sm);overflow:hidden;cursor:pointer;border:2px solid transparent;}
 .gif-item:active{border-color:var(--accent);}
 .gif-item img{width:100%;height:100%;object-fit:cover;}
+.onboarding{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;background:var(--bg);z-index:500;display:flex;flex-direction:column;overflow-y:auto;}
+.onboarding.hidden{display:none;}
+.ob-step{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;text-align:center;}
+.ob-step.active{display:flex;}
+.ob-title{font-size:28px;font-weight:800;margin-bottom:8px;color:var(--text);}
+.ob-title span{color:var(--accent);}
+.ob-sub{font-size:14px;color:var(--muted);margin-bottom:32px;line-height:1.6;}
+.ob-routine-btn{width:100%;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .2s;}
+.ob-routine-btn.selected{border-color:var(--accent);background:rgba(230,63,31,0.06);}
+.ob-routine-btn-name{font-size:14px;font-weight:700;color:var(--text);}
+.ob-routine-btn-desc{font-size:11px;color:var(--muted);margin-top:3px;}
+.ob-avatar{width:100px;height:120px;border-radius:12px;background:var(--surface);border:2px dashed var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin:0 auto 16px;}
+.ob-avatar img{width:100%;height:100%;object-fit:cover;}
+.ob-dots{display:flex;gap:8px;justify-content:center;margin-bottom:24px;}
+.ob-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+.ob-dot.active{background:var(--accent);}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
@@ -896,24 +912,7 @@ const PLAN=[
   ]},
 ];
 
-const INITIAL={
-  sessions:{
-    1:{rest:90,date:"25/05/2026",exercises:[{name:"Press banca barra",sets:[{kg:40,reps:12},{kg:80,reps:10},{kg:80,reps:10},{kg:80,reps:10}]},{name:"Remo barra agarre supino",sets:[{kg:50,reps:12},{kg:60,reps:10},{kg:60,reps:10},{kg:60,reps:10}]},{name:"Press inclinado mancuernas",sets:[{kg:35,reps:12},{kg:35,reps:12},{kg:35,reps:12}]},{name:"Remo mancuerna",sets:[{kg:35,reps:12},{kg:35,reps:12},{kg:35,reps:12}]},{name:"Elevaciones laterales",sets:[{kg:17,reps:15},{kg:17,reps:15},{kg:17,reps:15},{kg:17,reps:15}]},{name:"Curl bíceps barra",sets:[{kg:25,reps:12},{kg:25,reps:12},{kg:25,reps:12}]},{name:"Tríceps polea cuerda",sets:[{kg:30,reps:15},{kg:30,reps:15},{kg:30,reps:15}]}],cardio:{tipo:"Caminadora",tiempo:25,kcal:368,fc:124,dist:2.31},note:""},
-    2:{rest:90,date:"26/05/2026",exercises:[{name:"Prensa 45°",sets:[{kg:200,reps:12},{kg:200,reps:12},{kg:200,reps:12},{kg:200,reps:12}]},{name:"Sentadilla hack",sets:[{kg:60,reps:12},{kg:60,reps:12},{kg:60,reps:12},{kg:60,reps:12}]},{name:"Hip thrust máquina",sets:[{kg:70,reps:12},{kg:70,reps:12},{kg:70,reps:12},{kg:70,reps:12}]},{name:"Curl femoral tumbado",sets:[{kg:60,reps:12},{kg:60,reps:12},{kg:60,reps:12},{kg:60,reps:12}]},{name:"Extensión piernas",sets:[{kg:90,reps:15},{kg:90,reps:15},{kg:90,reps:15}]},{name:"Abductores",sets:[{kg:130,reps:20},{kg:130,reps:20},{kg:130,reps:20}]}],cardio:{tipo:"Caminadora",tiempo:35,kcal:514,fc:119,dist:3.23},note:""},
-    3:{rest:90,date:"27/05/2026",exercises:[{name:"Press banca inclinado mancuernas",sets:[{kg:35,reps:12},{kg:35,reps:12},{kg:35,reps:12},{kg:35,reps:12}]},{name:"Cruces polea",sets:[{kg:21,reps:15},{kg:21,reps:15},{kg:21,reps:15},{kg:21,reps:15}]},{name:"Press Arnold",sets:[{kg:25,reps:10},{kg:25,reps:10},{kg:25,reps:10},{kg:25,reps:10}]},{name:"Elevaciones laterales",sets:[{kg:17,reps:20},{kg:17,reps:20},{kg:17,reps:20},{kg:17,reps:20}]},{name:"Press francés barra",sets:[{kg:25,reps:12},{kg:25,reps:12},{kg:25,reps:12}]},{name:"Fondos captain's chair",sets:[{kg:10,reps:12},{kg:10,reps:12},{kg:10,reps:12}]}],cardio:{tipo:"Caminadora",tiempo:30,kcal:456,fc:131,dist:2.85},note:""},
-    4:{rest:90,date:"28/05/2026",exercises:[{name:"Jalón al pecho",sets:[{kg:90,reps:12},{kg:100,reps:12},{kg:100,reps:12},{kg:100,reps:12}]},{name:"Remo polea baja",sets:[{kg:100,reps:12},{kg:100,reps:12},{kg:100,reps:12},{kg:100,reps:12}]},{name:"Pullover mancuerna",sets:[{kg:40,reps:12},{kg:40,reps:12},{kg:40,reps:12}]},{name:"Face pull",sets:[{kg:25,reps:15},{kg:25,reps:15},{kg:25,reps:15},{kg:25,reps:15}]},{name:"Curl martillo alternado",sets:[{kg:20,reps:12},{kg:20,reps:12},{kg:20,reps:12}]},{name:"Curl bíceps máquina",sets:[{kg:25,reps:15},{kg:25,reps:15},{kg:25,reps:15}]}],cardio:{tipo:"Caminadora",tiempo:30,kcal:457,fc:120,dist:2.84},note:""},
-    5:{rest:90,date:"30/05/2026",exercises:[{name:"Press banca barra",sets:[{kg:40,reps:12},{kg:80,reps:10},{kg:80,reps:10}]},{name:"Remo mancuerna",sets:[{kg:35,reps:10},{kg:35,reps:10},{kg:35,reps:10}]},{name:"Prensa 45°",sets:[{kg:200,reps:12},{kg:200,reps:12},{kg:200,reps:12}]},{name:"Press Arnold",sets:[{kg:25,reps:10},{kg:25,reps:10},{kg:25,reps:10}]},{name:"Hip thrust",sets:[{kg:70,reps:12},{kg:70,reps:12},{kg:70,reps:12}]},{name:"Curl bíceps",sets:[{kg:25,reps:10},{kg:25,reps:10},{kg:25,reps:10}]},{name:"Tríceps polea",sets:[{kg:25,reps:15},{kg:25,reps:15},{kg:25,reps:15}]}],cardio:{tipo:"Caminadora",tiempo:30,kcal:435,fc:127,dist:2.86},note:""},
-    6:{rest:75,date:"01/06/2026",exercises:[{name:"Press banca barra",sets:[{kg:40,reps:12},{kg:82.5,reps:10},{kg:82.5,reps:10},{kg:82.5,reps:10}]},{name:"Dominadas agarre neutro",sets:[{kg:0,reps:8},{kg:0,reps:8},{kg:0,reps:8},{kg:0,reps:8}]},{name:"Press inclinado mancuernas",sets:[{kg:37.5,reps:12},{kg:37.5,reps:12},{kg:37.5,reps:12},{kg:37.5,reps:12}]},{name:"Remo mancuerna",sets:[{kg:37.5,reps:12},{kg:37.5,reps:12},{kg:37.5,reps:12},{kg:37.5,reps:12}]},{name:"Elevaciones laterales",sets:[{kg:17.5,reps:20},{kg:17.5,reps:20},{kg:17.5,reps:20},{kg:17.5,reps:20}]},{name:"Curl bíceps barra",sets:[{kg:27.5,reps:12},{kg:27.5,reps:12},{kg:27.5,reps:12}]},{name:"Tríceps polea",sets:[{kg:32.5,reps:15},{kg:32.5,reps:15},{kg:32.5,reps:15}]}],cardio:{tipo:"Caminadora",tiempo:30,kcal:264,fc:120,dist:2.86},note:"Post-caminata 17km montaña"},
-    7:{rest:75,date:"02/06/2026",exercises:[{name:"Prensa 45°",sets:[{kg:220,reps:12},{kg:220,reps:12},{kg:220,reps:12},{kg:220,reps:12}]},{name:"Abducción de cadera",sets:[{kg:130,reps:20},{kg:130,reps:20},{kg:130,reps:20},{kg:130,reps:20}]},{name:"Hip thrust máquina",sets:[{kg:75,reps:12},{kg:75,reps:12},{kg:75,reps:12},{kg:75,reps:12}]},{name:"Curl femoral",sets:[{kg:62.5,reps:12},{kg:62.5,reps:12},{kg:62.5,reps:12},{kg:62.5,reps:12}]},{name:"Extensión piernas",sets:[{kg:95,reps:15},{kg:95,reps:15},{kg:95,reps:15}]}],cardio:{tipo:"Caminadora",tiempo:30,kcal:452,fc:121,dist:2.89},note:""},
-    8:{rest:90,date:"03/06/2026",exercises:[{name:"Press banca plano mancuernas",sets:[{kg:35,reps:12},{kg:37,reps:12},{kg:37,reps:12},{kg:37,reps:12}]},{name:"Cruces polea alta",sets:[{kg:21,reps:15},{kg:21,reps:15},{kg:21,reps:15},{kg:21,reps:15}]},{name:"Press hombros mancuernas",sets:[{kg:30,reps:12},{kg:30,reps:12},{kg:30,reps:12},{kg:30,reps:2}]},{name:"Elevaciones laterales",sets:[{kg:17,reps:20},{kg:17,reps:20},{kg:17,reps:20},{kg:17,reps:20}]},{name:"Tríceps polea cuerda",sets:[{kg:32,reps:15},{kg:32,reps:15},{kg:32,reps:15}]},{name:"Fondos captain's chair",sets:[{kg:10,reps:12},{kg:10,reps:12},{kg:15,reps:12}]}],cardio:{tipo:"Caminadora",tiempo:30,kcal:435,fc:122,dist:2.89},note:""},
-    9:{rest:75,date:"04/06/2026",exercises:[{name:"Jalón al pecho",sets:[{kg:100,reps:12},{kg:100,reps:12},{kg:100,reps:12},{kg:100,reps:12}]},{name:"Remo polea baja",sets:[{kg:100,reps:12},{kg:100,reps:12},{kg:100,reps:12},{kg:100,reps:12}]},{name:"Pullover polea",sets:[{kg:30,reps:12},{kg:30,reps:15},{kg:30,reps:15},{kg:30,reps:15}]},{name:"Face pull",sets:[{kg:27.5,reps:15},{kg:27.5,reps:20},{kg:27.5,reps:20},{kg:27.5,reps:20}]},{name:"Curl martillo",sets:[{kg:22.5,reps:12},{kg:22.5,reps:12},{kg:22.5,reps:12}]},{name:"Curl concentrado",sets:[{kg:12.5,reps:12},{kg:12.5,reps:12},{kg:12.5,reps:12}]}],cardio:{tipo:"Caminadora",tiempo:30,kcal:380,fc:121,dist:2.89},note:""},
-    10:{rest:75,date:"06/06/2026",exercises:[{name:"Press inclinado mancuernas",sets:[{kg:37.5,reps:12},{kg:37.5,reps:12},{kg:37.5,reps:12}]},{name:"Dominadas",sets:[{kg:0,reps:8},{kg:0,reps:8},{kg:0,reps:8}]},{name:"Sentadilla hack",sets:[{kg:65,reps:12},{kg:65,reps:12},{kg:65,reps:12}]},{name:"Press Arnold",sets:[{kg:27.5,reps:10},{kg:27.5,reps:10},{kg:27.5,reps:10}]},{name:"Hip thrust",sets:[{kg:75,reps:12},{kg:75,reps:12},{kg:75,reps:12}]},{name:"Curl bíceps barra Z",sets:[{kg:27.5,reps:12},{kg:27.5,reps:12},{kg:27.5,reps:12}]},{name:"Tríceps polea cuerda",sets:[{kg:32.5,reps:15},{kg:32.5,reps:15},{kg:32.5,reps:15}]}],cardio:{tipo:"Caminadora",tiempo:30,kcal:465,fc:121,dist:2.87},note:""},
-    11:{rest:90,date:"09/06/2026",exercises:[{name:"Press banca barra",sets:[{kg:40,reps:12},{kg:80,reps:10},{kg:80,reps:9},{kg:80,reps:8},{kg:80,reps:7}]},{name:"Remo barra",sets:[{kg:40,reps:12},{kg:60,reps:10},{kg:60,reps:10},{kg:60,reps:10},{kg:60,reps:10}]},{name:"Press inclinado mancuernas",sets:[{kg:37.5,reps:12},{kg:37.5,reps:12},{kg:37.5,reps:12},{kg:37.5,reps:12}]},{name:"Remo mancuerna",sets:[{kg:37.5,reps:12},{kg:37.5,reps:12},{kg:37.5,reps:12},{kg:37.5,reps:12}]},{name:"Elevaciones laterales",sets:[{kg:17.5,reps:20},{kg:17.5,reps:20},{kg:17.5,reps:20},{kg:17.5,reps:20},{kg:17.5,reps:20}]},{name:"Curl bíceps barra",sets:[{kg:27.5,reps:12},{kg:27.5,reps:12},{kg:27.5,reps:12},{kg:27.5,reps:12}]},{name:"Tríceps polea cuerda",sets:[{kg:25,reps:15},{kg:32.5,reps:15},{kg:32.5,reps:15},{kg:32.5,reps:15}]}],cardio:{tipo:"Caminadora",tiempo:30,kcal:444,fc:125,dist:3.07},note:""},
-    12:{rest:90,date:"10/06/2026",exercises:[{name:"Prensa 45°",sets:[{kg:220,reps:12},{kg:220,reps:12},{kg:220,reps:12},{kg:220,reps:12},{kg:220,reps:12}]},{name:"Sentadilla barra",sets:[{kg:40,reps:12},{kg:80,reps:10},{kg:80,reps:10},{kg:80,reps:10}]},{name:"Hip thrust",sets:[{kg:75,reps:10},{kg:75,reps:12},{kg:75,reps:12},{kg:75,reps:12},{kg:75,reps:12}]},{name:"Curl femoral",sets:[{kg:65,reps:12},{kg:65,reps:12},{kg:65,reps:12},{kg:65,reps:12}]},{name:"Extensión piernas",sets:[{kg:95,reps:12},{kg:97.5,reps:13},{kg:100,reps:14},{kg:100,reps:12}]},{name:"Abductores",sets:[{kg:130,reps:20},{kg:130,reps:20},{kg:130,reps:20},{kg:130,reps:20}]}],cardio:{tipo:"Caminadora",tiempo:35,kcal:506,fc:132,dist:3.63},note:"FC max 159bpm"},
-    13:{rest:90,date:"11/06/2026",exercises:[{name:"Press banca inclinado",sets:[{kg:50,reps:15},{kg:80,reps:12},{kg:80,reps:12},{kg:80,reps:12},{kg:80,reps:12}]},{name:"Cruces polea",sets:[{kg:21.25,reps:15},{kg:21.25,reps:15},{kg:21.25,reps:15},{kg:21.25,reps:15},{kg:25,reps:12}]},{name:"Press hombros mancuernas",sets:[{kg:25,reps:12},{kg:30,reps:10},{kg:30,reps:10},{kg:30,reps:10}]},{name:"Elevaciones laterales",sets:[{kg:17.5,reps:20},{kg:17.5,reps:20},{kg:17.5,reps:20},{kg:17.5,reps:20},{kg:17.5,reps:20}]},{name:"Press francés",sets:[{kg:27.5,reps:12},{kg:27.5,reps:12},{kg:27.5,reps:12},{kg:27.5,reps:12}]},{name:"Fondos",sets:[{kg:15,reps:10},{kg:15,reps:12},{kg:15,reps:12}]}],cardio:{tipo:"Caminadora",tiempo:35,kcal:513,fc:132,dist:3.68},note:"FC max 161bpm · Velocidad 6.3km/h"}
-  },
-  medidas:[{semana:1,peso:110,cintura:113,fecha:"25/05/2026"}]
-}
+const INITIAL={sessions:{},medidas:[]};
 
 let DB={routines:[],activeRoutine:null};
 let curSession=null;
@@ -1055,45 +1054,25 @@ function load(){
           }],
           activeRoutine:'def_jhon'
         };
-        const ref=JSON.parse(JSON.stringify(INITIAL));
-        Object.keys(ref.sessions).forEach(n=>{
-          if(!DB.routines[0].sessions[n])DB.routines[0].sessions[n]=ref.sessions[n];
-        });
-        if(!DB.routines[0].medidas.length)DB.routines[0].medidas=ref.medidas;
         save();
       }
     }else{
-      DB={
-        routines:[{
-          id:'def_jhon',
-          name:'Definición Jhon',
-          plan:JSON.parse(JSON.stringify(PLAN)),
-          sessions:JSON.parse(JSON.stringify(INITIAL.sessions)),
-          medidas:JSON.parse(JSON.stringify(INITIAL.medidas))
-        }],
-        activeRoutine:'def_jhon'
-      };
-      save();
+      DB={routines:[],activeRoutine:null};
     }
   }catch(e){
-    DB={
-      routines:[{
-        id:'def_jhon',
-        name:'Definición Jhon',
-        plan:JSON.parse(JSON.stringify(PLAN)),
-        sessions:JSON.parse(JSON.stringify(INITIAL.sessions)),
-        medidas:JSON.parse(JSON.stringify(INITIAL.medidas))
-      }],
-      activeRoutine:'def_jhon'
-    };
+    DB={routines:[],activeRoutine:null};
   }
   sync('ok');
-buildSessionList();
-  buildMedSel();
-  updateHome();
-  renderProfileName();
-  renderProfilePic();
-  updateHeaderRoutine();
+  if(!DB.activeRoutine||!DB.routines||!DB.routines.length){
+    showOnboarding();
+  }else{
+    buildSessionList();
+    buildMedSel();
+    updateHome();
+    updateHeaderRoutine();
+    renderProfilePic();
+    renderProfileName();
+  }
 }
 function calcStreak(){
   const dates=[...new Set(
@@ -1994,7 +1973,91 @@ function toggleCompletedWeeks(){
   el.style.display=el.style.display==='none'?'block':'none';
 }
 
-load();
+let obSelectedRoutine=null;
+let obPhotoData=null;
+
+function showOnboarding(){
+  document.getElementById('onboarding').classList.remove('hidden');
+  renderObRoutineList();
+}
+
+function obSetPhoto(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    obPhotoData=ev.target.result;
+    const av=document.getElementById('ob-avatar');
+    av.innerHTML=`<img src="${obPhotoData}">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderObRoutineList(){
+  const descriptions={
+    'preset_quema':'Alta intensidad y cardio. Quema grasa rápido.',
+    'preset_volumen':'Progresión de cargas. Gana masa muscular.',
+    'preset_fuerza':'Pocas reps, cargas máximas. Desarrolla fuerza real.',
+    'preset_recomp':'Equilibrio fuerza y cardio. Pierde grasa y gana músculo.',
+    'preset_definicion':'Déficit calórico + cardio. Marca y define el cuerpo.',
+    'preset_mantenimiento':'Frecuencia equilibrada. Mantén tu físico actual.',
+  };
+  const c=document.getElementById('ob-routine-list');
+  c.innerHTML=PRESET_ROUTINES.map(r=>`
+    <button class="ob-routine-btn${obSelectedRoutine===r.id?' selected':''}" onclick="obSelectRoutine('${r.id}')">
+      <div class="ob-routine-btn-name">${r.name}</div>
+      <div class="ob-routine-btn-desc">${descriptions[r.id]||''}</div>
+    </button>
+  `).join('');
+}
+
+function obSelectRoutine(id){
+  obSelectedRoutine=id;
+  renderObRoutineList();
+}
+
+function obNext(step){
+  if(step===1){
+    const name=document.getElementById('ob-name').value.trim();
+    if(!name){alert('Escribe tu nombre para continuar.');return;}
+  }
+  if(step===2){
+    if(!obSelectedRoutine){alert('Elige una rutina para continuar.');return;}
+    const preset=PRESET_ROUTINES.find(r=>r.id===obSelectedRoutine);
+    const name=document.getElementById('ob-name').value.trim();
+    document.getElementById('ob-summary').textContent=
+      `${name}, tu rutina "${preset.name}" está lista. ¡A entrenar!`;
+  }
+  document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('ob-step-'+step).classList.add('active');
+  document.querySelectorAll('.ob-dot').forEach((d,i)=>d.classList.toggle('active',i===step));
+}
+
+function obFinish(){
+  const name=document.getElementById('ob-name').value.trim();
+  const preset=PRESET_ROUTINES.find(r=>r.id===obSelectedRoutine);
+  DB={
+    routines:[{
+      id:preset.id,
+      name:preset.name,
+      plan:JSON.parse(JSON.stringify(preset.plan)),
+      sessions:{},
+      medidas:[]
+    }],
+    activeRoutine:preset.id,
+    profileName:name.toUpperCase(),
+    profilePic:obPhotoData||null,
+    exerciseImages:{}
+  };
+  save();
+  document.getElementById('onboarding').classList.add('hidden');
+  renderProfilePic();
+  renderProfileName();
+  updateHeaderRoutine();
+  buildSessionList();
+  updateHome();
+}
+
+document.addEventListener('DOMContentLoaded', load);
 </script>
 
 <div id="gif-panel" class="gif-panel hidden">
@@ -2023,6 +2086,49 @@ load();
   <div style="padding:12px;flex:1;overflow-y:auto;">
     <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Elige una rutina prediseñada y añádela a tu biblioteca. Podrás activarla desde "Mis rutinas".</p>
     <div id="preset-list"></div>
+  </div>
+</div>
+
+<div id="onboarding" class="onboarding hidden">
+  <div style="padding:24px 24px 0;width:100%;">
+    <div style="font-size:18px;font-weight:800;">MY <span style="color:var(--accent);">FITNESS TRACKER</span></div>
+  </div>
+  <div class="ob-dots" style="margin-top:16px;">
+    <div class="ob-dot active" id="ob-dot-0"></div>
+    <div class="ob-dot" id="ob-dot-1"></div>
+    <div class="ob-dot" id="ob-dot-2"></div>
+  </div>
+
+  <!-- Paso 1: Bienvenida + nombre + foto -->
+  <div class="ob-step active" id="ob-step-0">
+    <div class="ob-title">Bienvenido a<br><span>My Fitness Tracker</span></div>
+    <div class="ob-sub">Tu app personal de entrenamiento. Empieza configurando tu perfil.</div>
+    <div class="ob-avatar" id="ob-avatar" onclick="document.getElementById('ob-photo-input').click()">
+      <span style="font-size:40px;">👤</span>
+    </div>
+    <input type="file" id="ob-photo-input" accept="image/*" style="display:none;" onchange="obSetPhoto(this)">
+    <p style="font-size:11px;color:var(--muted);margin-bottom:16px;">Toca para añadir foto de perfil</p>
+    <input type="text" id="ob-name" placeholder="Tu nombre" style="text-align:center;font-size:18px;font-weight:700;margin-bottom:24px;">
+    <button class="btn btn-primary" onclick="obNext(1)">Continuar →</button>
+  </div>
+
+  <!-- Paso 2: Elegir rutina -->
+  <div class="ob-step" id="ob-step-1" style="align-items:stretch;justify-content:flex-start;padding-top:16px;">
+    <div class="ob-title" style="text-align:left;">Elige tu rutina</div>
+    <div class="ob-sub" style="text-align:left;">Selecciona el programa que mejor se adapte a tu objetivo.</div>
+    <div id="ob-routine-list" style="width:100%;"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-secondary" style="flex:1;" onclick="obNext(0)">← Atrás</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="obNext(2)">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- Paso 3: Listo -->
+  <div class="ob-step" id="ob-step-2">
+    <div style="font-size:64px;margin-bottom:16px;">🏆</div>
+    <div class="ob-title">¡Todo listo!</div>
+    <div class="ob-sub" id="ob-summary">Estás listo para empezar tu entrenamiento.</div>
+    <button class="btn btn-primary" style="width:100%;" onclick="obFinish()">Empezar ahora →</button>
   </div>
 </div>
 
