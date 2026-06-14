@@ -151,8 +151,9 @@ textarea{resize:vertical;min-height:60px;}
   <div style="display:flex;gap:12px;align-items:stretch;">
     <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:8px;">
       <div>
-        <div class="header-title">MY <span id="header-routine-name">FITNESS TRACKER</span></div>
-        <div class="header-sub" id="header-routine-sub">Jhon · 40 sesiones · 8 semanas</div>
+        <div class="header-title">MY <span>FITNESS TRACKER</span></div>
+<div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;" id="header-routine-name">Definición Jhon</div>
+        <div class="header-sub" id="header-routine-sub">40 sesiones · 8 semanas</div>
         <div class="sync-row">
           <div class="sync-dot" id="sync-dot"></div>
           <span id="sync-txt">Cargando...</span>
@@ -167,6 +168,7 @@ textarea{resize:vertical;min-height:60px;}
         <span style="font-size:32px;">👤</span>
       </div>
       <input type="file" id="profile-input" accept="image/*" onchange="saveProfilePic(this)" style="display:none;">
+      <div id="profile-name" onclick="editProfileName()" style="margin-top:4px;font-size:10px;color:rgba(255,255,255,0.5);text-align:center;cursor:pointer;max-width:90px;word-break:break-word;">JHON ✎</div>
     </div>
   </div>
 </header>
@@ -690,6 +692,7 @@ function load(){
 buildSessionList();
   buildMedSel();
   updateHome();
+  renderProfileName();
   renderProfilePic();
   updateHeaderRoutine();
 }
@@ -1217,8 +1220,7 @@ function updateHeaderRoutine(){
     return;
   }
   const totalSess=act.plan.reduce((s,w)=>s+w.days.length,0);
-  if(nameEl)nameEl.textContent=act.name.toUpperCase();
-  if(subEl)subEl.textContent='Jhon · '+totalSess+' sesiones · '+act.plan.length+' semanas';
+  if(subEl)subEl.textContent=totalSess+' sesiones · '+act.plan.length+' semanas';
 }
 
 function renderMedidasChart(){
@@ -1474,6 +1476,22 @@ function uploadExImage(input){
     closeGifPanel();
   };
   reader.readAsDataURL(file);
+}
+
+function editProfileName(){
+  const el=document.getElementById('profile-name');
+  const current=(DB.profileName||'JHON');
+  const nuevo=prompt('Nombre:',current);
+  if(nuevo&&nuevo.trim()){
+    DB.profileName=nuevo.trim().toUpperCase();
+    save();
+    renderProfileName();
+  }
+}
+
+function renderProfileName(){
+  const el=document.getElementById('profile-name');
+  if(el)el.textContent=(DB.profileName||'JHON')+' ✎';
 }
 
 load();
