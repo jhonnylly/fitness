@@ -1386,14 +1386,50 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
       <div class="stat"><div class="stat-val">${calcMaxStreak()}</div><div class="stat-lbl">Mejor racha</div></div>
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
-    ${act.plan.map(w=>{
-      const wd=w.days.filter(d=>act.sessions[d.s]).length;
-      return`<div class="week-row">
-        <div><div style="font-size:13px;font-weight:700;">Sem ${w.num} — ${w.title}</div>
-        <div style="margin-top:4px;">${w.days.map(d=>`<span class="dot ${act.sessions[d.s]?'dot-done':'dot-todo'}" title="S${d.s}"></span>`).join('')}</div></div>
-        <span class="badge ${wd===5?'badge-green':'badge-accent'}">${wd}/5</span>
-      </div>`;
-    }).join('')}
+    ${(()=>{
+  let currentWeek=null;
+  for(const w of getActivePlan()){
+    const wd=w.days.filter(d=>act.sessions[d.s]).length;
+    if(wd<w.days.length){currentWeek=w.num;break;}
+  }
+  const completedWeeks=getActivePlan().filter(w=>w.days.filter(d=>act.sessions[d.s]).length===w.days.length);
+  const cur=getActivePlan().find(w=>w.num===currentWeek);
+
+  const weekCard=(w,expanded)=>{
+    const wd=w.days.filter(d=>act.sessions[d.s]).length;
+    const total=w.days.length;
+    const isComplete=wd===total;
+    return`<div class="week-row" style="flex-direction:column;align-items:stretch;padding:0;overflow:hidden;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;">
+        <div style="font-size:13px;font-weight:700;">${currentWeek===w.num?'⚡ ':'✓ '}Sem ${w.num} — ${w.title}</div>
+        <span class="badge ${isComplete?'badge-green':'badge-accent'}">${wd}/${total}</span>
+      </div>
+      <div style="padding:0 14px 12px;">
+        <div style="margin-bottom:6px;">${w.days.map(d=>`<span class="dot ${act.sessions[d.s]?'dot-done':'dot-todo'}"></span>`).join('')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          ${w.days.map(d=>{
+            const done=!!act.sessions[d.s];
+            return`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${done?'rgba(45,122,79,0.12)':'var(--surface)'};color:${done?'var(--green)':'var(--muted)'};">${d.name.split('·')[1]?.trim()||d.name}</span>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  };
+
+  return`
+    ${cur?weekCard(cur,true):'<div class="week-row"><div style="font-size:13px;font-weight:700;">🏆 Plan completado</div></div>'}
+    ${completedWeeks.length?`
+      <div style="margin-top:4px;">
+        <button class="btn btn-secondary" style="font-size:12px;padding:8px;" onclick="toggleCompletedWeeks()">
+          📋 Ver semanas completadas (${completedWeeks.length})
+        </button>
+        <div id="completed-weeks-list" style="display:none;margin-top:8px;">
+          ${completedWeeks.map(w=>weekCard(w,false)).join('')}
+        </div>
+      </div>
+    `:''}
+  `;
+})()}
   `;
 }
 
@@ -1945,6 +1981,12 @@ function addPresetRoutine(id){
   save();
   renderPresetList();
   alert('Rutina "'+preset.name+'" añadida a tu biblioteca ✓');
+}
+
+function toggleCompletedWeeks(){
+  const el=document.getElementById('completed-weeks-list');
+  if(!el)return;
+  el.style.display=el.style.display==='none'?'block':'none';
 }
 
 load();
