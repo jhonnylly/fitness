@@ -959,30 +959,33 @@ function storageAvailable(){
 }
 
 let timerInterval=null;
-let timerTotal=90;
-let timerLeft=0;
-const CIRC=125.66;
+  let timerTotal=90;
+  let timerLeft=0;
+  let timerEnd=null;
+  const CIRC=125.66;
 
-function startTimer(secs){
-  if(timerInterval)clearInterval(timerInterval);
-  timerTotal=secs||90;
-  timerLeft=timerTotal;
-  const el=document.getElementById('rest-timer');
-  el.classList.remove('hidden');
-  updateTimerUI();
-  timerInterval=setInterval(()=>{
-    timerLeft--;
+  function startTimer(secs){
+    if(timerInterval)clearInterval(timerInterval);
+    timerTotal=secs||90;
+    timerLeft=timerTotal;
+    timerEnd=Date.now()+timerTotal*1000;
+    const el=document.getElementById('rest-timer');
+    el.classList.remove('hidden');
     updateTimerUI();
-    if(timerLeft<=0){
-      clearInterval(timerInterval);timerInterval=null;
-      document.getElementById('timer-txt').textContent='¡A por la siguiente serie!';
-      document.getElementById('timer-secs').textContent='0';
-      document.getElementById('timer-arc').style.strokeDashoffset=CIRC;
-      vibrateEnd();
-      setTimeout(()=>document.getElementById('rest-timer').classList.add('hidden'),2500);
-    }
-  },1000);
-}
+    timerInterval=setInterval(()=>{
+      timerLeft=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));
+      updateTimerUI();
+      if(timerLeft<=0){
+        clearInterval(timerInterval);timerInterval=null;
+        document.getElementById('timer-txt').textContent='¡A por la siguiente serie!';
+        document.getElementById('timer-secs').textContent='0';
+        document.getElementById('timer-arc').style.strokeDashoffset=CIRC;
+        vibrateEnd();
+        setTimeout(()=>document.getElementById('rest-timer').classList.add('hidden'),2500);
+      }
+    },500);
+  }
+
 
 function updateTimerUI(){
   document.getElementById('timer-secs').textContent=timerLeft;
@@ -992,7 +995,20 @@ function updateTimerUI(){
   const lbl=document.getElementById('timer-label');
   lbl.textContent='';
 }
-
+document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&timerInterval&&timerEnd){
+      timerLeft=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));
+      updateTimerUI();
+      if(timerLeft<=0){
+        clearInterval(timerInterval);timerInterval=null;
+        document.getElementById('timer-txt').textContent='¡A por la siguiente serie!';
+        document.getElementById('timer-secs').textContent='0';
+        document.getElementById('timer-arc').style.strokeDashoffset=CIRC;
+        vibrateEnd();
+        setTimeout(()=>document.getElementById('rest-timer').classList.add('hidden'),2500);
+      }
+    }
+  });
 function skipTimer(){
   if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
   document.getElementById('rest-timer').classList.add('hidden');
