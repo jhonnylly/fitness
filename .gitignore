@@ -1,0 +1,17 @@
+sessions/
+backups/
+cache/
+debug/
+downloads/
+file-history/
+paste-cache/
+shell-snapshots/
+telemetry/
+session-env/
+history.jsonl
+mcp-needs-auth-cache.json
+policy-limits.json
+remote-settings.json
+stats-cache.json
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
