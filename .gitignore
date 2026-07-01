@@ -8,10 +8,23 @@ paste-cache/
 shell-snapshots/
 telemetry/
 session-env/
+plugins/
 history.jsonl
 mcp-needs-auth-cache.json
 policy-limits.json
 remote-settings.json
 stats-cache.json
+.credentials.json
+.last-cleanup
+.last-update-result.json
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
+settings.json
+settings.local.json
+
+# Solo conservar la carpeta memory dentro de projects
+projects/**
+!projects/
+!projects/*/
+!projects/*/memory/
+!projects/*/memory/**
