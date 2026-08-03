@@ -276,9 +276,27 @@ textarea{resize:vertical;min-height:60px;}
         <div id="me-role" style="display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--surface);color:var(--muted);"></div>
         <button class="btn btn-secondary" onclick="doLogout()">Cerrar sesión</button>
       </div>
-      <div class="msg msg-info">
-        Tus entrenamientos siguen guardándose <b>solo en este dispositivo</b>.
-        La sincronización en la nube y el modo entrenador llegan en el siguiente paso.
+
+      <!-- Dónde se están guardando los datos ahora mismo. -->
+      <div id="sync-estado"></div>
+
+      <!-- Solo aparece si la nube está vacía y hay datos en este dispositivo.
+           No se decide por el usuario: se le pregunta. -->
+      <div id="import-choice" class="hidden">
+        <div class="card">
+          <div style="font-size:15px;font-weight:800;margin-bottom:6px;">Tienes datos en este dispositivo</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
+            En tu cuenta todavía no hay nada guardado, pero en este navegador hay
+            <b id="import-resumen"></b>. ¿Qué hacemos?
+          </div>
+          <div id="import-msg"></div>
+          <button class="btn btn-primary" id="import-subir" onclick="subirDatosLocales()">Subir estos datos a mi cuenta</button>
+          <button class="btn btn-secondary" id="import-vacio" onclick="empezarDeCeroEnNube()">Empezar de cero en la nube</button>
+          <div class="msg msg-info" style="margin-top:10px;">
+            Elijas lo que elijas, lo guardado en este dispositivo <b>no se borra</b>.
+            Sigue ahí si cierras sesión.
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2433,8 +2451,18 @@ function duplicateWeek(weekNum){
   openWeekDetail(newWeekNum);
 }
 
+/* El módulo de Firebase necesita saber cuándo ha terminado la carga inicial
+   desde localStorage: onAuthStateChanged puede dispararse antes, y decidir si
+   hay datos locales que ofrecer con DB todavía vacía sería un falso negativo.
+   La promesa se crea ya, no en el listener, para que quien la espere no llegue
+   nunca demasiado pronto. */
+let resolverCargaInicial;
+window.cargaInicial=new Promise(res=>{resolverCargaInicial=res;});
+
 document.addEventListener('DOMContentLoaded', ()=>{
-  load().catch(e=>console.error('[init] fallo al arrancar',e));
+  load()
+    .catch(e=>console.error('[init] fallo al arrancar',e))
+    .finally(resolverCargaInicial);
 });
 </script>
 
@@ -2663,6 +2691,7 @@ window.guardarPerfil = async function(){
     if(!user.displayName) await updateProfile(user, { displayName: name });
     meData = { name, email: user.email, role, trainerId: null };
     pintarSesion(user);
+    await cambiarANube();   // ya hay perfil: se puede sincronizar
   }catch(e){
     console.error('[auth] no se pudo crear el perfil', e);
     $('perfil-msg').innerHTML =
@@ -2786,12 +2815,113 @@ const StorageFirestore = {
   }
 };
 
-/* Expuesto para poder inspeccionarlo y probarlo sin que nada cambie de sitio
-   todavía. Activar la sincronización es el siguiente sub-paso. */
 window.StorageFirestore = StorageFirestore;
 
+/* ─────────── Conmutación de backend ───────────
+   Con sesión iniciada, la nube es la fuente de verdad. Tres reglas para que
+   eso no acabe en pérdida de datos:
+
+   1. Si la lectura de la nube falla (sin conexión, reglas, lo que sea) NO se
+      cambia de backend. Cambiar y que load() no pueda leer dejaría la DB
+      vacía y parecería que se ha perdido todo.
+   2. Si la nube está vacía y hay datos en este dispositivo, se pregunta. No
+      se sube ni se descarta nada por iniciativa propia.
+   3. localStorage no se toca nunca. Al cerrar sesión sigue ahí intacto.     */
+
+function pintarEstadoSync(){
+  const enNube = STORAGE.backend.name === 'firestore';
+  document.getElementById('sync-estado').innerHTML = enNube
+    ? '<div class="msg msg-ok">Guardando en <b>tu cuenta</b>. Tus entrenamientos te siguen a cualquier dispositivo donde inicies sesión.</div>'
+    : '<div class="msg msg-info">Guardando <b>solo en este dispositivo</b>.</div>';
+}
+
+function resumenLocal(){
+  const n = (DB.routines || []).length;
+  const s = (DB.routines || []).reduce((t, r) => t + Object.keys(r.sessions || {}).length, 0);
+  if(!n) return null;
+  return `${n} rutina${n === 1 ? '' : 's'}` + (s ? ` y ${s} sesión${s === 1 ? '' : 'es'} registrada${s === 1 ? '' : 's'}` : '');
+}
+
+async function cambiarANube(){
+  // Esperar a que la carga desde localStorage haya terminado, o "¿hay datos
+  // locales?" se respondería con una DB todavía vacía.
+  await window.cargaInicial;
+
+  // Regla 1: leer ANTES de conmutar.
+  let remoto;
+  try{
+    remoto = await StorageFirestore.read();
+  }catch(e){
+    console.error('[sync] no se pudo leer la nube; se sigue en local', e);
+    document.getElementById('sync-estado').innerHTML =
+      '<div class="msg msg-err">No se pudo conectar con tu cuenta, así que se sigue guardando '+
+      'en este dispositivo. Tus datos están a salvo; vuelve a entrar cuando tengas conexión.</div>';
+    return;
+  }
+
+  // Regla 2: nube vacía + datos locales -> preguntar.
+  const resumen = resumenLocal();
+  if(remoto === null && resumen){
+    document.getElementById('import-resumen').textContent = resumen;
+    document.getElementById('import-choice').classList.remove('hidden');
+    pintarEstadoSync();
+    return;
+  }
+
+  STORAGE.use(StorageFirestore);
+  await load();          // load() ya repinta toda la app
+  pintarEstadoSync();
+}
+
+window.subirDatosLocales = async function(){
+  const btn = document.getElementById('import-subir');
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = 'Subiendo...';
+  try{
+    STORAGE.use(StorageFirestore);
+    await save();                        // sube la DB que ya está en memoria
+    const comprobacion = await StorageFirestore.read();
+    if(!comprobacion || comprobacion.routines.length !== (DB.routines || []).length){
+      throw new Error('la subida no se pudo confirmar');
+    }
+    document.getElementById('import-choice').classList.add('hidden');
+    pintarEstadoSync();
+  }catch(e){
+    console.error('[sync] falló la subida', e);
+    STORAGE.use(StorageLocal);           // volver atrás: nada se ha perdido
+    document.getElementById('import-msg').innerHTML =
+      '<div class="msg msg-err">No se pudieron subir los datos ('+(e.code||e.message)+'). '+
+      'Se sigue guardando en este dispositivo.</div>';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = txt;
+  }
+};
+
+window.empezarDeCeroEnNube = async function(){
+  document.getElementById('import-choice').classList.add('hidden');
+  STORAGE.use(StorageFirestore);
+  await load();          // read() devuelve null -> DB vacía -> onboarding
+  pintarEstadoSync();
+};
+
+async function volverALocal(){
+  STORAGE.use(StorageLocal);
+  document.getElementById('import-choice').classList.add('hidden');
+  await load();
+  pintarEstadoSync();
+}
+
 onAuthStateChanged(auth, async (user) => {
-  if(!user){ meUid = null; meData = null; pintarSesion(null); return; }
+  if(!user){
+    meUid = null; meData = null;
+    pintarSesion(null);
+    // Al cerrar sesión, volver a los datos de este dispositivo.
+    if(STORAGE.backend.name !== 'local') await volverALocal();
+    else pintarEstadoSync();
+    return;
+  }
   meUid = user.uid;
   if(pendingProfileWrite) await pendingProfileWrite;
   try{
@@ -2804,6 +2934,8 @@ onAuthStateChanged(auth, async (user) => {
     meData = null;
   }
   pintarSesion(user);
+  // Sin perfil todavía no se sincroniza: primero hay que completarlo.
+  if(meData) await cambiarANube();
 });
 
 /* Estado inicial del panel: con el registro cerrado sobra la fila de pestañas
@@ -2816,6 +2948,7 @@ if(!REGISTRO_ABIERTO){
 }else{
   $('registro-cerrado-aviso').classList.add('hidden');
 }
+pintarEstadoSync();
 
 /* Marca de que el módulo llegó a ejecutarse: toggleAuthPanel() la consulta
    para avisar si Firebase no cargó. */

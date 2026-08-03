@@ -15,12 +15,16 @@ const localStorage = {
   removeItem: k => store.delete(k),
 };
 const el = () => ({ style: {}, textContent: '', innerHTML: '', classList: { add(){}, remove(){} }, value: '' });
+// Se guardan los listeners para poder disparar DOMContentLoaded a mano y
+// comprobar el arranque real de la app.
+const listeners = {};
 const document = {
   getElementById: () => el(),
   createElement: () => el(),
-  addEventListener: () => {},
+  addEventListener: (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); },
   body: { insertBefore(){}, firstChild: null },
 };
+const disparar = ev => (listeners[ev] || []).forEach(fn => fn());
 
 const ctx = {
   localStorage, document, console,
@@ -150,6 +154,43 @@ const ok = (cond, msg) => {
   ok(app.buscarArraysAnidados({ sets: [{ kg: '20', reps: '10' }] }) === null, 'array de mapas es válido en Firestore');
   ok(app.buscarArraysAnidados({ plan: [{ days: [{ ex: [['a', 'b']] }] }] }) === 'plan[0].days[0].ex[0]',
      'devuelve la ruta exacta: plan[0].days[0].ex[0]');
+
+  console.log('\n11. window.cargaInicial gatea el arranque');
+  // El módulo de Firebase espera esta promesa antes de preguntar "¿hay datos
+  // locales que subir?". Si resolviera antes de que load() termine, la
+  // respuesta sería un falso negativo y se perderían los datos del dispositivo.
+  // instanceof Promise falla aquí aunque sea correcto: la promesa nace dentro
+  // del contexto vm, que es otro realm. Lo que importa es que sea "thenable".
+  ok(typeof (ctx.window.cargaInicial || {}).then === 'function',
+     'existe y es esperable desde el arranque, no desde el listener');
+
+  store.clear();
+  store.set('jhon_db_v2', JSON.stringify({
+    routines: [{ id: 'r9', name: 'Rutina del arranque', plan: [], sessions: {}, medidas: [] }],
+    activeRoutine: 'r9',
+  }));
+  // Backend lento para que el orden sea observable, no una coincidencia.
+  app.STORAGE.use({
+    name: 'lento-arranque',
+    available: () => true,
+    async read() { await new Promise(r => setTimeout(r, 60)); return JSON.parse(store.get('jhon_db_v2')); },
+    async write() {},
+  });
+
+  app.DB = { routines: [], activeRoutine: null };
+  let resuelta = false;
+  ctx.window.cargaInicial.then(() => { resuelta = true; });
+
+  disparar('DOMContentLoaded');
+  ok(resuelta === false, 'no está resuelta nada más arrancar la carga');
+  ok(app.DB.routines.length === 0, 'y en ese instante DB aún está vacía');
+
+  await ctx.window.cargaInicial;
+  ok(app.DB.routines.length === 1, 'al resolverse, DB ya está cargada');
+  ok(app.DB.routines[0].name === 'Rutina del arranque', 'quien la espera ve los datos reales, no una DB vacía');
+  ok(app.DB.activeRoutine === 'r9', 'y también la rutina activa');
+
+  app.STORAGE.use(app.StorageLocal);
 
   console.log(fallos === 0 ? '\n✅ TODO OK\n' : `\n❌ ${fallos} fallo(s)\n`);
   process.exit(fallos === 0 ? 0 : 1);
