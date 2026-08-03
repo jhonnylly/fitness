@@ -280,6 +280,46 @@ textarea{resize:vertical;min-height:60px;}
       <!-- Dónde se están guardando los datos ahora mismo. -->
       <div id="sync-estado"></div>
 
+      <!-- Aparece si HAY datos en los dos sitios y no coinciden. Elegir es del
+           usuario: se le enseñan las dos cifras y decide. -->
+      <div id="sync-conflicto" class="hidden">
+        <div class="card">
+          <div style="font-size:15px;font-weight:800;margin-bottom:6px;">Hay datos en los dos sitios</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
+            No coinciden, así que decide tú con qué te quedas. Nada se borra hasta que elijas.
+          </div>
+          <div id="conflicto-msg"></div>
+
+          <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:8px;">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">En este dispositivo</div>
+            <div id="conflicto-local" style="font-size:13px;font-weight:700;margin-top:3px;"></div>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:12px;">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">En tu cuenta (la nube)</div>
+            <div id="conflicto-nube" style="font-size:13px;font-weight:700;margin-top:3px;"></div>
+          </div>
+
+          <button class="btn btn-primary" id="conflicto-nube-btn" onclick="usarLoDeLaNube()">Usar lo de mi cuenta</button>
+          <button class="btn btn-secondary" id="conflicto-subir-btn" onclick="subirEsteDispositivo()">Subir lo de este dispositivo</button>
+          <button class="btn btn-secondary" onclick="noSincronizarAhora()">Ahora no, seguir en local</button>
+          <div class="msg msg-info" style="margin-top:10px;">
+            <b>Subir lo de este dispositivo</b> reemplaza lo que hay en tu cuenta.
+            <b>Usar lo de mi cuenta</b> no borra lo de aquí: seguirá en este navegador
+            y volverás a verlo si cierras sesión.
+          </div>
+        </div>
+      </div>
+
+      <!-- Aviso discreto cuando ya se sincroniza pero el dispositivo conserva
+           datos propios que nunca se subieron. Da una salida sin dar la lata. -->
+      <div id="pendiente-local" class="hidden">
+        <div class="msg msg-info">
+          Este dispositivo guarda además datos antiguos sin subir
+          (<span id="pendiente-resumen"></span>).
+          <a href="#" onclick="revisarPendienteLocal();return false;" style="color:var(--accent);font-weight:700;">Revisar</a>
+        </div>
+      </div>
+
       <!-- Solo aparece si la nube está vacía y hay datos en este dispositivo.
            No se decide por el usuario: se le pregunta. -->
       <div id="import-choice" class="hidden">
@@ -1145,6 +1185,52 @@ const STORAGE={
   read(){return this.backend.read();},
   write(db){return this.backend.write(db);}
 };
+
+/* ─────────── Comparar dispositivo y nube ───────────
+   Al iniciar sesión puede haber datos en los dos sitios. "La nube manda" no
+   puede significar descartar en silencio lo del dispositivo, así que hay que
+   poder resumirlos y compararlos para preguntar con datos delante.          */
+
+const DECISION_KEY='jhon_sync_v1';
+
+function resumenDB(db){
+  const rutinas=(db&&db.routines)||[];
+  return {
+    rutinas:rutinas.length,
+    sesiones:rutinas.reduce((t,r)=>t+Object.keys(r.sessions||{}).length,0),
+    medidas:rutinas.reduce((t,r)=>t+((r.medidas||[]).length),0),
+    fotos:rutinas.reduce((t,r)=>t+Object.keys(r.photos||{}).length,0)
+  };
+}
+
+function textoResumen(res){
+  if(!res.rutinas)return 'nada guardado';
+  const p=[`${res.rutinas} rutina${res.rutinas===1?'':'s'}`];
+  // "sesión"/"sesiones" cambia de acentuación, así que no vale concatenar.
+  p.push(res.sesiones===1?'1 sesión registrada':`${res.sesiones} sesiones registradas`);
+  if(res.medidas)p.push(`${res.medidas} medida${res.medidas===1?'':'s'}`);
+  if(res.fotos)p.push(`${res.fotos} foto${res.fotos===1?'':'s'}`);
+  return p.join(' · ');
+}
+
+/* Firma del contenido que de verdad importa. Sirve para saber si lo del
+   dispositivo ya está en la nube y no hace falta preguntar nada. */
+function firmaDB(db){
+  return JSON.stringify(((db&&db.routines)||[])
+    .map(r=>[r.id,r.name,JSON.stringify(r.sessions||{}),JSON.stringify(r.medidas||[])])
+    .sort((a,b)=>a[0]<b[0]?-1:1));
+}
+
+function mismosDatos(a,b){ return firmaDB(a)===firmaDB(b); }
+
+/* Qué decidió este dispositivo para esta cuenta, para no repetir la pregunta
+   en cada arranque. */
+function leerDecisionSync(){
+  try{ return JSON.parse(localStorage.getItem(DECISION_KEY))||null; }catch(e){ return null; }
+}
+function guardarDecisionSync(uid,modo){
+  try{ localStorage.setItem(DECISION_KEY,JSON.stringify({uid,modo,ts:Date.now()})); }catch(e){}
+}
 
 /* ─────────── Conversión de formato para Firestore ───────────
    Firestore NO admite arrays dentro de arrays. El plan de la app usa
@@ -2835,11 +2921,32 @@ function pintarEstadoSync(){
     : '<div class="msg msg-info">Guardando <b>solo en este dispositivo</b>.</div>';
 }
 
-function resumenLocal(){
-  const n = (DB.routines || []).length;
-  const s = (DB.routines || []).reduce((t, r) => t + Object.keys(r.sessions || {}).length, 0);
-  if(!n) return null;
-  return `${n} rutina${n === 1 ? '' : 's'}` + (s ? ` y ${s} sesión${s === 1 ? '' : 'es'} registrada${s === 1 ? '' : 's'}` : '');
+function ocultarPreguntas(){
+  document.getElementById('import-choice').classList.add('hidden');
+  document.getElementById('sync-conflicto').classList.add('hidden');
+}
+
+async function activarNube(){
+  STORAGE.use(StorageFirestore);
+  await load();          // load() ya repinta toda la app
+  ocultarPreguntas();
+  pintarEstadoSync();
+  await avisarPendienteLocal();
+}
+
+/* Si ya se sincroniza pero el dispositivo conserva datos propios distintos,
+   se avisa sin bloquear: es información, no una decisión pendiente. */
+async function avisarPendienteLocal(){
+  const aviso = document.getElementById('pendiente-local');
+  aviso.classList.add('hidden');
+  if(STORAGE.backend.name !== 'firestore') return;
+  try{
+    const local = await StorageLocal.read();
+    if(local && (local.routines || []).length && !mismosDatos(local, DB)){
+      document.getElementById('pendiente-resumen').textContent = textoResumen(resumenDB(local));
+      aviso.classList.remove('hidden');
+    }
+  }catch(e){ /* si no se puede leer lo local, simplemente no se avisa */ }
 }
 
 async function cambiarANube(){
@@ -2859,19 +2966,92 @@ async function cambiarANube(){
     return;
   }
 
-  // Regla 2: nube vacía + datos locales -> preguntar.
-  const resumen = resumenLocal();
-  if(remoto === null && resumen){
-    document.getElementById('import-resumen').textContent = resumen;
+  let local = null;
+  try{ local = await StorageLocal.read(); }catch(e){}
+
+  const hayNube  = !!(remoto && (remoto.routines || []).length);
+  const hayLocal = !!(local  && (local.routines  || []).length);
+
+  // Nada en la nube y algo aquí: ofrecer subirlo.
+  if(!hayNube && hayLocal){
+    document.getElementById('import-resumen').textContent = textoResumen(resumenDB(local));
     document.getElementById('import-choice').classList.remove('hidden');
     pintarEstadoSync();
     return;
   }
 
-  STORAGE.use(StorageFirestore);
-  await load();          // load() ya repinta toda la app
+  // Nada aquí (o nada en ninguno): no hay nada que perder, se sincroniza.
+  if(!hayLocal){ await activarNube(); return; }
+
+  // Datos en los dos sitios.
+  if(mismosDatos(local, remoto)){ await activarNube(); return; }   // son los mismos
+
+  const decision = leerDecisionSync();
+  if(decision && decision.uid === auth.currentUser.uid && decision.modo === 'nube'){
+    await activarNube();                                          // ya se decidió antes
+    return;
+  }
+
+  // Difieren y no hay decisión previa: preguntar con las dos cifras delante.
+  document.getElementById('conflicto-local').textContent = textoResumen(resumenDB(local));
+  document.getElementById('conflicto-nube').textContent  = textoResumen(resumenDB(remoto));
+  document.getElementById('sync-conflicto').classList.remove('hidden');
   pintarEstadoSync();
 }
+
+window.usarLoDeLaNube = async function(){
+  guardarDecisionSync(auth.currentUser.uid, 'nube');
+  await activarNube();
+};
+
+window.noSincronizarAhora = function(){
+  ocultarPreguntas();          // sin guardar decisión: volverá a preguntar
+  pintarEstadoSync();
+};
+
+window.revisarPendienteLocal = async function(){
+  const local = await StorageLocal.read();
+  const remoto = DB;
+  document.getElementById('conflicto-local').textContent = textoResumen(resumenDB(local));
+  document.getElementById('conflicto-nube').textContent  = textoResumen(resumenDB(remoto));
+  document.getElementById('pendiente-local').classList.add('hidden');
+  document.getElementById('sync-conflicto').classList.remove('hidden');
+};
+
+/* Reemplaza el contenido de la cuenta por el de este dispositivo. */
+window.subirEsteDispositivo = async function(){
+  const btn = document.getElementById('conflicto-subir-btn');
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = 'Subiendo...';
+  try{
+    const local = await StorageLocal.read();
+    if(!local || !(local.routines || []).length) throw new Error('no hay datos locales que subir');
+    DB = local;                       // lo del dispositivo pasa a ser lo vigente
+    STORAGE.use(StorageFirestore);
+    await save();
+    const comprobacion = await StorageFirestore.read();
+    if(!comprobacion || comprobacion.routines.length !== local.routines.length){
+      throw new Error('la subida no se pudo confirmar');
+    }
+    guardarDecisionSync(auth.currentUser.uid, 'nube');
+    await load();                     // releer de la nube y repintar
+    ocultarPreguntas();
+    pintarEstadoSync();
+    await avisarPendienteLocal();
+  }catch(e){
+    console.error('[sync] falló la subida del dispositivo', e);
+    STORAGE.use(StorageLocal);
+    await load();
+    document.getElementById('conflicto-msg').innerHTML =
+      '<div class="msg msg-err">No se pudo subir ('+(e.code||e.message)+'). '+
+      'Se sigue guardando en este dispositivo y no se ha tocado tu cuenta.</div>';
+    pintarEstadoSync();
+  }finally{
+    btn.disabled = false;
+    btn.textContent = txt;
+  }
+};
 
 window.subirDatosLocales = async function(){
   const btn = document.getElementById('import-subir');
@@ -2885,8 +3065,10 @@ window.subirDatosLocales = async function(){
     if(!comprobacion || comprobacion.routines.length !== (DB.routines || []).length){
       throw new Error('la subida no se pudo confirmar');
     }
-    document.getElementById('import-choice').classList.add('hidden');
+    guardarDecisionSync(auth.currentUser.uid, 'nube');
+    ocultarPreguntas();
     pintarEstadoSync();
+    await avisarPendienteLocal();
   }catch(e){
     console.error('[sync] falló la subida', e);
     STORAGE.use(StorageLocal);           // volver atrás: nada se ha perdido
@@ -2900,15 +3082,14 @@ window.subirDatosLocales = async function(){
 };
 
 window.empezarDeCeroEnNube = async function(){
-  document.getElementById('import-choice').classList.add('hidden');
-  STORAGE.use(StorageFirestore);
-  await load();          // read() devuelve null -> DB vacía -> onboarding
-  pintarEstadoSync();
+  guardarDecisionSync(auth.currentUser.uid, 'nube');
+  await activarNube();   // read() devuelve null -> DB vacía -> onboarding
 };
 
 async function volverALocal(){
   STORAGE.use(StorageLocal);
-  document.getElementById('import-choice').classList.add('hidden');
+  ocultarPreguntas();
+  document.getElementById('pendiente-local').classList.add('hidden');
   await load();
   pintarEstadoSync();
 }

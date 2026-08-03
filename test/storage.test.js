@@ -41,6 +41,8 @@ const puente = `
 ;globalThis.__app = {
   STORAGE, StorageLocal, save, load, storageAvailable,
   planParaFirestore, planDesdeFirestore, buscarArraysAnidados,
+  resumenDB, textoResumen, firmaDB, mismosDatos,
+  leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
 };`;
@@ -155,7 +157,48 @@ const ok = (cond, msg) => {
   ok(app.buscarArraysAnidados({ plan: [{ days: [{ ex: [['a', 'b']] }] }] }) === 'plan[0].days[0].ex[0]',
      'devuelve la ruta exacta: plan[0].days[0].ex[0]');
 
-  console.log('\n11. window.cargaInicial gatea el arranque');
+  console.log('\n11. Comparar dispositivo y nube');
+  const conHistorial = { routines: [
+    { id:'a', name:'Volumen', plan:[], sessions:{1:{},2:{},3:{}}, medidas:[{peso:80}] },
+    { id:'b', name:'Fuerza',  plan:[], sessions:{4:{}},           medidas:[] },
+  ]};
+  const soloPruebas = { routines: [
+    { id:'a', name:'Volumen', plan:[], sessions:{}, medidas:[] },
+    { id:'c', name:'test',    plan:[], sessions:{}, medidas:[] },
+  ]};
+
+  const rh = app.resumenDB(conHistorial);
+  ok(rh.rutinas === 2 && rh.sesiones === 4 && rh.medidas === 1, 'cuenta rutinas, sesiones y medidas');
+  ok(app.resumenDB({ routines: [] }).rutinas === 0, 'una DB vacía resume a cero');
+  ok(app.resumenDB(null).rutinas === 0, 'resumenDB(null) no revienta');
+
+  ok(app.textoResumen(rh).includes('2 rutinas'), 'el texto menciona las rutinas');
+  ok(app.textoResumen(rh).includes('4 sesiones registradas'), 'y las sesiones registradas');
+  ok(app.textoResumen({rutinas:1,sesiones:1,medidas:0,fotos:0}) === '1 rutina · 1 sesión registrada', 'singulares correctos');
+  ok(app.textoResumen({rutinas:0,sesiones:0,medidas:0,fotos:0}) === 'nada guardado', 'sin datos lo dice claro');
+
+  // Lo importante: NO confundir "2 rutinas aquí" con "2 rutinas allí".
+  ok(!app.mismosDatos(conHistorial, soloPruebas), 'dos DBs con el mismo nº de rutinas pero distinto historial NO son iguales');
+  ok(app.mismosDatos(conHistorial, JSON.parse(JSON.stringify(conHistorial))), 'una copia idéntica sí lo es');
+  ok(app.mismosDatos({routines:[]}, {routines:[]}), 'dos vacías son iguales');
+  const alReves = { routines: [conHistorial.routines[1], conHistorial.routines[0]] };
+  ok(app.mismosDatos(conHistorial, alReves), 'el orden de las rutinas no cambia la firma');
+  const otraSesion = JSON.parse(JSON.stringify(conHistorial));
+  otraSesion.routines[0].sessions[9] = {};
+  ok(!app.mismosDatos(conHistorial, otraSesion), 'una sesión registrada de más sí cambia la firma');
+
+  console.log('\n12. Recuerdo de la decisión de sincronización');
+  store.delete('jhon_sync_v1');
+  ok(app.leerDecisionSync() === null, 'sin decisión previa devuelve null');
+  app.guardarDecisionSync('uid-123', 'nube');
+  const dec = app.leerDecisionSync();
+  ok(dec.uid === 'uid-123' && dec.modo === 'nube', 'guarda y recupera uid y modo');
+  ok(typeof dec.ts === 'number', 'y deja marca de tiempo');
+  store.set('jhon_sync_v1', '{roto');
+  ok(app.leerDecisionSync() === null, 'una decisión corrupta no rompe el arranque');
+  store.delete('jhon_sync_v1');
+
+  console.log('\n13. window.cargaInicial gatea el arranque');
   // El módulo de Firebase espera esta promesa antes de preguntar "¿hay datos
   // locales que subir?". Si resolviera antes de que load() termine, la
   // respuesta sería un falso negativo y se perderían los datos del dispositivo.
