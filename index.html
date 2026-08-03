@@ -983,27 +983,78 @@ function sync(st){
   else{d.style.background='#e63f1f';t.textContent='Error al guardar';}
 }
 
+/* ─────────── Capa de almacenamiento ───────────
+   save() y load() ya no hablan con localStorage directamente: delegan en
+   STORAGE, que envuelve un backend intercambiable. Hoy solo existe el backend
+   local; el de Firestore se enchufa con STORAGE.use(...) cuando se integre el
+   modo entrenador/cliente, sin tocar ninguna de las 23 llamadas a save()
+   repartidas por la app.
+
+   Contrato de un backend:
+     name        identificador para depurar
+     available() ¿se puede usar? (sincrono, para el aviso de arranque)
+     read()      -> Promise<objeto DB | null>   null = no hay datos guardados
+     write(db)   -> Promise<void>               lanza si no pudo guardar        */
+
+const LOCAL_KEY='jhon_db_v2';
+
+const StorageLocal={
+  name:'local',
+  available(){
+    try{
+      localStorage.setItem('__test','1');
+      localStorage.removeItem('__test');
+      return true;
+    }catch(e){return false;}
+  },
+  async read(){
+    const raw=localStorage.getItem(LOCAL_KEY);
+    return raw?JSON.parse(raw):null;
+  },
+  async write(db){
+    localStorage.setItem(LOCAL_KEY,JSON.stringify(db));
+  }
+};
+
+const STORAGE={
+  backend:StorageLocal,
+  use(backend){this.backend=backend;},
+  available(){return this.backend.available?this.backend.available():true;},
+  read(){return this.backend.read();},
+  write(db){return this.backend.write(db);}
+};
+
+function storageAvailable(){return STORAGE.available();}
+
+/* Las escrituras se encadenan para que, con un backend asíncrono, dos save()
+   seguidos no se pisen y lleguen en el orden en que se pidieron. */
+let writeQueue=Promise.resolve();
+
 function save(){
   sync('saving');
-  try{
-    localStorage.setItem('jhon_db_v2',JSON.stringify(DB));
-    const now=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-    setTimeout(()=>{
-      const t=document.getElementById('sync-txt');
-      if(t)t.textContent='Guardado · '+now;
-      const d=document.getElementById('sync-dot');
-      if(d)d.style.background='#2d7a4f';
-    },300);
-  }
-  catch(e){sync('ok');}
-}
-
-function storageAvailable(){
-  try{
-    localStorage.setItem('__test','1');
-    localStorage.removeItem('__test');
-    return true;
-  }catch(e){return false;}
+  /* Se captura el estado AHORA, no al vaciarse la cola: si se encolan dos
+     guardados, cada uno debe persistir lo que había cuando se pidió. Con
+     localStorage daría igual, pero en cuanto DB pueda cambiar de dueño
+     (entrenador -> cliente) un guardado pendiente escribiría datos ajenos. */
+  const snapshot=typeof structuredClone==='function'
+    ?structuredClone(DB)
+    :JSON.parse(JSON.stringify(DB));
+  writeQueue=writeQueue
+    .then(()=>STORAGE.write(snapshot))
+    .then(()=>{
+      const now=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+      setTimeout(()=>{
+        const t=document.getElementById('sync-txt');
+        if(t)t.textContent='Guardado · '+now;
+        const d=document.getElementById('sync-dot');
+        if(d)d.style.background='#2d7a4f';
+      },300);
+    })
+    .catch(e=>{
+      console.error('[storage] fallo al guardar en backend "'+STORAGE.backend.name+'"',e);
+      sync('error');
+    });
+  return writeQueue;
 }
 
 let timerInterval=null;
@@ -1101,7 +1152,7 @@ function renderProfilePic(){
   }
 }
 
-function load(){
+async function load(){
   sync('load');
   if(!storageAvailable()){
     const banner=document.createElement('div');
@@ -1110,9 +1161,8 @@ function load(){
     document.body.insertBefore(banner,document.body.firstChild);
   }
   try{
-    const r=localStorage.getItem('jhon_db_v2');
-    if(r){
-      const parsed=JSON.parse(r);
+    const parsed=await STORAGE.read();
+    if(parsed){
       if(parsed.routines){
         DB=parsed;
       }else{
@@ -1132,6 +1182,7 @@ function load(){
       DB={routines:[],activeRoutine:null};
     }
   }catch(e){
+    console.error('[storage] fallo al leer del backend "'+STORAGE.backend.name+'"',e);
     DB={routines:[],activeRoutine:null};
   }
   sync('ok');
@@ -2211,7 +2262,9 @@ function duplicateWeek(weekNum){
   openWeekDetail(newWeekNum);
 }
 
-document.addEventListener('DOMContentLoaded', load);
+document.addEventListener('DOMContentLoaded', ()=>{
+  load().catch(e=>console.error('[init] fallo al arrancar',e));
+});
 </script>
 
 <div id="preset-panel" class="routine-panel hidden">
