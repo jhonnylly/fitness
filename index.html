@@ -263,6 +263,7 @@ textarea{resize:vertical;min-height:60px;}
   <!-- Vista semanas -->
   <div id="week-list-view">
     <div id="week-buttons-container"></div>
+    <button class="btn btn-secondary" onclick="addWeek()">+ Añadir semana</button>
   </div>
 
   <!-- Vista sesiones de la semana -->
@@ -273,6 +274,7 @@ textarea{resize:vertical;min-height:60px;}
         <button class="btn-sm" onclick="closeWeekDetail()">← Semanas</button>
       </div>
       <div id="session-list" style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;"></div>
+      <button class="btn btn-secondary" onclick="addSessionToWeek(curWeekNum)">+ Añadir sesión</button>
     </div>
   </div>
  <div id="session-form" style="display:none;">
@@ -925,6 +927,7 @@ const INITIAL={sessions:{},medidas:[]};
 let DB={routines:[],activeRoutine:null};
 let curSession=null;
 let curEx=[];
+let curWeekNum=null;
 
 function sync(st){
   const d=document.getElementById('sync-dot');
@@ -1150,8 +1153,7 @@ function renderWeekButtons(){
   if(!c)return;
 if(!plan.length){
   c.innerHTML=`<div class="card">
-    <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Esta rutina no tiene sesiones aún.</p>
-    <button class="btn btn-primary" onclick="addEmptySession()">+ Añadir primera sesión</button>
+    <p style="color:var(--muted);font-size:13px;">Esta rutina no tiene semanas aún. Usa "+ Añadir semana" para empezar.</p>
   </div>`;
   return;
 }
@@ -1188,6 +1190,7 @@ function openWeekDetail(weekNum){
   const sessions=getActiveSessions();
   const week=plan.find(w=>w.num===weekNum);
   if(!week)return;
+  curWeekNum=weekNum;
   document.getElementById('week-detail-title').textContent='Semana '+weekNum+' — '+week.title;
   document.getElementById('week-list-view').style.display='none';
   document.getElementById('session-list-view').style.display='block';
@@ -2126,7 +2129,7 @@ function createNewRoutine(){
   renderRoutineList();
 }
 
-function addEmptySession(){
+function addWeek(){
   const act=getActive();
   if(!act)return;
   if(!act.plan)act.plan=[];
@@ -2135,8 +2138,21 @@ function addEmptySession(){
   act.plan.push({
     num:weekNum,
     title:'Semana '+weekNum,
-    days:[{s:sessNum,name:'S'+sessNum+' · Sesión',type:'Full',ex:[]}]
+    days:[{s:sessNum,name:'S1 · Sesión',type:'Full',ex:[]}]
   });
+  save();
+  buildSessionList();
+  openWeekDetail(weekNum);
+}
+
+function addSessionToWeek(weekNum){
+  const act=getActive();
+  if(!act||!act.plan)return;
+  const week=act.plan.find(w=>w.num===weekNum);
+  if(!week)return;
+  const sessNum=(act.plan.reduce((s,w)=>s+w.days.length,0))+1;
+  const dayIndex=week.days.length+1;
+  week.days.push({s:sessNum,name:'S'+dayIndex+' · Sesión',type:'Full',ex:[]});
   save();
   buildSessionList();
   openWeekDetail(weekNum);
