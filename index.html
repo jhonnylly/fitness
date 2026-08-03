@@ -1128,6 +1128,59 @@ const STORAGE={
   write(db){return this.backend.write(db);}
 };
 
+/* ─────────── Conversión de formato para Firestore ───────────
+   Firestore NO admite arrays dentro de arrays. El plan de la app usa
+   ex:[["Press banca","4×10"], ...] , que es exactamente eso, así que hay que
+   convertirlo a ex:[{name,scheme}, ...] al escribir y deshacerlo al leer.
+
+   Vive aquí y no en el módulo de Firebase a propósito: es lógica pura, sin
+   dependencias, y así queda cubierta por test/storage.test.js.               */
+
+function planParaFirestore(plan){
+  return (plan||[]).map(semana=>({
+    ...semana,
+    days:(semana.days||[]).map(dia=>({
+      ...dia,
+      ex:(dia.ex||[]).map(e=>Array.isArray(e)
+        ? {name:e[0]!=null?e[0]:'', scheme:e[1]!=null?e[1]:''}
+        : e)   // ya convertido: se deja igual (idempotente)
+    }))
+  }));
+}
+
+function planDesdeFirestore(plan){
+  return (plan||[]).map(semana=>({
+    ...semana,
+    days:(semana.days||[]).map(dia=>({
+      ...dia,
+      ex:(dia.ex||[]).map(e=>Array.isArray(e)
+        ? e
+        : [e&&e.name!=null?e.name:'', e&&e.scheme!=null?e.scheme:''])
+    }))
+  }));
+}
+
+/* Firestore falla con un error poco claro ("Nested arrays are not supported")
+   y sin decir dónde. Esto localiza el problema ANTES de enviar nada, con la
+   ruta exacta, para que un campo nuevo con arrays anidados no se convierta en
+   media hora de depuración a ciegas. */
+function buscarArraysAnidados(valor,ruta){
+  ruta=ruta||'';
+  if(Array.isArray(valor)){
+    for(let i=0;i<valor.length;i++){
+      if(Array.isArray(valor[i]))return ruta+'['+i+']';
+      const dentro=buscarArraysAnidados(valor[i],ruta+'['+i+']');
+      if(dentro)return dentro;
+    }
+  }else if(valor&&typeof valor==='object'){
+    for(const k of Object.keys(valor)){
+      const dentro=buscarArraysAnidados(valor[k],ruta?ruta+'.'+k:k);
+      if(dentro)return dentro;
+    }
+  }
+  return null;
+}
+
 function storageAvailable(){return STORAGE.available();}
 
 /* Las escrituras se encadenan para que, con un backend asíncrono, dos save()
@@ -2454,7 +2507,7 @@ import {
   onAuthStateChanged, signOut, updateProfile
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
-  getFirestore, doc, setDoc, getDoc
+  getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -2619,6 +2672,123 @@ window.guardarPerfil = async function(){
     btn.textContent = textoOriginal;
   }
 };
+
+/* ─────────── Backend de Firestore para STORAGE ───────────
+   Reparto en documentos:
+     /users/{uid}                    perfil (name,email,role,trainerId) + estado
+                                     de la app (activeRoutine, profileName,
+                                     profilePic). Se escribe con merge para no
+                                     pisar los campos del perfil.
+     /users/{uid}/routines/{id}      una rutina por documento.
+
+   Se reutilizan las colecciones que ya cubren firestore.rules: así no hace
+   falta desplegar reglas nuevas. El campo "active" lo necesita el panel de
+   clientes del prototipo, que consulta where('active','==',true).
+
+   NO se enchufa solo: hay que llamar a STORAGE.use(StorageFirestore). El
+   cambio de backend al iniciar sesión es el siguiente sub-paso.            */
+
+const LIMITE_DOC = 1048576;   // 1 MiB, límite duro de Firestore
+
+/* Recuerda lo último escrito por documento para no reenviar rutinas que no
+   han cambiado: save() se llama en cada retoque y hay 40 sesiones por rutina. */
+let ultimoEscrito = new Map();
+let idsRemotos = new Set();
+
+function comprobarApto(obj, etiqueta){
+  const ruta = window.buscarArraysAnidados(obj);
+  if(ruta) throw new Error(`${etiqueta}: Firestore no admite arrays anidados (en ${ruta})`);
+  const bytes = new Blob([JSON.stringify(obj)]).size;
+  if(bytes > LIMITE_DOC){
+    throw new Error(`${etiqueta}: ${(bytes/1048576).toFixed(2)} MB supera el límite de 1 MB por documento de Firestore`);
+  }
+  return bytes;
+}
+
+const StorageFirestore = {
+  name: 'firestore',
+  available(){ return !!auth.currentUser; },
+
+  async read(){
+    const user = auth.currentUser;
+    if(!user) throw new Error('No hay sesión iniciada');
+
+    const perfil = await getDoc(doc(fdb, 'users', user.uid));
+    const cab = perfil.exists() ? perfil.data() : {};
+
+    const snap = await getDocs(collection(fdb, 'users', user.uid, 'routines'));
+    ultimoEscrito = new Map();
+    idsRemotos = new Set();
+    const routines = [];
+    snap.forEach(d => {
+      const r = d.data();
+      idsRemotos.add(d.id);
+      routines.push({
+        id: d.id,
+        name: r.name || '',
+        plan: window.planDesdeFirestore(r.plan || []),
+        sessions: r.sessions || {},
+        medidas: r.medidas || [],
+        ...(r.photos ? { photos: r.photos } : {})
+      });
+      ultimoEscrito.set(d.id, JSON.stringify(r));
+    });
+
+    // Cuenta nueva sin nada guardado: null hace que load() lance el onboarding.
+    if(!routines.length && !cab.activeRoutine) return null;
+
+    return {
+      routines,
+      activeRoutine: cab.activeRoutine || null,
+      profileName: cab.profileName || cab.name || '',
+      profilePic: cab.profilePic || null
+    };
+  },
+
+  async write(db){
+    const user = auth.currentUser;
+    if(!user) throw new Error('No hay sesión iniciada');
+
+    const cabecera = {
+      activeRoutine: db.activeRoutine || null,
+      profileName: db.profileName || '',
+      profilePic: db.profilePic || null
+    };
+    comprobarApto(cabecera, 'Perfil');
+    await setDoc(doc(fdb, 'users', user.uid), cabecera, { merge: true });
+
+    const vistos = new Set();
+    for(const r of (db.routines || [])){
+      vistos.add(r.id);
+      const payload = {
+        name: r.name || '',
+        plan: window.planParaFirestore(r.plan || []),
+        sessions: r.sessions || {},
+        medidas: r.medidas || [],
+        active: r.id === db.activeRoutine,
+        ...(r.photos ? { photos: r.photos } : {})
+      };
+      const serializado = JSON.stringify(payload);
+      if(ultimoEscrito.get(r.id) === serializado) continue;   // sin cambios
+      comprobarApto(payload, `Rutina "${r.name}"`);
+      await setDoc(doc(fdb, 'users', user.uid, 'routines', r.id), payload);
+      ultimoEscrito.set(r.id, serializado);
+      idsRemotos.add(r.id);
+    }
+
+    // Rutinas borradas en local: borrarlas también en remoto.
+    for(const id of [...idsRemotos]){
+      if(vistos.has(id)) continue;
+      await deleteDoc(doc(fdb, 'users', user.uid, 'routines', id));
+      idsRemotos.delete(id);
+      ultimoEscrito.delete(id);
+    }
+  }
+};
+
+/* Expuesto para poder inspeccionarlo y probarlo sin que nada cambie de sitio
+   todavía. Activar la sincronización es el siguiente sub-paso. */
+window.StorageFirestore = StorageFirestore;
 
 onAuthStateChanged(auth, async (user) => {
   if(!user){ meUid = null; meData = null; pintarSesion(null); return; }

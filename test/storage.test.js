@@ -36,6 +36,8 @@ vm.createContext(ctx);
 const puente = `
 ;globalThis.__app = {
   STORAGE, StorageLocal, save, load, storageAvailable,
+  planParaFirestore, planDesdeFirestore, buscarArraysAnidados,
+  PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
 };`;
 vm.runInContext(js + puente, ctx, { filename: 'index-inline.js' });
@@ -112,6 +114,42 @@ const ok = (cond, msg) => {
   console.log('\n7. Se puede volver al backend local');
   app.STORAGE.use(app.StorageLocal);
   ok(app.STORAGE.backend.name === 'local', 'STORAGE.use() vuelve a local');
+
+  console.log('\n8. Conversión de formato para Firestore');
+  const plan = [{
+    num: 1, title: 'Semana 1', days: [
+      { s: 1, name: 'S1 · Upper', type: 'Upper', ex: [['Press banca', '4×10'], ['Remo barra', '4×10']] },
+      { s: 2, name: 'S2 · Lower', type: 'Lower', ex: [] },
+    ],
+  }];
+  const enviado = app.planParaFirestore(plan);
+  ok(enviado[0].days[0].ex[0].name === 'Press banca', 'ex[0] pasa a {name}');
+  ok(enviado[0].days[0].ex[0].scheme === '4×10', 'ex[0] pasa a {scheme}');
+  ok(app.buscarArraysAnidados(enviado) === null, 'lo convertido NO tiene arrays anidados');
+  ok(app.buscarArraysAnidados(plan) !== null, 'el original SÍ los tiene (el detector funciona)');
+  ok(enviado[0].title === 'Semana 1' && enviado[0].days[0].type === 'Upper', 'conserva el resto de campos');
+  ok(enviado[0].days[1].ex.length === 0, 'una sesión sin ejercicios no se rompe');
+
+  const vuelta = app.planDesdeFirestore(enviado);
+  ok(JSON.stringify(vuelta) === JSON.stringify(plan), 'ida y vuelta devuelve el plan original exacto');
+  ok(JSON.stringify(app.planParaFirestore(enviado)) === JSON.stringify(enviado), 'convertir dos veces no rompe nada (idempotente)');
+
+  console.log('\n9. Conversión sobre los datos reales de la app');
+  for (const preset of app.PRESET_ROUTINES) {
+    const ida = app.planParaFirestore(preset.plan);
+    const ruta = app.buscarArraysAnidados(ida);
+    ok(ruta === null, `"${preset.name}" queda apto para Firestore${ruta ? ' (falla en ' + ruta + ')' : ''}`);
+    ok(JSON.stringify(app.planDesdeFirestore(ida)) === JSON.stringify(preset.plan), `"${preset.name}" sobrevive a la ida y vuelta`);
+  }
+  const idaPLAN = app.planParaFirestore(app.PLAN);
+  ok(app.buscarArraysAnidados(idaPLAN) === null, 'PLAN (rutina por defecto) queda apto');
+  ok(JSON.stringify(app.planDesdeFirestore(idaPLAN)) === JSON.stringify(app.PLAN), 'PLAN sobrevive a la ida y vuelta');
+
+  console.log('\n10. El detector señala la ruta exacta del array anidado');
+  ok(app.buscarArraysAnidados({ a: 1, b: 'x' }) === null, 'objeto plano: sin hallazgos');
+  ok(app.buscarArraysAnidados({ sets: [{ kg: '20', reps: '10' }] }) === null, 'array de mapas es válido en Firestore');
+  ok(app.buscarArraysAnidados({ plan: [{ days: [{ ex: [['a', 'b']] }] }] }) === 'plan[0].days[0].ex[0]',
+     'devuelve la ruta exacta: plan[0].days[0].ex[0]');
 
   console.log(fallos === 0 ? '\n✅ TODO OK\n' : `\n❌ ${fallos} fallo(s)\n`);
   process.exit(fallos === 0 ? 0 : 1);
