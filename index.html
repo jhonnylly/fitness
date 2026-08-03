@@ -55,6 +55,13 @@ textarea{resize:vertical;min-height:60px;}
 .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text);margin-top:8px;}
 .btn-sm{padding:6px 12px;font-size:12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;}
 .btn-danger{border-color:#e63f1f;color:#e63f1f;background:transparent;}
+.msg{font-size:12px;padding:8px 10px;border-radius:var(--radius-sm);margin-bottom:10px;line-height:1.45;}
+.msg-err{background:rgba(230,63,31,0.1);color:var(--accent);}
+.msg-ok{background:rgba(45,122,79,0.1);color:var(--green);}
+.msg-info{background:var(--surface);color:var(--muted);}
+.auth-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.auth-tabs button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
+.auth-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 .row{display:flex;gap:8px;align-items:center;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .ex-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:8px;}
@@ -166,9 +173,14 @@ textarea{resize:vertical;min-height:60px;}
           <span id="sync-txt">Cargando...</span>
         </div>
       </div>
-      <button onclick="toggleRoutinePanel()" style="padding:6px 10px;background:rgba(230,63,31,0.15);border:1px dashed var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-align:left;white-space:nowrap;width:fit-content;">
-        ⚡ Cambiar rutina
-      </button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button onclick="toggleRoutinePanel()" style="padding:6px 10px;background:rgba(230,63,31,0.15);border:1px dashed var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-align:left;white-space:nowrap;width:fit-content;">
+          ⚡ Cambiar rutina
+        </button>
+        <button id="account-btn" onclick="toggleAuthPanel()" style="padding:6px 10px;background:rgba(255,255,255,0.08);border:1px dashed rgba(255,255,255,0.3);border-radius:var(--radius-sm);color:rgba(255,255,255,0.75);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-align:left;white-space:nowrap;width:fit-content;">
+          ☁️ Cuenta
+        </button>
+      </div>
     </div>
     <div style="flex-shrink:0;">
       <div id="profile-pic" onclick="document.getElementById('profile-input').click()" style="width:90px;height:110px;border-radius:10px;background:var(--surface);border:2px solid var(--accent);overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;">
@@ -180,6 +192,67 @@ textarea{resize:vertical;min-height:60px;}
   </div>
 </header>
 
+
+<div id="auth-panel" class="routine-panel hidden">
+  <div class="routine-panel-header">
+    <h2>CUENTA</h2>
+    <button class="btn-sm" onclick="toggleAuthPanel()">✕ Cerrar</button>
+  </div>
+  <div style="padding:12px;flex:1;overflow-y:auto;">
+
+    <!-- Estado: sin sesión -->
+    <div id="auth-logged-out">
+      <div class="card">
+        <div class="auth-tabs">
+          <button id="tab-login" class="active" onclick="setAuthTab('login')">Iniciar sesión</button>
+          <button id="tab-register" onclick="setAuthTab('register')">Registrarme</button>
+        </div>
+
+        <div id="auth-msg"></div>
+
+        <label>Correo</label>
+        <input type="email" id="auth-email" placeholder="tu@email.com" autocomplete="email">
+        <div style="height:8px;"></div>
+        <label>Contraseña</label>
+        <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+
+        <div id="register-extra" class="hidden">
+          <div style="height:8px;"></div>
+          <label>Nombre</label>
+          <input type="text" id="auth-name" placeholder="Tu nombre">
+          <div style="height:8px;"></div>
+          <label>Soy...</label>
+          <select id="auth-role">
+            <option value="client">Cliente · quiero que un entrenador me asigne rutinas</option>
+            <option value="trainer">Entrenador · quiero gestionar clientes</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" id="auth-submit" onclick="submitAuth()">Iniciar sesión</button>
+      </div>
+      <div class="msg msg-info">
+        Tener cuenta es opcional. Sin iniciar sesión la app funciona igual que
+        siempre y tus datos se guardan en este dispositivo.
+      </div>
+    </div>
+
+    <!-- Estado: con sesión -->
+    <div id="auth-logged-in" class="hidden">
+      <div class="card">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Sesión iniciada</div>
+        <div id="me-name" style="font-size:18px;font-weight:800;margin-top:4px;">—</div>
+        <div id="me-email" style="font-size:12px;color:var(--muted);"></div>
+        <div id="me-role" style="display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--surface);color:var(--muted);"></div>
+        <button class="btn btn-secondary" onclick="doLogout()">Cerrar sesión</button>
+      </div>
+      <div class="msg msg-info">
+        Tus entrenamientos siguen guardándose <b>solo en este dispositivo</b>.
+        La sincronización en la nube y el modo entrenador llegan en el siguiente paso.
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <div id="routine-panel" class="routine-panel hidden">
   <div class="routine-panel-header">
@@ -1700,6 +1773,20 @@ function toggleRoutinePanel(){
   if(!p.classList.contains('hidden'))renderRoutineList();
 }
 
+/* El panel de cuenta lo rellena el módulo de Firebase, que carga desde CDN y
+   puede fallar (sin red, CDN bloqueado). Abrirlo vive aquí,
+   en el script clásico, para que el botón responda siempre y la app nunca
+   dependa de que Firebase haya cargado. */
+function toggleAuthPanel(){
+  const p=document.getElementById('auth-panel');
+  p.classList.toggle('hidden');
+  if(!p.classList.contains('hidden')&&!window.__authReady){
+    document.getElementById('auth-msg').innerHTML=
+      '<div class="msg msg-err">No se pudo cargar el servicio de cuentas. '+
+      'Comprueba tu conexión y recarga. La app sigue funcionando con guardado local.</div>';
+  }
+}
+
 function renderRoutineList(){
   const c=document.getElementById('routine-list');
   if(!DB.routines.length){c.innerHTML='<p style="color:var(--muted);font-size:13px;padding:8px 0;">Sin rutinas. Crea una abajo.</p>';return;}
@@ -2320,6 +2407,156 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <button class="btn btn-primary" style="width:100%;" onclick="obFinish()">Empezar ahora →</button>
   </div>
 </div>
+
+<!-- ═══════════ Cuentas (Firebase Auth) — paso 2 de la fusión ═══════════
+     Va en un bloque aparte de tipo módulo porque el SDK modular de Firebase lo
+     exige. Como los módulos tienen ámbito propio, lo que deben ver los
+     onclick="" del HTML se cuelga explícitamente de window.
+
+     Deliberadamente NO toca STORAGE: iniciar sesión todavía no cambia dónde se
+     guardan los entrenamientos. Ese cambio es el paso 3. Así, si algo falla
+     aquí, la app sigue comportándose exactamente igual que antes.          -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut, updateProfile
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, getDoc
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAn6gjkwj8fA7gT7ln8xRkerolW4gId6Cc",
+  authDomain: "fitness-tracker-trainer.firebaseapp.com",
+  projectId: "fitness-tracker-trainer",
+  storageBucket: "fitness-tracker-trainer.firebasestorage.app",
+  messagingSenderId: "211569619786",
+  appId: "1:211569619786:web:beaaa05a1d582b8f8e07b3",
+  measurementId: "G-BEBH2HVVPQ"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const fdb  = getFirestore(app);
+
+let authMode = 'login';
+let meUid = null;
+let meData = null;
+
+/* onAuthStateChanged puede dispararse ANTES de que termine el setDoc del
+   perfil al registrarse. Esta promesa se asigna antes de crear la cuenta para
+   que el listener siempre tenga algo que esperar. */
+let pendingProfileWrite = null;
+
+const $ = id => document.getElementById(id);
+
+function showMsg(text, ok){
+  $('auth-msg').innerHTML = `<div class="msg ${ok?'msg-ok':'msg-err'}">${text}</div>`;
+}
+
+function translateAuthError(code){
+  const map = {
+    'auth/email-already-in-use':'Ese correo ya tiene una cuenta.',
+    'auth/invalid-email':'Correo no válido.',
+    'auth/weak-password':'La contraseña debe tener al menos 6 caracteres.',
+    'auth/invalid-credential':'Correo o contraseña incorrectos.',
+    'auth/user-not-found':'No existe una cuenta con ese correo.',
+    'auth/wrong-password':'Contraseña incorrecta.',
+    'auth/network-request-failed':'Sin conexión con el servidor.',
+    'auth/too-many-requests':'Demasiados intentos. Prueba dentro de un rato.',
+  };
+  return map[code] || ('Error: ' + code);
+}
+
+window.setAuthTab = function(mode){
+  authMode = mode;
+  $('tab-login').classList.toggle('active', mode === 'login');
+  $('tab-register').classList.toggle('active', mode === 'register');
+  $('register-extra').classList.toggle('hidden', mode !== 'register');
+  $('auth-password').setAttribute('autocomplete', mode === 'register' ? 'new-password' : 'current-password');
+  $('auth-submit').textContent = mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta';
+  $('auth-msg').innerHTML = '';
+};
+
+window.submitAuth = async function(){
+  const email = $('auth-email').value.trim();
+  const password = $('auth-password').value;
+  if(!email || !password){ showMsg('Completa correo y contraseña'); return; }
+
+  const btn = $('auth-submit');
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Un momento...';
+  try{
+    if(authMode === 'register'){
+      const name = $('auth-name').value.trim();
+      const role = $('auth-role').value;
+      if(!name){ showMsg('Escribe tu nombre'); return; }
+
+      let resolveProfile;
+      pendingProfileWrite = new Promise(res => { resolveProfile = res; });
+      try{
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(cred.user, { displayName: name });
+        await setDoc(doc(fdb, 'users', cred.user.uid), {
+          name, email, role, trainerId: null, createdAt: Date.now()
+        });
+      }catch(err){
+        showMsg(translateAuthError(err.code));
+      }finally{
+        resolveProfile();
+        pendingProfileWrite = null;
+      }
+    }else{
+      try{
+        await signInWithEmailAndPassword(auth, email, password);
+      }catch(err){
+        showMsg(translateAuthError(err.code));
+      }
+    }
+  }finally{
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
+};
+
+window.doLogout = function(){ signOut(auth); };
+
+function pintarSesion(user){
+  const dentro = !!user;
+  $('auth-logged-out').classList.toggle('hidden', dentro);
+  $('auth-logged-in').classList.toggle('hidden', !dentro);
+  $('account-btn').innerHTML = dentro ? '☁️ Mi cuenta' : '☁️ Cuenta';
+  if(dentro){
+    $('me-name').textContent  = (meData && meData.name) || user.displayName || '—';
+    $('me-email').textContent = user.email || '';
+    $('me-role').textContent  = meData && meData.role === 'trainer' ? 'Entrenador' : 'Cliente';
+    $('auth-email').value = '';
+    $('auth-password').value = '';
+    $('auth-msg').innerHTML = '';
+  }
+}
+
+onAuthStateChanged(auth, async (user) => {
+  if(!user){ meUid = null; meData = null; pintarSesion(null); return; }
+  meUid = user.uid;
+  if(pendingProfileWrite) await pendingProfileWrite;
+  try{
+    const snap = await getDoc(doc(fdb, 'users', meUid));
+    meData = snap.exists() ? snap.data() : null;
+    if(!meData) showMsg('Tu cuenta existe pero no se encontró su perfil.');
+  }catch(e){
+    console.error('[auth] no se pudo leer el perfil', e);
+    meData = null;
+  }
+  pintarSesion(user);
+});
+
+/* Marca de que el módulo llegó a ejecutarse: toggleAuthPanel() la consulta
+   para avisar si Firebase no cargó. */
+window.__authReady = true;
+</script>
 
 </body>
 </html>
