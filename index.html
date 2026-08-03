@@ -1175,13 +1175,17 @@ if(!plan.length){
     else if(isCurrent)cls+=' current-week';
     const badgeColor=isComplete?'var(--green)':isCurrent?'var(--accent)':'var(--muted)';
     const badgeBg=isComplete?'rgba(45,122,79,0.12)':isCurrent?'rgba(230,63,31,0.12)':'rgba(0,0,0,0.06)';
-    return`<button class="${cls}" onclick="openWeekDetail(${w.num})">
-      <div>
+    return`<div class="${cls}">
+      <div style="flex:1;cursor:pointer;" onclick="openWeekDetail(${w.num})">
         <div class="week-btn-title">${isCurrent?'⚡ ':''}Semana ${w.num} — ${w.title}</div>
         <div class="week-btn-meta">${done}/${total} sesiones completadas</div>
       </div>
       <span class="week-btn-badge" style="color:${badgeColor};background:${badgeBg};">${isComplete?'✓ Lista':isCurrent?'Actual':done+'/'+total}</span>
-    </button>`;
+      <div style="display:flex;gap:4px;margin-left:8px;">
+        <button class="btn-sm" onclick="duplicateWeek(${w.num})" title="Duplicar semana">⧉</button>
+        <button class="btn-sm btn-danger" onclick="deleteWeek(${w.num})" title="Eliminar semana">×</button>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -1197,12 +1201,14 @@ function openWeekDetail(weekNum){
   const c=document.getElementById('session-list');
   c.innerHTML=week.days.map(d=>{
     const done=!!sessions[d.s];
-    return`<div class="session-sel-item" onclick="openSession(${d.s})" style="${done?'border-left:3px solid var(--green);':''}">
-      <div>
+    return`<div class="session-sel-item" style="${done?'border-left:3px solid var(--green);':''}">
+      <div style="flex:1;cursor:pointer;" onclick="openSession(${d.s})">
         <div style="font-size:13px;font-weight:${done?'700':'400'}">${d.name}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">${d.type}${done?' · ✓ Completada':''}</div>
       </div>
-      <span>${done?'<span class="done-check">✓</span>':'<span style="color:var(--muted);font-size:12px;">›</span>'}</span>
+      <span style="margin-right:8px;">${done?'<span class="done-check">✓</span>':'<span style="color:var(--muted);font-size:12px;">›</span>'}</span>
+      <button class="btn-sm" onclick="duplicateSession(${weekNum},${d.s})" title="Duplicar sesión">⧉</button>
+      <button class="btn-sm btn-danger" onclick="deleteSession(${weekNum},${d.s})" title="Eliminar sesión">×</button>
     </div>`;
   }).join('');
   window.scrollTo(0,0);
@@ -2156,6 +2162,83 @@ function addSessionToWeek(weekNum){
   save();
   buildSessionList();
   openWeekDetail(weekNum);
+}
+
+function sessionExTemplate(act,day){
+  const saved=act.sessions[day.s];
+  if(saved&&saved.exercises&&saved.exercises.length){
+    return saved.exercises.map(e=>[e.name,e.sets.length+'×'+(e.sets[0]?.reps||'?')]);
+  }
+  return day.ex.map(e=>[...e]);
+}
+
+function renumberWeeks(act){
+  act.plan.forEach((w,i)=>{
+    const newNum=i+1;
+    if(w.title==='Semana '+w.num)w.title='Semana '+newNum;
+    w.num=newNum;
+  });
+}
+
+function deleteWeek(weekNum){
+  if(!confirm('¿Eliminar esta semana y todas sus sesiones?'))return;
+  const act=getActive();
+  if(!act)return;
+  const week=act.plan.find(w=>w.num===weekNum);
+  if(!week)return;
+  week.days.forEach(d=>{delete act.sessions[d.s];});
+  act.plan=act.plan.filter(w=>w.num!==weekNum);
+  renumberWeeks(act);
+  save();
+  buildSessionList();
+}
+
+function deleteSession(weekNum,s){
+  if(!confirm('¿Eliminar esta sesión?'))return;
+  const act=getActive();
+  if(!act)return;
+  const week=act.plan.find(w=>w.num===weekNum);
+  if(!week)return;
+  week.days=week.days.filter(d=>d.s!==s);
+  delete act.sessions[s];
+  week.days.forEach((d,i)=>{
+    d.name=d.name.replace(/^S\d+/,'S'+(i+1));
+  });
+  save();
+  buildSessionList();
+  openWeekDetail(weekNum);
+}
+
+function duplicateSession(weekNum,s){
+  const act=getActive();
+  if(!act)return;
+  const week=act.plan.find(w=>w.num===weekNum);
+  if(!week)return;
+  const day=week.days.find(d=>d.s===s);
+  if(!day)return;
+  const newS=(act.plan.reduce((sum,w)=>sum+w.days.length,0))+1;
+  const dayIndex=week.days.length+1;
+  week.days.push({s:newS,name:'S'+dayIndex+' · Sesión',type:day.type,ex:sessionExTemplate(act,day)});
+  save();
+  buildSessionList();
+  openWeekDetail(weekNum);
+}
+
+function duplicateWeek(weekNum){
+  const act=getActive();
+  if(!act)return;
+  const week=act.plan.find(w=>w.num===weekNum);
+  if(!week)return;
+  let nextS=act.plan.reduce((sum,w)=>sum+w.days.length,0);
+  const newDays=week.days.map(day=>{
+    nextS++;
+    return{s:nextS,name:day.name,type:day.type,ex:sessionExTemplate(act,day)};
+  });
+  const newWeekNum=act.plan.length+1;
+  act.plan.push({num:newWeekNum,title:'Semana '+newWeekNum,days:newDays});
+  save();
+  buildSessionList();
+  openWeekDetail(newWeekNum);
 }
 
 document.addEventListener('DOMContentLoaded', load);
