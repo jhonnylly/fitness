@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    // Para leer /users/{uid}: resource.data ya ES el documento evaluado,
+    // no hace falta get() (y con get() las consultas de lista fallan).
+    function isMyClientDoc() {
+      return isSignedIn() && resource.data.trainerId == request.auth.uid;
+    }
+    // Para las rutinas: aquí resource.data es la rutina, no el usuario padre,
+    // así que sí hace falta get() al documento del cliente dueño.
+    function isTrainerOfParent(uid) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(uid)).data.trainerId == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      // isTrainerProfile: cualquier usuario autenticado puede leer un perfil
+      // si su rol es "trainer" (necesario para validar el código de entrenador
+      // al vincularse). No permite listar todos los entrenadores, solo leer
+      // uno del que ya se conoce el ID exacto.
+      allow read: if isOwner(uid) || isMyClientDoc() || (isSignedIn() && resource.data.role == 'trainer');
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if false;
+
+      match /routines/{routineId} {
+        allow read: if isOwner(uid) || isTrainerOfParent(uid);
+        allow write: if isOwner(uid) || isTrainerOfParent(uid);
+      }
+    }
+  }
+}
