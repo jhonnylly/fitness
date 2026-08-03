@@ -314,7 +314,7 @@ textarea{resize:vertical;min-height:60px;}
       <div class="card">
         <div class="ex-detail-header">
           <button class="btn-sm" onclick="closeExDetail()">← Ejercicios</button>
-          <div style="font-size:15px;font-weight:800;flex:1;" id="ex-detail-title"></div>
+          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" onchange="if(curExIndex!==null)curEx[curExIndex].name=this.value">
           <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
         </div>
         <div class="ex-detail-img" id="ex-detail-img" onclick="openGifPanel()" style="cursor:pointer;">
@@ -1283,13 +1283,10 @@ function getCurrentWeekNum(){
 function renderEx(){
   if(curExIndex===null)return;
   const ex=curEx[curExIndex];
-  document.getElementById('ex-detail-title').textContent=ex.name||'Ejercicio';
+  document.getElementById('ex-detail-title').value=ex.name||'';
   const c=document.getElementById('exercises-container');
   c.innerHTML=`
     <div class="ex-card">
-      <div class="ex-header">
-        <input class="ex-name" type="text" value="${ex.name.replace(/"/g,'&quot;')}" onchange="curEx[${curExIndex}].name=this.value;document.getElementById('ex-detail-title').textContent=this.value" placeholder="Nombre ejercicio">
-      </div>
       <div id="sets-container">
         ${ex.sets.map((set,si)=>`
           <div class="set-row">
@@ -1811,7 +1808,7 @@ function moveEx(ei,dir){
 function openExDetail(ei){
   curExIndex=ei;
   const ex=curEx[ei];
-  document.getElementById('ex-detail-title').textContent=ex.name||'Ejercicio';
+  document.getElementById('ex-detail-title').value=ex.name||'';
   document.getElementById('ex-list-view').style.display='none';
   document.getElementById('ex-detail-view').style.display='block';
   renderEx();
