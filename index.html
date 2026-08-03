@@ -59,6 +59,11 @@ textarea{resize:vertical;min-height:60px;}
 .msg-err{background:rgba(230,63,31,0.1);color:var(--accent);}
 .msg-ok{background:rgba(45,122,79,0.1);color:var(--green);}
 .msg-info{background:var(--surface);color:var(--muted);}
+/* No hay una .hidden genérica en este fichero: las que existen son por
+   componente y animan con transform (.routine-panel.hidden, .onboarding.hidden).
+   Se acota a los hijos del panel para no romper esas transiciones. El propio
+   #auth-panel no es descendiente de sí mismo, así que sigue deslizándose. */
+#auth-panel .hidden{display:none;}
 .auth-tabs{display:flex;gap:6px;margin-bottom:12px;}
 .auth-tabs button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
 .auth-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -233,6 +238,32 @@ textarea{resize:vertical;min-height:60px;}
       <div class="msg msg-info">
         Tener cuenta es opcional. Sin iniciar sesión la app funciona igual que
         siempre y tus datos se guardan en este dispositivo.
+      </div>
+      <div class="msg msg-info" id="registro-cerrado-aviso">
+        El registro está cerrado: las cuentas se crean por invitación.
+      </div>
+    </div>
+
+    <!-- Estado: sesión iniciada pero sin documento de perfil.
+         Pasa con las cuentas creadas desde la consola de Firebase, que crean
+         el usuario en Auth pero no su /users/{uid}. -->
+    <div id="auth-need-profile" class="hidden">
+      <div class="card">
+        <div style="font-size:15px;font-weight:800;margin-bottom:4px;">Completa tu perfil</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+          Es la primera vez que entras con <b id="perfil-email"></b>.
+        </div>
+        <div id="perfil-msg"></div>
+        <label>Nombre</label>
+        <input type="text" id="perfil-name" placeholder="Tu nombre">
+        <div style="height:8px;"></div>
+        <label>Soy...</label>
+        <select id="perfil-role">
+          <option value="trainer">Entrenador · quiero gestionar clientes</option>
+          <option value="client">Cliente · quiero que un entrenador me asigne rutinas</option>
+        </select>
+        <button class="btn btn-primary" id="perfil-submit" onclick="guardarPerfil()">Guardar perfil</button>
+        <button class="btn btn-secondary" onclick="doLogout()">Cerrar sesión</button>
       </div>
     </div>
 
@@ -2440,6 +2471,13 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const fdb  = getFirestore(app);
 
+/* Las altas están cerradas: la creación de cuentas está desactivada en la
+   consola de Firebase (Authentication → Settings), que es el candado de
+   verdad. Esto solo oculta la pestaña para no ofrecer algo que va a fallar.
+   Ponerlo a true no abre nada por sí solo: hay que reactivarlo también en la
+   consola, y para entonces debería existir el mecanismo de invitaciones. */
+const REGISTRO_ABIERTO = false;
+
 let authMode = 'login';
 let meUid = null;
 let meData = null;
@@ -2465,6 +2503,10 @@ function translateAuthError(code){
     'auth/wrong-password':'Contraseña incorrecta.',
     'auth/network-request-failed':'Sin conexión con el servidor.',
     'auth/too-many-requests':'Demasiados intentos. Prueba dentro de un rato.',
+    // Devuelto cuando la creación de cuentas está desactivada en la consola.
+    'auth/admin-restricted-operation':'El registro está cerrado. Las cuentas se crean por invitación.',
+    'auth/operation-not-allowed':'Ese método de acceso no está habilitado en el proyecto.',
+    'auth/unauthorized-domain':'Este dominio no está autorizado en Firebase (Authentication → Settings → Dominios autorizados).',
   };
   return map[code] || ('Error: ' + code);
 }
@@ -2523,20 +2565,60 @@ window.submitAuth = async function(){
 
 window.doLogout = function(){ signOut(auth); };
 
+/* Tres estados posibles: fuera, dentro-sin-perfil y dentro. */
 function pintarSesion(user){
   const dentro = !!user;
+  const faltaPerfil = dentro && !meData;
   $('auth-logged-out').classList.toggle('hidden', dentro);
-  $('auth-logged-in').classList.toggle('hidden', !dentro);
+  $('auth-need-profile').classList.toggle('hidden', !faltaPerfil);
+  $('auth-logged-in').classList.toggle('hidden', !dentro || faltaPerfil);
   $('account-btn').innerHTML = dentro ? '☁️ Mi cuenta' : '☁️ Cuenta';
+
+  if(faltaPerfil){
+    $('perfil-email').textContent = user.email || '';
+    if(!$('perfil-name').value) $('perfil-name').value = user.displayName || '';
+  }
   if(dentro){
-    $('me-name').textContent  = (meData && meData.name) || user.displayName || '—';
-    $('me-email').textContent = user.email || '';
-    $('me-role').textContent  = meData && meData.role === 'trainer' ? 'Entrenador' : 'Cliente';
     $('auth-email').value = '';
     $('auth-password').value = '';
     $('auth-msg').innerHTML = '';
   }
+  if(dentro && meData){
+    $('me-name').textContent  = meData.name || user.displayName || '—';
+    $('me-email').textContent = user.email || '';
+    $('me-role').textContent  = meData.role === 'trainer' ? 'Entrenador' : 'Cliente';
+  }
 }
+
+window.guardarPerfil = async function(){
+  const name = $('perfil-name').value.trim();
+  const role = $('perfil-role').value;
+  if(!name){
+    $('perfil-msg').innerHTML = '<div class="msg msg-err">Escribe tu nombre</div>';
+    return;
+  }
+  const user = auth.currentUser;
+  if(!user) return;
+  const btn = $('perfil-submit');
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Guardando...';
+  try{
+    await setDoc(doc(fdb, 'users', user.uid), {
+      name, email: user.email, role, trainerId: null, createdAt: Date.now()
+    });
+    if(!user.displayName) await updateProfile(user, { displayName: name });
+    meData = { name, email: user.email, role, trainerId: null };
+    pintarSesion(user);
+  }catch(e){
+    console.error('[auth] no se pudo crear el perfil', e);
+    $('perfil-msg').innerHTML =
+      '<div class="msg msg-err">No se pudo guardar el perfil: '+(e.code||e.message)+'</div>';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
+};
 
 onAuthStateChanged(auth, async (user) => {
   if(!user){ meUid = null; meData = null; pintarSesion(null); return; }
@@ -2544,14 +2626,26 @@ onAuthStateChanged(auth, async (user) => {
   if(pendingProfileWrite) await pendingProfileWrite;
   try{
     const snap = await getDoc(doc(fdb, 'users', meUid));
+    // Sin documento no es un error: es una cuenta creada desde la consola que
+    // todavía no tiene perfil. pintarSesion() enseña el formulario.
     meData = snap.exists() ? snap.data() : null;
-    if(!meData) showMsg('Tu cuenta existe pero no se encontró su perfil.');
   }catch(e){
     console.error('[auth] no se pudo leer el perfil', e);
     meData = null;
   }
   pintarSesion(user);
 });
+
+/* Estado inicial del panel: con el registro cerrado sobra la fila de pestañas
+   (una sola pestaña no es una elección). */
+if(!REGISTRO_ABIERTO){
+  document.querySelector('#auth-panel .auth-tabs').classList.add('hidden');
+  $('register-extra').classList.add('hidden');
+  $('auth-submit').textContent = 'Iniciar sesión';
+  authMode = 'login';
+}else{
+  $('registro-cerrado-aviso').classList.add('hidden');
+}
 
 /* Marca de que el módulo llegó a ejecutarse: toggleAuthPanel() la consulta
    para avisar si Firebase no cargó. */
