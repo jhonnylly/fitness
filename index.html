@@ -1291,7 +1291,15 @@ function storageAvailable(){return STORAGE.available();}
    seguidos no se pisen y lleguen en el orden en que se pidieron. */
 let writeQueue=Promise.resolve();
 
-function save(){
+/* save() nunca rechaza: se le llama desde decenas de sitios en fire-and-forget
+   (cada retoque de una serie) y un fallo de red no puede reventar la app.
+   Pero quien sube y luego VERIFICA lo escrito necesita saber por qué falló:
+   con save() el error real se perdía en la consola y el usuario solo veía
+   "la subida no se pudo confirmar". Para esos casos, saveEstricto(). */
+function save(){return guardar(false);}
+function saveEstricto(){return guardar(true);}
+
+function guardar(propagar){
   sync('saving');
   /* Se captura el estado AHORA, no al vaciarse la cola: si se encolan dos
      guardados, cada uno debe persistir lo que había cuando se pidió. Con
@@ -1300,7 +1308,7 @@ function save(){
   const snapshot=typeof structuredClone==='function'
     ?structuredClone(DB)
     :JSON.parse(JSON.stringify(DB));
-  writeQueue=writeQueue
+  const operacion=writeQueue
     .then(()=>STORAGE.write(snapshot))
     .then(()=>{
       const now=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
@@ -1310,12 +1318,16 @@ function save(){
         const d=document.getElementById('sync-dot');
         if(d)d.style.background='#2d7a4f';
       },300);
-    })
-    .catch(e=>{
-      console.error('[storage] fallo al guardar en backend "'+STORAGE.backend.name+'"',e);
-      sync('error');
     });
-  return writeQueue;
+  /* La cola sigue viva pase lo que pase: un guardado que falla no debe
+     bloquear los siguientes. Y como "operacion" queda con este manejador
+     enganchado, devolverla sin capturar no genera unhandled rejection. */
+  const capturada=operacion.catch(e=>{
+    console.error('[storage] fallo al guardar en backend "'+STORAGE.backend.name+'"',e);
+    sync('error');
+  });
+  writeQueue=capturada;
+  return propagar?operacion:capturada;
 }
 
 let timerInterval=null;
@@ -3029,7 +3041,7 @@ window.subirEsteDispositivo = async function(){
     if(!local || !(local.routines || []).length) throw new Error('no hay datos locales que subir');
     DB = local;                       // lo del dispositivo pasa a ser lo vigente
     STORAGE.use(StorageFirestore);
-    await save();
+    await saveEstricto();             // estricto: si falla la escritura, queremos el motivo
     const comprobacion = await StorageFirestore.read();
     if(!comprobacion || comprobacion.routines.length !== local.routines.length){
       throw new Error('la subida no se pudo confirmar');
@@ -3060,7 +3072,7 @@ window.subirDatosLocales = async function(){
   btn.textContent = 'Subiendo...';
   try{
     STORAGE.use(StorageFirestore);
-    await save();                        // sube la DB que ya está en memoria
+    await saveEstricto();                // sube la DB que ya está en memoria
     const comprobacion = await StorageFirestore.read();
     if(!comprobacion || comprobacion.routines.length !== (DB.routines || []).length){
       throw new Error('la subida no se pudo confirmar');

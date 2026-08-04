@@ -39,7 +39,7 @@ vm.createContext(ctx);
 // objeto global: hay que exponerlos explícitamente para poder testearlos.
 const puente = `
 ;globalThis.__app = {
-  STORAGE, StorageLocal, save, load, storageAvailable,
+  STORAGE, StorageLocal, save, saveEstricto, load, storageAvailable,
   planParaFirestore, planDesdeFirestore, buscarArraysAnidados,
   resumenDB, textoResumen, firmaDB, mismosDatos,
   leerDecisionSync, guardarDecisionSync,
@@ -111,6 +111,21 @@ const ok = (cond, msg) => {
   let reventó = false;
   try { await app.save(); } catch (e) { reventó = true; }
   ok(!reventó, 'save() captura el error en vez de propagarlo');
+
+  // Las subidas verifican lo escrito, así que necesitan el motivo real del
+  // fallo. Con save() se perdía en la consola y el usuario solo veía
+  // "la subida no se pudo confirmar", que no dice nada.
+  let motivo = null;
+  try { await app.saveEstricto(); } catch (e) { motivo = e.message; }
+  ok(motivo === 'sin conexión', 'saveEstricto() sí propaga el motivo real (' + motivo + ')');
+  // Y pese al fallo la cola queda utilizable: el siguiente guardado corre.
+  app.STORAGE.use(app.StorageLocal);
+  app.DB = { routines: [], activeRoutine: null, trasElFallo: true };
+  let siguienteOk = true;
+  try { await app.save(); } catch (e) { siguienteOk = false; }
+  ok(siguienteOk && JSON.parse(store.get('jhon_db_v2')).trasElFallo === true,
+     'la cola de escritura sigue viva después de un fallo propagado');
+  app.STORAGE.use({ name: 'roto', available: () => false, async read() { throw new Error('sin conexión'); }, async write() { throw new Error('sin conexión'); } });
   app.DB = { routines: [{ id: 'y' }], activeRoutine: 'y' };
   try { await app.load(); } catch (e) { reventó = true; }
   ok(!reventó, 'load() captura el error de lectura');
