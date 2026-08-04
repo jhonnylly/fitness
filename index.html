@@ -1405,7 +1405,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-04 23:20';
+const APP_VERSION='2026-08-04 23:40';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2748,12 +2748,25 @@ window.moverEjercicioPropuesta=function(i,j,destino){
   pintarPropuesta();
 };
 
+/* La tarjeta de propuesta se reescribe entera al confirmar (pasa a "Hecho"),
+   así que cualquier camino que la cierre tiene que devolverla a su forma
+   original: si no, la siguiente propuesta buscaría elementos inexistentes. */
+function restaurarTarjetaPropuesta(){
+  const p=document.getElementById('cfg-propuesta');
+  if(!p)return;
+  p.innerHTML=
+    '<div class="section-title">Así quedarían tus semanas</div>'+
+    '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;" id="cfg-propuesta-info"></div>'+
+    '<div id="cfg-propuesta-lista"></div>'+
+    '<div id="cfg-aplicar-msg"></div>'+
+    '<button class="btn btn-primary" onclick="aplicarCambioDias()">Aplicar a las semanas sin empezar</button>'+
+    '<button class="btn btn-secondary" onclick="cancelarCambioDias()">Cancelar</button>';
+  p.classList.add('hidden');
+}
+
 window.cancelarCambioDias=function(){
   propuestaDias=null;
-  const p=document.getElementById('cfg-propuesta');
-  if(p)p.classList.add('hidden');
-  const m=document.getElementById('cfg-aplicar-msg');
-  if(m)m.innerHTML='';
+  restaurarTarjetaPropuesta();
 };
 
 window.aplicarCambioDias=function(){
@@ -2780,15 +2793,32 @@ window.aplicarCambioDias=function(){
     }));
   });
   save();
-  cancelarCambioDias();
+  const cuantas=sinEmpezar.length;
+  const nuevosDias=propuestaDias.length;
+  propuestaDias=null;
   pintarConfig();
   buildSessionList();
   renderWeekButtons();
   updateHome();
-  document.getElementById('cfg-dias-msg').innerHTML=
-    '<div class="msg msg-ok">Listo: '+sinEmpezar.length+' semana'+(sinEmpezar.length===1?'':'s')+
-    ' reorganizada'+(sinEmpezar.length===1?'':'s')+'. Tu historial no se ha tocado.</div>';
+
+  /* La confirmación va DONDE ESTABA LA PROPUESTA, no arriba: al aplicar tienes
+     la vista aquí abajo, y un mensaje al principio del panel obliga a subir
+     para enterarte de que ha pasado algo. El bloque cambia de forma delante de
+     ti, que es la señal de que el cambio ocurrió. */
+  const p=document.getElementById('cfg-propuesta');
+  p.classList.remove('hidden');
+  p.innerHTML=
+    '<div class="section-title">✓ Hecho</div>'+
+    '<div class="msg msg-ok">Ahora entrenas <b>'+nuevosDias+' días por semana</b>. '+
+    'Se han reorganizado '+cuantas+' semana'+(cuantas===1?'':'s')+' sin empezar; '+
+    'tu historial no se ha tocado.</div>'+
+    '<button class="btn btn-primary" onclick="cerrarConfirmacionDias()">Entendido</button>';
+  p.scrollIntoView({behavior:'smooth',block:'center'});
 };
+
+/* Devuelve la tarjeta a su forma original: si no, la siguiente propuesta
+   intentaría pintarse dentro del "Hecho". */
+window.cerrarConfirmacionDias=function(){ restaurarTarjetaPropuesta(); };
 
 function toggleAuthPanel(){
   const p=document.getElementById('auth-panel');
