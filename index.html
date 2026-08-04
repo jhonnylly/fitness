@@ -76,6 +76,10 @@ body.modo-clientes #pane-clientes{display:block;}
 .chip-serie{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;font-size:11.5px;color:var(--muted);white-space:nowrap;}
 .chip-serie.tope{border-color:var(--accent);color:var(--accent);font-weight:700;}
 .ses-extra{font-size:11.5px;color:var(--muted);margin-top:8px;}
+.fila-ej{display:flex;gap:5px;align-items:center;margin-bottom:6px;}
+.fila-ej input{margin:0;padding:7px 8px;font-size:12px;}
+.fila-ej .ej-in-nombre{flex:3;min-width:0;}
+.fila-ej .ej-in-esquema{flex:1;min-width:56px;}
 .client-name{font-size:14px;font-weight:700;}
 .client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
@@ -3671,11 +3675,11 @@ function vigilarInvitaciones(){
    tocan aquí: son del entrenador y apuntarlos al cliente es como se perdieron
    datos reales el 04/08/2026. */
 
-let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, semana:null, unsub:null, activa:null };
+let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, semana:null, editando:null, unsub:null, activa:null };
 
 window.verDetalleCliente = function(uid, nombre, activeRoutine){
   detalle = { uid, nombre: nombre || 'Cliente', rutinas:[], viendo:null, ejercicio:null,
-              semana:null, unsub:null, activa: activeRoutine || null };
+              semana:null, editando:null, unsub:null, activa: activeRoutine || null };
   document.getElementById('detalle-titulo').textContent = (nombre || 'Cliente').toUpperCase();
   document.getElementById('detalle-cuerpo').innerHTML =
     '<div class="card"><p style="font-size:13px;color:var(--muted);">Cargando...</p></div>';
@@ -3698,7 +3702,10 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
       detalle.ejercicio = null;
       detalle.semana = null;
     }
-    pintarDetalle();
+    /* Con el editor abierto NO se repinta: el snapshot llega por cualquier
+       cambio (incluido el propio guardado) y borraría lo que se está
+       escribiendo. Al cerrar el editor se repinta con lo que haya. */
+    if(detalle.editando == null) pintarDetalle();
   }, err => {
     document.getElementById('detalle-cuerpo').innerHTML =
       '<div class="msg msg-err">No se pudieron leer sus datos: '+escaparHTML(err.message)+'</div>';
@@ -3731,10 +3738,11 @@ function semanaEnCurso(r){
   return ultima ? ultima.num : null;
 }
 
-window.verSemanaDetalle = function(num){ detalle.semana = parseInt(num); pintarDetalle(); };
+window.verSemanaDetalle = function(num){ detalle.semana = parseInt(num); detalle.editando = null; pintarDetalle(); };
 
 window.verRutinaDetalle = function(id){
-  detalle.viendo = id; detalle.ejercicio = null; detalle.semana = null; pintarDetalle();
+  detalle.viendo = id; detalle.ejercicio = null; detalle.semana = null;
+  detalle.editando = null; pintarDetalle();
 };
 window.verEjercicioDetalle = function(nombre){ detalle.ejercicio = nombre || null; pintarDetalle(); };
 
@@ -3837,12 +3845,16 @@ function pintarDetalle(){
     const dias = (sem.days || []).map(d => {
       const ses = (r.sessions || {})[d.s];
       const hecha = !!ses;
+      const editando = detalle.editando === d.s;
       return `<div class="week-row" style="flex-direction:column;align-items:stretch;gap:6px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <span style="font-size:12.5px;">${escaparHTML(d.name || ('S'+d.s))}</span>
-          <span class="badge ${hecha?'badge-green':'badge-accent'}">${hecha ? escaparHTML(ses.date||'hecha') : 'pendiente'}</span>
+          <span style="display:flex;gap:6px;align-items:center;">
+            <span class="badge ${hecha?'badge-green':'badge-accent'}">${hecha ? escaparHTML(ses.date||'hecha') : 'pendiente'}</span>
+            ${editando ? '' : `<button class="btn-sm" data-s="${d.s}" onclick="editarSesionCliente(this.dataset.s)">Editar</button>`}
+          </span>
         </div>
-        ${hecha ? pintarSesionCliente(d, ses) : ''}
+        ${editando ? pintarEditorEjercicios(d) : (hecha ? pintarSesionCliente(d, ses) : '')}
       </div>`;
     }).join('');
     partes.push(`<div class="card">
@@ -3880,6 +3892,106 @@ function pintarDetalle(){
   cuerpo.innerHTML = partes.join('');
   if(detalle.ejercicio) pintarGraficaCargas(r, detalle.ejercicio);
 }
+
+/* ── Edición de los ejercicios de una sesión del plan del cliente ──
+   Cambia el PLAN (qué toca hacer), no lo que el cliente ya registró: son dos
+   cosas distintas y mezclarlas sería reescribirle el historial. */
+
+window.editarSesionCliente = function(s){ detalle.editando = parseInt(s); pintarDetalle(); };
+window.cancelarEdicionCliente = function(){ detalle.editando = null; pintarDetalle(); };
+
+window.anadirEjercicioCliente = function(){
+  const cont = document.getElementById('editor-ejercicios');
+  if(!cont) return;
+  cont.insertAdjacentHTML('beforeend', filaEditorEjercicio('', ''));
+};
+
+window.quitarEjercicioCliente = function(btn){
+  const fila = btn.closest('.fila-ej');
+  if(fila) fila.remove();
+};
+
+function filaEditorEjercicio(nombre, esquema){
+  return `<div class="fila-ej">
+    <input type="text" class="ej-in-nombre" value="${escaparHTML(nombre)}" placeholder="Nombre del ejercicio">
+    <input type="text" class="ej-in-esquema" value="${escaparHTML(esquema)}" placeholder="4×10">
+    <button class="btn-sm btn-danger" onclick="quitarEjercicioCliente(this)">✕</button>
+  </div>`;
+}
+
+function pintarEditorEjercicios(dia){
+  const filas = (dia.ex || []).map(ex => {
+    const nombre = Array.isArray(ex) ? ex[0] : (ex && ex.name) || '';
+    const esquema = Array.isArray(ex) ? ex[1] : (ex && ex.scheme) || '';
+    return filaEditorEjercicio(nombre, esquema);
+  }).join('');
+  return `<div style="border-top:1px solid var(--border);padding-top:8px;">
+    <div id="editor-ejercicios">${filas}</div>
+    <button class="btn-sm" style="margin-top:6px;" onclick="anadirEjercicioCliente()">+ Añadir ejercicio</button>
+    <div id="editor-msg"></div>
+    <div class="msg msg-info" style="margin-top:8px;">
+      Cambias lo que tiene que hacer, no lo que ya registró. Lo verá al abrir la
+      app; si la tiene abierta ahora mismo, su próximo guardado podría deshacer
+      esto.
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <button class="btn-sm" id="editor-guardar" data-s="${dia.s}" onclick="guardarEjerciciosCliente(this.dataset.s)">Guardar</button>
+      <button class="btn-sm" onclick="cancelarEdicionCliente()">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+window.guardarEjerciciosCliente = async function(s){
+  const msg = document.getElementById('editor-msg');
+  const btn = document.getElementById('editor-guardar');
+  const filas = [...document.querySelectorAll('#editor-ejercicios .fila-ej')];
+  const nuevos = filas.map(f => [
+    f.querySelector('.ej-in-nombre').value.trim(),
+    f.querySelector('.ej-in-esquema').value.trim()
+  ]).filter(par => par[0]);           // sin nombre no es un ejercicio
+
+  if(!nuevos.length){
+    msg.innerHTML = '<div class="msg msg-err">Deja al menos un ejercicio, o cancela.</div>';
+    return;
+  }
+
+  const r = detalle.rutinas.find(x => x.id === detalle.viendo);
+  if(!r) return;
+  /* Se reescribe el plan entero porque vive en un solo campo del documento.
+     Copia profunda para no tocar el objeto que está pintado. */
+  const plan = JSON.parse(JSON.stringify(r.plan || []));
+  let encontrado = false;
+  for(const sem of plan){
+    for(const d of (sem.days || [])){
+      if(d.s === parseInt(s)){ d.ex = nuevos; encontrado = true; }
+    }
+  }
+  if(!encontrado){
+    msg.innerHTML = '<div class="msg msg-err">No se encontró esa sesión en el plan.</div>';
+    return;
+  }
+
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = 'Guardando...';
+  try{
+    await updateDoc(doc(fdb,'users',detalle.uid,'routines',r.id), {
+      plan: window.planParaFirestore(plan)   // Firestore no admite arrays anidados
+    });
+    detalle.editando = null;
+    /* Repintar aquí y no fiarlo al onSnapshot: si su notificación llega antes
+       de esta línea, el guard la habría descartado y la vista se quedaría con
+       el editor abierto. detalle.rutinas ya está actualizado (el guard solo
+       frena el pintado, no la asignación). */
+    pintarDetalle();
+  }catch(e){
+    console.error('[entrenador] no se pudo guardar el plan del cliente', e);
+    msg.innerHTML = '<div class="msg msg-err">No se pudo guardar: '+escaparHTML(e.code||e.message)+'</div>';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = txt;
+  }
+};
 
 /* Lo registrado en una sesión concreta. Una ficha por ejercicio y cada serie
    como etiqueta: en una línea corrida ("Press banca: S1 40kg×12 · S2 80kg×10
