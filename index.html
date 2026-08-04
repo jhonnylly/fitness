@@ -3890,7 +3890,11 @@ function pintarSesionCliente(dia, ses){
     const sets = (ex.sets || []).filter(v => v.kg !== '' && v.kg != null);
     if(!sets.length) return '';
     const pesos = sets.map(v => parseFloat(v.kg)).filter(v => !isNaN(v));
-    const tope = pesos.length ? Math.max(...pesos) : null;
+    /* Resaltar la serie más pesada solo si hay variación: lo habitual es
+       repetir peso en todas las series, y entonces marcarlas todas es ruido
+       (pasó: 20 de 21 etiquetas resaltadas). */
+    const hayVariacion = new Set(pesos).size > 1;
+    const tope = hayVariacion ? Math.max(...pesos) : null;
     const chips = sets.map(v => {
       const kg = parseFloat(v.kg);
       const esTope = tope != null && kg === tope;
