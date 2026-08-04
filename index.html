@@ -69,6 +69,13 @@ body.modo-clientes #pane-clientes{display:block;}
 .sem-btn{min-width:34px;padding:7px 4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
 .sem-btn.completa{color:var(--green);border-color:rgba(45,122,79,0.4);}
 .sem-btn.elegida{background:var(--accent);border-color:var(--accent);color:#fff;}
+.ej-bloque{margin-bottom:10px;}
+.ej-bloque:last-child{margin-bottom:0;}
+.ej-nombre{font-size:12px;font-weight:700;margin-bottom:5px;}
+.serie-chips{display:flex;gap:5px;flex-wrap:wrap;}
+.chip-serie{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;font-size:11.5px;color:var(--muted);white-space:nowrap;}
+.chip-serie.tope{border-color:var(--accent);color:var(--accent);font-weight:700;}
+.ses-extra{font-size:11.5px;color:var(--muted);margin-top:8px;}
 .client-name{font-size:14px;font-weight:700;}
 .client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
@@ -3874,21 +3881,36 @@ function pintarDetalle(){
   if(detalle.ejercicio) pintarGraficaCargas(r, detalle.ejercicio);
 }
 
-/* Lo registrado en una sesión concreta: ejercicios, series y cardio. */
+/* Lo registrado en una sesión concreta. Una ficha por ejercicio y cada serie
+   como etiqueta: en una línea corrida ("Press banca: S1 40kg×12 · S2 80kg×10
+   · ...") todo se amontona y no hay forma de leerlo de un vistazo. La serie
+   más pesada va resaltada, que es el dato que se busca. */
 function pintarSesionCliente(dia, ses){
-  const filas = (ses.exercises || []).map(ex => {
+  const bloques = (ses.exercises || []).map(ex => {
     const sets = (ex.sets || []).filter(v => v.kg !== '' && v.kg != null);
     if(!sets.length) return '';
-    return `<div style="font-size:11.5px;color:var(--muted);">${escaparHTML(ex.name||'')}: ` +
-      sets.map((v,i) => 'S'+(i+1)+' '+escaparHTML(String(v.kg))+'kg×'+escaparHTML(String(v.reps||''))).join(' · ') + '</div>';
+    const pesos = sets.map(v => parseFloat(v.kg)).filter(v => !isNaN(v));
+    const tope = pesos.length ? Math.max(...pesos) : null;
+    const chips = sets.map(v => {
+      const kg = parseFloat(v.kg);
+      const esTope = tope != null && kg === tope;
+      return `<span class="chip-serie${esTope?' tope':''}">${escaparHTML(String(v.kg))}×${escaparHTML(String(v.reps||''))}</span>`;
+    }).join('');
+    return `<div class="ej-bloque">
+      <div class="ej-nombre">${escaparHTML(ex.name||'')}</div>
+      <div class="serie-chips">${chips}</div>
+    </div>`;
   }).join('');
+
   const c = ses.cardio;
   const cardio = (c && c.tiempo)
-    ? `<div style="font-size:11.5px;color:var(--muted);">Cardio: ${escaparHTML(c.tipo||'')} ${escaparHTML(String(c.tiempo))}min${c.kcal?' · '+escaparHTML(String(c.kcal))+'kcal':''}${c.fc?' · '+escaparHTML(String(c.fc))+'bpm':''}</div>`
+    ? `<div class="ses-extra">🏃 ${escaparHTML(c.tipo||'Cardio')} · ${escaparHTML(String(c.tiempo))} min${c.kcal?' · '+escaparHTML(String(c.kcal))+' kcal':''}${c.fc?' · '+escaparHTML(String(c.fc))+' bpm':''}</div>`
     : '';
-  const nota = ses.note ? `<div style="font-size:11.5px;color:var(--muted);font-style:italic;">“${escaparHTML(ses.note)}”</div>` : '';
-  if(!filas && !cardio && !nota) return '';
-  return `<div style="border-top:1px solid var(--border);padding-top:6px;">${filas}${cardio}${nota}</div>`;
+  const nota = ses.note
+    ? `<div class="ses-extra" style="font-style:italic;">“${escaparHTML(ses.note)}”</div>`
+    : '';
+  if(!bloques && !cardio && !nota) return '';
+  return `<div style="border-top:1px solid var(--border);padding-top:8px;">${bloques}${cardio}${nota}</div>`;
 }
 
 function pintarGraficaCargas(r, nombreEjercicio){
