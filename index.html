@@ -523,8 +523,9 @@ textarea{resize:vertical;min-height:60px;}
           <div style="font-size:16px;font-weight:800;" id="form-title"></div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="form-type"></div>
         </div>
-        <button class="btn-sm" onclick="closeForm()">← Volver</button>
+        <button class="btn-sm" id="btn-volver" onclick="volverAtras()">← Sesiones</button>
       </div>
+      <div id="aviso-borrador" class="msg msg-info" style="display:none;"></div>
       <label>Descanso entre series (seg)</label>
       <input type="text" inputmode="numeric" id="rest" value="90">
     </div>
@@ -1954,24 +1955,101 @@ function getPrevKgs(day){
   return map;
 }
 
+/* ─────────── Borradores de sesión ───────────
+   Lo que se teclea vivía SOLO en memoria (curEx): salir del formulario sin
+   pulsar "Guardar sesión" lo perdía todo, y con dos botones de volver era
+   facilísimo hacerlo sin querer. Ahora cada cambio se persiste como borrador.
+
+   Van a localStorage y NO se sincronizan a propósito: una sesión a medias es
+   de este dispositivo y de este momento —estás en el gimnasio con el móvil—,
+   y subirla obligaría a resolver conflictos entre dispositivos por algo que
+   deja de existir en cuanto pulsas Guardar. */
+const BORRADORES_KEY='jhon_borradores_v1';
+
+function claveBorrador(n){
+  const act=getActive();
+  return (act?act.id:'sin-rutina')+'|'+n;
+}
+function leerBorradores(){
+  try{ return JSON.parse(localStorage.getItem(BORRADORES_KEY))||{}; }
+  catch(e){ return {}; }
+}
+function escribirBorradores(obj){
+  try{ localStorage.setItem(BORRADORES_KEY,JSON.stringify(obj)); }
+  catch(e){ console.error('[borrador] no se pudo guardar',e); }
+}
+
+function datosDelFormulario(){
+  const val=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  return {
+    rest:parseInt(val('rest'))||90,
+    exercises:curEx,
+    cardio:{tipo:val('c-tipo'),tiempo:val('c-time'),kcal:val('c-kcal'),fc:val('c-fc'),dist:val('c-dist')},
+    note:val('sess-note'),
+    feeling:curFeeling
+  };
+}
+
+function guardarBorrador(){
+  if(curSession===null||curSession===undefined||!curEx)return;
+  const b=leerBorradores();
+  b[claveBorrador(curSession)]={...datosDelFormulario(),ts:Date.now()};
+  escribirBorradores(b);
+  pintarAvisoBorrador(true);
+}
+
+function borrarBorrador(n){
+  const b=leerBorradores();
+  delete b[claveBorrador(n)];
+  escribirBorradores(b);
+}
+
+/* Aviso de que hay cambios sin confirmar. "sinGuardar" distingue el borrador
+   recién recuperado (informativo) del que se está creando ahora mismo. */
+function pintarAvisoBorrador(sinGuardar){
+  const el=document.getElementById('aviso-borrador');
+  if(!el)return;
+  el.style.display='block';
+  el.className='msg '+(sinGuardar?'msg-info':'msg-ok');
+  el.innerHTML=sinGuardar
+    ? 'Cambios sin guardar. Se conservan aunque salgas; pulsa <b>Guardar sesión</b> para darla por hecha.'
+    : 'Recuperado lo que dejaste sin guardar. <a href="#" onclick="descartarBorrador();return false;" style="color:var(--accent);">Descartar</a>';
+}
+
+function ocultarAvisoBorrador(){
+  const el=document.getElementById('aviso-borrador');
+  if(el)el.style.display='none';
+}
+
+function descartarBorrador(){
+  if(curSession===null||curSession===undefined)return;
+  borrarBorrador(curSession);
+  ocultarAvisoBorrador();
+  openSession(curSession);   // recargar desde lo guardado (o desde el plan)
+}
+
 function openSession(n){
   curSession=n;
   const day=findDay(n);
   const saved=getActiveSessions()[n];
+  // El borrador gana sobre lo guardado: es la edición más reciente.
+  const borrador=leerBorradores()[(getActive()?getActive().id:'sin-rutina')+'|'+n];
   document.getElementById('form-title').textContent=day.name;
   document.getElementById('form-type').textContent=day.type+' · Semana '+getActivePlan().find(w=>w.days.some(d=>d.s===n)).num;
-  document.getElementById('rest').value=saved?saved.rest:90;
-  document.getElementById('c-tipo').value=saved?.cardio?.tipo||'Caminadora';
-  document.getElementById('c-time').value=saved?.cardio?.tiempo||'';
-  document.getElementById('c-kcal').value=saved?.cardio?.kcal||'';
-  document.getElementById('c-fc').value=saved?.cardio?.fc||'';
-  document.getElementById('c-dist').value=saved?.cardio?.dist||'';
-  document.getElementById('sess-note').value=saved?.note||'';
-curFeeling=saved?.feeling||null;
+  // El borrador manda si existe; si no, lo guardado; si no, valores por defecto.
+  const base=borrador||saved;
+  document.getElementById('rest').value=base?base.rest:90;
+  document.getElementById('c-tipo').value=base?.cardio?.tipo||'Caminadora';
+  document.getElementById('c-time').value=base?.cardio?.tiempo||'';
+  document.getElementById('c-kcal').value=base?.cardio?.kcal||'';
+  document.getElementById('c-fc').value=base?.cardio?.fc||'';
+  document.getElementById('c-dist').value=base?.cardio?.dist||'';
+  document.getElementById('sess-note').value=base?.note||'';
+curFeeling=base?.feeling||null;
 document.querySelectorAll('.feeling-btn').forEach(b=>b.classList.remove('selected'));
 if(curFeeling){const map={'😴':'feel-0','😐':'feel-1','💪':'feel-2','🔥':'feel-3'};const el=document.getElementById(map[curFeeling]);if(el)el.classList.add('selected');}
-  if(saved){
-    curEx=saved.exercises.map(e=>({name:e.name,sets:e.sets.map(s=>({...s}))}));
+  if(base){
+    curEx=(base.exercises||[]).map(e=>({name:e.name,sets:e.sets.map(s=>({...s}))}));
 }else{
     const prevKgs=getPrevKgs(day);
     curEx=day.ex.map(([name,scheme])=>{
@@ -1988,8 +2066,47 @@ renderExButtons();
 document.getElementById('session-form').style.display='block';
 document.getElementById('session-list-view').style.display='none';
 document.getElementById('week-list-view').style.display='none';
+  if(borrador)pintarAvisoBorrador(false); else ocultarAvisoBorrador();
+  actualizarBotonVolver();
   window.scrollTo(0,0);
 }
+
+/* El botón de arriba retrocede UN paso, no salta al principio. Antes salía de
+   la sesión entera desde cualquier profundidad, y como estaba visible a la vez
+   que el "← Ejercicios" del detalle, era la vía rápida para perderlo todo.
+   La etiqueta dice a dónde va, para saberlo antes de pulsar. */
+function pasoActual(){
+  const vis=id=>{const e=document.getElementById(id);return e&&e.style.display!=='none';};
+  if(vis('ex-detail-view'))return 'ejercicio';
+  if(vis('cardio-panel'))return 'cardio';
+  if(vis('nota-panel'))return 'nota';
+  return 'sesion';
+}
+
+function actualizarBotonVolver(){
+  const b=document.getElementById('btn-volver');
+  if(!b)return;
+  b.textContent=pasoActual()==='sesion'?'← Sesiones':'← Ejercicios';
+}
+
+function volverAtras(){
+  switch(pasoActual()){
+    case 'ejercicio': closeExDetail(); break;
+    case 'cardio':    closeCardioPanel(); break;
+    case 'nota':      closeNotaPanel(); break;
+    default:          closeForm();
+  }
+  actualizarBotonVolver();
+}
+
+/* Un solo oyente delegado en el formulario: el evento 'change' burbujea DESPUÉS
+   de que el onchange del propio campo haya actualizado curEx, así que aquí ya
+   está todo al día. Cubre kg, reps, descanso, cardio, nota y nombre del
+   ejercicio sin tener que tocar cada manejador. */
+document.addEventListener('DOMContentLoaded',()=>{
+  const form=document.getElementById('session-form');
+  if(form)form.addEventListener('change',()=>guardarBorrador());
+});
 
 function closeForm(){
   document.getElementById('session-form').style.display='none';
@@ -2035,11 +2152,11 @@ function renderEx(){
 
 function removeSetFromCurrent(si){
   if(curExIndex===null)return;
-  if(curEx[curExIndex].sets.length>1){curEx[curExIndex].sets.splice(si,1);renderEx();}
+  if(curEx[curExIndex].sets.length>1){curEx[curExIndex].sets.splice(si,1);renderEx();guardarBorrador();}
 }
 
-function addSet(ei){curEx[ei].sets.push({kg:'',reps:''});renderEx();}
-function removeSet(ei,si){if(curEx[ei].sets.length>1){curEx[ei].sets.splice(si,1);renderEx();}}
+function addSet(ei){curEx[ei].sets.push({kg:'',reps:''});renderEx();guardarBorrador();}
+function removeSet(ei,si){if(curEx[ei].sets.length>1){curEx[ei].sets.splice(si,1);renderEx();guardarBorrador();}}
 function addExercise(){curEx.push({name:'',sets:[{kg:'',reps:''},{kg:'',reps:''},{kg:'',reps:''}]});renderEx();}
 function removeEx(ei){curEx.splice(ei,1);renderEx();}
 
@@ -2058,6 +2175,8 @@ function saveSession(){
 feeling:curFeeling||null,
     date:new Date().toLocaleDateString('es-ES')
   };
+  borrarBorrador(curSession);
+  ocultarAvisoBorrador();
   save();
   alert('Sesión guardada ✓');
   closeForm();
@@ -2562,6 +2681,7 @@ let curFeeling=null;
 
 function selectFeeling(emoji){
   curFeeling=emoji;
+  setTimeout(guardarBorrador,0);
   document.querySelectorAll('.feeling-btn').forEach(b=>b.classList.remove('selected'));
   const map={'😴':'feel-0','😐':'feel-1','💪':'feel-2','🔥':'feel-3'};
   const el=document.getElementById(map[emoji]);
@@ -2594,9 +2714,11 @@ function moveEx(ei,dir){
   if(ni<0||ni>=curEx.length)return;
   const tmp=curEx[ei];curEx[ei]=curEx[ni];curEx[ni]=tmp;
   renderExButtons();
+  guardarBorrador();
 }
 
 function openExDetail(ei){
+  setTimeout(actualizarBotonVolver,0);
   curExIndex=ei;
   const ex=curEx[ei];
   document.getElementById('ex-detail-title').value=ex.name||'';
@@ -2607,6 +2729,7 @@ function openExDetail(ei){
 }
 
 function closeExDetail(){
+  setTimeout(actualizarBotonVolver,0);
   curExIndex=null;
   document.getElementById('ex-detail-view').style.display='none';
   document.getElementById('ex-list-view').style.display='block';
@@ -2619,12 +2742,14 @@ function removeCurrentEx(){
   if(!confirm('¿Eliminar este ejercicio?'))return;
   curEx.splice(curExIndex,1);
   closeExDetail();
+  guardarBorrador();
 }
 
 function addSetToCurrentEx(){
   if(curExIndex===null)return;
   curEx[curExIndex].sets.push({kg:'',reps:''});
   renderEx();
+  guardarBorrador();
 }
 
 function addExerciseAndOpen(){
@@ -2633,21 +2758,25 @@ function addExerciseAndOpen(){
 }
 
 function openCardioPanel(){
+  setTimeout(actualizarBotonVolver,0);
   document.getElementById('ex-list-view').style.display='none';
   document.getElementById('cardio-panel').style.display='block';
   window.scrollTo(0,0);
 }
 function closeCardioPanel(){
+  setTimeout(actualizarBotonVolver,0);
   document.getElementById('cardio-panel').style.display='none';
   document.getElementById('ex-list-view').style.display='block';
   window.scrollTo(0,0);
 }
 function openNotaPanel(){
+  setTimeout(actualizarBotonVolver,0);
   document.getElementById('ex-list-view').style.display='none';
   document.getElementById('nota-panel').style.display='block';
   window.scrollTo(0,0);
 }
 function closeNotaPanel(){
+  setTimeout(actualizarBotonVolver,0);
   document.getElementById('nota-panel').style.display='none';
   document.getElementById('ex-list-view').style.display='block';
   window.scrollTo(0,0);

@@ -14,7 +14,13 @@ const localStorage = {
   setItem: (k, v) => store.set(k, String(v)),
   removeItem: k => store.delete(k),
 };
-const el = () => ({ style: {}, textContent: '', innerHTML: '', classList: { add(){}, remove(){} }, value: '' });
+const el = () => ({
+  style: {}, textContent: '', innerHTML: '', value: '',
+  classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } },
+  // Los elementos reales lo tienen; sin esto, cualquier código que enganche un
+  // listener revienta el arnés en vez de fallar donde debe.
+  addEventListener(){}, removeEventListener(){},
+});
 // Se guardan los listeners para poder disparar DOMContentLoaded a mano y
 // comprobar el arranque real de la app.
 const listeners = {};
