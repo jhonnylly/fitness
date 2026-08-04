@@ -1223,6 +1223,34 @@ function firmaDB(db){
 
 function mismosDatos(a,b){ return firmaDB(a)===firmaDB(b); }
 
+/* Por qué no cuadró el recuento tras subir. "La subida no se pudo confirmar"
+   a secas no dice nada y deja al usuario sin salida.
+   El caso conocido son ids repetidos en el dispositivo: los ids son
+   'r_'+Date.now(), así que dos rutinas creadas en el mismo milisegundo (un
+   doble toque en "crear rutina") comparten id, y en Firestore acaban siendo
+   UN solo documento. La escritura no falla; solo falla el recuento. */
+function diagnosticarSubida(esperado, remoto){
+  const esperadas = (esperado && esperado.routines) || [];
+  if(!remoto) return 'la nube sigue vacía después de subir';
+  const subidas = remoto.routines || [];
+  if(subidas.length === esperadas.length) return null;
+
+  const cuenta = new Map();
+  for(const r of esperadas) cuenta.set(r.id, (cuenta.get(r.id) || 0) + 1);
+  const repetidos = [...cuenta].filter(([, n]) => n > 1).map(([id]) => id);
+  if(repetidos.length){
+    return `hay ${repetidos.length} id de rutina repetido en este dispositivo `+
+           `(${repetidos.join(', ')}), así que se guardan como una sola en la nube`;
+  }
+
+  const idsRemoto = new Set(subidas.map(r => r.id));
+  const faltan = esperadas.filter(r => !idsRemoto.has(r.id)).map(r => r.name || r.id);
+  if(faltan.length){
+    return `no llegaron ${faltan.length} rutina(s): ${faltan.join(', ')}`;
+  }
+  return `subieron ${subidas.length} rutinas y esperábamos ${esperadas.length}`;
+}
+
 /* Qué decidió este dispositivo para esta cuenta, para no repetir la pregunta
    en cada arranque. */
 function leerDecisionSync(){
@@ -3043,9 +3071,8 @@ window.subirEsteDispositivo = async function(){
     STORAGE.use(StorageFirestore);
     await saveEstricto();             // estricto: si falla la escritura, queremos el motivo
     const comprobacion = await StorageFirestore.read();
-    if(!comprobacion || comprobacion.routines.length !== local.routines.length){
-      throw new Error('la subida no se pudo confirmar');
-    }
+    const problema = diagnosticarSubida(local, comprobacion);
+    if(problema) throw new Error(problema);
     guardarDecisionSync(auth.currentUser.uid, 'nube');
     await load();                     // releer de la nube y repintar
     ocultarPreguntas();
@@ -3074,9 +3101,8 @@ window.subirDatosLocales = async function(){
     STORAGE.use(StorageFirestore);
     await saveEstricto();                // sube la DB que ya está en memoria
     const comprobacion = await StorageFirestore.read();
-    if(!comprobacion || comprobacion.routines.length !== (DB.routines || []).length){
-      throw new Error('la subida no se pudo confirmar');
-    }
+    const problema = diagnosticarSubida(DB, comprobacion);
+    if(problema) throw new Error(problema);
     guardarDecisionSync(auth.currentUser.uid, 'nube');
     ocultarPreguntas();
     pintarEstadoSync();

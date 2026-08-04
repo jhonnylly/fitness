@@ -41,7 +41,7 @@ const puente = `
 ;globalThis.__app = {
   STORAGE, StorageLocal, save, saveEstricto, load, storageAvailable,
   planParaFirestore, planDesdeFirestore, buscarArraysAnidados,
-  resumenDB, textoResumen, firmaDB, mismosDatos,
+  resumenDB, textoResumen, firmaDB, mismosDatos, diagnosticarSubida,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -120,10 +120,10 @@ const ok = (cond, msg) => {
   ok(motivo === 'sin conexión', 'saveEstricto() sí propaga el motivo real (' + motivo + ')');
   // Y pese al fallo la cola queda utilizable: el siguiente guardado corre.
   app.STORAGE.use(app.StorageLocal);
-  app.DB = { routines: [], activeRoutine: null, trasElFallo: true };
+  app.DB = { routines: [], activeRoutine: null, traslFallo: true };
   let siguienteOk = true;
   try { await app.save(); } catch (e) { siguienteOk = false; }
-  ok(siguienteOk && JSON.parse(store.get('jhon_db_v2')).trasElFallo === true,
+  ok(siguienteOk && JSON.parse(store.get('jhon_db_v2')).traslFallo === true,
      'la cola de escritura sigue viva después de un fallo propagado');
   app.STORAGE.use({ name: 'roto', available: () => false, async read() { throw new Error('sin conexión'); }, async write() { throw new Error('sin conexión'); } });
   app.DB = { routines: [{ id: 'y' }], activeRoutine: 'y' };
@@ -212,6 +212,22 @@ const ok = (cond, msg) => {
   store.set('jhon_sync_v1', '{roto');
   ok(app.leerDecisionSync() === null, 'una decisión corrupta no rompe el arranque');
   store.delete('jhon_sync_v1');
+
+  console.log('\n12b. Diagnóstico de una subida que no cuadra');
+  const dg = app.diagnosticarSubida;
+  const rut = (id, name) => ({ id, name, sessions: {}, medidas: [] });
+  ok(dg({ routines: [rut('a'), rut('b')] }, { routines: [rut('a'), rut('b')] }) === null,
+     'si el recuento cuadra no hay problema que reportar');
+  ok(/sigue vacía/.test(dg({ routines: [rut('a')] }, null)),
+     'nube vacía tras subir se reporta como tal');
+  // El caso real: dos rutinas creadas en el mismo milisegundo comparten
+  // 'r_'+Date.now() y colapsan en un único documento de Firestore.
+  const dup = dg({ routines: [rut('r_1', 'Fuerza'), rut('r_1', 'Volumen')] }, { routines: [rut('r_1')] });
+  ok(/id de rutina repetido/.test(dup) && /r_1/.test(dup),
+     'ids repetidos en el dispositivo se nombran explícitamente (' + dup + ')');
+  const falta = dg({ routines: [rut('a', 'Fuerza'), rut('b', 'Glúteo')] }, { routines: [rut('a')] });
+  ok(/no llegaron 1/.test(falta) && /Glúteo/.test(falta),
+     'una rutina que no llegó se nombra por su nombre (' + falta + ')');
 
   console.log('\n13. window.cargaInicial gatea el arranque');
   // El módulo de Firebase espera esta promesa antes de preguntar "¿hay datos
