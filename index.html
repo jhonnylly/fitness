@@ -57,6 +57,11 @@ body.modo-clientes .tabs,body.modo-clientes .pane{display:none;}
 #pane-clientes{display:none;padding:12px;}
 body.modo-clientes #pane-clientes{display:block;}
 .client-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;}
+.preset-op{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-top:6px;cursor:pointer;font-family:inherit;color:var(--text);}
+.preset-op.elegida{border-color:var(--accent);background:rgba(230,63,31,0.1);}
+.preset-op-name{font-size:13px;font-weight:700;}
+.preset-op-desc{font-size:11px;color:var(--muted);margin-top:2px;}
+.preset-op-meta{font-size:10px;color:var(--muted);margin-top:4px;opacity:.8;}
 .client-name{font-size:14px;font-weight:700;}
 .client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
@@ -634,10 +639,21 @@ textarea{resize:vertical;min-height:60px;}
 
   <div class="card hidden" id="asignar-panel">
     <div class="section-title">Asignar rutina a <span id="asignar-nombre"></span></div>
-    <label style="font-size:11px;color:var(--muted);">Nombre de la rutina</label>
+
+    <label style="font-size:11px;color:var(--muted);">Elige una rutina</label>
+    <div id="asignar-presets"></div>
+
+    <div style="height:10px;"></div>
+    <label style="font-size:11px;color:var(--muted);">Nombre con el que la verá tu cliente</label>
     <input type="text" id="asignar-nombre-rutina" placeholder="Ej: Rutina de agosto">
-    <label style="font-size:11px;color:var(--muted);margin-top:8px;display:block;">Plan (JSON, opcional)</label>
-    <textarea id="asignar-json" rows="4" placeholder="Pega aquí el JSON del plan, o déjalo vacío"></textarea>
+
+    <!-- Pegar el plan a mano sigue disponible, pero deja de ser lo primero que
+         se ve: era la única opción y ahora es la excepción. -->
+    <details id="asignar-avanzado" style="margin-top:10px;">
+      <summary style="font-size:11px;color:var(--muted);cursor:pointer;">Pegar un plan a mano (avanzado)</summary>
+      <textarea id="asignar-json" rows="4" placeholder="JSON del plan" style="margin-top:6px;"></textarea>
+    </details>
+
     <div id="asignar-msg"></div>
     <button class="btn btn-primary" id="asignar-submit" onclick="asignarRutina()">Asignar</button>
     <button class="btn btn-secondary" onclick="cerrarAsignar()">Cancelar</button>
@@ -680,6 +696,19 @@ textarea{resize:vertical;min-height:60px;}
 </div>
 
 <script>
+
+/* Descripción corta de cada rutina prehecha. La usan el onboarding y el panel
+   de asignar rutina a un cliente. (El gestor de rutinas tiene su propia
+   versión larga: ahí hay sitio para dos líneas.) */
+const PRESET_DESC={
+  'preset_quema':'Alta intensidad y cardio. Quema grasa rápido.',
+  'preset_volumen':'Progresión de cargas. Gana masa muscular.',
+  'preset_fuerza':'Pocas reps, cargas máximas. Desarrolla fuerza real.',
+  'preset_recomp':'Equilibrio fuerza y cardio. Pierde grasa y gana músculo.',
+  'preset_definicion':'Déficit calórico + cardio. Marca y define el cuerpo.',
+  'preset_mantenimiento':'Frecuencia equilibrada. Mantén tu físico actual.',
+  'preset_gluteo_pierna':'Glúteo, pierna y abdomen. Lunes a viernes.',
+};
 
 const PRESET_ROUTINES=[
   {id:'preset_quema',name:'Quema de Grasa',plan:[
@@ -2601,15 +2630,7 @@ function obSetPhoto(input){
 }
 
 function renderObRoutineList(){
-  const descriptions={
-    'preset_quema':'Alta intensidad y cardio. Quema grasa rápido.',
-    'preset_volumen':'Progresión de cargas. Gana masa muscular.',
-    'preset_fuerza':'Pocas reps, cargas máximas. Desarrolla fuerza real.',
-    'preset_recomp':'Equilibrio fuerza y cardio. Pierde grasa y gana músculo.',
-    'preset_definicion':'Déficit calórico + cardio. Marca y define el cuerpo.',
-    'preset_mantenimiento':'Frecuencia equilibrada. Mantén tu físico actual.',
-    'preset_gluteo_pierna':'Glúteo, pierna y abdomen. Lunes a viernes.',
-  };
+  const descriptions=PRESET_DESC;
   const c=document.getElementById('ob-routine-list');
   c.innerHTML=PRESET_ROUTINES.map(r=>`
     <button class="ob-routine-btn${obSelectedRoutine===r.id?' selected':''}" onclick="obSelectRoutine('${r.id}')">
@@ -3522,12 +3543,52 @@ function pintarModoEntrenador(){
   }
 }
 
+/* Rutina prehecha elegida para asignar. null = ninguna, y entonces manda lo
+   que haya en el JSON de "avanzado". */
+let presetElegido = null;
+
+function pintarPresetsAsignar(){
+  const c = document.getElementById('asignar-presets');
+  c.innerHTML = PRESET_ROUTINES.map(r => {
+    const sesiones = r.plan.reduce((s,w) => s + w.days.length, 0);
+    const diasSemana = (r.plan[0] && r.plan[0].days.length) || 0;
+    const elegida = presetElegido === r.id;
+    return `<button class="preset-op${elegida ? ' elegida' : ''}" onclick="elegirPresetAsignar('${r.id}')">
+      <div class="preset-op-name">${escaparHTML(r.name)}</div>
+      <div class="preset-op-desc">${escaparHTML(PRESET_DESC[r.id] || '')}</div>
+      <div class="preset-op-meta">${sesiones} sesiones · ${r.plan.length} semanas · ${diasSemana} días/semana</div>
+    </button>`;
+  }).join('');
+}
+
+window.elegirPresetAsignar = function(id){
+  // Volver a pulsar la elegida la deselecciona: es la única forma de llegar a
+  // "ninguna" sin cerrar el panel.
+  presetElegido = (presetElegido === id) ? null : id;
+  pintarPresetsAsignar();
+  const campoNombre = document.getElementById('asignar-nombre-rutina');
+  const preset = PRESET_ROUTINES.find(r => r.id === presetElegido);
+  // Solo se autorrellena si el entrenador no ha escrito ya un nombre suyo.
+  if(preset && (!campoNombre.value.trim() || campoNombre.dataset.auto === '1')){
+    campoNombre.value = preset.name;
+    campoNombre.dataset.auto = '1';
+  }else if(!preset && campoNombre.dataset.auto === '1'){
+    campoNombre.value = '';
+    delete campoNombre.dataset.auto;
+  }
+};
+
 window.abrirAsignar = function(uid, nombre){
   asignarDestino = uid;
+  presetElegido = null;
   document.getElementById('asignar-nombre').textContent = nombre || 'tu cliente';
-  document.getElementById('asignar-nombre-rutina').value = '';
+  const campoNombre = document.getElementById('asignar-nombre-rutina');
+  campoNombre.value = '';
+  delete campoNombre.dataset.auto;
   document.getElementById('asignar-json').value = '';
+  document.getElementById('asignar-avanzado').open = false;
   document.getElementById('asignar-msg').innerHTML = '';
+  pintarPresetsAsignar();
   document.getElementById('asignar-panel').classList.remove('hidden');
   document.getElementById('asignar-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
 };
@@ -3548,12 +3609,24 @@ window.asignarRutina = async function(){
   }
   const jsonTxt = document.getElementById('asignar-json').value.trim();
   let plan = [];
-  if(jsonTxt){
+  if(presetElegido){
+    const preset = PRESET_ROUTINES.find(r => r.id === presetElegido);
+    if(!preset){
+      msg.innerHTML = '<div class="msg msg-err">Esa rutina ya no existe</div>';
+      return;
+    }
+    // Copia profunda: el plan del preset es compartido y lo que se asigna
+    // pasa a ser del cliente, que lo editará por su cuenta.
+    plan = JSON.parse(JSON.stringify(preset.plan));
+  }else if(jsonTxt){
     try{ plan = JSON.parse(jsonTxt); }
     catch{
       msg.innerHTML = '<div class="msg msg-err">El JSON del plan no es válido</div>';
       return;
     }
+  }else{
+    msg.innerHTML = '<div class="msg msg-err">Elige una rutina de la lista, o pega un plan en «avanzado»</div>';
+    return;
   }
   const btn = document.getElementById('asignar-submit');
   btn.disabled = true;
