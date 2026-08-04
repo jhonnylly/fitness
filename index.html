@@ -80,6 +80,8 @@ body.modo-clientes #pane-clientes{display:block;}
 .fila-ej input{margin:0;padding:7px 8px;font-size:12px;}
 .fila-ej .ej-in-nombre{flex:3;min-width:0;}
 .fila-ej .ej-in-esquema{flex:1;min-width:56px;}
+.plan-linea{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);padding:3px 0;}
+.plan-esquema{color:var(--text);opacity:.75;white-space:nowrap;}
 .client-name{font-size:14px;font-weight:700;}
 .client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
@@ -3854,7 +3856,8 @@ function pintarDetalle(){
             ${editando ? '' : `<button class="btn-sm" data-s="${d.s}" onclick="editarSesionCliente(this.dataset.s)">Editar</button>`}
           </span>
         </div>
-        ${editando ? pintarEditorEjercicios(d) : (hecha ? pintarSesionCliente(d, ses) : '')}
+        ${editando ? pintarEditorEjercicios(d)
+                   : (hecha ? pintarSesionCliente(d, ses) : pintarPlanSesion(d))}
       </div>`;
     }).join('');
     partes.push(`<div class="card">
@@ -3891,6 +3894,20 @@ function pintarDetalle(){
 
   cuerpo.innerHTML = partes.join('');
   if(detalle.ejercicio) pintarGraficaCargas(r, detalle.ejercicio);
+}
+
+/* Lo que el cliente TIENE que hacer en una sesión que aún no ha registrado.
+   Sin esto, una sesión pendiente salía vacía y el plan no se veía en ningún
+   sitio: se editaba a ciegas y no había forma de comprobar el resultado. */
+function pintarPlanSesion(dia){
+  const ejercicios = (dia.ex || []).map(ex => {
+    const nombre = Array.isArray(ex) ? ex[0] : (ex && ex.name) || '';
+    const esquema = Array.isArray(ex) ? ex[1] : (ex && ex.scheme) || '';
+    if(!nombre) return '';
+    return `<div class="plan-linea"><span>${escaparHTML(nombre)}</span><span class="plan-esquema">${escaparHTML(esquema)}</span></div>`;
+  }).join('');
+  if(!ejercicios) return '';
+  return `<div style="border-top:1px solid var(--border);padding-top:8px;">${ejercicios}</div>`;
 }
 
 /* ── Edición de los ejercicios de una sesión del plan del cliente ──
