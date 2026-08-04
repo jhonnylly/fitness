@@ -3385,6 +3385,16 @@ function cerrarVigilancias(){
   rutinaUnsubs = {};
 }
 
+/* De dónde salió una rutina. Dos rutinas con el mismo nombre y el mismo
+   progreso son indistinguibles en pantalla —pasó de verdad: activar una u otra
+   dejaba la tarjeta idéntica y parecía que el botón no hacía nada—, así que
+   hay que decir cuál es cuál. */
+function origenRutina(r){
+  if(!r.assignedBy) return 'la eligió tu cliente';
+  const f = r.createdAt ? new Date(r.createdAt).toLocaleDateString('es-ES') : null;
+  return 'asignada por ti' + (f ? ' el ' + f : '');
+}
+
 /* Se vigilan TODAS las rutinas del cliente, no solo la activa: hace falta la
    lista completa para poder activar otra. La activa se pinta con su progreso;
    el resto, como una lista compacta con botón.
@@ -3419,6 +3429,7 @@ function vigilarRutinasCliente(uid, activeRoutineDelPerfil){
       const r = resumenProgreso(activa.data());
       elProg.innerHTML =
         `<b style="color:var(--text);">${escaparHTML(r.nombre)}</b> — ${r.hechas}/${r.total} sesiones (${r.pct}%)`+
+        `<div style="font-size:10px;opacity:.6;">${escaparHTML(origenRutina(activa.data()))}</div>`+
         `<div class="prog-bar" style="margin:6px 0 4px;"><div class="prog-fill" style="width:${r.pct}%"></div></div>`+
         `${escaparHTML(r.ultima)}`+
         // Un plan vacío no da error en ningún sitio: el cliente simplemente
@@ -3433,7 +3444,9 @@ function vigilarRutinasCliente(uid, activeRoutineDelPerfil){
       const r = resumenProgreso(d.data());
       elOtras.insertAdjacentHTML('beforeend', `
         <div class="otra-rutina">
-          <span>${escaparHTML(r.nombre)} <span style="opacity:.6;">· ${r.hechas}/${r.total}</span>${r.total === 0 ? ' <span style="color:var(--accent);">· sin sesiones</span>' : ''}</span>
+          <span>${escaparHTML(r.nombre)} <span style="opacity:.6;">· ${r.hechas}/${r.total}</span>${r.total === 0 ? ' <span style="color:var(--accent);">· sin sesiones</span>' : ''}
+            <div style="font-size:10px;opacity:.6;">${escaparHTML(origenRutina(d.data()))}</div>
+          </span>
           <button class="btn-sm" data-uid="${escaparHTML(uid)}" data-rid="${escaparHTML(d.id)}"
             onclick="activarRutinaCliente(this.dataset.uid, this.dataset.rid)">Activar</button>
         </div>`);
@@ -3466,8 +3479,16 @@ async function aplicarRutinaActiva(uid, routineId){
    necesite enterarse —asignar activando, que debe poder decir "asignada pero
    NO activada"— llama a aplicarRutinaActiva() directamente. */
 window.activarRutinaCliente = async function(uid, routineId){
+  const aviso = document.getElementById('cliente-desv-'+uid);   // hueco libre bajo la tarjeta
   try{
     await aplicarRutinaActiva(uid, routineId);
+    /* Acusar recibo aunque el resultado parezca idéntico: con dos rutinas del
+       mismo nombre y el mismo progreso, la tarjeta no cambia y el botón parece
+       roto. El aviso se va solo para no ensuciar la lista. */
+    if(aviso){
+      aviso.innerHTML = '<div class="msg msg-ok" style="margin-top:8px;">Rutina activada ✓ Es la que verá tu cliente al abrir la app.</div>';
+      setTimeout(()=>{ if(aviso) aviso.innerHTML = ''; }, 4000);
+    }
   }catch(e){
     console.error('[entrenador] no se pudo activar la rutina', e);
     const el = document.getElementById('cliente-prog-'+uid);
