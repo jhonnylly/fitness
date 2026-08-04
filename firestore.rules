@@ -20,13 +20,63 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(uid)).data.trainerId == request.auth.uid;
     }
 
+    // Una invitación abierta creada por un entrenador. El código es aleatorio
+    // y va en la URL que el entrenador comparte con su cliente.
+    function invitacionValida(inviteId, trainerId) {
+      return inviteId is string
+        && exists(/databases/$(database)/documents/invites/$(inviteId))
+        && get(/databases/$(database)/documents/invites/$(inviteId)).data.trainerId == trainerId
+        && get(/databases/$(database)/documents/invites/$(inviteId)).data.usado == false;
+    }
+
+    match /invites/{codigo} {
+      // get sí, list no para quien no es el dueño: los códigos son aleatorios,
+      // pero poder enumerarlos daría la lista de invitaciones abiertas de
+      // todos los entrenadores. El invitado necesita get para leer quién le
+      // invita; el entrenador necesita list para ver las suyas pendientes.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.trainerId == request.auth.uid;
+      allow create: if isSignedIn()
+                    && request.resource.data.trainerId == request.auth.uid
+                    && request.resource.data.usado == false;
+      // Solo se puede tocar para marcarla usada, y solo quien la usa. No se
+      // permite reabrirla ni cambiarle el entrenador.
+      allow update: if isSignedIn()
+                    && resource.data.usado == false
+                    && request.resource.data.usado == true
+                    && request.resource.data.usadoPor == request.auth.uid
+                    && request.resource.data.trainerId == resource.data.trainerId;
+      // Revocar una invitación pendiente: solo quien la creó.
+      allow delete: if isSignedIn() && resource.data.trainerId == request.auth.uid;
+    }
+
     match /users/{uid} {
       // isTrainerProfile: cualquier usuario autenticado puede leer un perfil
-      // si su rol es "trainer" (necesario para validar el código de entrenador
-      // al vincularse). No permite listar todos los entrenadores, solo leer
-      // uno del que ya se conoce el ID exacto.
+      // si su rol es "trainer" (necesario para que el invitado vea quién le
+      // invita). No permite listar todos los entrenadores, solo leer uno del
+      // que ya se conoce el ID exacto.
       allow read: if isOwner(uid) || isMyClientDoc() || (isSignedIn() && resource.data.role == 'trainer');
-      allow create: if isOwner(uid);
+
+      // Un cliente solo existe si trae una invitación válida de su entrenador.
+      // Esto es lo que impide que un desconocido se cuelgue de la lista de
+      // clientes de nadie.
+      //
+      // LÍMITE CONOCIDO: crear la cuenta *vacía* en Auth no se puede impedir
+      // sin blocking functions (Cloud Functions -> plan Blaze, de pago). Sin
+      // perfil aquí, esa cuenta no tiene datos, ni entrenador, ni acceso a
+      // nada de nadie.
+      //
+      // Los perfiles de entrenador se siguen permitiendo porque las cuentas de
+      // entrenador se dan de alta a mano en la consola de Firebase y necesitan
+      // completar su perfil al entrar la primera vez. Un desconocido podría
+      // crearse un perfil de entrenador suelto: no le da acceso a datos
+      // ajenos (se quedaría sin clientes), solo a una cuenta personal.
+      allow create: if isOwner(uid) && (
+                      request.resource.data.role == 'trainer'
+                      || (request.resource.data.role == 'client'
+                          && invitacionValida(request.resource.data.inviteId,
+                                              request.resource.data.trainerId))
+                    );
       allow update: if isOwner(uid);
       allow delete: if false;
 

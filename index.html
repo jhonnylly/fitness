@@ -230,6 +230,9 @@ textarea{resize:vertical;min-height:60px;}
           <button id="tab-register" onclick="setAuthTab('register')">Registrarme</button>
         </div>
 
+        <!-- Solo cuando se llega con ?inv=CODIGO en la URL -->
+        <div id="aviso-invitacion" class="msg msg-ok hidden"></div>
+
         <div id="auth-msg"></div>
 
         <label>Correo</label>
@@ -242,12 +245,16 @@ textarea{resize:vertical;min-height:60px;}
           <div style="height:8px;"></div>
           <label>Nombre</label>
           <input type="text" id="auth-name" placeholder="Tu nombre">
-          <div style="height:8px;"></div>
-          <label>Soy...</label>
-          <select id="auth-role">
-            <option value="client">Cliente · quiero que un entrenador me asigne rutinas</option>
-            <option value="trainer">Entrenador · quiero gestionar clientes</option>
-          </select>
+          <!-- En su propio contenedor: al llegar por invitación el rol viene
+               dado y esto se oculta, sin arrastrar el resto del formulario. -->
+          <div id="fila-rol">
+            <div style="height:8px;"></div>
+            <label>Soy...</label>
+            <select id="auth-role">
+              <option value="client">Cliente · quiero que un entrenador me asigne rutinas</option>
+              <option value="trainer">Entrenador · quiero gestionar clientes</option>
+            </select>
+          </div>
         </div>
 
         <button class="btn btn-primary" id="auth-submit" onclick="submitAuth()">Iniciar sesión</button>
@@ -606,16 +613,15 @@ textarea{resize:vertical;min-height:60px;}
      esta vista vive fuera de ese ciclo (la enseña body.modo-clientes). -->
 <div id="pane-clientes">
   <div class="card">
-    <div class="section-title">Tu código de entrenador</div>
+    <div class="section-title">Invitar a un cliente</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.45;">
-      Pásaselo a quien quieras que entrenes. Lo pega en su app, en
-      «☁️ Mi cuenta», y queda vinculado contigo.
+      Genera un enlace y pásaselo por donde quieras. Al abrirlo, tu cliente se
+      registra con su propia contraseña y queda vinculado contigo. Cada enlace
+      sirve para una sola persona.
     </p>
-    <div class="codigo-box">
-      <span class="codigo-val" id="mi-codigo">—</span>
-      <button class="btn-sm" onclick="copiarMiCodigo()">Copiar</button>
-    </div>
-    <div id="codigo-msg"></div>
+    <button class="btn btn-primary" id="invitar-btn" onclick="crearInvitacion()">+ Crear enlace de invitación</button>
+    <div id="invitar-msg"></div>
+    <div id="invitaciones-lista" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
   </div>
 
   <div class="card">
@@ -1682,7 +1688,11 @@ async function load(){
   }
   sync('ok');
   if(!DB.activeRoutine||!DB.routines||!DB.routines.length){
-    showOnboarding();
+    /* Quien llega con un enlace de invitación viene a crear su cuenta, y el
+       onboarding taparía el formulario de registro (es una capa por encima).
+       Primero se registra; el código se limpia de la URL al conseguirlo, y a
+       partir de ahí el onboarding vuelve a comportarse como siempre. */
+    if(!hayInvitacionEnURL()) showOnboarding();
   }else{
     buildSessionList();
     buildMedSel();
@@ -2563,6 +2573,13 @@ function toggleCompletedWeeks(){
 let obSelectedRoutine=null;
 let obPhotoData=null;
 
+/* El script clásico corre antes que el módulo, así que no puede preguntarle a
+   éste si hay invitación: lo mira por su cuenta. */
+function hayInvitacionEnURL(){
+  try{ return !!new URLSearchParams(location.search).get('inv'); }
+  catch(e){ return false; }
+}
+
 function showOnboarding(){
   document.getElementById('onboarding').classList.remove('hidden');
   renderObRoutineList();
@@ -2863,7 +2880,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc,
-  addDoc, query, where, onSnapshot
+  addDoc, query, where, onSnapshot, writeBatch
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -2950,11 +2967,27 @@ window.submitAuth = async function(){
       try{
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName: name });
-        await setDoc(doc(fdb, 'users', cred.user.uid), {
-          name, email, role, trainerId: null, createdAt: Date.now()
-        });
+        if(codigoInvitacion){
+          await altaPorInvitacion(cred.user, name);
+        }else{
+          await setDoc(doc(fdb, 'users', cred.user.uid), {
+            name, email, role, trainerId: null, createdAt: Date.now()
+          });
+        }
       }catch(err){
-        showMsg(translateAuthError(err.code));
+        /* La cuenta de Auth ya existe pero se ha quedado sin perfil, así que
+           no sirve para nada. Se cierra la sesión para no dejar al usuario en
+           un limbo en el que la app parece cargada pero no tiene datos. */
+        if(err.message === 'INVITACION_NO_VALIDA'){
+          showMsg('Esa invitación ya se ha usado o ha sido revocada. Pídele a tu entrenador un enlace nuevo.');
+          await signOut(auth).catch(()=>{});
+        }else if(err.code === 'permission-denied'){
+          console.error('[invitaciones] las reglas rechazaron el alta', err);
+          showMsg('No se pudo completar el alta con esa invitación. Pídele a tu entrenador un enlace nuevo.');
+          await signOut(auth).catch(()=>{});
+        }else{
+          showMsg(translateAuthError(err.code));
+        }
       }finally{
         resolveProfile();
         pendingProfileWrite = null;
@@ -3277,6 +3310,7 @@ let asignarDestino = null;
 
 function cerrarVigilancias(){
   if(clientesUnsub){ clientesUnsub(); clientesUnsub = null; }
+  if(invitacionesUnsub){ invitacionesUnsub(); invitacionesUnsub = null; }
   Object.values(rutinaUnsubs).forEach(u => u());
   rutinaUnsubs = {};
 }
@@ -3330,14 +3364,117 @@ function vigilarClientes(){
   });
 }
 
+/* ─────────── Invitaciones ───────────
+   El entrenador genera un enlace con un código aleatorio; quien lo abre se
+   registra y queda vinculado. Las reglas de Firestore son las que mandan: un
+   perfil de cliente NO se puede crear sin una invitación válida sin usar. */
+
+let invitacionesUnsub = null;
+
+/* Código de URL: aleatorio de verdad (crypto), sin caracteres que se
+   confundan al leerlos en voz alta o por WhatsApp (0/O, 1/l/I). */
+function nuevoCodigo(){
+  const abc = 'abcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = new Uint8Array(14);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => abc[b % abc.length]).join('');
+}
+
+function enlaceDeInvitacion(codigo){
+  // location.origin+pathname y no href: si ya hay un ?inv= puesto, no se
+  // acumulan dos.
+  return location.origin + location.pathname + '?inv=' + codigo;
+}
+
+window.crearInvitacion = async function(){
+  const btn = document.getElementById('invitar-btn');
+  const msg = document.getElementById('invitar-msg');
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = 'Creando...';
+  try{
+    const codigo = nuevoCodigo();
+    await setDoc(doc(fdb, 'invites', codigo), {
+      trainerId: meUid,
+      usado: false,
+      usadoPor: null,
+      creadoEn: Date.now()
+    });
+    msg.innerHTML = '<div class="msg msg-ok">Enlace creado. Pásaselo a tu cliente.</div>';
+  }catch(e){
+    console.error('[invitaciones] no se pudo crear', e);
+    msg.innerHTML = '<div class="msg msg-err">No se pudo crear la invitación: '+(e.code||e.message)+'</div>';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = txt;
+  }
+};
+
+window.copiarEnlace = async function(codigo){
+  const url = enlaceDeInvitacion(codigo);
+  const msg = document.getElementById('invitar-msg');
+  // navigator.share es lo natural en móvil, que es donde va a usarse.
+  if(navigator.share){
+    try{
+      await navigator.share({ title:'Te invito a entrenar conmigo', url });
+      return;
+    }catch(e){ if(e.name === 'AbortError') return; }
+  }
+  try{
+    await navigator.clipboard.writeText(url);
+    msg.innerHTML = '<div class="msg msg-ok">Enlace copiado ✓</div>';
+  }catch(e){
+    msg.innerHTML = '<div class="msg msg-info">Copia el enlace a mano: '+escaparHTML(url)+'</div>';
+  }
+  setTimeout(()=>{ msg.innerHTML = ''; }, 4000);
+};
+
+window.revocarInvitacion = async function(codigo){
+  const msg = document.getElementById('invitar-msg');
+  try{
+    await deleteDoc(doc(fdb, 'invites', codigo));
+    msg.innerHTML = '<div class="msg msg-info">Invitación revocada. Ese enlace ya no sirve.</div>';
+  }catch(e){
+    console.error('[invitaciones] no se pudo revocar', e);
+    msg.innerHTML = '<div class="msg msg-err">No se pudo revocar: '+(e.code||e.message)+'</div>';
+  }
+  setTimeout(()=>{ msg.innerHTML = ''; }, 4000);
+};
+
+function vigilarInvitaciones(){
+  const q = query(collection(fdb, 'invites'), where('trainerId','==',meUid));
+  invitacionesUnsub = onSnapshot(q, qs => {
+    const c = document.getElementById('invitaciones-lista');
+    // Las ya usadas no se enseñan: el cliente correspondiente ya sale en la
+    // lista de clientes, y repetirlo aquí solo hace ruido.
+    const abiertas = qs.docs.filter(d => !d.data().usado);
+    if(!abiertas.length){ c.innerHTML = ''; return; }
+    c.innerHTML = '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Enlaces pendientes</div>';
+    abiertas.forEach(d => {
+      const fecha = new Date(d.data().creadoEn || Date.now()).toLocaleDateString('es-ES');
+      c.insertAdjacentHTML('beforeend', `
+        <div class="client-item" style="padding:10px;">
+          <div class="codigo-val" style="margin-bottom:6px;">${escaparHTML(enlaceDeInvitacion(d.id))}</div>
+          <div class="client-meta">Creado el ${escaparHTML(fecha)} · sin usar</div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="btn-sm" data-c="${escaparHTML(d.id)}" onclick="copiarEnlace(this.dataset.c)">Compartir</button>
+            <button class="btn-sm btn-danger" data-c="${escaparHTML(d.id)}" onclick="revocarInvitacion(this.dataset.c)">Revocar</button>
+          </div>
+        </div>`);
+    });
+  }, err => {
+    document.getElementById('invitaciones-lista').textContent = 'Error leyendo tus invitaciones: ' + err.message;
+  });
+}
+
 window.setModo = function(modo){
   const esClientes = modo === 'clientes';
   document.body.classList.toggle('modo-clientes', esClientes);
   document.getElementById('modo-btn-entreno').classList.toggle('active', !esClientes);
   document.getElementById('modo-btn-clientes').classList.toggle('active', esClientes);
   if(esClientes){
-    document.getElementById('mi-codigo').textContent = meUid || '—';
     if(!clientesUnsub) vigilarClientes();
+    if(!invitacionesUnsub) vigilarInvitaciones();
   }else{
     cerrarVigilancias();
     cerrarAsignar();
@@ -3358,18 +3495,6 @@ function pintarModoEntrenador(){
     document.getElementById('modo-btn-clientes').classList.remove('active');
   }
 }
-
-window.copiarMiCodigo = async function(){
-  const msg = document.getElementById('codigo-msg');
-  try{
-    await navigator.clipboard.writeText(meUid || '');
-    msg.innerHTML = '<div class="msg msg-ok">Código copiado ✓</div>';
-  }catch(e){
-    // Sin permiso de portapapeles (o sin HTTPS) queda a la vista para copiar a mano.
-    msg.innerHTML = '<div class="msg msg-info">Copia el código a mano: el navegador no dio permiso.</div>';
-  }
-  setTimeout(()=>{ msg.innerHTML = ''; }, 3000);
-};
 
 window.abrirAsignar = function(uid, nombre){
   asignarDestino = uid;
@@ -3533,9 +3658,56 @@ onAuthStateChanged(auth, async (user) => {
   if(meData) await cambiarANube();
 });
 
+/* ─────────── Llegar con una invitación (?inv=CODIGO) ───────────
+   El registro está cerrado por defecto. Un enlace de invitación es la única
+   forma de abrirlo, y solo para darse de alta como cliente del entrenador que
+   lo generó: el rol no se elige, viene dado. */
+const codigoInvitacion = new URLSearchParams(location.search).get('inv');
+
+function prepararRegistroPorInvitacion(){
+  if(!codigoInvitacion) return;
+  const aviso = $('aviso-invitacion');
+  aviso.textContent = 'Te han invitado a entrenar. Crea tu cuenta para empezar.';
+  aviso.classList.remove('hidden');
+  // Con invitación no hay elección de rol: se entra como cliente y punto.
+  $('fila-rol').classList.add('hidden');
+  $('auth-role').value = 'client';
+  $('registro-cerrado-aviso').classList.add('hidden');
+  document.querySelector('#auth-panel .auth-tabs').classList.remove('hidden');
+  setAuthTab('register');
+  // El panel se abre solo: quien llega por el enlace viene justo a esto.
+  if($('auth-panel').classList.contains('hidden')) toggleAuthPanel();
+}
+
+/* Da de alta el perfil del invitado y marca la invitación usada en la MISMA
+   escritura por lotes. Si se hicieran por separado y fallara la segunda, el
+   enlace seguiría sirviendo para que entrara otra persona. */
+async function altaPorInvitacion(user, name){
+  const inv = await getDoc(doc(fdb, 'invites', codigoInvitacion));
+  if(!inv.exists() || inv.data().usado){
+    throw new Error('INVITACION_NO_VALIDA');
+  }
+  const lote = writeBatch(fdb);
+  lote.set(doc(fdb, 'users', user.uid), {
+    name, email: user.email, role: 'client',
+    trainerId: inv.data().trainerId,
+    inviteId: codigoInvitacion,
+    createdAt: Date.now()
+  });
+  lote.update(doc(fdb, 'invites', codigoInvitacion), {
+    usado: true, usadoPor: user.uid, usadoEn: Date.now()
+  });
+  await lote.commit();
+  /* El código ya está gastado: fuera de la URL. Así el onboarding vuelve a
+     poder salir si el entrenador aún no ha asignado rutina, y el enlace no se
+     queda en el historial ni en los marcadores. */
+  history.replaceState({}, '', location.pathname);
+  return inv.data().trainerId;
+}
+
 /* Estado inicial del panel: con el registro cerrado sobra la fila de pestañas
    (una sola pestaña no es una elección). */
-if(!REGISTRO_ABIERTO){
+if(!REGISTRO_ABIERTO && !codigoInvitacion){
   document.querySelector('#auth-panel .auth-tabs').classList.add('hidden');
   $('register-extra').classList.add('hidden');
   $('auth-submit').textContent = 'Iniciar sesión';
@@ -3543,6 +3715,7 @@ if(!REGISTRO_ABIERTO){
 }else{
   $('registro-cerrado-aviso').classList.add('hidden');
 }
+prepararRegistroPorInvitacion();
 pintarEstadoSync();
 
 /* Marca de que el módulo llegó a ejecutarse: toggleAuthPanel() la consulta
