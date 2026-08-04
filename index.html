@@ -2981,7 +2981,15 @@ window.submitAuth = async function(){
         /* La cuenta de Auth ya existe pero se ha quedado sin perfil, así que
            no sirve para nada. Se cierra la sesión para no dejar al usuario en
            un limbo en el que la app parece cargada pero no tiene datos. */
-        if(err.message === 'INVITACION_NO_VALIDA'){
+        /* El invitado hizo todo bien: quien tiene que actuar es el entrenador,
+           activando la creación de cuentas en Firebase Authentication. El
+           mensaje genérico ("el registro está cerrado") le deja pensando que
+           su enlace no sirve. */
+        if(err.code === 'auth/admin-restricted-operation' && codigoInvitacion){
+          showMsg('Tu invitación es válida, pero la app todavía no admite cuentas '
+            + 'nuevas. Avisa a tu entrenador: tiene que activar el registro en '
+            + 'Firebase Authentication.');
+        }else if(err.message === 'INVITACION_NO_VALIDA'){
           showMsg('Esa invitación ya se ha usado o ha sido revocada. Pídele a tu entrenador un enlace nuevo.');
           await signOut(auth).catch(()=>{});
         }else if(err.code === 'permission-denied'){
