@@ -62,6 +62,7 @@ body.modo-clientes #pane-clientes{display:block;}
 .preset-op-name{font-size:13px;font-weight:700;}
 .preset-op-desc{font-size:11px;color:var(--muted);margin-top:2px;}
 .preset-op-meta{font-size:10px;color:var(--muted);margin-top:4px;opacity:.8;}
+.otra-rutina{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:6px 0;border-top:1px solid var(--border);}
 .client-name{font-size:14px;font-weight:700;}
 .client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
@@ -3362,23 +3363,71 @@ function cerrarVigilancias(){
   rutinaUnsubs = {};
 }
 
-function vigilarRutinaActiva(uid){
+/* Se vigilan TODAS las rutinas del cliente, no solo la activa: hace falta la
+   lista completa para poder activar otra. La activa se pinta con su progreso;
+   el resto, como una lista compacta con botón. */
+function vigilarRutinasCliente(uid){
   if(rutinaUnsubs[uid]) rutinaUnsubs[uid]();
-  const q = query(collection(fdb,'users',uid,'routines'), where('active','==',true));
+  const q = collection(fdb,'users',uid,'routines');
   rutinaUnsubs[uid] = onSnapshot(q, qs => {
-    const el = document.getElementById('cliente-prog-'+uid);
-    if(!el) return;
-    if(qs.empty){ el.textContent = 'Sin rutina activa asignada'; return; }
-    const r = resumenProgreso(qs.docs[0].data());
-    el.innerHTML =
-      `<b style="color:var(--text);">${escaparHTML(r.nombre)}</b> — ${r.hechas}/${r.total} sesiones (${r.pct}%)`+
-      `<div class="prog-bar" style="margin:6px 0 4px;"><div class="prog-fill" style="width:${r.pct}%"></div></div>`+
-      `${escaparHTML(r.ultima)}`;
+    const elProg = document.getElementById('cliente-prog-'+uid);
+    const elOtras = document.getElementById('cliente-rutinas-'+uid);
+    if(!elProg || !elOtras) return;
+
+    const activa = qs.docs.find(d => d.data().active);
+    if(!activa){
+      elProg.textContent = qs.empty
+        ? 'Sin rutinas asignadas'
+        : 'Ninguna rutina activa: elige una abajo';
+    }else{
+      const r = resumenProgreso(activa.data());
+      elProg.innerHTML =
+        `<b style="color:var(--text);">${escaparHTML(r.nombre)}</b> — ${r.hechas}/${r.total} sesiones (${r.pct}%)`+
+        `<div class="prog-bar" style="margin:6px 0 4px;"><div class="prog-fill" style="width:${r.pct}%"></div></div>`+
+        `${escaparHTML(r.ultima)}`;
+    }
+
+    const otras = qs.docs.filter(d => !d.data().active);
+    if(!otras.length){ elOtras.innerHTML = ''; return; }
+    elOtras.innerHTML = '<div class="client-meta" style="margin-top:8px;">Otras rutinas asignadas</div>';
+    otras.forEach(d => {
+      const r = resumenProgreso(d.data());
+      elOtras.insertAdjacentHTML('beforeend', `
+        <div class="otra-rutina">
+          <span>${escaparHTML(r.nombre)} <span style="opacity:.6;">· ${r.hechas}/${r.total}</span></span>
+          <button class="btn-sm" data-uid="${escaparHTML(uid)}" data-rid="${escaparHTML(d.id)}"
+            onclick="activarRutinaCliente(this.dataset.uid, this.dataset.rid)">Activar</button>
+        </div>`);
+    });
   }, err => {
     const el = document.getElementById('cliente-prog-'+uid);
-    if(el) el.textContent = 'Error leyendo el progreso: ' + err.message;
+    if(el) el.textContent = 'Error leyendo sus rutinas: ' + err.message;
   });
 }
+
+/* Cambiarle al cliente la rutina en curso. Se escriben los flags "active" de
+   todas sus rutinas Y el activeRoutine de su perfil: el que manda de verdad es
+   el segundo (el backend del cliente reescribe los flags a partir de él en
+   cada guardado), pero si no se actualizan los dos, la lista del entrenador y
+   la app del cliente discreparían hasta el siguiente save(). */
+window.activarRutinaCliente = async function(uid, routineId){
+  try{
+    const todas = await getDocs(collection(fdb,'users',uid,'routines'));
+    const lote = writeBatch(fdb);
+    todas.forEach(d => {
+      const debeEstarActiva = d.id === routineId;
+      if(!!d.data().active !== debeEstarActiva){
+        lote.update(doc(fdb,'users',uid,'routines',d.id), { active: debeEstarActiva });
+      }
+    });
+    lote.update(doc(fdb,'users',uid), { activeRoutine: routineId });
+    await lote.commit();
+  }catch(e){
+    console.error('[entrenador] no se pudo activar la rutina', e);
+    const el = document.getElementById('cliente-prog-'+uid);
+    if(el) el.textContent = 'No se pudo activar: ' + (e.code || e.message);
+  }
+};
 
 function vigilarClientes(){
   const q = query(collection(fdb,'users'), where('trainerId','==',meUid));
@@ -3400,11 +3449,17 @@ function vigilarClientes(){
         <div class="client-item">
           <div class="client-name">${escaparHTML(cl.name||'(sin nombre)')}</div>
           <div class="client-meta">${escaparHTML(cl.email||'')}</div>
-          <div class="client-meta" id="cliente-prog-${d.id}" style="margin-top:6px;">Cargando rutina activa...</div>
-          <button class="btn-sm" style="margin-top:8px;" data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
-            onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>
+          <div class="client-meta" id="cliente-prog-${d.id}" style="margin-top:6px;">Cargando sus rutinas...</div>
+          <div id="cliente-rutinas-${d.id}"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="btn-sm" data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
+              onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>
+            <button class="btn-sm btn-danger" data-uid="${d.id}"
+              onclick="pedirDesvincular(this.dataset.uid)">Desvincular</button>
+          </div>
+          <div id="cliente-desv-${d.id}"></div>
         </div>`);
-      vigilarRutinaActiva(d.id);
+      vigilarRutinasCliente(d.id);
     });
   }, err => {
     document.getElementById('clientes-lista').textContent = 'Error leyendo tus clientes: ' + err.message;
@@ -3513,6 +3568,39 @@ function vigilarInvitaciones(){
     document.getElementById('invitaciones-lista').textContent = 'Error leyendo tus invitaciones: ' + err.message;
   });
 }
+
+/* Desvincular es irreversible desde aquí (para volver a vincularlo hace falta
+   otra invitación), así que se confirma. En línea y no con confirm(): un modal
+   del navegador en móvil es peor, y aquí cabe explicar qué pasa con sus datos. */
+window.pedirDesvincular = function(uid){
+  const el = document.getElementById('cliente-desv-'+uid);
+  if(!el) return;
+  el.innerHTML = `
+    <div class="msg msg-info" style="margin-top:8px;">
+      Dejarás de ver su progreso y de poder asignarle rutinas. Sus entrenamientos
+      no se borran: siguen siendo suyos. Para volver a vincularlo tendrás que
+      mandarle una invitación nueva.
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn-sm btn-danger" data-uid="${escaparHTML(uid)}"
+          onclick="desvincularCliente(this.dataset.uid)">Sí, desvincular</button>
+        <button class="btn-sm" data-uid="${escaparHTML(uid)}"
+          onclick="document.getElementById('cliente-desv-'+this.dataset.uid).innerHTML=''">Cancelar</button>
+      </div>
+    </div>`;
+};
+
+window.desvincularCliente = async function(uid){
+  const el = document.getElementById('cliente-desv-'+uid);
+  try{
+    // Solo trainerId, y solo a null: es lo único que las reglas permiten.
+    await setDoc(doc(fdb,'users',uid), { trainerId: null }, { merge: true });
+    // La lista se repinta sola: el onSnapshot de clientes filtra por trainerId
+    // y este deja de cumplirlo.
+  }catch(e){
+    console.error('[entrenador] no se pudo desvincular', e);
+    if(el) el.innerHTML = '<div class="msg msg-err">No se pudo desvincular: '+(e.code||e.message)+'</div>';
+  }
+};
 
 window.setModo = function(modo){
   const esClientes = modo === 'clientes';

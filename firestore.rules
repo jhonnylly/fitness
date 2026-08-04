@@ -77,7 +77,21 @@ service cloud.firestore {
                           && invitacionValida(request.resource.data.inviteId,
                                               request.resource.data.trainerId))
                     );
-      allow update: if isOwner(uid);
+      // El dueño puede cambiar lo suyo. Su entrenador NO: solo se le permiten
+      // dos gestos concretos, y cada uno tocando un único campo.
+      //   - activeRoutine: cambiarle al cliente la rutina en curso. Manda este
+      //     campo, no el "active" de cada rutina: el backend del cliente
+      //     reescribe esos flags a partir de aquí en cada guardado.
+      //   - trainerId: solo para ponerlo a null (desvincular). Así un
+      //     entrenador no puede endosarle el cliente a otro.
+      allow update: if isOwner(uid)
+                    || (isMyClientDoc()
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['activeRoutine']))
+                    || (isMyClientDoc()
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['trainerId'])
+                        && request.resource.data.trainerId == null);
       allow delete: if false;
 
       match /routines/{routineId} {
