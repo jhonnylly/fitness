@@ -2688,11 +2688,19 @@ function obFinish(){
   };
   save();
   document.getElementById('onboarding').classList.add('hidden');
+  /* Quien llega por un enlace de invitación entra con el panel de cuenta
+     abierto (lo abre prepararRegistroPorInvitacion), y al terminar el
+     onboarding se quedaba mirando "Sesión iniciada" en vez de la app. Cerrarlo
+     aquí es seguro: si la sincronización tuviera algo que preguntar, no se
+     habría llegado a lanzar el onboarding. En el arranque normal el panel ya
+     está cerrado y esto no hace nada. */
+  document.getElementById('auth-panel').classList.add('hidden');
   renderProfilePic();
   renderProfileName();
   updateHeaderRoutine();
   buildSessionList();
   updateHome();
+  goTo('inicio');
 }
 
 function openNewRoutinePanel(){
