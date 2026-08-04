@@ -668,6 +668,22 @@ textarea{resize:vertical;min-height:60px;}
     <button class="btn btn-secondary" onclick="cerrarAsignar()">Cancelar</button>
   </div>
 </div>
+
+<!-- ═══════════ Detalle de un cliente (solo consulta) ═══════════
+     Panel propio y renderizado propio: NO reutiliza openWeekDetail/renderEx/
+     renderMedidasChart porque esas funcionan sobre la variable global DB, que
+     son los datos del ENTRENADOR. Apuntarlas a un cliente es exactamente cómo
+     se sobrescribieron datos reales el 04/08/2026. Aquí no se toca DB ni se
+     llama a save() en ningún momento. -->
+<div id="cliente-detalle" class="routine-panel hidden">
+  <div class="routine-panel-header">
+    <h2 id="detalle-titulo">CLIENTE</h2>
+    <button class="btn-sm" onclick="cerrarDetalleCliente()">✕ Cerrar</button>
+  </div>
+  <div style="padding:12px;flex:1;overflow-y:auto;" id="detalle-cuerpo">
+    <div class="card"><p style="font-size:13px;color:var(--muted);">Cargando...</p></div>
+  </div>
+</div>
 <div id="rest-timer" class="hidden">
   <div class="timer-ring">
     <svg width="48" height="48" viewBox="0 0 48 48">
@@ -3518,7 +3534,9 @@ function vigilarClientes(){
           <div class="client-meta">${escaparHTML(cl.email||'')}</div>
           <div class="client-meta" id="cliente-prog-${d.id}" style="margin-top:6px;">Cargando sus rutinas...</div>
           <div id="cliente-rutinas-${d.id}"></div>
-          <div style="display:flex;gap:6px;margin-top:8px;">
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+            <button class="btn-sm" data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
+              onclick="verDetalleCliente(this.dataset.uid,this.dataset.nombre)">Ver detalle</button>
             <button class="btn-sm" data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
               onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>
             <button class="btn-sm btn-danger" data-uid="${d.id}"
@@ -3633,6 +3651,231 @@ function vigilarInvitaciones(){
     });
   }, err => {
     document.getElementById('invitaciones-lista').textContent = 'Error leyendo tus invitaciones: ' + err.message;
+  });
+}
+
+/* ═══════════ Detalle de un cliente — solo consulta ═══════════
+   Estado propio, renderizado propio, ni una escritura. DB y save() no se
+   tocan aquí: son del entrenador y apuntarlos al cliente es como se perdieron
+   datos reales el 04/08/2026. */
+
+let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, unsub:null };
+
+window.verDetalleCliente = function(uid, nombre){
+  detalle = { uid, nombre: nombre || 'Cliente', rutinas:[], viendo:null, ejercicio:null, unsub:null };
+  document.getElementById('detalle-titulo').textContent = (nombre || 'Cliente').toUpperCase();
+  document.getElementById('detalle-cuerpo').innerHTML =
+    '<div class="card"><p style="font-size:13px;color:var(--muted);">Cargando...</p></div>';
+  document.getElementById('cliente-detalle').classList.remove('hidden');
+
+  // En vivo: si el cliente registra una sesión con el panel abierto, se ve.
+  detalle.unsub = onSnapshot(collection(fdb,'users',uid,'routines'), qs => {
+    detalle.rutinas = qs.docs.map(d => ({
+      id: d.id,
+      ...d.data(),
+      // El plan viaja a Firestore como array de mapas; aquí se devuelve al
+      // formato de la app para poder leer los ejercicios igual que en el resto.
+      plan: window.planDesdeFirestore(d.data().plan || [])
+    }));
+    if(!detalle.viendo || !detalle.rutinas.some(r => r.id === detalle.viendo)){
+      const activa = detalle.rutinas.find(r => r.active);
+      detalle.viendo = (activa || detalle.rutinas[0] || {}).id || null;
+      detalle.ejercicio = null;
+    }
+    pintarDetalle();
+  }, err => {
+    document.getElementById('detalle-cuerpo').innerHTML =
+      '<div class="msg msg-err">No se pudieron leer sus datos: '+escaparHTML(err.message)+'</div>';
+  });
+};
+
+window.cerrarDetalleCliente = function(){
+  if(detalle.unsub){ detalle.unsub(); detalle.unsub = null; }
+  if(window._detalleChart){ window._detalleChart.destroy(); window._detalleChart = null; }
+  document.getElementById('cliente-detalle').classList.add('hidden');
+};
+
+window.verRutinaDetalle = function(id){ detalle.viendo = id; detalle.ejercicio = null; pintarDetalle(); };
+window.verEjercicioDetalle = function(nombre){ detalle.ejercicio = nombre || null; pintarDetalle(); };
+
+/* Todos los ejercicios que aparecen en el plan, en orden y sin repetir: son
+   los que pueden tener gráfica de cargas. */
+function ejerciciosDeRutina(r){
+  const vistos = [];
+  for(const sem of (r.plan || [])){
+    for(const dia of (sem.days || [])){
+      for(const ex of (dia.ex || [])){
+        const nombre = Array.isArray(ex) ? ex[0] : (ex && ex.name);
+        if(nombre && !vistos.includes(nombre)) vistos.push(nombre);
+      }
+    }
+  }
+  return vistos;
+}
+
+/* Serie de carga máxima por sesión para un ejercicio. Se toma el kg más alto
+   de la sesión, no el promedio: es lo que enseña la progresión. */
+function serieDeCargas(r, nombreEjercicio){
+  const puntos = [];
+  const claves = Object.keys(r.sessions || {}).map(Number).sort((a,b)=>a-b);
+  for(const s of claves){
+    const ses = r.sessions[s];
+    const ex = (ses.exercises || []).find(e => e.name === nombreEjercicio);
+    if(!ex) continue;
+    const kgs = (ex.sets || []).map(v => parseFloat(v.kg)).filter(v => !isNaN(v));
+    if(!kgs.length) continue;
+    puntos.push({ s, kg: Math.max(...kgs), fecha: ses.date || '' });
+  }
+  return puntos;
+}
+
+function pintarDetalle(){
+  const cuerpo = document.getElementById('detalle-cuerpo');
+  if(!detalle.rutinas.length){
+    cuerpo.innerHTML = '<div class="card"><p style="font-size:13px;color:var(--muted);">'+
+      'Este cliente todavía no tiene ninguna rutina.</p></div>';
+    return;
+  }
+  const r = detalle.rutinas.find(x => x.id === detalle.viendo) || detalle.rutinas[0];
+  const prog = resumenProgreso(r);
+  const partes = [];
+
+  // Selector de rutina, solo si tiene más de una
+  if(detalle.rutinas.length > 1){
+    partes.push('<div class="card"><div class="section-title">Rutina que estás viendo</div>' +
+      detalle.rutinas.map(x => {
+        const p = resumenProgreso(x);
+        return `<button class="preset-op${x.id===r.id?' elegida':''}" data-id="${escaparHTML(x.id)}" onclick="verRutinaDetalle(this.dataset.id)">
+          <div class="preset-op-name">${escaparHTML(x.name||'(sin nombre)')}${x.active?' <span style="color:var(--green);font-size:10px;">· activa</span>':''}</div>
+          <div class="preset-op-meta">${p.hechas}/${p.total} sesiones · ${escaparHTML(origenRutina(x))}</div>
+        </button>`;
+      }).join('') + '</div>');
+  }
+
+  // Resumen
+  partes.push(`<div class="card">
+    <div class="section-title">${escaparHTML(r.name||'(sin nombre)')}</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-val">${prog.pct}%</div><div class="stat-lbl">completado</div></div>
+      <div class="stat"><div class="stat-val">${prog.hechas}/${prog.total}</div><div class="stat-lbl">sesiones</div></div>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${prog.pct}%"></div></div>
+    <div style="font-size:12px;color:var(--muted);">${escaparHTML(prog.ultima)}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px;opacity:.7;">${escaparHTML(origenRutina(r))}</div>
+  </div>`);
+
+  // Plan semana a semana, marcando lo registrado
+  const semanas = (r.plan || []).map(sem => {
+    const dias = (sem.days || []).map(d => {
+      const ses = (r.sessions || {})[d.s];
+      const hecha = !!ses;
+      const detalleSesion = hecha ? pintarSesionCliente(d, ses) : '';
+      return `<div class="week-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12.5px;">${escaparHTML(d.name || ('S'+d.s))}</span>
+          <span class="badge ${hecha?'badge-green':'badge-accent'}">${hecha ? escaparHTML(ses.date||'hecha') : 'pendiente'}</span>
+        </div>
+        ${detalleSesion}
+      </div>`;
+    }).join('');
+    return `<details style="margin-bottom:6px;">
+      <summary style="cursor:pointer;font-size:13px;font-weight:700;padding:6px 0;">
+        Semana ${sem.num} · ${escaparHTML(sem.title||'')}
+      </summary>${dias}</details>`;
+  }).join('');
+  partes.push(`<div class="card"><div class="section-title">Su plan</div>${semanas || '<p style="font-size:13px;color:var(--muted);">Esta rutina no tiene sesiones.</p>'}</div>`);
+
+  // Gráfica de cargas
+  const ejercicios = ejerciciosDeRutina(r);
+  if(ejercicios.length){
+    const opciones = ejercicios.map(e =>
+      `<option value="${escaparHTML(e)}"${detalle.ejercicio===e?' selected':''}>${escaparHTML(e)}</option>`).join('');
+    partes.push(`<div class="card">
+      <div class="section-title">Progresión de cargas</div>
+      <select onchange="verEjercicioDetalle(this.value)">
+        <option value="">Elige un ejercicio...</option>${opciones}
+      </select>
+      <div id="detalle-grafica-wrap" style="margin-top:10px;"></div>
+    </div>`);
+  }
+
+  // Medidas
+  const med = (r.medidas || []).slice().sort((a,b)=>a.semana-b.semana);
+  if(med.length){
+    partes.push(`<div class="card"><div class="section-title">Sus medidas</div>` +
+      med.map(m => `<div class="week-row">
+        <span style="font-size:12.5px;">Semana ${m.semana}${m.fecha?' · '+escaparHTML(m.fecha):''}</span>
+        <span style="font-size:12.5px;color:var(--muted);">${m.peso!=null?m.peso+' kg':''}${m.peso!=null&&m.cintura!=null?' · ':''}${m.cintura!=null?m.cintura+' cm':''}</span>
+      </div>`).join('') + '</div>');
+  }
+
+  // Fotos
+  const fotos = r.photos || {};
+  if(fotos.before || fotos.after){
+    partes.push(`<div class="card"><div class="section-title">Sus fotos</div><div class="grid2">
+      ${['before','after'].map(t => fotos[t]
+        ? `<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${t==='before'?'Antes':'Ahora'}${fotos[t].date?' · '+escaparHTML(fotos[t].date):''}</div>
+             <img src="${escaparHTML(fotos[t].url)}" style="width:100%;border-radius:var(--radius-sm);">
+           </div>`
+        : '<div></div>').join('')}
+    </div></div>`);
+  }
+
+  cuerpo.innerHTML = partes.join('');
+  if(detalle.ejercicio) pintarGraficaCargas(r, detalle.ejercicio);
+}
+
+/* Lo registrado en una sesión concreta: ejercicios, series y cardio. */
+function pintarSesionCliente(dia, ses){
+  const filas = (ses.exercises || []).map(ex => {
+    const sets = (ex.sets || []).filter(v => v.kg !== '' && v.kg != null);
+    if(!sets.length) return '';
+    return `<div style="font-size:11.5px;color:var(--muted);">${escaparHTML(ex.name||'')}: ` +
+      sets.map((v,i) => 'S'+(i+1)+' '+escaparHTML(String(v.kg))+'kg×'+escaparHTML(String(v.reps||''))).join(' · ') + '</div>';
+  }).join('');
+  const c = ses.cardio;
+  const cardio = (c && c.tiempo)
+    ? `<div style="font-size:11.5px;color:var(--muted);">Cardio: ${escaparHTML(c.tipo||'')} ${escaparHTML(String(c.tiempo))}min${c.kcal?' · '+escaparHTML(String(c.kcal))+'kcal':''}${c.fc?' · '+escaparHTML(String(c.fc))+'bpm':''}</div>`
+    : '';
+  const nota = ses.note ? `<div style="font-size:11.5px;color:var(--muted);font-style:italic;">“${escaparHTML(ses.note)}”</div>` : '';
+  if(!filas && !cardio && !nota) return '';
+  return `<div style="border-top:1px solid var(--border);padding-top:6px;">${filas}${cardio}${nota}</div>`;
+}
+
+function pintarGraficaCargas(r, nombreEjercicio){
+  const wrap = document.getElementById('detalle-grafica-wrap');
+  if(!wrap) return;
+  const puntos = serieDeCargas(r, nombreEjercicio);
+  if(puntos.length < 2){
+    wrap.innerHTML = '<p style="font-size:12px;color:var(--muted);">'+
+      (puntos.length ? 'Solo hay un registro de este ejercicio: hace falta al menos otro para ver progresión.'
+                     : 'Todavía no ha registrado pesos en este ejercicio.')+'</p>';
+    return;
+  }
+  wrap.innerHTML = '<canvas id="detalle-chart" height="200"></canvas>';
+  const oscuro = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const colorTexto = oscuro ? '#888' : '#7a7060';
+  const colorRejilla = oscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  if(window._detalleChart) window._detalleChart.destroy();
+  window._detalleChart = new Chart(document.getElementById('detalle-chart').getContext('2d'), {
+    type:'line',
+    data:{
+      labels: puntos.map(p => p.fecha || ('S'+p.s)),
+      datasets:[{
+        label: nombreEjercicio + ' (kg máx.)',
+        data: puntos.map(p => p.kg),
+        borderColor:'#e63f1f', backgroundColor:'rgba(230,63,31,0.08)',
+        tension:0.3, pointRadius:5, pointBackgroundColor:'#e63f1f'
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{labels:{color:colorTexto,font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:colorTexto,font:{size:11}},grid:{color:colorRejilla}},
+        y:{ticks:{color:colorTexto,font:{size:11}},grid:{color:colorRejilla},title:{display:true,text:'kg',color:colorTexto,font:{size:10}}}
+      }
+    }
   });
 }
 
