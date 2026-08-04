@@ -83,6 +83,9 @@ body.modo-clientes #pane-clientes{display:block;}
 .plan-linea{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);padding:3px 0;}
 .plan-esquema{color:var(--text);opacity:.75;white-space:nowrap;}
 .client-name{font-size:14px;font-weight:700;}
+.fila-cliente{display:flex;gap:10px;align-items:center;}
+.cliente-avatar{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);background:var(--card);}
+.cliente-avatar.sin-foto{display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--muted);}
 .client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
 .codigo-val{flex:1;font-family:ui-monospace,monospace;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;word-break:break-all;color:var(--muted);}
@@ -326,6 +329,8 @@ textarea{resize:vertical;min-height:60px;}
         <div id="me-name" style="font-size:18px;font-weight:800;margin-top:4px;">—</div>
         <div id="me-email" style="font-size:12px;color:var(--muted);"></div>
         <div id="me-role" style="display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--surface);color:var(--muted);"></div>
+        <!-- Solo para clientes: quién les entrena. Lo rellena pintarEntrenador() -->
+        <div id="mi-entrenador" class="hidden" style="margin-top:10px;font-size:12.5px;color:var(--muted);"></div>
         <button class="btn btn-secondary" onclick="doLogout()">Cerrar sesión</button>
       </div>
 
@@ -3128,6 +3133,35 @@ function pintarSesion(user){
     }
   }
   pintarModoEntrenador();
+  pintarEntrenador();
+}
+
+/* Un cliente no tenía forma de saber quién le entrena: el vínculo existía en
+   /users/{uid}.trainerId pero no se enseñaba en ningún sitio. Las reglas ya
+   permiten leer un perfil de entrenador por su id exacto (se añadió para
+   validar invitaciones), así que no hace falta tocar Firestore. */
+async function pintarEntrenador(){
+  const el = $('mi-entrenador');
+  if(!el) return;
+  const soyCliente = meData && meData.role !== 'trainer';
+  if(!soyCliente || !meData.trainerId){
+    el.classList.add('hidden');
+    el.textContent = '';
+    return;
+  }
+  el.classList.remove('hidden');
+  el.textContent = 'Cargando tu entrenador...';
+  try{
+    const snap = await getDoc(doc(fdb, 'users', meData.trainerId));
+    const nombre = snap.exists() ? (snap.data().name || '').trim() : '';
+    el.innerHTML = nombre
+      ? 'Tu entrenador: <b style="color:var(--text);">' + escaparHTML(nombre) + '</b>'
+      : 'Tienes un entrenador asignado.';
+  }catch(e){
+    // No es un error que merezca ruido: el resto de la cuenta funciona igual.
+    console.error('[cuenta] no se pudo leer el perfil del entrenador', e);
+    el.textContent = 'Tienes un entrenador asignado.';
+  }
 }
 
 window.guardarPerfil = async function(){
@@ -3418,6 +3452,18 @@ function cerrarVigilancias(){
   rutinaUnsubs = {};
 }
 
+/* Miniatura del cliente. La foto ya viaja en su documento de perfil, que es el
+   mismo que se lee para pintar la lista: no cuesta ni una lectura extra.
+   Sin foto, las iniciales del nombre — un hueco vacío se lee como que falla. */
+function miniaturaCliente(cl){
+  if(cl.profilePic){
+    return `<img class="cliente-avatar" src="${escaparHTML(cl.profilePic)}" alt="">`;
+  }
+  const iniciales = (cl.name || '?').trim().split(/\s+/).slice(0,2)
+    .map(p => p[0] || '').join('').toUpperCase() || '?';
+  return `<div class="cliente-avatar sin-foto">${escaparHTML(iniciales)}</div>`;
+}
+
 /* De dónde salió una rutina. Dos rutinas con el mismo nombre y el mismo
    progreso son indistinguibles en pantalla —pasó de verdad: activar una u otra
    dejaba la tarjeta idéntica y parecía que el botón no hacía nada—, así que
@@ -3547,8 +3593,13 @@ function vigilarClientes(){
       const cl = d.data();
       c.insertAdjacentHTML('beforeend', `
         <div class="client-item">
-          <div class="client-name">${escaparHTML(cl.name||'(sin nombre)')}</div>
-          <div class="client-meta">${escaparHTML(cl.email||'')}</div>
+          <div class="fila-cliente">
+            ${miniaturaCliente(cl)}
+            <div style="min-width:0;">
+              <div class="client-name">${escaparHTML(cl.name||'(sin nombre)')}</div>
+              <div class="client-meta">${escaparHTML(cl.email||'')}</div>
+            </div>
+          </div>
           <div class="client-meta" id="cliente-prog-${d.id}" style="margin-top:6px;">Cargando sus rutinas...</div>
           <div id="cliente-rutinas-${d.id}"></div>
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
