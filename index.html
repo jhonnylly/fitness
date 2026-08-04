@@ -114,7 +114,19 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden{display:none;}
+/* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
+#comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
+.comp-barra{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--dark);}
+.comp-tabs{display:flex;gap:6px;}
+.comp-tabs button{padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
+.comp-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+#comp-cuerpo{flex:1;min-height:0;padding:10px;display:flex;gap:8px;}
+#comp-cuerpo.comp-simple{justify-content:center;}
+.comp-figura{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.comp-figura img{width:100%;flex:1;min-height:0;object-fit:contain;border-radius:var(--radius-sm);background:var(--surface);}
+.comp-figura figcaption{font-size:11.5px;color:var(--muted);text-align:center;}
+.comp-hueco{flex:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);border:1px dashed var(--border);border-radius:var(--radius-sm);}
 .auth-tabs{display:flex;gap:6px;margin-bottom:12px;}
 .auth-tabs button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
 .auth-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -621,11 +633,26 @@ textarea{resize:vertical;min-height:60px;}
         <input type="file" id="photo-after-input" accept="image/*" style="display:none;" onchange="savePhoto('after',this)">
       </div>
     </div>
-    <div class="grid2" style="gap:8px;">
+    <button class="btn btn-secondary" id="btn-comparar" style="margin-top:0;" onclick="abrirComparador('ambas')">🔍 Ver en grande</button>
+    <div class="grid2" style="gap:8px;margin-top:8px;">
       <button class="btn-sm btn-danger" onclick="deletePhoto('before')">× Eliminar antes</button>
       <button class="btn-sm btn-danger" onclick="deletePhoto('after')">× Eliminar ahora</button>
     </div>
     </div>
+</div>
+
+<!-- Comparador de fotos a pantalla completa. Las miniaturas de la tarjeta son
+     demasiado pequeñas para apreciar cambios reales. -->
+<div id="comparador" class="hidden">
+  <div class="comp-barra">
+    <div class="comp-tabs">
+      <button id="comp-t-ambas" class="active" onclick="verComparacion('ambas')">Comparar</button>
+      <button id="comp-t-before" onclick="verComparacion('before')">Antes</button>
+      <button id="comp-t-after" onclick="verComparacion('after')">Ahora</button>
+    </div>
+    <button class="btn-sm" onclick="cerrarComparador()">✕</button>
+  </div>
+  <div id="comp-cuerpo"></div>
 </div>
 
 <!-- MEDIDAS -->
@@ -2461,10 +2488,56 @@ function deletePhoto(type){
   renderPhotos();
 }
 
+/* ── Comparador a pantalla completa ──
+   Las miniaturas de la tarjeta son demasiado pequeñas para apreciar cambios
+   reales, que es justo para lo que sirven estas fotos. */
+let compVista='ambas';
+
+function abrirComparador(vista){
+  const act=getActive();
+  const fotos=(act&&act.photos)||{};
+  // Sin fotos el botón ni siquiera se enseña (lo oculta renderPhotos), así que
+  // esto solo cubre el caso de borrarlas con el comparador ya abierto.
+  if(!fotos.before&&!fotos.after){ cerrarComparador(); return; }
+  // Si solo hay una, no tiene sentido abrir en modo comparación.
+  compVista=(!fotos.before||!fotos.after)?(fotos.before?'before':'after'):(vista||'ambas');
+  document.getElementById('comparador').classList.remove('hidden');
+  verComparacion(compVista);
+}
+
+function cerrarComparador(){
+  document.getElementById('comparador').classList.add('hidden');
+}
+
+function verComparacion(vista){
+  compVista=vista;
+  const act=getActive();
+  const fotos=(act&&act.photos)||{};
+  const etiquetas={before:'Antes',after:'Ahora'};
+  ['ambas','before','after'].forEach(v=>{
+    const b=document.getElementById('comp-t-'+v);
+    if(b)b.classList.toggle('active',v===vista);
+  });
+  const panel=(tipo)=>{
+    const f=fotos[tipo];
+    if(!f)return `<div class="comp-hueco">Sin foto de «${etiquetas[tipo]}»</div>`;
+    return `<figure class="comp-figura">
+      <img src="${f.url||f}" alt="">
+      <figcaption>${etiquetas[tipo]}${f.date?' · '+f.date:''}</figcaption>
+    </figure>`;
+  };
+  const cuerpo=document.getElementById('comp-cuerpo');
+  cuerpo.className=vista==='ambas'?'comp-doble':'comp-simple';
+  cuerpo.innerHTML=vista==='ambas'?panel('before')+panel('after'):panel(vista);
+}
+
 function renderPhotos(){
   const act=getActive();
   const photos=act?.photos||{};
   const labels={before:'Antes',after:'Ahora'};
+  // El botón de ampliar solo tiene sentido si hay algo que ampliar.
+  const btnComp=document.getElementById('btn-comparar');
+  if(btnComp)btnComp.style.display=(photos.before||photos.after)?'block':'none';
   ['before','after'].forEach(type=>{
     const el=document.getElementById('photo-'+type+'-preview');
     if(!el)return;
