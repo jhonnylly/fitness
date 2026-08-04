@@ -415,6 +415,14 @@ textarea{resize:vertical;min-height:60px;}
       </div>
     </div>
 
+    <!-- Fuera de las ramas con/sin sesión: es información de la app, no de la
+         cuenta, y hace falta poder consultarla siempre. -->
+    <div class="card">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Versión</div>
+      <div style="font-size:13px;margin-top:4px;" id="version-txt">—</div>
+      <div id="version-aviso"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1335,6 +1343,14 @@ function sync(st){
      available() ¿se puede usar? (sincrono, para el aviso de arranque)
      read()      -> Promise<objeto DB | null>   null = no hay datos guardados
      write(db)   -> Promise<void>               lanza si no pudo guardar        */
+
+/* Versión publicada. Es la fecha y hora del despliegue, no el hash del commit:
+   el hash depende del contenido del fichero, y el fichero tendría que
+   contenerlo, así que se muerde la cola.
+   ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
+   hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
+   ayer sin saberlo) y para detectar que hay una más nueva. */
+const APP_VERSION='2026-08-04 22:45';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2445,9 +2461,42 @@ function toggleRoutinePanel(){
    puede fallar (sin red, CDN bloqueado). Abrirlo vive aquí,
    en el script clásico, para que el botón responda siempre y la app nunca
    dependa de que Firebase haya cargado. */
+/* GitHub Pages cachea el index.html en el navegador, así que es fácil estar
+   usando la versión de ayer sin saberlo — nos ha costado tiempo tres veces.
+   Esto compara la versión cargada con la publicada y, si difieren, ofrece
+   recargar saltándose la caché. Se consulta al abrir el panel, no al arrancar:
+   descarga el HTML entero y no merece la pena hacerlo en cada visita. */
+function pintarVersion(){
+  const el=document.getElementById('version-txt');
+  if(el)el.textContent=APP_VERSION;
+}
+
+async function comprobarVersionNueva(){
+  const aviso=document.getElementById('version-aviso');
+  if(!aviso)return;
+  try{
+    const resp=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});
+    const texto=await resp.text();
+    const m=texto.match(/const APP_VERSION='([^']+)'/);
+    if(!m||m[1]===APP_VERSION){ aviso.innerHTML=''; return; }
+    aviso.innerHTML='<div class="msg msg-info" style="margin-top:8px;">'+
+      'Hay una versión más reciente ('+escaparHTML(m[1])+'). '+
+      '<a href="#" onclick="recargarUltimaVersion();return false;" style="color:var(--accent);font-weight:700;">Actualizar</a>'+
+      '</div>';
+  }catch(e){
+    // Sin conexión no se puede saber, y no es motivo para molestar.
+    aviso.innerHTML='';
+  }
+}
+
+function recargarUltimaVersion(){
+  location.replace(location.pathname+'?v='+Date.now());
+}
+
 function toggleAuthPanel(){
   const p=document.getElementById('auth-panel');
   p.classList.toggle('hidden');
+  if(!p.classList.contains('hidden')){ pintarVersion(); comprobarVersionNueva(); }
   if(!p.classList.contains('hidden')&&!window.__authReady){
     document.getElementById('auth-msg').innerHTML=
       '<div class="msg msg-err">No se pudo cargar el servicio de cuentas. '+
