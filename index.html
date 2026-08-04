@@ -63,6 +63,8 @@ body.modo-clientes #pane-clientes{display:block;}
 .preset-op-desc{font-size:11px;color:var(--muted);margin-top:2px;}
 .preset-op-meta{font-size:10px;color:var(--muted);margin-top:4px;opacity:.8;}
 .otra-rutina{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:6px 0;border-top:1px solid var(--border);}
+.fila-check{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;cursor:pointer;}
+.fila-check input{width:auto;margin:0;flex-shrink:0;}
 .client-name{font-size:14px;font-weight:700;}
 .client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
@@ -646,7 +648,13 @@ textarea{resize:vertical;min-height:60px;}
 
     <div style="height:10px;"></div>
     <label style="font-size:11px;color:var(--muted);">Nombre con el que la verá tu cliente</label>
-    <input type="text" id="asignar-nombre-rutina" placeholder="Ej: Rutina de agosto">
+    <input type="text" id="asignar-nombre-rutina" placeholder="Ej: Rutina de agosto" oninput="avisarNombreRepetido()">
+    <div id="asignar-aviso-repe"></div>
+
+    <label class="fila-check">
+      <input type="checkbox" id="asignar-activar">
+      <span>Activársela ahora <span id="asignar-activar-nota" style="color:var(--muted);"></span></span>
+    </label>
 
     <!-- Pegar el plan a mano sigue disponible, pero deja de ser lo primero que
          se ve: era la única opción y ahora es la excepción. -->
@@ -3356,6 +3364,12 @@ let clientesUnsub = null;
 let rutinaUnsubs = {};
 let asignarDestino = null;
 
+/* Lo que ya tiene cada cliente, para poder decidir al abrir el panel de
+   asignar: si no tiene ninguna rutina activa, lo natural es activarle la que
+   se le asigne; y si ya tiene una con ese nombre, avisar antes de duplicar.
+   Lo rellena vigilarRutinasCliente() desde su propio onSnapshot. */
+let rutinasPorCliente = {};
+
 function cerrarVigilancias(){
   if(clientesUnsub){ clientesUnsub(); clientesUnsub = null; }
   if(invitacionesUnsub){ invitacionesUnsub(); invitacionesUnsub = null; }
@@ -3384,6 +3398,11 @@ function vigilarRutinasCliente(uid, activeRoutineDelPerfil){
       ? d.id === activeRoutineDelPerfil
       : !!d.data().active;          // sin perfil aún, el flag es lo único que hay
     const activa = qs.docs.find(esActiva);
+
+    rutinasPorCliente[uid] = {
+      tieneActiva: !!activa,
+      nombres: qs.docs.map(d => (d.data().name || '').trim().toLowerCase())
+    };
     if(!activa){
       elProg.textContent = qs.empty
         ? 'Sin rutinas asignadas'
@@ -3422,18 +3441,25 @@ function vigilarRutinasCliente(uid, activeRoutineDelPerfil){
    el segundo (el backend del cliente reescribe los flags a partir de él en
    cada guardado), pero si no se actualizan los dos, la lista del entrenador y
    la app del cliente discreparían hasta el siguiente save(). */
+async function aplicarRutinaActiva(uid, routineId){
+  const todas = await getDocs(collection(fdb,'users',uid,'routines'));
+  const lote = writeBatch(fdb);
+  todas.forEach(d => {
+    const debeEstarActiva = d.id === routineId;
+    if(!!d.data().active !== debeEstarActiva){
+      lote.update(doc(fdb,'users',uid,'routines',d.id), { active: debeEstarActiva });
+    }
+  });
+  lote.update(doc(fdb,'users',uid), { activeRoutine: routineId });
+  await lote.commit();
+}
+
+/* Versión para el botón de la lista: se traga el error y lo pinta ahí. Quien
+   necesite enterarse —asignar activando, que debe poder decir "asignada pero
+   NO activada"— llama a aplicarRutinaActiva() directamente. */
 window.activarRutinaCliente = async function(uid, routineId){
   try{
-    const todas = await getDocs(collection(fdb,'users',uid,'routines'));
-    const lote = writeBatch(fdb);
-    todas.forEach(d => {
-      const debeEstarActiva = d.id === routineId;
-      if(!!d.data().active !== debeEstarActiva){
-        lote.update(doc(fdb,'users',uid,'routines',d.id), { active: debeEstarActiva });
-      }
-    });
-    lote.update(doc(fdb,'users',uid), { activeRoutine: routineId });
-    await lote.commit();
+    await aplicarRutinaActiva(uid, routineId);
   }catch(e){
     console.error('[entrenador] no se pudo activar la rutina', e);
     const el = document.getElementById('cliente-prog-'+uid);
@@ -3676,6 +3702,20 @@ window.elegirPresetAsignar = function(id){
     campoNombre.value = '';
     delete campoNombre.dataset.auto;
   }
+  avisarNombreRepetido();
+};
+
+/* Duplicar una rutina es legítimo (una segunda vuelta al mismo plan), pero casi
+   siempre es un accidente: el entrenador asigna, no ve que cambie nada porque
+   no se activa, y vuelve a pulsar. Avisar convierte el accidente en decisión. */
+window.avisarNombreRepetido = function(){
+  const el = document.getElementById('asignar-aviso-repe');
+  const nombre = document.getElementById('asignar-nombre-rutina').value.trim().toLowerCase();
+  const info = rutinasPorCliente[asignarDestino];
+  const repetida = !!(nombre && info && info.nombres.includes(nombre));
+  el.innerHTML = repetida
+    ? '<div class="msg msg-info">Ya tiene una rutina con este nombre. Si la asignas, tendrá dos.</div>'
+    : '';
 };
 
 window.abrirAsignar = function(uid, nombre){
@@ -3688,6 +3728,19 @@ window.abrirAsignar = function(uid, nombre){
   document.getElementById('asignar-json').value = '';
   document.getElementById('asignar-avanzado').open = false;
   document.getElementById('asignar-msg').innerHTML = '';
+  document.getElementById('asignar-aviso-repe').innerHTML = '';
+
+  /* Sin rutina activa, activarle la nueva es lo único que tiene sentido. Con
+     una en curso, no: cambiársela a mitad es justo lo que no debe pasar por
+     inercia, así que se marca a mano. */
+  const info = rutinasPorCliente[uid];
+  const tieneActiva = !!(info && info.tieneActiva);
+  const check = document.getElementById('asignar-activar');
+  check.checked = !tieneActiva;
+  document.getElementById('asignar-activar-nota').textContent = tieneActiva
+    ? '(ahora está entrenando otra)'
+    : '(no tiene ninguna en curso)';
+
   pintarPresetsAsignar();
   document.getElementById('asignar-panel').classList.remove('hidden');
   document.getElementById('asignar-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
@@ -3733,19 +3786,23 @@ window.asignarRutina = async function(){
   const txt = btn.textContent;
   btn.textContent = 'Asignando...';
   try{
-    // La primera rutina de un cliente se activa sola; las siguientes no, para
-    // no cambiarle la rutina en curso sin querer.
-    const previas = await getDocs(collection(fdb,'users',asignarDestino,'routines'));
-    const esPrimera = previas.empty;
-    await addDoc(collection(fdb,'users',asignarDestino,'routines'), {
+    /* Activarla o no lo decide el entrenador con la casilla. Antes se activaba
+       sola solo si era la primera, sin decirlo en ninguna parte: asignar a un
+       cliente que ya tenía rutina no producía ningún cambio visible, parecía
+       que no había funcionado, y el siguiente clic duplicaba la rutina. */
+    const activar = document.getElementById('asignar-activar').checked;
+    const ref = await addDoc(collection(fdb,'users',asignarDestino,'routines'), {
       name: nombre,
       plan: window.planParaFirestore(plan),   // Firestore no admite arrays anidados
       sessions: {}, medidas: [],
       assignedBy: meUid, createdAt: Date.now(),
-      active: esPrimera
+      active: false
     });
+    if(activar) await aplicarRutinaActiva(asignarDestino, ref.id);
     msg.innerHTML = '<div class="msg msg-ok">'+
-      (esPrimera ? 'Rutina asignada y activada ✓' : 'Rutina asignada (no queda activa todavía) ✓')+
+      (activar
+        ? 'Rutina asignada y activada ✓ Es la que verá al abrir la app.'
+        : 'Rutina asignada ✓ No es la que está entrenando: puedes activársela en «Otras rutinas asignadas».')+
       '</div>';
     document.getElementById('asignar-nombre-rutina').value = '';
     document.getElementById('asignar-json').value = '';
