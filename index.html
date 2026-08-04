@@ -44,6 +44,23 @@ header{background:var(--dark);color:#f5f0e8;padding:20px 16px 16px;position:stic
 .tab.active{color:var(--accent);border-color:var(--accent);background:rgba(230,63,31,0.1);}
 .tab:active{transform:scale(0.95);}
 .pane{display:none;padding:12px;} .pane.active{display:block;}
+/* Modo entrenador. El selector solo existe para cuentas con role=trainer, y
+   al pasar a "Mis clientes" se ocultan las pestañas y los paneles de
+   entrenamiento en bloque, sin tocar showTab(): así el modo entreno vuelve
+   exactamente como estaba. La especificidad de "body.modo-clientes .pane"
+   (0,2,1) gana a ".pane.active" (0,2,0) sin necesidad de !important. */
+.modo-sel{display:none;gap:6px;padding:8px 8px 0;background:var(--dark);}
+body.es-entrenador .modo-sel{display:flex;}
+.modo-sel button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
+.modo-sel button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+body.modo-clientes .tabs,body.modo-clientes .pane{display:none;}
+#pane-clientes{display:none;padding:12px;}
+body.modo-clientes #pane-clientes{display:block;}
+.client-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;}
+.client-name{font-size:14px;font-weight:700;}
+.client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
+.codigo-val{flex:1;font-family:ui-monospace,monospace;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;word-break:break-all;color:var(--muted);}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
 label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;}
 select,input,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:14px;outline:none;font-family:inherit;}
@@ -354,6 +371,14 @@ textarea{resize:vertical;min-height:60px;}
 </div>
 </header>
 
+<!-- Solo aparece en cuentas de entrenador: el entrenador también entrena y
+     necesita su propio historial, así que la gestión no puede sustituir a la
+     app, solo convivir con ella. Lo enseña/oculta pintarModoEntrenador(). -->
+<div class="modo-sel" id="modo-sel">
+  <button id="modo-btn-entreno" class="active" onclick="setModo('entreno')">Mi entrenamiento</button>
+  <button id="modo-btn-clientes" onclick="setModo('clientes')">Mis clientes</button>
+</div>
+
 <div class="tabs">
   <button class="tab active" id="tab-inicio" onclick="showTab('inicio',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/></svg>
@@ -573,6 +598,40 @@ textarea{resize:vertical;min-height:60px;}
   <div class="card" id="medidas-chart-card" style="display:none;">
     <div class="section-title">Evolución</div>
     <canvas id="medidas-chart" height="200"></canvas>
+  </div>
+</div>
+
+<!-- ═══════════ Mis clientes (modo entrenador) ═══════════
+     No lleva class="pane" a propósito: los .pane los gobierna showTab(), y
+     esta vista vive fuera de ese ciclo (la enseña body.modo-clientes). -->
+<div id="pane-clientes">
+  <div class="card">
+    <div class="section-title">Tu código de entrenador</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
+      Pásaselo a quien quieras que entrenes. Lo pega en su app, en
+      «☁️ Mi cuenta», y queda vinculado contigo.
+    </p>
+    <div class="codigo-box">
+      <span class="codigo-val" id="mi-codigo">—</span>
+      <button class="btn-sm" onclick="copiarMiCodigo()">Copiar</button>
+    </div>
+    <div id="codigo-msg"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Mis clientes</div>
+    <div id="clientes-lista" style="font-size:13px;color:var(--muted);">Cargando...</div>
+  </div>
+
+  <div class="card hidden" id="asignar-panel">
+    <div class="section-title">Asignar rutina a <span id="asignar-nombre"></span></div>
+    <label style="font-size:11px;color:var(--muted);">Nombre de la rutina</label>
+    <input type="text" id="asignar-nombre-rutina" placeholder="Ej: Rutina de agosto">
+    <label style="font-size:11px;color:var(--muted);margin-top:8px;display:block;">Plan (JSON, opcional)</label>
+    <textarea id="asignar-json" rows="4" placeholder="Pega aquí el JSON del plan, o déjalo vacío"></textarea>
+    <div id="asignar-msg"></div>
+    <button class="btn btn-primary" id="asignar-submit" onclick="asignarRutina()">Asignar</button>
+    <button class="btn btn-secondary" onclick="cerrarAsignar()">Cancelar</button>
   </div>
 </div>
 <div id="rest-timer" class="hidden">
@@ -1222,6 +1281,39 @@ function firmaDB(db){
 }
 
 function mismosDatos(a,b){ return firmaDB(a)===firmaDB(b); }
+
+/* Los nombres de cliente los escribe otra persona y se pintan con innerHTML
+   para poder montar la tarjeta de una vez. Escapar no es opcional. */
+function escaparHTML(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* Progreso de una rutina tal y como está guardada en Firestore. Se calcula
+   sobre el plan (total de sesiones previstas) y sessions (las registradas). */
+function resumenProgreso(rutina){
+  const plan = rutina.plan || [];
+  const sessions = rutina.sessions || {};
+  const total = plan.reduce((s,w)=>s+((w.days||[]).length),0);
+  const hechas = Object.keys(sessions).map(Number);
+  let ultima = 'Sin sesiones registradas';
+  if(hechas.length){
+    const ult = Math.max(...hechas);
+    let nombreDia = 'S'+ult;
+    for(const w of plan){
+      const dia = (w.days||[]).find(d=>d.s===ult);
+      if(dia){ nombreDia = dia.name; break; }
+    }
+    ultima = `Última: ${nombreDia} · ${sessions[ult].date||''}`;
+  }
+  return {
+    nombre: rutina.name||'(sin nombre)',
+    total, hechas: hechas.length,
+    pct: total ? Math.round((hechas.length/total)*100) : 0,
+    ultima
+  };
+}
 
 /* Por qué no cuadró el recuento tras subir. "La subida no se pudo confirmar"
    a secas no dice nada y deja al usuario sin salida.
@@ -2661,7 +2753,8 @@ import {
   onAuthStateChanged, signOut, updateProfile
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
-  getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc
+  getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc,
+  addDoc, query, where, onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -2795,6 +2888,7 @@ function pintarSesion(user){
     $('me-email').textContent = user.email || '';
     $('me-role').textContent  = meData.role === 'trainer' ? 'Entrenador' : 'Cliente';
   }
+  pintarModoEntrenador();
 }
 
 window.guardarPerfil = async function(){
@@ -3056,6 +3150,179 @@ window.revisarPendienteLocal = async function(){
   document.getElementById('conflicto-nube').textContent  = textoResumen(resumenDB(remoto));
   document.getElementById('pendiente-local').classList.add('hidden');
   document.getElementById('sync-conflicto').classList.remove('hidden');
+};
+
+/* ═══════════ Modo entrenador — paso 4 ═══════════
+   El entrenador también entrena, así que "Mis clientes" NO sustituye a la
+   app: convive con ella tras un selector que solo ven las cuentas con
+   role='trainer'. Todo lo de aquí es de solo lectura sobre los datos del
+   cliente (perfil + rutina activa) salvo asignar rutina.
+
+   Las suscripciones onSnapshot se abren al entrar en el modo y se cierran al
+   salir o al cerrar sesión: dejarlas vivas costaría lecturas de Firestore en
+   segundo plano y, al cambiar de cuenta, escribirían en el DOM de otro. */
+
+let clientesUnsub = null;
+let rutinaUnsubs = {};
+let asignarDestino = null;
+
+function cerrarVigilancias(){
+  if(clientesUnsub){ clientesUnsub(); clientesUnsub = null; }
+  Object.values(rutinaUnsubs).forEach(u => u());
+  rutinaUnsubs = {};
+}
+
+function vigilarRutinaActiva(uid){
+  if(rutinaUnsubs[uid]) rutinaUnsubs[uid]();
+  const q = query(collection(fdb,'users',uid,'routines'), where('active','==',true));
+  rutinaUnsubs[uid] = onSnapshot(q, qs => {
+    const el = document.getElementById('cliente-prog-'+uid);
+    if(!el) return;
+    if(qs.empty){ el.textContent = 'Sin rutina activa asignada'; return; }
+    const r = resumenProgreso(qs.docs[0].data());
+    el.innerHTML =
+      `<b style="color:var(--text);">${escaparHTML(r.nombre)}</b> — ${r.hechas}/${r.total} sesiones (${r.pct}%)`+
+      `<div class="prog-bar" style="margin:6px 0 4px;"><div class="prog-fill" style="width:${r.pct}%"></div></div>`+
+      `${escaparHTML(r.ultima)}`;
+  }, err => {
+    const el = document.getElementById('cliente-prog-'+uid);
+    if(el) el.textContent = 'Error leyendo el progreso: ' + err.message;
+  });
+}
+
+function vigilarClientes(){
+  const q = query(collection(fdb,'users'), where('trainerId','==',meUid));
+  clientesUnsub = onSnapshot(q, qs => {
+    // Los unsubs de rutina se rehacen enteros: la lista de clientes puede
+    // haber perdido alguno, y su listener quedaría huérfano.
+    Object.values(rutinaUnsubs).forEach(u => u());
+    rutinaUnsubs = {};
+
+    const c = document.getElementById('clientes-lista');
+    if(qs.empty){
+      c.textContent = 'Todavía no tienes clientes vinculados. Pásales tu código de arriba.';
+      return;
+    }
+    c.innerHTML = '';
+    qs.forEach(d => {
+      const cl = d.data();
+      c.insertAdjacentHTML('beforeend', `
+        <div class="client-item">
+          <div class="client-name">${escaparHTML(cl.name||'(sin nombre)')}</div>
+          <div class="client-meta">${escaparHTML(cl.email||'')}</div>
+          <div class="client-meta" id="cliente-prog-${d.id}" style="margin-top:6px;">Cargando rutina activa...</div>
+          <button class="btn-sm" style="margin-top:8px;" data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
+            onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>
+        </div>`);
+      vigilarRutinaActiva(d.id);
+    });
+  }, err => {
+    document.getElementById('clientes-lista').textContent = 'Error leyendo tus clientes: ' + err.message;
+  });
+}
+
+window.setModo = function(modo){
+  const esClientes = modo === 'clientes';
+  document.body.classList.toggle('modo-clientes', esClientes);
+  document.getElementById('modo-btn-entreno').classList.toggle('active', !esClientes);
+  document.getElementById('modo-btn-clientes').classList.toggle('active', esClientes);
+  if(esClientes){
+    document.getElementById('mi-codigo').textContent = meUid || '—';
+    if(!clientesUnsub) vigilarClientes();
+  }else{
+    cerrarVigilancias();
+    cerrarAsignar();
+  }
+  window.scrollTo(0,0);
+};
+
+/* El selector solo existe si la cuenta es de entrenador. Al dejar de serlo
+   (logout, o cambio de cuenta) hay que volver a modo entreno sí o sí, o la
+   app quedaría enseñando una vista vacía sin forma de salir. */
+function pintarModoEntrenador(){
+  const esEntrenador = !!(meData && meData.role === 'trainer');
+  document.body.classList.toggle('es-entrenador', esEntrenador);
+  if(!esEntrenador){
+    cerrarVigilancias();
+    document.body.classList.remove('modo-clientes');
+    document.getElementById('modo-btn-entreno').classList.add('active');
+    document.getElementById('modo-btn-clientes').classList.remove('active');
+  }
+}
+
+window.copiarMiCodigo = async function(){
+  const msg = document.getElementById('codigo-msg');
+  try{
+    await navigator.clipboard.writeText(meUid || '');
+    msg.innerHTML = '<div class="msg msg-ok">Código copiado ✓</div>';
+  }catch(e){
+    // Sin permiso de portapapeles (o sin HTTPS) queda a la vista para copiar a mano.
+    msg.innerHTML = '<div class="msg msg-info">Copia el código a mano: el navegador no dio permiso.</div>';
+  }
+  setTimeout(()=>{ msg.innerHTML = ''; }, 3000);
+};
+
+window.abrirAsignar = function(uid, nombre){
+  asignarDestino = uid;
+  document.getElementById('asignar-nombre').textContent = nombre || 'tu cliente';
+  document.getElementById('asignar-nombre-rutina').value = '';
+  document.getElementById('asignar-json').value = '';
+  document.getElementById('asignar-msg').innerHTML = '';
+  document.getElementById('asignar-panel').classList.remove('hidden');
+  document.getElementById('asignar-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
+};
+
+window.cerrarAsignar = function(){
+  const p = document.getElementById('asignar-panel');
+  if(p) p.classList.add('hidden');
+  asignarDestino = null;
+};
+
+window.asignarRutina = async function(){
+  const msg = document.getElementById('asignar-msg');
+  if(!asignarDestino) return;
+  const nombre = document.getElementById('asignar-nombre-rutina').value.trim();
+  if(!nombre){
+    msg.innerHTML = '<div class="msg msg-err">Escribe un nombre para la rutina</div>';
+    return;
+  }
+  const jsonTxt = document.getElementById('asignar-json').value.trim();
+  let plan = [];
+  if(jsonTxt){
+    try{ plan = JSON.parse(jsonTxt); }
+    catch{
+      msg.innerHTML = '<div class="msg msg-err">El JSON del plan no es válido</div>';
+      return;
+    }
+  }
+  const btn = document.getElementById('asignar-submit');
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = 'Asignando...';
+  try{
+    // La primera rutina de un cliente se activa sola; las siguientes no, para
+    // no cambiarle la rutina en curso sin querer.
+    const previas = await getDocs(collection(fdb,'users',asignarDestino,'routines'));
+    const esPrimera = previas.empty;
+    await addDoc(collection(fdb,'users',asignarDestino,'routines'), {
+      name: nombre,
+      plan: window.planParaFirestore(plan),   // Firestore no admite arrays anidados
+      sessions: {}, medidas: [],
+      assignedBy: meUid, createdAt: Date.now(),
+      active: esPrimera
+    });
+    msg.innerHTML = '<div class="msg msg-ok">'+
+      (esPrimera ? 'Rutina asignada y activada ✓' : 'Rutina asignada (no queda activa todavía) ✓')+
+      '</div>';
+    document.getElementById('asignar-nombre-rutina').value = '';
+    document.getElementById('asignar-json').value = '';
+  }catch(e){
+    console.error('[entrenador] no se pudo asignar la rutina', e);
+    msg.innerHTML = '<div class="msg msg-err">No se pudo asignar: '+(e.code||e.message)+'</div>';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = txt;
+  }
 };
 
 /* Reemplaza el contenido de la cuenta por el de este dispositivo. */
