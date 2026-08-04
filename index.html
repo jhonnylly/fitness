@@ -104,11 +104,17 @@ textarea{resize:vertical;min-height:60px;}
 .msg-err{background:rgba(230,63,31,0.1);color:var(--accent);}
 .msg-ok{background:rgba(45,122,79,0.1);color:var(--green);}
 .msg-info{background:var(--surface);color:var(--muted);}
-/* No hay una .hidden genérica en este fichero: las que existen son por
-   componente y animan con transform (.routine-panel.hidden, .onboarding.hidden).
-   Se acota a los hijos del panel para no romper esas transiciones. El propio
-   #auth-panel no es descendiente de sí mismo, así que sigue deslizándose. */
+/* No hay una .hidden genérica en este fichero, y no puede haberla: los paneles
+   se ocultan con transform (.routine-panel.hidden, .onboarding.hidden) y un
+   display:none global les mataría la transición. Así que cada sitio que use
+   class="hidden" para ocultar de verdad tiene que declararlo aquí.
+   #auth-panel se acota a sus hijos: el panel mismo no es descendiente de sí
+   mismo, así que sigue deslizándose.
+   OJO: olvidarlo no da error, solo deja el elemento visible para siempre. Le
+   pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
+   que se creó. */
 #auth-panel .hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden{display:none;}
 .auth-tabs{display:flex;gap:6px;margin-bottom:12px;}
 .auth-tabs button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
 .auth-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -474,6 +480,9 @@ textarea{resize:vertical;min-height:60px;}
       <span class="hc-sub" id="hc-med-sub"></span>
     </button>
   </div>
+  <!-- Solo para clientes: quién les entrena. Lo rellena pintarEntrenador(),
+       que aprovecha el hueco que quedaba bajo las tarjetas. -->
+  <div id="home-entrenador" class="card hidden" style="margin-top:10px;"></div>
 </div>
 
 <!-- REGISTRAR -->
@@ -3141,26 +3150,50 @@ function pintarSesion(user){
    permiten leer un perfil de entrenador por su id exacto (se añadió para
    validar invitaciones), así que no hace falta tocar Firestore. */
 async function pintarEntrenador(){
-  const el = $('mi-entrenador');
-  if(!el) return;
+  const enCuenta = $('mi-entrenador');
+  const enInicio = document.getElementById('home-entrenador');
+  const ocultar = () => {
+    [enCuenta, enInicio].forEach(el => { if(el){ el.classList.add('hidden'); el.innerHTML = ''; } });
+  };
+
   const soyCliente = meData && meData.role !== 'trainer';
-  if(!soyCliente || !meData.trainerId){
-    el.classList.add('hidden');
-    el.textContent = '';
-    return;
-  }
-  el.classList.remove('hidden');
-  el.textContent = 'Cargando tu entrenador...';
+  if(!soyCliente || !meData.trainerId) return ocultar();
+
+  // Una sola lectura para los dos sitios donde se enseña.
+  let nombre = '', foto = null;
   try{
     const snap = await getDoc(doc(fdb, 'users', meData.trainerId));
-    const nombre = snap.exists() ? (snap.data().name || '').trim() : '';
-    el.innerHTML = nombre
-      ? 'Tu entrenador: <b style="color:var(--text);">' + escaparHTML(nombre) + '</b>'
-      : 'Tienes un entrenador asignado.';
+    if(snap.exists()){
+      nombre = (snap.data().name || '').trim();
+      foto = snap.data().profilePic || null;
+    }
   }catch(e){
-    // No es un error que merezca ruido: el resto de la cuenta funciona igual.
+    // No merece ruido: el resto de la app funciona igual sin esto.
     console.error('[cuenta] no se pudo leer el perfil del entrenador', e);
-    el.textContent = 'Tienes un entrenador asignado.';
+  }
+
+  const iniciales = (nombre || '?').trim().split(/\s+/).slice(0,2)
+    .map(p => p[0] || '').join('').toUpperCase() || '?';
+  const avatar = foto
+    ? `<img class="cliente-avatar" src="${escaparHTML(foto)}" alt="">`
+    : `<div class="cliente-avatar sin-foto">${escaparHTML(iniciales)}</div>`;
+
+  if(enCuenta){
+    enCuenta.classList.remove('hidden');
+    enCuenta.innerHTML = `<div class="fila-cliente">${avatar}
+      <div style="min-width:0;">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Tu entrenador</div>
+        <div style="font-size:14px;font-weight:700;">${escaparHTML(nombre || 'Asignado')}</div>
+      </div></div>`;
+  }
+  if(enInicio){
+    enInicio.classList.remove('hidden');
+    enInicio.innerHTML = `<div class="fila-cliente">${avatar}
+      <div style="min-width:0;">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Tu entrenador</div>
+        <div style="font-size:15px;font-weight:800;">${escaparHTML(nombre || 'Asignado')}</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Prepara tus rutinas y sigue tu progreso.</div>
+      </div></div>`;
   }
 }
 
