@@ -293,6 +293,9 @@ textarea{resize:vertical;min-height:60px;}
 
     <!-- Estado: con sesión -->
     <div id="auth-logged-in" class="hidden">
+      <!-- Llegar por un enlace de invitación teniendo ya sesión abierta: sin
+           esto el enlace se traga en silencio y parece que no ha hecho nada. -->
+      <div id="aviso-invitacion-sesion" class="msg msg-info hidden"></div>
       <div class="card">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Sesión iniciada</div>
         <div id="me-name" style="font-size:18px;font-weight:800;margin-top:4px;">—</div>
@@ -3030,6 +3033,21 @@ function pintarSesion(user){
     $('me-email').textContent = user.email || '';
     $('me-role').textContent  = meData.role === 'trainer' ? 'Entrenador' : 'Cliente';
   }
+  /* Una invitación es para una cuenta NUEVA. Quien la abre ya con sesión
+     abierta (el propio entrenador probando su enlace, o un cliente que ya
+     tiene cuenta) no puede usarla sin salir antes, y hay que decírselo: si
+     no, la app se limita a enseñar su cuenta y el enlace parece roto. */
+  const avisoInv = $('aviso-invitacion-sesion');
+  if(avisoInv){
+    const mostrar = dentro && !!codigoInvitacion;
+    avisoInv.classList.toggle('hidden', !mostrar);
+    if(mostrar){
+      avisoInv.textContent = 'Has abierto un enlace de invitación, pero ya tienes '
+        + 'la sesión de ' + (user.email || 'otra cuenta') + ' abierta. Una invitación '
+        + 'sirve para crear una cuenta nueva: cierra sesión aquí abajo y vuelve a '
+        + 'abrir el enlace.';
+    }
+  }
   pintarModoEntrenador();
 }
 
@@ -3343,7 +3361,7 @@ function vigilarClientes(){
 
     const c = document.getElementById('clientes-lista');
     if(qs.empty){
-      c.textContent = 'Todavía no tienes clientes vinculados. Pásales tu código de arriba.';
+      c.textContent = 'Todavía no tienes clientes vinculados. Créales un enlace de invitación aquí arriba.';
       return;
     }
     c.innerHTML = '';
