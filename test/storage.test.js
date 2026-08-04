@@ -42,6 +42,7 @@ const puente = `
   STORAGE, StorageLocal, save, saveEstricto, load, storageAvailable,
   planParaFirestore, planDesdeFirestore, buscarArraysAnidados,
   resumenDB, textoResumen, firmaDB, mismosDatos, diagnosticarSubida,
+  fotosARecomprimir, LIMITE_FOTO,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -228,6 +229,29 @@ const ok = (cond, msg) => {
   const falta = dg({ routines: [rut('a', 'Fuerza'), rut('b', 'Glúteo')] }, { routines: [rut('a')] });
   ok(/no llegaron 1/.test(falta) && /Glúteo/.test(falta),
      'una rutina que no llegó se nombra por su nombre (' + falta + ')');
+
+  console.log('\n12c. Qué fotos hay que recomprimir');
+  const grande = 'd'.repeat(600 * 1024);   // ~600 KB de base64
+  const chica  = 'd'.repeat(50 * 1024);
+  const conFotos = {
+    routines: [
+      { id: 'r1', photos: { before: { url: grande }, after: { url: chica } } },
+      { id: 'r2', photos: {} },
+      { id: 'r3' },
+    ],
+    profilePic: grande,
+  };
+  const aRec = app.fotosARecomprimir(conFotos, app.LIMITE_FOTO);
+  ok(aRec.length === 2, 'detecta solo las que superan el límite (' + aRec.length + ')');
+  ok(aRec.some(f => f.rutina === 'r1' && f.tipo === 'before'), 'señala la foto de progreso grande');
+  ok(aRec.some(f => f.tipo === 'profilePic'), 'la foto de perfil también cuenta (va en la cabecera del doc)');
+  ok(!aRec.some(f => f.tipo === 'after'), 'una foto pequeña no se toca');
+  ok(app.fotosARecomprimir({ routines: [] }, app.LIMITE_FOTO).length === 0, 'sin fotos no hay nada que hacer');
+  ok(app.fotosARecomprimir(null, app.LIMITE_FOTO).length === 0, 'una DB nula no revienta');
+  // El caso real de Jhon: rutina de 1,33 MB por las fotos.
+  const real = { routines: [{ id: 'r_x', name: 'Definición Jhon', photos: { before: { url: 'd'.repeat(700*1024) }, after: { url: 'd'.repeat(630*1024) } }, sessions: {}, medidas: [] }] };
+  ok(app.fotosARecomprimir(real, app.LIMITE_FOTO).length === 2,
+     'el caso que bloqueaba la subida se detecta entero');
 
   console.log('\n13. window.cargaInicial gatea el arranque');
   // El módulo de Firebase espera esta promesa antes de preguntar "¿hay datos

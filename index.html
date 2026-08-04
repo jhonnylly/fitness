@@ -1282,6 +1282,107 @@ function firmaDB(db){
 
 function mismosDatos(a,b){ return firmaDB(a)===firmaDB(b); }
 
+/* ─────────── Imágenes ───────────
+   Entraban tal cual salían de la cámara: readAsDataURL sobre un JPEG de móvil
+   son 3-5 MB, y base64 le suma otro ~33%. Con dos fotos de progreso el
+   documento de la rutina se pasaba del límite de 1 MiB de Firestore y
+   bloqueaba la subida de TODO el historial, que sin fotos son 11 KB.
+   Se redimensiona y se reencoda antes de guardar. */
+/* "objetivo" es un presupuesto de tamaño, no una sugerencia: bajar calidad a
+   ojo no basta porque hay imágenes que apenas comprimen, y una foto que se
+   quedara por encima de LIMITE_FOTO se recomprimiría en cada arranque sin
+   llegar nunca a bajar. Por eso objetivo < LIMITE_FOTO siempre. */
+const FOTO_PROGRESO={lado:1200,calidad:0.8,objetivo:300*1024};  // se ve a ancho completo
+const FOTO_PERFIL={lado:400,calidad:0.8,objetivo:120*1024};     // recuadro de 90px
+const LIMITE_FOTO=400*1024;                                     // por encima, recomprimir
+
+function dibujarJPEG(img,lado,calidad){
+  const escala=Math.min(1,lado/Math.max(img.width,img.height));
+  const w=Math.max(1,Math.round(img.width*escala));
+  const h=Math.max(1,Math.round(img.height*escala));
+  const cv=document.createElement('canvas');
+  cv.width=w;cv.height=h;
+  cv.getContext('2d').drawImage(img,0,0,w,h);
+  // Siempre JPEG: un PNG de cámara no comprime, que es justo lo que hay que
+  // evitar. Las fotos de progreso no necesitan transparencia.
+  return cv.toDataURL('image/jpeg',calidad);
+}
+
+function comprimirImagen(origen,opts){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      let lado=opts.lado,calidad=opts.calidad,salida=dibujarJPEG(img,lado,calidad);
+      /* Una foto normal entra a la primera. Esto es el seguro para las que
+         comprimen mal: primero se baja calidad, y solo cuando ya está baja se
+         empieza a recortar resolución, que es lo que más se nota. */
+      for(let i=0;i<6&&salida.length>opts.objetivo;i++){
+        if(calidad>0.45)calidad-=0.15;
+        else lado=Math.round(lado*0.75);
+        salida=dibujarJPEG(img,lado,calidad);
+      }
+      resolve(salida);
+    };
+    img.onerror=()=>reject(new Error('no se pudo leer la imagen'));
+    img.src=origen;
+  });
+}
+
+function leerYComprimir(file,opts){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=ev=>comprimirImagen(ev.target.result,opts).then(resolve,reject);
+    reader.onerror=()=>reject(new Error('no se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/* Qué imágenes ya guardadas hay que recomprimir (las que entraron antes de
+   que se comprimiera al capturar). Pura a propósito: así se puede testear sin
+   canvas, que en Node no existe. */
+function fotosARecomprimir(db,limite){
+  const out=[];
+  for(const r of (db&&db.routines)||[]){
+    for(const tipo of Object.keys(r.photos||{})){
+      const foto=r.photos[tipo];
+      if(foto&&typeof foto.url==='string'&&foto.url.length>limite){
+        out.push({rutina:r.id,tipo,tam:foto.url.length});
+      }
+    }
+  }
+  if(db&&typeof db.profilePic==='string'&&db.profilePic.length>limite){
+    out.push({rutina:null,tipo:'profilePic',tam:db.profilePic.length});
+  }
+  return out;
+}
+
+/* Recomprime en el dispositivo lo que ya estaba guardado en grande, para que
+   pueda subir sin que el usuario tenga que rehacer sus fotos. */
+async function recomprimirFotosAntiguas(){
+  const pendientes=fotosARecomprimir(DB,LIMITE_FOTO);
+  if(!pendientes.length)return 0;
+  let hechas=0;
+  for(const p of pendientes){
+    try{
+      if(p.tipo==='profilePic'){
+        DB.profilePic=await comprimirImagen(DB.profilePic,FOTO_PERFIL);
+      }else{
+        const r=(DB.routines||[]).find(x=>x.id===p.rutina);
+        if(!r||!r.photos||!r.photos[p.tipo])continue;
+        r.photos[p.tipo].url=await comprimirImagen(r.photos[p.tipo].url,FOTO_PROGRESO);
+      }
+      hechas++;
+    }catch(e){
+      console.error('[fotos] no se pudo recomprimir',p,e);
+    }
+  }
+  if(hechas){
+    console.log('[fotos] recomprimidas '+hechas+' imagen(es) que superaban el límite');
+    save();
+  }
+  return hechas;
+}
+
 /* Los nombres de cliente los escribe otra persona y se pintan con innerHTML
    para poder montar la tarjeta de una vez. Escapar no es opcional. */
 function escaparHTML(s){
@@ -1526,13 +1627,14 @@ function getActivePlan(){
 
 function saveProfilePic(input){
   const file=input.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    DB.profilePic=ev.target.result;
+  leerYComprimir(file,FOTO_PERFIL).then(dataUrl=>{
+    DB.profilePic=dataUrl;
     save();
     renderProfilePic();
-  };
-  reader.readAsDataURL(file);
+  }).catch(e=>{
+    console.error('[fotos] no se pudo procesar la foto de perfil',e);
+    alert('No se pudo procesar esa imagen. Prueba con otra.');
+  });
 }
 
 function renderProfilePic(){
@@ -1588,6 +1690,11 @@ async function load(){
     updateHeaderRoutine();
     renderProfilePic();
     renderProfileName();
+    /* En segundo plano: las fotos guardadas antes de que se comprimiera al
+       capturar impiden subir la rutina entera (límite de 1 MiB por documento
+       de Firestore). Se recomprimen aquí para que el usuario no tenga que
+       rehacerlas. No se espera: no debe retrasar el arranque. */
+    recomprimirFotosAntiguas().then(n=>{ if(n) renderProfilePic(); });
   }
 }
 function calcStreak(){
@@ -2234,17 +2341,18 @@ function renderMedidasChart(){
 function savePhoto(type,input){
   const file=input.files[0];if(!file)return;
   const act=getActive();if(!act)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
+  leerYComprimir(file,FOTO_PROGRESO).then(dataUrl=>{
     if(!act.photos)act.photos={};
     act.photos[type]={
-      url:ev.target.result,
+      url:dataUrl,
       date:new Date().toLocaleDateString('es-ES')
     };
     save();
     renderPhotos();
-  };
-  reader.readAsDataURL(file);
+  }).catch(e=>{
+    console.error('[fotos] no se pudo procesar la foto de progreso',e);
+    alert('No se pudo procesar esa imagen. Prueba con otra.');
+  });
 }
 
 function deletePhoto(type){
@@ -2462,13 +2570,14 @@ function showOnboarding(){
 
 function obSetPhoto(input){
   const file=input.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    obPhotoData=ev.target.result;
+  leerYComprimir(file,FOTO_PERFIL).then(dataUrl=>{
+    obPhotoData=dataUrl;
     const av=document.getElementById('ob-avatar');
     av.innerHTML=`<img src="${obPhotoData}">`;
-  };
-  reader.readAsDataURL(file);
+  }).catch(e=>{
+    console.error('[fotos] no se pudo procesar la foto del onboarding',e);
+    alert('No se pudo procesar esa imagen. Prueba con otra.');
+  });
 }
 
 function renderObRoutineList(){
