@@ -248,6 +248,9 @@ textarea{resize:vertical;min-height:60px;}
         <button id="account-btn" onclick="toggleAuthPanel()" style="padding:6px 10px;background:rgba(255,255,255,0.08);border:1px dashed rgba(255,255,255,0.3);border-radius:var(--radius-sm);color:rgba(255,255,255,0.75);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-align:left;white-space:nowrap;width:fit-content;">
           ☁️ Cuenta
         </button>
+        <button id="config-btn" onclick="toggleConfigPanel()" style="padding:6px 10px;background:rgba(255,255,255,0.08);border:1px dashed rgba(255,255,255,0.3);border-radius:var(--radius-sm);color:rgba(255,255,255,0.75);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-align:left;white-space:nowrap;width:fit-content;">
+          ⚙️ Ajustes
+        </button>
       </div>
     </div>
     <div style="flex-shrink:0;">
@@ -421,6 +424,58 @@ textarea{resize:vertical;min-height:60px;}
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Versión</div>
       <div style="font-size:13px;margin-top:4px;" id="version-txt">—</div>
       <div id="version-aviso"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════ Ajustes ═══════════ -->
+<div id="config-panel" class="routine-panel hidden">
+  <div class="routine-panel-header">
+    <h2>AJUSTES</h2>
+    <button class="btn-sm" onclick="toggleConfigPanel()">✕ Cerrar</button>
+  </div>
+  <div style="padding:12px;flex:1;overflow-y:auto;">
+
+    <div class="card">
+      <div class="section-title">Tus datos</div>
+      <label>Altura (cm)</label>
+      <input type="text" inputmode="numeric" id="cfg-altura" placeholder="175" onchange="guardarAltura(this.value)">
+      <!-- El peso NO se escribe aquí: se registra por semana en Medidas y
+           alimenta la gráfica. Dos sitios para el mismo dato se contradicen. -->
+      <div style="margin-top:10px;font-size:12px;color:var(--muted);">
+        Peso: <b id="cfg-peso" style="color:var(--text);">—</b>
+        <a href="#" onclick="irAMedidas();return false;" style="color:var(--accent);font-weight:700;margin-left:6px;">Registrar en Medidas</a>
+      </div>
+      <div id="cfg-imc" style="margin-top:6px;font-size:12px;color:var(--muted);"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Días de entrenamiento</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
+        Tu rutina tiene ahora <b id="cfg-dias-actual" style="color:var(--text);">—</b> días por semana.
+        Cambiarlo reorganiza las semanas que <b>todavía no has empezado</b>; lo
+        ya entrenado no se toca.
+      </div>
+      <label>Días por semana</label>
+      <select id="cfg-dias">
+        <option value="1">1 día</option><option value="2">2 días</option>
+        <option value="3">3 días</option><option value="4">4 días</option>
+        <option value="5">5 días</option><option value="6">6 días</option>
+        <option value="7">7 días</option>
+      </select>
+      <div id="cfg-dias-msg"></div>
+      <button class="btn btn-primary" id="cfg-dias-btn" onclick="proponerCambioDias()">Ver cómo quedaría</button>
+    </div>
+
+    <!-- Propuesta editable antes de aplicar nada -->
+    <div class="card hidden" id="cfg-propuesta">
+      <div class="section-title">Así quedarían tus semanas</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;" id="cfg-propuesta-info"></div>
+      <div id="cfg-propuesta-lista"></div>
+      <div id="cfg-aplicar-msg"></div>
+      <button class="btn btn-primary" onclick="aplicarCambioDias()">Aplicar a las semanas sin empezar</button>
+      <button class="btn btn-secondary" onclick="cancelarCambioDias()">Cancelar</button>
     </div>
 
   </div>
@@ -1350,7 +1405,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-04 22:45';
+const APP_VERSION='2026-08-04 23:20';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2130,6 +2185,22 @@ function closeForm(){
   if(act)openWeekDetail(getCurrentWeekNum());
 }
 
+/* Semana en curso (vive en el script CLÁSICO a propósito: la usan tanto la app
+   como el módulo, y el módulo puede llamar al clásico pero no al revés).
+   Semana en curso: la que contiene la primera sesión sin registrar, mismo
+   criterio que "Próxima: S…" de la pantalla de Inicio. Si están todas hechas,
+   la última. Es la que interesa por defecto: revisar el plan entero es la
+   excepción, no lo normal. */
+function semanaEnCurso(r){
+  for(const sem of (r.plan || [])){
+    for(const d of (sem.days || [])){
+      if(!(r.sessions || {})[d.s]) return sem.num;
+    }
+  }
+  const ultima = (r.plan || [])[(r.plan || []).length - 1];
+  return ultima ? ultima.num : null;
+}
+
 function getCurrentWeekNum(){
   const plan=getActivePlan();
   const sessions=getActiveSessions();
@@ -2492,6 +2563,232 @@ async function comprobarVersionNueva(){
 function recargarUltimaVersion(){
   location.replace(location.pathname+'?v='+Date.now());
 }
+
+/* ═══════════ Ajustes ═══════════ */
+
+function toggleConfigPanel(){
+  const p=document.getElementById('config-panel');
+  p.classList.toggle('hidden');
+  if(!p.classList.contains('hidden'))pintarConfig();
+}
+
+function irAMedidas(){
+  document.getElementById('config-panel').classList.add('hidden');
+  goTo('medidas');
+}
+
+function guardarAltura(v){
+  const n=parseFloat(String(v).replace(',','.'));
+  DB.altura=isNaN(n)?null:n;
+  save();
+  pintarConfig();
+}
+
+/* El peso vive en las medidas semanales, no aquí: se muestra el último para
+   poder calcular el IMC, pero se registra en su sitio. */
+function ultimoPeso(){
+  const med=(getActive()&&getActive().medidas)||[];
+  for(let i=med.length-1;i>=0;i--){ if(med[i].peso!=null)return med[i]; }
+  return null;
+}
+
+/* Cuántos días por semana entrenas "a partir de ahora". Se mira la primera
+   semana SIN empezar, no la que estás haciendo: el cambio solo afecta a las no
+   empezadas, así que si dijéramos la cadencia de la semana en curso, tras un
+   cambio seguiría diciendo el número viejo y parecería que no se aplicó. */
+function diasPorSemanaActuales(){
+  const act=getActive();
+  const plan=(act&&act.plan)||[];
+  if(!plan.length)return 0;
+  const virgen=semanasSinEmpezar()[0];
+  if(virgen)return (virgen.days||[]).length;
+  const num=semanaEnCurso(act);
+  const sem=plan.find(w=>w.num===num)||plan[plan.length-1];
+  return (sem.days||[]).length;
+}
+
+function pintarConfig(){
+  const alt=document.getElementById('cfg-altura');
+  if(alt)alt.value=DB.altura||'';
+  const p=ultimoPeso();
+  const elPeso=document.getElementById('cfg-peso');
+  if(elPeso)elPeso.textContent=p?(p.peso+' kg · semana '+p.semana):'sin registrar';
+
+  const imc=document.getElementById('cfg-imc');
+  if(imc){
+    if(p&&DB.altura){
+      const m=DB.altura/100;
+      imc.textContent='IMC '+(p.peso/(m*m)).toFixed(1)+' (orientativo: no distingue músculo de grasa)';
+    }else{
+      imc.textContent='';
+    }
+  }
+
+  const dias=diasPorSemanaActuales();
+  const elAct=document.getElementById('cfg-dias-actual');
+  if(elAct)elAct.textContent=dias||'—';
+  const sel=document.getElementById('cfg-dias');
+  if(sel&&dias)sel.value=String(dias);
+  cancelarCambioDias();
+}
+
+/* ── Cambiar los días por semana ──
+   Reorganizar el plan es delicado: el historial se guarda por el id de sesión
+   (`s`), así que tocar una semana ya entrenada dejaría registros apuntando a
+   días que ya no existen. Por eso SOLO se reconstruyen las semanas sin ninguna
+   sesión registrada; las empezadas se quedan como están. */
+let propuestaDias=null;   // [{nombre, tipo, ex:[[nombre,esquema],...]}, ...]
+
+function semanasSinEmpezar(){
+  const act=getActive();
+  if(!act)return [];
+  return (act.plan||[]).filter(w =>
+    !(w.days||[]).some(d => (act.sessions||{})[d.s]));
+}
+
+/* Propuesta de reparto: se agrupan las sesiones actuales en N bloques
+   consecutivos y cada bloque se funde en una sesión. Es lo más explicable —
+   "he juntado las que iban seguidas"— y respeta el orden en que estaban
+   pensadas. Si se pide MÁS días de los que hay, se añaden sesiones vacías
+   para rellenar a mano. */
+function repartirSesiones(dias, destino){
+  const origen=dias.map(d=>({
+    nombre:(d.name||'').replace(/^S\d+\s*·\s*/,''),
+    tipo:d.type||'',
+    ex:(d.ex||[]).map(e=>Array.isArray(e)?[e[0],e[1]]:[e.name,e.scheme])
+  }));
+  if(!origen.length)return [];
+
+  if(destino>=origen.length){
+    const out=origen.slice();
+    while(out.length<destino)out.push({nombre:'Nueva sesión',tipo:'',ex:[]});
+    return out;
+  }
+
+  // Repartir en bloques lo más iguales posible, respetando el orden.
+  const out=[];
+  let i=0;
+  for(let b=0;b<destino;b++){
+    const restantes=origen.length-i;
+    const bloques=destino-b;
+    const cuantas=Math.ceil(restantes/bloques);
+    const trozo=origen.slice(i,i+cuantas);
+    i+=cuantas;
+    out.push({
+      nombre:trozo.map(t=>t.nombre).join(' + '),
+      tipo:trozo.map(t=>t.tipo).filter(Boolean).join('+'),
+      ex:trozo.flatMap(t=>t.ex)
+    });
+  }
+  return out;
+}
+
+window.proponerCambioDias=function(){
+  const act=getActive();
+  const msg=document.getElementById('cfg-dias-msg');
+  msg.innerHTML='';
+  cancelarCambioDias();   // una propuesta vieja en pantalla confunde más que ayuda
+  if(!act){ msg.innerHTML='<div class="msg msg-err">No hay ninguna rutina activa.</div>'; return; }
+
+  const destino=parseInt(document.getElementById('cfg-dias').value);
+  const actuales=diasPorSemanaActuales();
+  if(destino===actuales){
+    msg.innerHTML='<div class="msg msg-info">Ya entrenas '+destino+' días por semana.</div>';
+    return;
+  }
+  const sinEmpezar=semanasSinEmpezar();
+  if(!sinEmpezar.length){
+    msg.innerHTML='<div class="msg msg-err">Todas tus semanas tienen sesiones registradas, '+
+      'así que no hay ninguna que reorganizar sin tocar tu historial. '+
+      'Añade una semana nueva o crea otra rutina.</div>';
+    return;
+  }
+
+  const num=semanaEnCurso(act);
+  const modelo=(act.plan.find(w=>w.num===num)||act.plan[act.plan.length-1]).days||[];
+  propuestaDias=repartirSesiones(modelo,destino);
+  document.getElementById('cfg-propuesta-info').innerHTML=
+    'Se aplicará a <b>'+sinEmpezar.length+' semana'+(sinEmpezar.length===1?'':'s')+'</b> sin empezar '+
+    '(la '+sinEmpezar.map(w=>w.num).join(', la ')+'). Puedes renombrar cada sesión '+
+    'y mover ejercicios antes de aplicar.';
+  pintarPropuesta();
+  document.getElementById('cfg-propuesta').classList.remove('hidden');
+  document.getElementById('cfg-propuesta').scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+
+function pintarPropuesta(){
+  const c=document.getElementById('cfg-propuesta-lista');
+  if(!propuestaDias){ c.innerHTML=''; return; }
+  c.innerHTML=propuestaDias.map((s,i)=>`
+    <div class="card" style="background:var(--surface);margin-bottom:8px;">
+      <label>Sesión ${i+1}</label>
+      <input type="text" value="${escaparHTML(s.nombre)}" onchange="renombrarPropuesta(${i},this.value)">
+      <div style="margin-top:8px;">
+        ${s.ex.length?s.ex.map((e,j)=>`
+          <div class="plan-linea" style="align-items:center;gap:6px;">
+            <span style="flex:1;">${escaparHTML(e[0])} <span class="plan-esquema">${escaparHTML(e[1]||'')}</span></span>
+            <select onchange="moverEjercicioPropuesta(${i},${j},this.value)" style="width:auto;padding:4px 6px;font-size:11px;margin:0;">
+              ${propuestaDias.map((_,k)=>`<option value="${k}"${k===i?' selected':''}>Sesión ${k+1}</option>`).join('')}
+            </select>
+            <button class="btn-sm btn-danger" onclick="quitarEjercicioPropuesta(${i},${j})">×</button>
+          </div>`).join('')
+        :'<div style="font-size:12px;color:var(--muted);">Sin ejercicios. Mueve alguno aquí o quedará vacía.</div>'}
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">${s.ex.length} ejercicio${s.ex.length===1?'':'s'}</div>
+    </div>`).join('');
+}
+
+window.renombrarPropuesta=function(i,v){ propuestaDias[i].nombre=v.trim()||('Sesión '+(i+1)); };
+window.quitarEjercicioPropuesta=function(i,j){ propuestaDias[i].ex.splice(j,1); pintarPropuesta(); };
+window.moverEjercicioPropuesta=function(i,j,destino){
+  const d=parseInt(destino);
+  if(d===i)return;
+  const [ex]=propuestaDias[i].ex.splice(j,1);
+  propuestaDias[d].ex.push(ex);
+  pintarPropuesta();
+};
+
+window.cancelarCambioDias=function(){
+  propuestaDias=null;
+  const p=document.getElementById('cfg-propuesta');
+  if(p)p.classList.add('hidden');
+  const m=document.getElementById('cfg-aplicar-msg');
+  if(m)m.innerHTML='';
+};
+
+window.aplicarCambioDias=function(){
+  const act=getActive();
+  const msg=document.getElementById('cfg-aplicar-msg');
+  if(!act||!propuestaDias)return;
+  if(propuestaDias.every(s=>!s.ex.length)){
+    msg.innerHTML='<div class="msg msg-err">Todas las sesiones quedarían vacías.</div>';
+    return;
+  }
+  const sinEmpezar=semanasSinEmpezar();
+  // Ids nuevos por encima de todos los existentes: reutilizar uno reviviría
+  // el registro de otra sesión.
+  let siguienteId=0;
+  (act.plan||[]).forEach(w=>(w.days||[]).forEach(d=>{ if(d.s>siguienteId)siguienteId=d.s; }));
+  Object.keys(act.sessions||{}).forEach(k=>{ const n=parseInt(k); if(n>siguienteId)siguienteId=n; });
+
+  sinEmpezar.forEach(w=>{
+    w.days=propuestaDias.map((s,i)=>({
+      s:++siguienteId,
+      name:'S'+(i+1)+' · '+s.nombre,
+      type:s.tipo||'',
+      ex:s.ex.map(e=>[e[0],e[1]||''])
+    }));
+  });
+  save();
+  cancelarCambioDias();
+  pintarConfig();
+  buildSessionList();
+  renderWeekButtons();
+  updateHome();
+  document.getElementById('cfg-dias-msg').innerHTML=
+    '<div class="msg msg-ok">Listo: '+sinEmpezar.length+' semana'+(sinEmpezar.length===1?'':'s')+
+    ' reorganizada'+(sinEmpezar.length===1?'':'s')+'. Tu historial no se ha tocado.</div>';
+};
 
 function toggleAuthPanel(){
   const p=document.getElementById('auth-panel');
@@ -3544,7 +3841,8 @@ const StorageFirestore = {
       routines,
       activeRoutine: cab.activeRoutine || null,
       profileName: cab.profileName || cab.name || '',
-      profilePic: cab.profilePic || null
+      profilePic: cab.profilePic || null,
+      altura: cab.altura != null ? cab.altura : null
     };
   },
 
@@ -3555,7 +3853,8 @@ const StorageFirestore = {
     const cabecera = {
       activeRoutine: db.activeRoutine || null,
       profileName: db.profileName || '',
-      profilePic: db.profilePic || null
+      profilePic: db.profilePic || null,
+      altura: db.altura != null ? db.altura : null
     };
     comprobarApto(cabecera, 'Perfil');
     await setDoc(doc(fdb, 'users', user.uid), cabecera, { merge: true });
@@ -4056,20 +4355,6 @@ window.cerrarDetalleCliente = function(){
    rutina, que es un derivado y puede quedar temporalmente descuadrado. */
 function esRutinaActiva(r){
   return detalle.activa ? r.id === detalle.activa : !!r.active;
-}
-
-/* Semana en curso: la que contiene la primera sesión sin registrar, mismo
-   criterio que "Próxima: S…" de la pantalla de Inicio. Si están todas hechas,
-   la última. Es la que interesa por defecto: revisar el plan entero es la
-   excepción, no lo normal. */
-function semanaEnCurso(r){
-  for(const sem of (r.plan || [])){
-    for(const d of (sem.days || [])){
-      if(!(r.sessions || {})[d.s]) return sem.num;
-    }
-  }
-  const ultima = (r.plan || [])[(r.plan || []).length - 1];
-  return ultima ? ultima.num : null;
 }
 
 window.verSemanaDetalle = function(num){ detalle.semana = parseInt(num); detalle.editando = null; pintarDetalle(); };
