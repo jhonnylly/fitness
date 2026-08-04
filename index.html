@@ -65,6 +65,10 @@ body.modo-clientes #pane-clientes{display:block;}
 .otra-rutina{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:6px 0;border-top:1px solid var(--border);}
 .fila-check{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;cursor:pointer;}
 .fila-check input{width:auto;margin:0;flex-shrink:0;}
+.sem-selector{display:flex;gap:5px;flex-wrap:wrap;}
+.sem-btn{min-width:34px;padding:7px 4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+.sem-btn.completa{color:var(--green);border-color:rgba(45,122,79,0.4);}
+.sem-btn.elegida{background:var(--accent);border-color:var(--accent);color:#fff;}
 .client-name{font-size:14px;font-weight:700;}
 .client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
@@ -3660,11 +3664,11 @@ function vigilarInvitaciones(){
    tocan aquí: son del entrenador y apuntarlos al cliente es como se perdieron
    datos reales el 04/08/2026. */
 
-let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, unsub:null };
+let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, semana:null, unsub:null, activa:null };
 
 window.verDetalleCliente = function(uid, nombre, activeRoutine){
   detalle = { uid, nombre: nombre || 'Cliente', rutinas:[], viendo:null, ejercicio:null,
-              unsub:null, activa: activeRoutine || null };
+              semana:null, unsub:null, activa: activeRoutine || null };
   document.getElementById('detalle-titulo').textContent = (nombre || 'Cliente').toUpperCase();
   document.getElementById('detalle-cuerpo').innerHTML =
     '<div class="card"><p style="font-size:13px;color:var(--muted);">Cargando...</p></div>';
@@ -3685,6 +3689,7 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
       const activa = detalle.rutinas.find(r => esRutinaActiva(r));
       detalle.viendo = (activa || detalle.rutinas[0] || {}).id || null;
       detalle.ejercicio = null;
+      detalle.semana = null;
     }
     pintarDetalle();
   }, err => {
@@ -3705,7 +3710,25 @@ function esRutinaActiva(r){
   return detalle.activa ? r.id === detalle.activa : !!r.active;
 }
 
-window.verRutinaDetalle = function(id){ detalle.viendo = id; detalle.ejercicio = null; pintarDetalle(); };
+/* Semana en curso: la que contiene la primera sesión sin registrar, mismo
+   criterio que "Próxima: S…" de la pantalla de Inicio. Si están todas hechas,
+   la última. Es la que interesa por defecto: revisar el plan entero es la
+   excepción, no lo normal. */
+function semanaEnCurso(r){
+  for(const sem of (r.plan || [])){
+    for(const d of (sem.days || [])){
+      if(!(r.sessions || {})[d.s]) return sem.num;
+    }
+  }
+  const ultima = (r.plan || [])[(r.plan || []).length - 1];
+  return ultima ? ultima.num : null;
+}
+
+window.verSemanaDetalle = function(num){ detalle.semana = parseInt(num); pintarDetalle(); };
+
+window.verRutinaDetalle = function(id){
+  detalle.viendo = id; detalle.ejercicio = null; detalle.semana = null; pintarDetalle();
+};
 window.verEjercicioDetalle = function(nombre){ detalle.ejercicio = nombre || null; pintarDetalle(); };
 
 /* Todos los ejercicios que aparecen en el plan, en orden y sin repetir: son
@@ -3774,28 +3797,7 @@ function pintarDetalle(){
     <div style="font-size:11px;color:var(--muted);margin-top:4px;opacity:.7;">${escaparHTML(origenRutina(r))}</div>
   </div>`);
 
-  // Plan semana a semana, marcando lo registrado
-  const semanas = (r.plan || []).map(sem => {
-    const dias = (sem.days || []).map(d => {
-      const ses = (r.sessions || {})[d.s];
-      const hecha = !!ses;
-      const detalleSesion = hecha ? pintarSesionCliente(d, ses) : '';
-      return `<div class="week-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12.5px;">${escaparHTML(d.name || ('S'+d.s))}</span>
-          <span class="badge ${hecha?'badge-green':'badge-accent'}">${hecha ? escaparHTML(ses.date||'hecha') : 'pendiente'}</span>
-        </div>
-        ${detalleSesion}
-      </div>`;
-    }).join('');
-    return `<details style="margin-bottom:6px;">
-      <summary style="cursor:pointer;font-size:13px;font-weight:700;padding:6px 0;">
-        Semana ${sem.num} · ${escaparHTML(sem.title||'')}
-      </summary>${dias}</details>`;
-  }).join('');
-  partes.push(`<div class="card"><div class="section-title">Su plan</div>${semanas || '<p style="font-size:13px;color:var(--muted);">Esta rutina no tiene sesiones.</p>'}</div>`);
-
-  // Gráfica de cargas
+  // Gráfica de cargas — antes que el plan: es lo que se consulta a diario
   const ejercicios = ejerciciosDeRutina(r);
   if(ejercicios.length){
     const opciones = ejercicios.map(e =>
@@ -3806,6 +3808,43 @@ function pintarDetalle(){
         <option value="">Elige un ejercicio...</option>${opciones}
       </select>
       <div id="detalle-grafica-wrap" style="margin-top:10px;"></div>
+    </div>`);
+  }
+
+  /* Plan: una semana cada vez. Las ocho desplegables eran demasiado scroll en
+     el móvil, y lo que se mira casi siempre es la semana en curso. */
+  if(detalle.semana == null) detalle.semana = semanaEnCurso(r);
+  const enCurso = semanaEnCurso(r);
+  const sem = (r.plan || []).find(x => x.num === detalle.semana) || (r.plan || [])[0];
+  if(!sem){
+    partes.push('<div class="card"><div class="section-title">Su plan</div>'+
+      '<p style="font-size:13px;color:var(--muted);">Esta rutina no tiene sesiones.</p></div>');
+  }else{
+    const selector = (r.plan || []).map(x => {
+      const hechas = (x.days||[]).filter(d => (r.sessions||{})[d.s]).length;
+      const completa = hechas === (x.days||[]).length && hechas > 0;
+      return `<button class="sem-btn${x.num===sem.num?' elegida':''}${completa?' completa':''}"
+        data-n="${x.num}" onclick="verSemanaDetalle(this.dataset.n)"
+        title="${hechas}/${(x.days||[]).length} sesiones">${x.num}${x.num===enCurso?'·':''}</button>`;
+    }).join('');
+    const dias = (sem.days || []).map(d => {
+      const ses = (r.sessions || {})[d.s];
+      const hecha = !!ses;
+      return `<div class="week-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span style="font-size:12.5px;">${escaparHTML(d.name || ('S'+d.s))}</span>
+          <span class="badge ${hecha?'badge-green':'badge-accent'}">${hecha ? escaparHTML(ses.date||'hecha') : 'pendiente'}</span>
+        </div>
+        ${hecha ? pintarSesionCliente(d, ses) : ''}
+      </div>`;
+    }).join('');
+    partes.push(`<div class="card">
+      <div class="section-title">Su plan</div>
+      <div class="sem-selector">${selector}</div>
+      <div style="font-size:12px;color:var(--muted);margin:8px 0 6px;">
+        Semana ${sem.num} · ${escaparHTML(sem.title||'')}${sem.num===enCurso?' <span style="color:var(--accent);">· en curso</span>':''}
+      </div>
+      ${dias}
     </div>`);
   }
 
