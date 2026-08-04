@@ -3365,8 +3365,14 @@ function cerrarVigilancias(){
 
 /* Se vigilan TODAS las rutinas del cliente, no solo la activa: hace falta la
    lista completa para poder activar otra. La activa se pinta con su progreso;
-   el resto, como una lista compacta con botón. */
-function vigilarRutinasCliente(uid){
+   el resto, como una lista compacta con botón.
+
+   Cuál es la activa lo decide el activeRoutine del PERFIL, no el flag "active"
+   de cada rutina. Los flags son un derivado que el backend del cliente
+   reescribe en cada guardado, y pueden quedar temporalmente inconsistentes
+   —se han visto dos rutinas con active:true a la vez—, en cuyo caso fiarse de
+   ellos enseña una rutina que no es la que el cliente está entrenando. */
+function vigilarRutinasCliente(uid, activeRoutineDelPerfil){
   if(rutinaUnsubs[uid]) rutinaUnsubs[uid]();
   const q = collection(fdb,'users',uid,'routines');
   rutinaUnsubs[uid] = onSnapshot(q, qs => {
@@ -3374,7 +3380,10 @@ function vigilarRutinasCliente(uid){
     const elOtras = document.getElementById('cliente-rutinas-'+uid);
     if(!elProg || !elOtras) return;
 
-    const activa = qs.docs.find(d => d.data().active);
+    const esActiva = d => activeRoutineDelPerfil
+      ? d.id === activeRoutineDelPerfil
+      : !!d.data().active;          // sin perfil aún, el flag es lo único que hay
+    const activa = qs.docs.find(esActiva);
     if(!activa){
       elProg.textContent = qs.empty
         ? 'Sin rutinas asignadas'
@@ -3384,17 +3393,20 @@ function vigilarRutinasCliente(uid){
       elProg.innerHTML =
         `<b style="color:var(--text);">${escaparHTML(r.nombre)}</b> — ${r.hechas}/${r.total} sesiones (${r.pct}%)`+
         `<div class="prog-bar" style="margin:6px 0 4px;"><div class="prog-fill" style="width:${r.pct}%"></div></div>`+
-        `${escaparHTML(r.ultima)}`;
+        `${escaparHTML(r.ultima)}`+
+        // Un plan vacío no da error en ningún sitio: el cliente simplemente
+        // abre la app y no tiene nada que hacer. Hay que cantarlo.
+        (r.total === 0 ? '<div class="msg msg-err" style="margin-top:6px;">Esta rutina no tiene ninguna sesión: tu cliente no puede entrenar con ella. Asígnale otra.</div>' : '');
     }
 
-    const otras = qs.docs.filter(d => !d.data().active);
+    const otras = qs.docs.filter(d => !esActiva(d));
     if(!otras.length){ elOtras.innerHTML = ''; return; }
     elOtras.innerHTML = '<div class="client-meta" style="margin-top:8px;">Otras rutinas asignadas</div>';
     otras.forEach(d => {
       const r = resumenProgreso(d.data());
       elOtras.insertAdjacentHTML('beforeend', `
         <div class="otra-rutina">
-          <span>${escaparHTML(r.nombre)} <span style="opacity:.6;">· ${r.hechas}/${r.total}</span></span>
+          <span>${escaparHTML(r.nombre)} <span style="opacity:.6;">· ${r.hechas}/${r.total}</span>${r.total === 0 ? ' <span style="color:var(--accent);">· sin sesiones</span>' : ''}</span>
           <button class="btn-sm" data-uid="${escaparHTML(uid)}" data-rid="${escaparHTML(d.id)}"
             onclick="activarRutinaCliente(this.dataset.uid, this.dataset.rid)">Activar</button>
         </div>`);
@@ -3459,7 +3471,7 @@ function vigilarClientes(){
           </div>
           <div id="cliente-desv-${d.id}"></div>
         </div>`);
-      vigilarRutinasCliente(d.id);
+      vigilarRutinasCliente(d.id, cl.activeRoutine || null);
     });
   }, err => {
     document.getElementById('clientes-lista').textContent = 'Error leyendo tus clientes: ' + err.message;
