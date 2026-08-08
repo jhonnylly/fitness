@@ -296,6 +296,68 @@ const ok = (cond, msg) => {
 
   app.STORAGE.use(app.StorageLocal);
 
+  console.log('\n14. todo class="hidden" tiene quien lo oculte');
+  // No hay una .hidden genérica (rompería las transiciones por transform), así
+  // que cada elemento que la use necesita su propia regla. Olvidarla NO da
+  // error: deja el elemento visible para siempre. Ha pasado dos veces
+  // (#asignar-panel y #cfg-propuesta), las dos descubiertas de casualidad en
+  // producción. Esto es estático, no toca el DOM falso: mira el fichero.
+  const sinComentarios = src.replace(/<!--[\s\S]*?-->/g, '');
+  const css = (sinComentarios.match(/<style[^>]*>([\s\S]*?)<\/style>/) || [, ''])[1]
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // Selectores declarados que ocultan de verdad, partidos por la coma.
+  const reglas = [];
+  css.replace(/([^{}]+)\{[^{}]*\}/g, (_, sel) => {
+    sel.split(',').forEach(s => { if (/\.hidden\b/.test(s)) reglas.push(s.trim()); });
+    return '';
+  });
+
+  // Rango [inicio,fin) de un elemento por id, contando anidamiento de su tag.
+  const rangoDe = id => {
+    const abre = new RegExp(`<(\\w+)[^>]*\\bid="${id}"`);
+    const m = abre.exec(sinComentarios);
+    if (!m) return null;
+    const tag = m[1];
+    const trozos = new RegExp(`<${tag}\\b|</${tag}>`, 'g');
+    trozos.lastIndex = m.index;
+    let nivel = 0, t;
+    while ((t = trozos.exec(sinComentarios))) {
+      nivel += t[0][1] === '/' ? -1 : 1;
+      if (nivel === 0) return [m.index, t.index];
+    }
+    return null;
+  };
+
+  const cubre = (sel, id, clases, pos) => {
+    if (sel === '.hidden') return true;                       // genérica: no existe hoy
+    if (/^#([\w-]+)\s+\.hidden$/.test(sel)) {                 // #padre .hidden
+      const r = rangoDe(sel.match(/^#([\w-]+)/)[1]);
+      return !!r && pos > r[0] && pos < r[1];
+    }
+    const propio = sel.match(/^(?:#([\w-]+))?((?:\.[\w-]+)*)\.hidden$/); // #id.hidden / .cls.hidden
+    if (!propio) return false;
+    if (propio[1] && propio[1] !== id) return false;
+    return (propio[2].match(/\.[\w-]+/g) || []).every(c => clases.includes(c.slice(1)));
+  };
+
+  const huerfanos = [];
+  const conHidden = /<(\w+)([^>]*\bclass="([^"]*\bhidden\b[^"]*)"[^>]*)>/g;
+  let e;
+  while ((e = conHidden.exec(sinComentarios))) {
+    const id = (e[2].match(/\bid="([\w-]+)"/) || [, ''])[1];
+    const clases = e[3].split(/\s+/);
+    if (!reglas.some(sel => cubre(sel, id, clases, e.index))) {
+      huerfanos.push(id ? '#' + id : '<' + e[1] + ' class="' + e[3] + '">');
+    }
+  }
+
+  ok(reglas.length > 0, 'se encontraron reglas .hidden en el <style> (el arnés lee el CSS)');
+  ok(rangoDe('auth-panel') !== null, 'el emparejador de tags localiza #auth-panel (el arnés sabe mirar dentro)');
+  ok(huerfanos.length === 0,
+     huerfanos.length ? 'estos usan class="hidden" pero NADA los oculta: ' + huerfanos.join(', ')
+                      : 'ningún elemento se queda visible por una regla que falta');
+
   console.log(fallos === 0 ? '\n✅ TODO OK\n' : `\n❌ ${fallos} fallo(s)\n`);
   process.exit(fallos === 0 ? 0 : 1);
 })();

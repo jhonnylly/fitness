@@ -114,7 +114,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 .comp-barra{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--dark);}
@@ -1405,7 +1405,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-04 23:40';
+const APP_VERSION='2026-08-08 12:06';
 
 const LOCAL_KEY='jhon_db_v2';
 
