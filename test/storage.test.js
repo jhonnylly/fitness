@@ -55,6 +55,7 @@ const puente = `
   resumenDB, textoResumen, firmaDB, mismosDatos, diagnosticarSubida,
   fotosARecomprimir, LIMITE_FOTO,
   totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana,
+  migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -428,6 +429,74 @@ const ok = (cond, msg) => {
   // semana, así que la etiqueta se construye con w.num y no con el índice.
   ok(app.etiquetaSemana({ num: 12, title: 'Semana 12' }) === 'Semana 12',
      'funciona más allá de la semana 8, que era el límite clavado a fuego');
+
+  console.log('\n17. las fotos salen de las rutinas sin perderse');
+  // Esta migración corre UNA vez sobre datos reales que solo existen en la
+  // nube de Jhon. Si se come una foto, no hay vuelta atrás: por eso se prueba
+  // el caso bueno, el idempotente, el de sin fecha y el de foto compartida.
+  const dbFotos = {
+    routines: [
+      { id: 'r1', name: 'Definición', plan: [], sessions: {}, medidas: [],
+        photos: { before: { url: 'data:img/AAA', date: '01/07/2026' },
+                  after:  { url: 'data:img/BBB', date: '05/08/2026' } } },
+      { id: 'r2', name: 'Volumen', plan: [], sessions: {}, medidas: [],
+        photos: { before: { url: 'data:img/CCC', date: '15/06/2026' } } },
+    ],
+    activeRoutine: 'r1',
+  };
+
+  ok(app.migrarFotosDeRutinas(dbFotos) === 3, 'mueve las 3 fotos repartidas en dos rutinas');
+  ok(dbFotos.fotos.length === 3, 'y quedan las 3 en DB.fotos');
+  ok(!dbFotos.routines[0].photos && !dbFotos.routines[1].photos,
+     'las rutinas se quedan sin photos, ya no fragmentan el histórico');
+
+  const urls = dbFotos.fotos.map(f => f.url);
+  ok(urls.includes('data:img/AAA') && urls.includes('data:img/BBB') && urls.includes('data:img/CCC'),
+     'no se pierde ninguna imagen por el camino');
+  ok(dbFotos.fotos[0].url === 'data:img/CCC',
+     'quedan ordenadas por fecha: la de junio va primero aunque estuviera en la segunda rutina');
+  ok(dbFotos.fotos[2].url === 'data:img/BBB', 'y la de agosto, la última');
+  ok(dbFotos.fotos.every(f => f.id && f.ts != null), 'todas salen con id y con fecha comparable');
+  ok(new Set(dbFotos.fotos.map(f => f.id)).size === 3, 'los ids no colisionan entre sí');
+
+  // Idempotencia: el arranque la llama en cada carga y hay tres dispositivos.
+  ok(app.migrarFotosDeRutinas(dbFotos) === 0, 'una segunda pasada no mueve nada');
+  ok(dbFotos.fotos.length === 3, 'y no duplica las que ya estaban');
+
+  // Foto sin fecha: no puede quedar el orden al azar.
+  const sinFecha = { routines: [ { id: 'r', photos: {
+    before: { url: 'data:img/VIEJA' }, after: { url: 'data:img/NUEVA' } } } ] };
+  app.migrarFotosDeRutinas(sinFecha);
+  ok(sinFecha.fotos[0].url === 'data:img/VIEJA' && sinFecha.fotos[1].url === 'data:img/NUEVA',
+     'sin fecha, "antes" queda antes que "ahora"');
+
+  // La misma imagen en dos rutinas (duplicar rutina copia las fotos).
+  const repes = { routines: [
+    { id: 'a', photos: { before: { url: 'data:img/MISMA', date: '01/07/2026' } } },
+    { id: 'b', photos: { before: { url: 'data:img/MISMA', date: '01/07/2026' } } } ] };
+  ok(app.migrarFotosDeRutinas(repes) === 1, 'la misma imagen en dos rutinas se guarda una sola vez');
+
+  // Formato antiguo: la url colgando directamente, sin {url,date}.
+  const urlSuelta = { routines: [ { id: 'a', photos: { after: 'data:img/CRUDA' } } ] };
+  ok(app.migrarFotosDeRutinas(urlSuelta) === 1 && urlSuelta.fotos[0].url === 'data:img/CRUDA',
+     'también rescata el formato viejo con la url suelta');
+
+  // Nada que migrar no debe ensuciar la DB ni provocar un guardado.
+  const limpia = { routines: [ { id: 'a', plan: [], sessions: {} } ] };
+  ok(app.migrarFotosDeRutinas(limpia) === 0, 'una DB sin fotos no mueve nada');
+  ok(Array.isArray(limpia.fotos) && limpia.fotos.length === 0, 'pero deja la lista creada y vacía');
+  ok(app.migrarFotosDeRutinas(null) === 0, 'sin DB no revienta');
+
+  ok(app.fechaAMs('05/08/2026') > app.fechaAMs('01/07/2026'), 'fechaAMs ordena bien dd/mm/aaaa');
+  ok(app.fechaAMs('') === null && app.fechaAMs('2026-08-05') === null,
+     'y devuelve null con lo que no reconoce, en vez de una fecha inventada');
+  ok(app.nuevoIdFoto() !== app.nuevoIdFoto(), 'dos ids seguidos no son iguales');
+
+  // fotosARecomprimir tiene que seguir viendo las fotos en su sitio nuevo.
+  const grandes = { fotos: [ { id: 'f1', url: 'x'.repeat(500) } ], routines: [] };
+  const pend = app.fotosARecomprimir(grandes, 100);
+  ok(pend.length === 1 && pend[0].tipo === 'foto' && pend[0].foto === 'f1',
+     'las fotos grandes de DB.fotos siguen detectándose para recomprimir');
 
   console.log(fallos === 0 ? '\n✅ TODO OK\n' : `\n❌ ${fallos} fallo(s)\n`);
   process.exit(fallos === 0 ? 0 : 1);

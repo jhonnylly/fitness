@@ -124,6 +124,26 @@ textarea{resize:vertical;min-height:60px;}
   border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;}
 .rest-rapidos button.elegido{border-color:var(--accent);color:var(--accent);
   background:rgba(var(--accent-rgb),0.1);font-weight:700;}
+
+/* Galería de fotos de progreso. Tira horizontal: van a crecer con el tiempo
+   y una rejilla obligaría a hacer scroll de toda la página para ver el
+   histórico. Aquí el scroll es del propio carrete. */
+.foto-tira{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;}
+.foto-item{position:relative;flex:0 0 96px;}
+.foto-toque{display:block;width:96px;padding:0;border:2px solid var(--border);border-radius:var(--radius-sm);
+  overflow:hidden;background:var(--surface);cursor:pointer;font-family:inherit;position:relative;}
+.foto-item.marcada .foto-toque{border-color:var(--accent);}
+.foto-toque img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;}
+.foto-fecha{display:block;font-size:10px;color:var(--muted);padding:4px 2px;text-align:center;}
+.foto-item.marcada .foto-fecha{color:var(--accent);font-weight:700;}
+/* El número dice si es la 1ª o la 2ª de la comparación: sin él, dos marcos
+   naranjas no explican en qué orden van a salir. */
+.foto-num{position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;
+  background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:flex;
+  align-items:center;justify-content:center;}
+.foto-borrar{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;
+  border:none;background:rgba(0,0,0,0.55);color:#fff;font-size:12px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;padding:0;}
 .btn-danger{border-color:var(--danger);color:var(--danger);background:transparent;}
 .msg{font-size:12px;padding:8px 10px;border-radius:var(--radius-sm);margin-bottom:10px;line-height:1.45;}
 .msg-err{background:rgba(var(--danger-rgb),0.1);color:var(--danger);}
@@ -827,28 +847,20 @@ textarea{resize:vertical;min-height:60px;}
 <div id="pane-resumen" class="pane">
   <div id="resumen-content"></div>
   <div class="card" style="margin-top:10px;">
-    <div class="section-title">Comparativa fotos</div>
-    <div class="grid2" style="gap:10px;margin-bottom:10px;">
-      <div>
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Antes</div>
-        <div id="photo-before-preview" style="width:100%;aspect-ratio:3/4;background:var(--surface);border:1px dashed var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="document.getElementById('photo-before-input').click()">
-          <span style="font-size:11px;color:var(--muted);">+ Añadir foto</span>
-        </div>
-        <input type="file" id="photo-before-input" accept="image/*" style="display:none;" onchange="savePhoto('before',this)">
-      </div>
-      <div>
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Ahora</div>
-        <div id="photo-after-preview" style="width:100%;aspect-ratio:3/4;background:var(--surface);border:1px dashed var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="document.getElementById('photo-after-input').click()">
-          <span style="font-size:11px;color:var(--muted);">+ Añadir foto</span>
-        </div>
-        <input type="file" id="photo-after-input" accept="image/*" style="display:none;" onchange="savePhoto('after',this)">
-      </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div class="section-title" style="margin:0;">Tus fotos</div>
+      <button class="btn-sm" style="margin-left:auto;"
+              onclick="document.getElementById('foto-input').click()">+ Añadir</button>
+      <input type="file" id="foto-input" accept="image/*" style="display:none;" onchange="savePhoto(this)">
     </div>
-    <button class="btn btn-secondary" id="btn-comparar" style="margin-top:0;" onclick="abrirComparador('ambas')">🔍 Ver en grande</button>
-    <div class="grid2" style="gap:8px;margin-top:8px;">
-      <button class="btn-sm btn-danger" onclick="deletePhoto('before')">× Eliminar antes</button>
-      <button class="btn-sm btn-danger" onclick="deletePhoto('after')">× Eliminar ahora</button>
-    </div>
+    <!-- Ya no son dos casillas fijas que se pisan: son todas tus fotos, en
+         orden, y eliges cuáles comparar. Lo pinta renderPhotos(). -->
+    <div id="foto-galeria"></div>
+    <div id="foto-aviso" style="font-size:11px;color:var(--muted);margin-top:8px;"></div>
+    <!-- Borrar ya no vive aquí suelto: cada foto lleva el suyo, así no hay
+         forma de borrar una creyendo que borras otra. -->
+    <button class="btn btn-secondary" id="btn-comparar" style="margin-top:8px;display:none;"
+            onclick="abrirComparador()">🔍 Comparar las dos marcadas</button>
     </div>
 </div>
 
@@ -857,9 +869,8 @@ textarea{resize:vertical;min-height:60px;}
 <div id="comparador" class="hidden">
   <div class="comp-barra">
     <div class="comp-tabs">
-      <button id="comp-t-ambas" class="active" onclick="verComparacion('ambas')">Comparar</button>
-      <button id="comp-t-before" onclick="verComparacion('before')">Antes</button>
-      <button id="comp-t-after" onclick="verComparacion('after')">Ahora</button>
+      <!-- Las pestañas ya no son fijas: las escribe verComparacion() con las
+           fechas de las fotos que se están mirando. -->
     </div>
     <button class="btn-sm" onclick="cerrarComparador()">✕</button>
   </div>
@@ -1558,7 +1569,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-08 13:23';
+const APP_VERSION='2026-08-08 14:10';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -1601,7 +1612,11 @@ function resumenDB(db){
     rutinas:rutinas.length,
     sesiones:rutinas.reduce((t,r)=>t+Object.keys(r.sessions||{}).length,0),
     medidas:rutinas.reduce((t,r)=>t+((r.medidas||[]).length),0),
-    fotos:rutinas.reduce((t,r)=>t+Object.keys(r.photos||{}).length,0)
+    // Las de DB.fotos y, mientras quede algún dispositivo sin migrar, también
+    // las que sigan dentro de las rutinas: si no, "¿qué tengo aquí?" mentiría
+    // justo en la pantalla que decide si subir o descartar.
+    fotos:((db&&db.fotos)||[]).length
+      +rutinas.reduce((t,r)=>t+Object.keys(r.photos||{}).length,0)
   };
 }
 
@@ -1617,10 +1632,16 @@ function textoResumen(res){
 
 /* Firma del contenido que de verdad importa. Sirve para saber si lo del
    dispositivo ya está en la nube y no hace falta preguntar nada. */
+/* La firma decide si dispositivo y nube "son lo mismo" antes de sincronizar.
+   Las fotos entran por su id: si no, un dispositivo con fotos y otro sin ellas
+   parecerían iguales y se sincronizaría sin preguntar. No se mete la url
+   entera para no comparar megas de base64 en cada arranque. */
 function firmaDB(db){
-  return JSON.stringify(((db&&db.routines)||[])
+  const rutinas=((db&&db.routines)||[])
     .map(r=>[r.id,r.name,JSON.stringify(r.sessions||{}),JSON.stringify(r.medidas||[])])
-    .sort((a,b)=>a[0]<b[0]?-1:1));
+    .sort((a,b)=>a[0]<b[0]?-1:1);
+  const fotos=((db&&db.fotos)||[]).map(f=>f.id).sort();
+  return JSON.stringify([rutinas,fotos]);
 }
 
 function mismosDatos(a,b){ return firmaDB(a)===firmaDB(b); }
@@ -1680,17 +1701,86 @@ function leerYComprimir(file,opts){
   });
 }
 
+/* ═══════════ Fotos de progreso ═══════════
+   Las fotos son de la PERSONA, no de la rutina. Vivían en `routine.photos`,
+   así que al cambiar de rutina desaparecían de la vista y el histórico se
+   partía en trozos. Ahora son una lista propia, `DB.fotos`, ordenada por
+   fecha:  [{id, fecha:'dd/mm/aaaa', ts, url}]
+
+   Por qué una LISTA y un documento por foto en Firestore, y no un único
+   documento con todas: cada foto comprimida ronda los 215 KB y el límite duro
+   son 1 MiB por documento. En un solo documento caben cuatro. */
+
+/* dd/mm/aaaa -> epoch ms. Es el formato que ya escribía savePhoto() con
+   toLocaleDateString('es-ES'), así que hay que saber leerlo para ordenar. */
+function fechaAMs(txt){
+  const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((txt||'').trim());
+  if(!m)return null;
+  const d=new Date(+m[3],+m[2]-1,+m[1]);
+  return isNaN(d.getTime())?null:d.getTime();
+}
+
+/* Ids con parte aleatoria: 'f_'+Date.now() a secas colisiona si se añaden dos
+   fotos en el mismo milisegundo, y en Firestore dos ids iguales son UN
+   documento. Ya hay un caso latente así con las rutinas ('r_'+Date.now()). */
+function nuevoIdFoto(){
+  const r=(typeof crypto!=='undefined'&&crypto.getRandomValues)
+    ? crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
+    : Math.floor(Math.random()*4294967296).toString(36);
+  return 'f_'+Date.now().toString(36)+'_'+r;
+}
+
+function fotosOrdenadas(db){
+  return [...((db&&db.fotos)||[])].sort((a,b)=>(a.ts||0)-(b.ts||0));
+}
+
+/* Saca las fotos de dentro de las rutinas y las deja en DB.fotos.
+   Pura y devuelve cuántas movió, para poder probarla y para no guardar si no
+   hubo nada que mover. Idempotente: pasarla dos veces no duplica.
+   NO borra nada que no haya copiado antes. */
+function migrarFotosDeRutinas(db){
+  if(!db)return 0;
+  if(!Array.isArray(db.fotos))db.fotos=[];
+  let movidas=0;
+  for(const r of (db.routines||[])){
+    if(!r.photos)continue;
+    for(const tipo of ['before','after']){
+      const foto=r.photos[tipo];
+      const url=foto&&(foto.url||(typeof foto==='string'?foto:null));
+      if(!url)continue;
+      // La misma foto ya migrada (dos rutinas duplicadas la comparten): no repetir.
+      if(db.fotos.some(f=>f.url===url))continue;
+      const fecha=(foto&&foto.date)||'';
+      // Sin fecha, "antes" va al principio y "ahora" al final: es lo que
+      // significaban esas dos casillas, y así el orden no queda al azar.
+      const ts=fechaAMs(fecha)!=null?fechaAMs(fecha):(tipo==='before'?0:Date.now());
+      db.fotos.push({id:nuevoIdFoto(),fecha:fecha||'',ts,url});
+      movidas++;
+    }
+    // Solo se sueltan las de esta rutina cuando ya están todas copiadas.
+    delete r.photos;
+  }
+  if(movidas)db.fotos.sort((a,b)=>(a.ts||0)-(b.ts||0));
+  return movidas;
+}
+
 /* Qué imágenes ya guardadas hay que recomprimir (las que entraron antes de
    que se comprimiera al capturar). Pura a propósito: así se puede testear sin
    canvas, que en Node no existe. */
 function fotosARecomprimir(db,limite){
   const out=[];
+  // Rutinas: solo quedan aquí las de un dispositivo que aún no ha migrado.
   for(const r of (db&&db.routines)||[]){
     for(const tipo of Object.keys(r.photos||{})){
       const foto=r.photos[tipo];
       if(foto&&typeof foto.url==='string'&&foto.url.length>limite){
         out.push({rutina:r.id,tipo,tam:foto.url.length});
       }
+    }
+  }
+  for(const f of (db&&db.fotos)||[]){
+    if(f&&typeof f.url==='string'&&f.url.length>limite){
+      out.push({rutina:null,tipo:'foto',foto:f.id,tam:f.url.length});
     }
   }
   if(db&&typeof db.profilePic==='string'&&db.profilePic.length>limite){
@@ -1709,6 +1799,10 @@ async function recomprimirFotosAntiguas(){
     try{
       if(p.tipo==='profilePic'){
         DB.profilePic=await comprimirImagen(DB.profilePic,FOTO_PERFIL);
+      }else if(p.tipo==='foto'){
+        const f=(DB.fotos||[]).find(x=>x.id===p.foto);
+        if(!f)continue;
+        f.url=await comprimirImagen(f.url,FOTO_PROGRESO);
       }else{
         const r=(DB.routines||[]).find(x=>x.id===p.rutina);
         if(!r||!r.photos||!r.photos[p.tipo])continue;
@@ -2023,6 +2117,41 @@ async function load(){
     console.error('[storage] fallo al leer del backend "'+STORAGE.backend.name+'"',e);
     DB={routines:[],activeRoutine:null};
   }
+  /* Migración de las fotos: de dentro de las rutinas a DB.fotos.
+     Corre en cada carga y en cada backend, porque los tres dispositivos de
+     Jhon llegan por su cuenta y uno puede traer datos viejos. Es idempotente
+     y solo guarda si de verdad movió algo, así que en cuanto está hecha no
+     cuesta nada. */
+  /* Si el guardado falla (el caso real: la colección /fotos aún no tiene
+     reglas publicadas en Firebase), hay que DESHACER la migración en memoria.
+     Si no, la app se queda con las rutinas ya sin `photos` y las fotos solo en
+     una lista que no se puede escribir: cualquier repintado las daría por
+     perdidas y bastaría con que una escritura posterior colara para dejarlas
+     fuera de verdad. Deshacer devuelve la app exactamente a como estaba. */
+  try{
+    const respaldo=JSON.stringify({
+      routines:(DB.routines||[]).map(r=>r.photos||null),
+      fotos:DB.fotos||[]
+    });
+    const movidas=migrarFotosDeRutinas(DB);
+    if(movidas){
+      console.log('[fotos] migradas '+movidas+' foto(s) de las rutinas a DB.fotos');
+      try{
+        await saveEstricto();   // estricto: si esto falla hay que enterarse
+        console.log('[fotos] migración guardada correctamente');
+      }catch(err){
+        const prev=JSON.parse(respaldo);
+        (DB.routines||[]).forEach((r,i)=>{ if(prev.routines[i])r.photos=prev.routines[i]; });
+        DB.fotos=prev.fotos;
+        console.error('[fotos] NO se pudo guardar la migración: se deja todo como estaba y '+
+          'se reintentará en la próxima carga. Si es un error de permisos, faltan las reglas '+
+          'de /users/{uid}/fotos por publicar en Firebase Console.',err);
+      }
+    }
+  }catch(e){
+    console.error('[fotos] fallo inesperado en la migración; los datos no se han tocado',e);
+  }
+
   sync('ok');
   if(!DB.activeRoutine||!DB.routines||!DB.routines.length){
     /* Quien llega con un enlace de invitación viene a crear su cuenta, y el
@@ -3301,15 +3430,21 @@ function renderMedidasChart(){
   });
 }
 
-function savePhoto(type,input){
+/* Añadir una foto: se APILA, no pisa a ninguna. Antes había dos casillas
+   fijas y cada foto nueva borraba la anterior en silencio. */
+function savePhoto(input){
   const file=input.files[0];if(!file)return;
-  const act=getActive();if(!act)return;
+  input.value='';   // si no, elegir el mismo archivo dos veces no dispara change
   leerYComprimir(file,FOTO_PROGRESO).then(dataUrl=>{
-    if(!act.photos)act.photos={};
-    act.photos[type]={
-      url:dataUrl,
-      date:new Date().toLocaleDateString('es-ES')
-    };
+    if(!Array.isArray(DB.fotos))DB.fotos=[];
+    const ahora=new Date();
+    DB.fotos.push({
+      id:nuevoIdFoto(),
+      fecha:ahora.toLocaleDateString('es-ES'),
+      ts:ahora.getTime(),
+      url:dataUrl
+    });
+    DB.fotos.sort((a,b)=>(a.ts||0)-(b.ts||0));
     save();
     renderPhotos();
   }).catch(e=>{
@@ -3318,82 +3453,137 @@ function savePhoto(type,input){
   });
 }
 
-function deletePhoto(type){
-  const act=getActive();if(!act||!act.photos)return;
-  if(!confirm('¿Eliminar esta foto?'))return;
-  delete act.photos[type];
+/* La confirmación nombra la fecha: con una lista de fotos parecidas, "¿eliminar
+   esta foto?" no basta para saber cuál te estás cargando. */
+window.deletePhoto=function(id){
+  const f=(DB.fotos||[]).find(x=>x.id===id);
+  if(!f)return;
+  if(!confirm('¿Borrar la foto del '+(f.fecha||'sin fecha')+'?\n\nNo se puede recuperar.'))return;
+  DB.fotos=(DB.fotos||[]).filter(x=>x.id!==id);
+  marcadas=marcadas.filter(x=>x!==id);
   save();
   renderPhotos();
-}
+};
+
+/* Las dos que se están comparando. Vive fuera de renderPhotos() para que
+   repintar no pierda la selección. */
+let marcadas=[];
+
+window.marcarFoto=function(id){
+  if(marcadas.includes(id)){
+    marcadas=marcadas.filter(x=>x!==id);
+  }else{
+    marcadas.push(id);
+    // Al marcar una tercera se suelta la más antigua: es lo que espera quien
+    // va probando parejas, en vez de tener que desmarcar a mano.
+    if(marcadas.length>2)marcadas.shift();
+  }
+  renderPhotos();
+};
 
 /* ── Comparador a pantalla completa ──
    Las miniaturas de la tarjeta son demasiado pequeñas para apreciar cambios
    reales, que es justo para lo que sirven estas fotos. */
 let compVista='ambas';
 
-function abrirComparador(vista){
-  const act=getActive();
-  const fotos=(act&&act.photos)||{};
+function abrirComparador(){
+  const fotos=fotosOrdenadas(DB);
   // Sin fotos el botón ni siquiera se enseña (lo oculta renderPhotos), así que
   // esto solo cubre el caso de borrarlas con el comparador ya abierto.
-  if(!fotos.before&&!fotos.after){ cerrarComparador(); return; }
-  // Si solo hay una, no tiene sentido abrir en modo comparación.
-  compVista=(!fotos.before||!fotos.after)?(fotos.before?'before':'after'):(vista||'ambas');
+  if(!fotos.length){ cerrarComparador(); return; }
+  // Con una sola foto se abre a pantalla completa; con dos marcadas, en pareja.
+  if(marcadas.length!==2 && fotos.length===1) marcadas=[fotos[0].id];
   document.getElementById('comparador').classList.remove('hidden');
-  verComparacion(compVista);
+  verComparacion(marcadas.length===2?'ambas':'una');
 }
 
 function cerrarComparador(){
   document.getElementById('comparador').classList.add('hidden');
 }
 
+/* vista: 'ambas' (las dos marcadas, en orden cronológico) o el id de una foto
+   concreta a pantalla completa. Antes las dos posiciones eran fijas
+   ('before'/'after'); ahora son las que haya marcado el usuario. */
 function verComparacion(vista){
-  compVista=vista;
-  const act=getActive();
-  const fotos=(act&&act.photos)||{};
-  const etiquetas={before:'Antes',after:'Ahora'};
-  ['ambas','before','after'].forEach(v=>{
-    const b=document.getElementById('comp-t-'+v);
-    if(b)b.classList.toggle('active',v===vista);
-  });
-  const panel=(tipo)=>{
-    const f=fotos[tipo];
-    if(!f)return `<div class="comp-hueco">Sin foto de «${etiquetas[tipo]}»</div>`;
+  const fotos=fotosOrdenadas(DB);
+  const dos=marcadas.map(id=>fotos.find(f=>f.id===id)).filter(Boolean)
+    .sort((a,b)=>(a.ts||0)-(b.ts||0));
+  compVista=vista==='ambas'&&dos.length===2?'ambas':(vista==='una'?(dos[0]&&dos[0].id):vista);
+
+  const panel=(f)=>{
+    if(!f)return '<div class="comp-hueco">Esa foto ya no está.</div>';
     return `<figure class="comp-figura">
-      <img src="${f.url||f}" alt="">
-      <figcaption>${etiquetas[tipo]}${f.date?' · '+f.date:''}</figcaption>
+      <img src="${escaparHTML(f.url)}" alt="">
+      <figcaption>${escaparHTML(f.fecha||'sin fecha')}</figcaption>
     </figure>`;
   };
+
+  // Las pestañas se generan a partir de las fotos que hay, no de dos fijas.
+  const tabs=document.querySelector('#comparador .comp-tabs');
+  if(tabs){
+    tabs.innerHTML=(dos.length===2
+        ? `<button class="${compVista==='ambas'?'active':''}" onclick="verComparacion('ambas')">Comparar</button>`
+        : '')
+      + dos.map(f=>`<button class="${compVista===f.id?'active':''}" onclick="verComparacion('${f.id}')">${escaparHTML(f.fecha||'—')}</button>`).join('');
+  }
+
   const cuerpo=document.getElementById('comp-cuerpo');
-  cuerpo.className=vista==='ambas'?'comp-doble':'comp-simple';
-  cuerpo.innerHTML=vista==='ambas'?panel('before')+panel('after'):panel(vista);
+  cuerpo.className=compVista==='ambas'?'comp-doble':'comp-simple';
+  cuerpo.innerHTML=compVista==='ambas'
+    ? panel(dos[0])+panel(dos[1])
+    : panel(dos.find(f=>f.id===compVista)||dos[0]);
 }
 
 function renderPhotos(){
-  const act=getActive();
-  const photos=act?.photos||{};
-  const labels={before:'Antes',after:'Ahora'};
-  // El botón de ampliar solo tiene sentido si hay algo que ampliar.
+  const cont=document.getElementById('foto-galeria');
+  if(!cont)return;
+  const fotos=fotosOrdenadas(DB);
+  const aviso=document.getElementById('foto-aviso');
   const btnComp=document.getElementById('btn-comparar');
-  if(btnComp)btnComp.style.display=(photos.before||photos.after)?'block':'none';
-  ['before','after'].forEach(type=>{
-    const el=document.getElementById('photo-'+type+'-preview');
-    if(!el)return;
-    const photo=photos[type];
-    if(photo){
-      const url=photo.url||photo;
-      const date=photo.date||'';
-      el.innerHTML=`
-        <div style="position:relative;width:100%;height:100%;">
-          <img src="${url}" style="width:100%;height:100%;object-fit:cover;">
-          <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.55);color:#fff;font-size:10px;padding:4px 6px;text-align:center;font-weight:600;">
-            ${labels[type]}${date?' · '+date:''}
-          </div>
-        </div>`;
-    }else{
-      el.innerHTML=`<span style="font-size:11px;color:var(--muted);">+ Añadir foto</span>`;
-    }
-  });
+
+  // Una selección puede quedar obsoleta si la foto se borró en otro dispositivo.
+  marcadas=marcadas.filter(id=>fotos.some(f=>f.id===id));
+
+  if(!fotos.length){
+    cont.innerHTML='<div style="font-size:12px;color:var(--muted);line-height:1.5;">'+
+      'Aún no has guardado ninguna foto. Ve añadiendo una cada pocas semanas '+
+      'y podrás comparar dos cualesquiera.</div>';
+    if(aviso)aviso.textContent='';
+    if(btnComp)btnComp.style.display='none';
+    return;
+  }
+
+  cont.innerHTML='<div class="foto-tira">'+fotos.map(f=>{
+    const sel=marcadas.includes(f.id);
+    const orden=sel?(marcadas.indexOf(f.id)+1):null;
+    return `<div class="foto-item${sel?' marcada':''}">
+      <button type="button" class="foto-toque" onclick="marcarFoto('${f.id}')"
+              aria-label="Marcar la foto del ${escaparHTML(f.fecha||'sin fecha')} para comparar">
+        <img src="${escaparHTML(f.url)}" alt="">
+        ${sel?`<span class="foto-num">${orden}</span>`:''}
+        <span class="foto-fecha">${escaparHTML(f.fecha||'—')}</span>
+      </button>
+      <button type="button" class="foto-borrar" onclick="deletePhoto('${f.id}')"
+              aria-label="Borrar la foto del ${escaparHTML(f.fecha||'sin fecha')}">🗑</button>
+    </div>`;
+  }).join('')+'</div>';
+
+  // El botón solo aparece cuando de verdad se puede comparar, y el texto dice
+  // qué falta cuando no: un botón apagado sin explicación es lo que veníamos
+  // arreglando toda la mañana.
+  if(marcadas.length===2){
+    const dos=marcadas.map(id=>fotos.find(f=>f.id===id));
+    if(aviso)aviso.textContent='Comparando '+(dos[0].fecha||'—')+' con '+(dos[1].fecha||'—')+'.';
+    if(btnComp)btnComp.style.display='block';
+  }else if(fotos.length===1){
+    if(aviso)aviso.textContent='Con una sola foto no hay nada que comparar todavía. Toca la foto para verla en grande.';
+    if(btnComp)btnComp.style.display='block';
+  }else{
+    if(aviso)aviso.textContent=marcadas.length===1
+      ? 'Marca otra foto para compararlas.'
+      : 'Marca dos fotos para compararlas.';
+    if(btnComp)btnComp.style.display='none';
+  }
 }
 
 let curFeeling=null;
@@ -4191,6 +4381,11 @@ const LIMITE_DOC = 1048576;   // 1 MiB, límite duro de Firestore
    han cambiado: save() se llama en cada retoque y hay 40 sesiones por rutina. */
 let ultimoEscrito = new Map();
 let idsRemotos = new Set();
+/* Lo mismo para las fotos, que van en su propia colección y una por documento:
+   una foto son ~215 KB, así que reenviarlas todas en cada save() sería tirar
+   la cuota y la batería. */
+let ultimoEscritoFoto = new Map();
+let idsFotosRemotas = new Set();
 
 function comprobarApto(obj, etiqueta){
   const ruta = window.buscarArraysAnidados(obj);
@@ -4231,11 +4426,28 @@ const StorageFirestore = {
       ultimoEscrito.set(d.id, JSON.stringify(r));
     });
 
+    /* Las fotos son de la persona: colección propia, un documento por foto.
+       No van dentro del perfil (ya lleva profilePic y se acercaría al MiB) ni
+       dentro de las rutinas (era lo que hacía desaparecer el histórico al
+       cambiar de rutina, y lo que reventó la subida desde el móvil). */
+    const snapF = await getDocs(collection(fdb, 'users', user.uid, 'fotos'));
+    ultimoEscritoFoto = new Map();
+    idsFotosRemotas = new Set();
+    const fotos = [];
+    snapF.forEach(d => {
+      const f = d.data();
+      idsFotosRemotas.add(d.id);
+      fotos.push({ id: d.id, fecha: f.fecha || '', ts: f.ts || 0, url: f.url || '' });
+      ultimoEscritoFoto.set(d.id, JSON.stringify({ fecha: f.fecha || '', ts: f.ts || 0, url: f.url || '' }));
+    });
+    fotos.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
     // Cuenta nueva sin nada guardado: null hace que load() lance el onboarding.
-    if(!routines.length && !cab.activeRoutine) return null;
+    if(!routines.length && !cab.activeRoutine && !fotos.length) return null;
 
     return {
       routines,
+      fotos,
       activeRoutine: cab.activeRoutine || null,
       profileName: cab.profileName || cab.name || '',
       profilePic: cab.profilePic || null,
@@ -4255,6 +4467,23 @@ const StorageFirestore = {
     };
     comprobarApto(cabecera, 'Perfil');
     await setDoc(doc(fdb, 'users', user.uid), cabecera, { merge: true });
+
+    /* ORDEN IMPORTANTE: las fotos se guardan en su sitio nuevo ANTES de que
+       las rutinas se reescriban sin ellas. Al revés habría un instante en el
+       que una foto ya no está en la rutina y todavía no está en su colección;
+       si la escritura fallara justo ahí, se habría perdido. */
+    const fotosVistas = new Set();
+    for(const f of (db.fotos || [])){
+      if(!f || !f.id || !f.url) continue;
+      fotosVistas.add(f.id);
+      const payload = { fecha: f.fecha || '', ts: f.ts || 0, url: f.url };
+      const serializado = JSON.stringify(payload);
+      if(ultimoEscritoFoto.get(f.id) === serializado) continue;   // sin cambios
+      comprobarApto(payload, `Foto del ${f.fecha || 'sin fecha'}`);
+      await setDoc(doc(fdb, 'users', user.uid, 'fotos', f.id), payload);
+      ultimoEscritoFoto.set(f.id, serializado);
+      idsFotosRemotas.add(f.id);
+    }
 
     const vistos = new Set();
     for(const r of (db.routines || [])){
@@ -4281,6 +4510,14 @@ const StorageFirestore = {
       await deleteDoc(doc(fdb, 'users', user.uid, 'routines', id));
       idsRemotos.delete(id);
       ultimoEscrito.delete(id);
+    }
+
+    // Y las fotos borradas, al final del todo: lo último que se destruye.
+    for(const id of [...idsFotosRemotas]){
+      if(fotosVistas.has(id)) continue;
+      await deleteDoc(doc(fdb, 'users', user.uid, 'fotos', id));
+      idsFotosRemotas.delete(id);
+      ultimoEscritoFoto.delete(id);
     }
   }
 };
@@ -4709,7 +4946,21 @@ let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, se
 
 window.verDetalleCliente = function(uid, nombre, activeRoutine){
   detalle = { uid, nombre: nombre || 'Cliente', rutinas:[], viendo:null, ejercicio:null,
-              semana:null, editando:null, unsub:null, activa: activeRoutine || null };
+              semana:null, editando:null, unsub:null, unsubFotos:null, fotos:[],
+              activa: activeRoutine || null };
+
+  /* Las fotos del cliente ya no viajan dentro de sus rutinas: tienen colección
+     propia, así que hay que escucharla aparte. En vivo como las rutinas, para
+     que una foto nueva aparezca sin cerrar y volver a abrir la ficha. */
+  detalle.unsubFotos = onSnapshot(collection(fdb,'users',uid,'fotos'), qs => {
+    detalle.fotos = qs.docs.map(d => ({ id:d.id, ...d.data() }))
+      .sort((a,b) => (a.ts||0) - (b.ts||0));
+    if(detalle.editando == null) pintarDetalle();
+  }, err => {
+    // Sin permiso o sin fotos no debe tumbar la ficha entera del cliente.
+    console.error('[fotos] no se pudieron leer las del cliente', err);
+    detalle.fotos = [];
+  });
   document.getElementById('detalle-titulo').textContent = (nombre || 'Cliente').toUpperCase();
   document.getElementById('detalle-cuerpo').innerHTML =
     '<div class="card"><p style="font-size:13px;color:var(--muted);">Cargando...</p></div>';
@@ -4744,6 +4995,10 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
 
 window.cerrarDetalleCliente = function(){
   if(detalle.unsub){ detalle.unsub(); detalle.unsub = null; }
+  // Sin esto seguiría gastando lecturas de la colección de fotos del cliente
+  // en segundo plano, y escribiría en el DOM de otra ficha al abrir la
+  // siguiente. Mismo motivo que cerrarVigilancias() con las rutinas.
+  if(detalle.unsubFotos){ detalle.unsubFotos(); detalle.unsubFotos = null; }
   if(window._detalleChart){ window._detalleChart.destroy(); window._detalleChart = null; }
   document.getElementById('cliente-detalle').classList.add('hidden');
 };
@@ -4895,14 +5150,16 @@ function pintarDetalle(){
   }
 
   // Fotos
-  const fotos = r.photos || {};
-  if(fotos.before || fotos.after){
-    partes.push(`<div class="card"><div class="section-title">Sus fotos</div><div class="grid2">
-      ${['before','after'].map(t => fotos[t]
-        ? `<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${t==='before'?'Antes':'Ahora'}${fotos[t].date?' · '+escaparHTML(fotos[t].date):''}</div>
-             <img src="${escaparHTML(fotos[t].url)}" style="width:100%;border-radius:var(--radius-sm);">
-           </div>`
-        : '<div></div>').join('')}
+  /* Las fotos son del cliente, no de esta rutina: salen de detalle.fotos
+     (su colección propia) y por eso no cambian al mirar otra rutina suya. */
+  const fotos = detalle.fotos || [];
+  if(fotos.length){
+    partes.push(`<div class="card"><div class="section-title">Sus fotos</div>
+      <div class="foto-tira">
+      ${fotos.map(f => `<div class="foto-item"><div class="foto-toque">
+             <img src="${escaparHTML(f.url||'')}" alt="">
+             <span class="foto-fecha">${escaparHTML(f.fecha||'—')}</span>
+           </div></div>`).join('')}
     </div></div>`);
   }
 

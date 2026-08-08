@@ -98,6 +98,20 @@ service cloud.firestore {
         allow read: if isOwner(uid) || isTrainerOfParent(uid);
         allow write: if isOwner(uid) || isTrainerOfParent(uid);
       }
+
+      // Fotos de progreso: son de la PERSONA, no de una rutina, y por eso
+      // tienen colección propia. Un documento por foto porque cada una ronda
+      // los 215 KB y el límite duro de Firestore es 1 MiB por documento: en
+      // un único documento cabrían cuatro.
+      //
+      // El entrenador LEE (las ve en la ficha de su cliente) pero NO escribe:
+      // las fotos del cuerpo de alguien las pone y las quita esa persona.
+      // Es más restrictivo que /routines, donde sí puede escribir para
+      // corregirle el plan, y es a propósito.
+      match /fotos/{fotoId} {
+        allow read: if isOwner(uid) || isTrainerOfParent(uid);
+        allow write: if isOwner(uid);
+      }
     }
   }
 }
