@@ -23,7 +23,8 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
   --bg:#f7f5f0;--card:#ffffff;--surface:#f0ede6;--border:#e0dbd0;
-  --accent:#e63f1f;--dark:#1a1a1a;--green:#2d7a4f;--orange:#c97820;
+  /* Naranja de la paleta del mockup (08/08/2026). Antes #e63f1f. */
+  --accent:#ff6b00;--dark:#1a1a1a;--green:#2d7a4f;--orange:#c97820;
   --text:#1a1a1a;--muted:#7a7060;--radius:12px;--radius-sm:8px;
 }
 @media(prefers-color-scheme:dark){
@@ -175,6 +176,69 @@ textarea{resize:vertical;min-height:60px;}
 .hc-tag{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;margin-bottom:auto;position:relative;}
 .hc-title{font-size:18px;font-weight:800;letter-spacing:.5px;position:relative;margin-top:24px;}
 .hc-sub{font-size:11px;opacity:.85;margin-top:4px;position:relative;line-height:1.4;min-height:15px;}
+
+/* ═══ Inicio (rediseño 08/08/2026, a partir del mockup de Jhon) ═══
+   Todo tira de las variables de :root, así que el tema claro y el oscuro
+   salen solos. Los colores fijos que hay aquí son SOLO los de dentro de
+   superficies oscuras propias (la tarjeta de entrenamiento), donde el texto
+   es blanco en ambos temas a propósito. */
+.saludo{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.saludo-txt{font-size:21px;font-weight:800;line-height:1.25;}
+.saludo-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+.hp{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px 14px;margin-bottom:14px;}
+.hp-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.hp-nombre{font-size:20px;font-weight:800;color:var(--accent);margin-top:4px;line-height:1.2;
+  overflow-wrap:anywhere;}
+.hp-meta{font-size:13px;color:var(--muted);margin-top:4px;}
+.hp-anillo{position:relative;width:88px;height:88px;flex-shrink:0;margin-left:auto;}
+.hp-anillo svg{width:88px;height:88px;transform:rotate(-90deg);}
+.anillo-fondo{fill:none;stroke:var(--border);stroke-width:7;}
+.anillo-fill{fill:none;stroke:var(--accent);stroke-width:7;stroke-linecap:round;
+  transition:stroke-dashoffset .5s ease;}
+.hp-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.hp-centro b{font-size:19px;font-weight:800;}
+.hp-centro span{font-size:7px;letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin-top:1px;}
+
+.home-sec{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
+  font-weight:700;margin:0 0 8px 2px;}
+/* 4 en fila: son de un vistazo, no tarjetas para leer. Si no caben, scroll
+   horizontal antes que apretarlas hasta que no se lean. */
+.resumen{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;}
+.rt{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 6px;
+  text-align:center;cursor:pointer;font-family:inherit;transition:transform .15s ease;}
+.rt:active{transform:scale(.95);}
+.rt-ico{width:34px;height:34px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;
+  justify-content:center;font-size:16px;}
+.rt-nom{font-size:10px;color:var(--muted);font-weight:600;}
+.rt-val{font-size:11px;font-weight:800;margin-top:2px;line-height:1.3;overflow-wrap:anywhere;}
+
+.hoy{position:relative;overflow:hidden;border-radius:18px;padding:16px;margin-bottom:14px;width:100%;
+  border:none;text-align:left;font-family:inherit;color:#fff;cursor:pointer;display:block;
+  background:linear-gradient(135deg,#2a2320 0%,#141210 60%),var(--dark);
+  box-shadow:0 6px 20px rgba(0,0,0,.2);transition:transform .15s ease;}
+.hoy:active{transform:scale(.985);}
+.hoy::after{content:"";position:absolute;right:-30px;top:-30px;width:170px;height:170px;border-radius:50%;
+  background:radial-gradient(circle,var(--accent) 0%,transparent 70%);opacity:.28;pointer-events:none;}
+/* display:block obligatorio: son <span> dentro de un <button>, y sin esto
+   salen los tres seguidos en la misma línea. Se vio en la primera captura. */
+.hoy-tag{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);
+  font-weight:700;position:relative;}
+.hoy-tit{display:block;font-size:22px;font-weight:800;margin-top:5px;line-height:1.2;position:relative;}
+.hoy-meta{display:block;font-size:12px;color:rgba(255,255,255,.66);margin-top:6px;position:relative;}
+.hoy-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);
+  color:#fff;font-weight:800;font-size:14px;border-radius:11px;padding:12px;margin-top:14px;position:relative;}
+
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.duo .card{margin-bottom:0;}
+.duo-label{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.duo-val{font-size:24px;font-weight:800;margin-top:5px;line-height:1.1;}
+.duo-sub{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4;}
+.chispa{width:100%;height:30px;margin-top:6px;display:block;overflow:visible;}
+.adh-barras{display:flex;align-items:flex-end;gap:3px;height:30px;margin-top:6px;}
+.adh-barras i{flex:1;border-radius:2px;background:var(--border);min-height:3px;}
+.adh-barras i.on{background:var(--green);}
 .session-sel-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;}
 .session-sel-item:hover{background:var(--surface);}
 .session-sel-item:last-child{border-bottom:none;}
@@ -235,7 +299,9 @@ textarea{resize:vertical;min-height:60px;}
       <div>
         <div class="header-title">MY <span>FITNESS TRACKER</span></div>
 <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;" id="header-routine-name">Definición Jhon</div>
-        <div class="header-sub" id="header-routine-sub">40 sesiones · 8 semanas</div>
+        <!-- Relleno neutro: lo escribe updateRoutineHeader() con el plan real.
+             Poner "40 sesiones" aquí era mentir si algo tardaba en pintarse. -->
+        <div class="header-sub" id="header-routine-sub">—</div>
         <div class="sync-row">
           <div class="sync-dot" id="sync-dot"></div>
           <span id="sync-txt">Cargando...</span>
@@ -525,35 +591,77 @@ textarea{resize:vertical;min-height:60px;}
 
 <!-- INICIO -->
 <div id="pane-inicio" class="pane active">
-  <div class="home-prog">
-    <div class="home-prog-head"><span id="home-prog-name">—</span><span id="home-prog-txt">—</span></div>
-    <div class="prog-bar"><div class="prog-fill" id="home-prog-fill" style="width:0%"></div></div>
+
+  <!-- Sin avatar aquí a propósito: la cabecera ya muestra la foto de perfil
+       con su lápiz de editar, justo encima. Dos veces la misma cara era ruido;
+       se vio en la primera captura, no leyendo el código. -->
+  <div class="saludo">
+    <div style="min-width:0;">
+      <div class="saludo-txt" id="home-saludo">¡Hola!</div>
+      <div class="saludo-sub">Hoy es un buen día para superarte.</div>
+    </div>
   </div>
-  <div class="home-grid">
-    <button class="home-card" style="background:linear-gradient(135deg,#e63f1f,#9c2810)" onclick="goTo('log')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>
-      <span class="hc-tag">Entrenar</span>
-      <span class="hc-title">Registrar</span>
-      <span class="hc-sub" id="hc-reg-sub"></span>
+
+  <div class="hp">
+    <div style="min-width:0;">
+      <div class="hp-label">Programa actual</div>
+      <div class="hp-nombre" id="home-prog-name">—</div>
+      <div class="hp-meta" id="home-prog-meta">—</div>
+    </div>
+    <div class="hp-anillo">
+      <svg viewBox="0 0 88 88" aria-hidden="true">
+        <circle class="anillo-fondo" cx="44" cy="44" r="37"/>
+        <circle class="anillo-fill" id="home-anillo" cx="44" cy="44" r="37"
+                stroke-dasharray="232.5" stroke-dashoffset="232.5"/>
+      </svg>
+      <div class="hp-centro"><b id="home-prog-pct">0%</b><span>Completado</span></div>
+    </div>
+  </div>
+
+  <div class="home-sec">Tu resumen de hoy</div>
+  <div class="resumen">
+    <button class="rt" onclick="irAProximaSesion()">
+      <div class="rt-ico" style="background:rgba(255,107,0,.15);color:var(--accent);">🏋️</div>
+      <div class="rt-nom">Entreno</div>
+      <div class="rt-val" id="rt-entreno">—</div>
     </button>
-    <button class="home-card" style="background:linear-gradient(135deg,#c97820,#8a5212)" onclick="goTo('hist')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg>
-      <span class="hc-tag">Sesiones</span>
-      <span class="hc-title">Historial</span>
-      <span class="hc-sub" id="hc-hist-sub"></span>
+    <button class="rt" onclick="goTo('hist')">
+      <div class="rt-ico" style="background:rgba(255,107,0,.15);">🔥</div>
+      <div class="rt-nom">Racha</div>
+      <div class="rt-val" id="rt-racha">—</div>
     </button>
-    <button class="home-card" style="background:linear-gradient(135deg,#2d7a4f,#1a4d30)" onclick="goTo('resumen')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M5 19v-6M10 19V9M15 19v-8M20 19V5"/></svg>
-      <span class="hc-tag">Progreso</span>
-      <span class="hc-title">Resumen</span>
-      <span class="hc-sub" id="hc-res-sub"></span>
+    <button class="rt" onclick="goTo('resumen')">
+      <div class="rt-ico" style="background:rgba(45,122,79,.15);">❤️</div>
+      <div class="rt-nom">Cardio</div>
+      <div class="rt-val" id="rt-cardio">—</div>
     </button>
-    <button class="home-card" style="background:linear-gradient(135deg,#3a3835,#161616)" onclick="goTo('medidas')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="9" width="18" height="7" rx="1.5"/><path d="M7 9v3M11 9v2.3M15 9v3M19 9v2.3"/></svg>
-      <span class="hc-tag">Cuerpo</span>
-      <span class="hc-title">Medidas</span>
-      <span class="hc-sub" id="hc-med-sub"></span>
+    <button class="rt" onclick="goTo('medidas')">
+      <div class="rt-ico" style="background:rgba(59,130,246,.15);">📏</div>
+      <div class="rt-nom">Medidas</div>
+      <div class="rt-val" id="rt-medidas">—</div>
     </button>
+  </div>
+
+  <button class="hoy" id="home-hoy" onclick="irAProximaSesion()">
+    <span class="hoy-tag" id="hoy-tag">Entrenamiento de hoy</span>
+    <span class="hoy-tit" id="hoy-tit">—</span>
+    <span class="hoy-meta" id="hoy-meta"></span>
+    <span class="hoy-cta" id="hoy-cta">Comenzar entrenamiento →</span>
+  </button>
+
+  <div class="duo">
+    <div class="card">
+      <div class="duo-label">Peso actual</div>
+      <div class="duo-val" id="duo-peso">—</div>
+      <div class="duo-sub" id="duo-peso-sub">Sin medidas aún</div>
+      <svg class="chispa" id="duo-chispa" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"></svg>
+    </div>
+    <div class="card">
+      <div class="duo-label">Adherencia</div>
+      <div class="duo-val" id="duo-adh">—</div>
+      <div class="duo-sub" id="duo-adh-sub"></div>
+      <div class="adh-barras" id="duo-adh-barras"></div>
+    </div>
   </div>
   <!-- Solo para clientes: quién les entrena. Lo rellena pintarEntrenador(),
        que aprovecha el hueco que quedaba bajo las tarjetas. -->
@@ -1405,7 +1513,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-08 12:06';
+const APP_VERSION='2026-08-08 12:29';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2500,27 +2608,148 @@ function goTo(id){
   showTab(id,document.getElementById('tab-'+id));
 }
 
+/* Cuántas sesiones tiene el plan DE VERDAD. Antes estaba clavado a 40, que era
+   cierto solo para la rutina original: desde que Ajustes deja cambiar los días
+   por semana, un plan puede tener 24 o 56, y el porcentaje mentía sin avisar. */
+function totalSesiones(r){
+  return (r&&r.plan||[]).reduce((n,w)=>n+((w.days||[]).length),0);
+}
+
+/* La primera sesión del plan sin registrar, EN ORDEN DE PLAN.
+   Tampoco vale recorrer los ids del 1 al 40: aplicarCambioDias() reparte ids
+   por encima de todos los existentes, así que pueden pasar de 40 de sobra y
+   no tienen por qué ser correlativos. */
+function proximaSesion(r){
+  for(const w of (r&&r.plan||[]))
+    for(const d of (w.days||[]))
+      if(!(r.sessions||{})[d.s]) return {dia:d,semana:w.num};
+  return null;
+}
+
+/* Adherencia = de la semana en curso, hechas ÷ previstas. Por semana y no
+   "los últimos 7 días" porque el plan se organiza por semanas, y es lo que
+   se puede explicar sin notas al pie. */
+function adherenciaSemana(r){
+  const num=r?semanaEnCurso(r):null;
+  const w=(r&&r.plan||[]).find(x=>x.num===num);
+  if(!w||!(w.days||[]).length)return null;
+  const hechas=w.days.filter(d=>(r.sessions||{})[d.s]).length;
+  return {num,hechas,previstas:w.days.length,pct:Math.round(hechas/w.days.length*100)};
+}
+
+/* Decimales con coma: "86,4 kg", no "86.4 kg". Se coló en la primera pasada y
+   solo se vio mirando la pantalla; el dato era correcto, el formato no. */
+function num(v){
+  return Number(v).toLocaleString('es-ES',{maximumFractionDigits:1});
+}
+
+function pintarSaludo(){
+  const h=new Date().getHours();
+  const saludo=h<6?'Buenas noches':h<13?'¡Buenos días':h<21?'¡Buenas tardes':'¡Buenas noches';
+  const nombre=(DB.profileName||'').trim();
+  const el=document.getElementById('home-saludo');
+  if(el)el.textContent=saludo+(nombre?', '+nombre:'')+'! 👋';
+}
+
+window.irAProximaSesion=function(){
+  const act=getActive();
+  const p=act?proximaSesion(act):null;
+  goTo('log');
+  if(p)openSession(p.dia.s);   // sin plan que abrir, la lista de sesiones ya lo explica
+};
+
 function updateHome(){
-  const done=Object.keys(getActiveSessions()).length;
-  const pct=Math.round(done/40*100);
-  let next=null;
-  for(let i=1;i<=40;i++){if(!getActiveSessions()[i]){next=i;break;}}
-  const nd=next?findDay(next):null;
-  const medidas=getActiveMedidas();
-const lastM=medidas.length?medidas[medidas.length-1]:null;
-  const totalKcal=Object.values(getActiveSessions()||{}).reduce((s,x)=>s+(x.cardio&&x.cardio.kcal?x.cardio.kcal:0),0);
+  const act=getActive();
+  const ses=getActiveSessions();
+  const done=Object.keys(ses||{}).length;
+  const total=totalSesiones(act);
+  const pct=total?Math.round(done/total*100):0;
+  const prox=act?proximaSesion(act):null;
+  const medidas=getActiveMedidas()||[];
   const set=(id,txt)=>{const e=document.getElementById(id);if(e)e.textContent=txt;};
-  const act2=getActive();
-const progName=document.getElementById('home-prog-name');
-if(progName&&act2)progName.textContent=act2.name+' · '+act2.plan.length+' semanas';
-  set('home-prog-txt',done+'/40 · '+pct+'%');
-  const pf=document.getElementById('home-prog-fill');
-  if(pf)pf.style.width=pct+'%';
-  set('hc-reg-sub',nd?('Próxima: S'+next+' · '+nd.type):'¡Plan completado! 🏆');
+
+  pintarSaludo();
+
+  set('home-prog-name',act?act.name:'Sin rutina activa');
+  set('home-prog-meta',act
+    ?('Semana '+(semanaEnCurso(act)||1)+' de '+act.plan.length+' · '+done+'/'+total+' sesiones')
+    :'Elige una rutina para empezar');
+  set('home-prog-pct',pct+'%');
+  const anillo=document.getElementById('home-anillo');
+  if(anillo){
+    const C=2*Math.PI*37;                       // r=37 en el viewBox de 88
+    anillo.setAttribute('stroke-dasharray',C.toFixed(1));
+    anillo.setAttribute('stroke-dashoffset',(C*(1-pct/100)).toFixed(1));
+  }
+
+  set('rt-entreno',prox?'Pendiente':(total?'Completado':'—'));
   const streak=calcStreak();
-  set('hc-hist-sub',done+' sesiones'+(streak>1?' · 🔥 '+streak+' días':''));
-  set('hc-res-sub',totalKcal.toLocaleString('es-ES')+' kcal de cardio');
-  set('hc-med-sub',lastM?('Última: Sem '+lastM.semana+(lastM.peso?' · '+lastM.peso+'kg':'')):'Sin medidas aún');
+  set('rt-racha',streak?streak+(streak===1?' día':' días'):'Sin racha');
+  const totalKcal=Object.values(ses||{}).reduce((s,x)=>s+(x.cardio&&x.cardio.kcal?x.cardio.kcal:0),0);
+  set('rt-cardio',totalKcal?totalKcal.toLocaleString('es-ES')+' kcal':'Sin cardio');
+  const lastM=medidas.length?medidas[medidas.length-1]:null;
+  set('rt-medidas',lastM&&lastM.peso?num(lastM.peso)+' kg':'Sin datos');
+
+  // Entrenamiento de hoy
+  const tag=document.getElementById('hoy-tag');
+  const cta=document.getElementById('hoy-cta');
+  if(prox){
+    if(tag)tag.textContent='Entrenamiento de hoy';
+    set('hoy-tit',prox.dia.name);
+    set('hoy-meta',(prox.dia.ex||[]).length+' ejercicio'+((prox.dia.ex||[]).length===1?'':'s')+
+      (prox.dia.type?' · '+prox.dia.type:'')+' · Semana '+prox.semana);
+    if(cta)cta.textContent='Comenzar entrenamiento →';
+  }else if(total){
+    if(tag)tag.textContent='Plan terminado';
+    set('hoy-tit','¡Lo has completado! 🏆');
+    set('hoy-meta','Las '+total+' sesiones registradas. Añade semanas o activa otra rutina.');
+    if(cta)cta.textContent='Ver el historial →';
+  }else{
+    if(tag)tag.textContent='Sin plan';
+    set('hoy-tit','Aún no hay sesiones');
+    set('hoy-meta','Crea o activa una rutina para empezar.');
+    if(cta)cta.textContent='Ver rutinas →';
+  }
+
+  // Peso + chispa
+  const pesos=medidas.filter(m=>m.peso!=null&&m.peso!=='');
+  const ult=pesos.length?pesos[pesos.length-1]:null;
+  set('duo-peso',ult?num(ult.peso)+' kg':'—');
+  if(pesos.length>1){
+    const d=+(ult.peso-pesos[pesos.length-2].peso).toFixed(1);
+    set('duo-peso-sub',(d>0?'+':'')+num(d)+' kg desde la última medida');
+  }else{
+    set('duo-peso-sub',ult?'Primera medida registrada':'Sin medidas aún');
+  }
+  pintarChispa(pesos.map(m=>+m.peso));
+
+  // Adherencia
+  const a=act?adherenciaSemana(act):null;
+  set('duo-adh',a?a.pct+'%':'—');
+  set('duo-adh-sub',a?(a.hechas+' de '+a.previstas+' de la semana '+a.num):'Sin plan activo');
+  const barras=document.getElementById('duo-adh-barras');
+  if(barras){
+    barras.innerHTML=a
+      ? Array.from({length:a.previstas},(_,i)=>
+          '<i class="'+(i<a.hechas?'on':'')+'" style="height:'+(i<a.hechas?100:38)+'%"></i>').join('')
+      : '';
+  }
+}
+
+/* Minigráfica de peso: SVG a mano, sin Chart.js. Son 4 líneas y aquí no hay
+   ejes ni tooltip que justifiquen cargar la librería en Inicio. */
+function pintarChispa(vals){
+  const s=document.getElementById('duo-chispa');
+  if(!s)return;
+  if(!vals||vals.length<2){s.innerHTML='';return;}
+  const min=Math.min(...vals), max=Math.max(...vals), rango=(max-min)||1;
+  const pts=vals.map((v,i)=>{
+    const x=vals.length===1?0:(i/(vals.length-1))*100;
+    return x.toFixed(1)+','+(28-((v-min)/rango)*26).toFixed(1);
+  }).join(' ');
+  s.innerHTML='<polyline points="'+pts+'" fill="none" stroke="var(--accent)" '+
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '+
+    'vector-effect="non-scaling-stroke"/>';
 }
 function toggleRoutinePanel(){
   const p=document.getElementById('routine-panel');

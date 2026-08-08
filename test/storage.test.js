@@ -15,11 +15,16 @@ const localStorage = {
   removeItem: k => store.delete(k),
 };
 const el = () => ({
-  style: {}, textContent: '', innerHTML: '', value: '',
+  style: {}, textContent: '', innerHTML: '', value: '', className: '', alt: '', src: '',
   classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } },
   // Los elementos reales lo tienen; sin esto, cualquier código que enganche un
   // listener revienta el arnés en vez de fallar donde debe.
   addEventListener(){}, removeEventListener(){},
+  // Íd.: updateHome() pinta el anillo de progreso con setAttribute y monta el
+  // avatar con appendChild. Que falten aquí no dice nada del código real.
+  setAttribute(){}, getAttribute(){ return null; },
+  appendChild(){}, removeChild(){}, firstChild: null,
+  querySelector(){ return null; }, querySelectorAll(){ return []; },
 });
 // Se guardan los listeners para poder disparar DOMContentLoaded a mano y
 // comprobar el arranque real de la app.
@@ -49,6 +54,7 @@ const puente = `
   planParaFirestore, planDesdeFirestore, buscarArraysAnidados,
   resumenDB, textoResumen, firmaDB, mismosDatos, diagnosticarSubida,
   fotosARecomprimir, LIMITE_FOTO,
+  totalSesiones, proximaSesion, adherenciaSemana,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -357,6 +363,51 @@ const ok = (cond, msg) => {
   ok(huerfanos.length === 0,
      huerfanos.length ? 'estos usan class="hidden" pero NADA los oculta: ' + huerfanos.join(', ')
                       : 'ningún elemento se queda visible por una regla que falta');
+
+  console.log('\n15. Inicio cuenta sobre el plan real, no sobre 40');
+  // Durante meses el progreso era hechas/40 y la próxima sesión se buscaba
+  // recorriendo los ids del 1 al 40. Las dos cosas eran ciertas SOLO para la
+  // rutina original de 8x5. Con el panel de Ajustes cambiando los días por
+  // semana, y con aplicarCambioDias() repartiendo ids por encima del máximo
+  // existente, ninguna de las dos se sostiene.
+  const rutinaCorta = {
+    id: 'r-corta', name: 'Plan corto',
+    plan: [
+      { num: 1, title: 'Semana 1', days: [{ s: 101, name: 'A', type: 'Torso', ex: [['Press', '4×8']] },
+                                          { s: 102, name: 'B', type: 'Pierna', ex: [] },
+                                          { s: 103, name: 'C', type: 'Full', ex: [] }] },
+      { num: 2, title: 'Semana 2', days: [{ s: 104, name: 'D', type: 'Torso', ex: [] },
+                                          { s: 105, name: 'E', type: 'Pierna', ex: [] },
+                                          { s: 106, name: 'F', type: 'Full', ex: [] }] },
+    ],
+    sessions: {}, medidas: [],
+  };
+
+  ok(app.totalSesiones(rutinaCorta) === 6, 'un plan de 2x3 son 6 sesiones, no 40');
+  ok(app.totalSesiones({ plan: [] }) === 0, 'un plan vacío son 0 (y no revienta)');
+  ok(app.totalSesiones(null) === 0, 'sin rutina devuelve 0 en vez de tirar');
+
+  // Ids por encima de 40: el bucle viejo (i=1..40) no habría encontrado ninguna.
+  ok(app.proximaSesion(rutinaCorta).dia.s === 101, 'la próxima es la primera del plan');
+  ok(app.proximaSesion(rutinaCorta).semana === 1, 'y dice de qué semana es');
+
+  rutinaCorta.sessions[101] = { exercises: [], date: '05/08/2026' };
+  rutinaCorta.sessions[102] = { exercises: [], date: '06/08/2026' };
+  ok(app.proximaSesion(rutinaCorta).dia.s === 103, 'avanza saltando las ya registradas');
+
+  // Un hueco en medio no debe adelantar a una anterior sin registrar.
+  rutinaCorta.sessions[104] = { exercises: [], date: '07/08/2026' };
+  ok(app.proximaSesion(rutinaCorta).dia.s === 103,
+     'respeta el orden del plan aunque haya registros más adelante');
+
+  ok(app.adherenciaSemana(rutinaCorta).num === 1, 'la semana en curso es la 1: le falta la 103');
+  ok(app.adherenciaSemana(rutinaCorta).hechas === 2, 'lleva 2 de esa semana');
+  ok(app.adherenciaSemana(rutinaCorta).previstas === 3, 'sobre 3 previstas');
+  ok(app.adherenciaSemana(rutinaCorta).pct === 67, '2 de 3 se redondea a 67 %');
+
+  [101, 102, 103, 104, 105, 106].forEach(s => { rutinaCorta.sessions[s] = { exercises: [], date: '08/08/2026' }; });
+  ok(app.proximaSesion(rutinaCorta) === null, 'plan terminado: no hay próxima');
+  ok(app.adherenciaSemana(rutinaCorta).pct === 100, 'y la última semana marca 100 %');
 
   console.log(fallos === 0 ? '\n✅ TODO OK\n' : `\n❌ ${fallos} fallo(s)\n`);
   process.exit(fallos === 0 ? 0 : 1);
