@@ -107,6 +107,12 @@ textarea{resize:vertical;min-height:60px;}
 .btn-primary:active{opacity:0.85;}
 .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text);margin-top:8px;}
 .btn-sm{padding:6px 12px;font-size:12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;}
+/* Duplicar y borrar, en filas de semana y de sesión. El hueco extra antes del
+   destructivo no es decorativo: iban pegados y del mismo tamaño, así que un
+   dedo torpe borraba una semana entera queriendo duplicarla. */
+.acciones-fila{display:flex;align-items:center;gap:4px;margin-left:8px;flex-shrink:0;}
+.acciones-fila .btn-sm{padding:6px 8px;font-size:11px;white-space:nowrap;}
+.acciones-fila .sep-peligro{margin-left:10px;}
 .btn-danger{border-color:var(--danger);color:var(--danger);background:transparent;}
 .msg{font-size:12px;padding:8px 10px;border-radius:var(--radius-sm);margin-bottom:10px;line-height:1.45;}
 .msg-err{background:rgba(var(--danger-rgb),0.1);color:var(--danger);}
@@ -1523,7 +1529,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-08 13:03';
+const APP_VERSION='2026-08-08 13:15';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2089,9 +2095,15 @@ if(!plan.length){
         <div class="week-btn-meta">${done}/${total} sesiones completadas</div>
       </div>
       <span class="week-btn-badge" style="color:${badgeColor};background:${badgeBg};">${isComplete?'✓ Lista':isCurrent?'Actual':done+'/'+total}</span>
-      <div style="display:flex;gap:4px;margin-left:8px;">
-        <button class="btn-sm" onclick="duplicateWeek(${w.num})" title="Duplicar semana">⧉</button>
-        <button class="btn-sm btn-danger" onclick="deleteWeek(${w.num})" title="Eliminar semana">×</button>
+      <!-- Con texto, no solo el icono: "⧉" y "×" no dicen nada, y el title=""
+           no existe en móvil, que es donde se usa esto. El separador empuja
+           borrar lejos de duplicar: eran del mismo tamaño y pegados, con el
+           destructivo al lado del inocuo. -->
+      <div class="acciones-fila">
+        <button class="btn-sm" onclick="duplicateWeek(${w.num})"
+                aria-label="Duplicar semana ${w.num}">⧉ Duplicar</button>
+        <button class="btn-sm btn-danger sep-peligro" onclick="deleteWeek(${w.num})"
+                aria-label="Borrar semana ${w.num}">🗑 Borrar</button>
       </div>
     </div>`;
   }).join('');
@@ -2103,7 +2115,7 @@ function openWeekDetail(weekNum){
   const week=plan.find(w=>w.num===weekNum);
   if(!week)return;
   curWeekNum=weekNum;
-  document.getElementById('week-detail-title').textContent='Semana '+weekNum+' — '+week.title;
+  document.getElementById('week-detail-title').textContent=etiquetaSemana(week);
   document.getElementById('week-list-view').style.display='none';
   document.getElementById('session-list-view').style.display='block';
   const c=document.getElementById('session-list');
@@ -2115,8 +2127,12 @@ function openWeekDetail(weekNum){
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">${d.type}${done?' · ✓ Completada':''}</div>
       </div>
       <span style="margin-right:8px;">${done?'<span class="done-check">✓</span>':'<span style="color:var(--muted);font-size:12px;">›</span>'}</span>
-      <button class="btn-sm" onclick="duplicateSession(${weekNum},${d.s})" title="Duplicar sesión">⧉</button>
-      <button class="btn-sm btn-danger" onclick="deleteSession(${weekNum},${d.s})" title="Eliminar sesión">×</button>
+      <div class="acciones-fila">
+        <button class="btn-sm" onclick="duplicateSession(${weekNum},${d.s})"
+                aria-label="Duplicar ${escaparHTML(d.name)}">⧉ Duplicar</button>
+        <button class="btn-sm btn-danger sep-peligro" onclick="deleteSession(${weekNum},${d.s})"
+                aria-label="Borrar ${escaparHTML(d.name)}">🗑 Borrar</button>
+      </div>
     </div>`;
   }).join('');
   window.scrollTo(0,0);
@@ -3664,12 +3680,26 @@ function renumberWeeks(act){
   });
 }
 
+/* La pregunta dice QUÉ se pierde, no "¿seguro?".
+   Este botón borra el historial entrenado de la semana (el forEach de abajo
+   quita las sesiones registradas), y antes lo preguntaba con un genérico
+   "¿Eliminar esta semana y todas sus sesiones?": ni qué semana, ni cuánto.
+   Una semana sin entrenar y una con cuatro sesiones hechas se preguntaban
+   exactamente igual. */
 function deleteWeek(weekNum){
-  if(!confirm('¿Eliminar esta semana y todas sus sesiones?'))return;
   const act=getActive();
   if(!act)return;
   const week=act.plan.find(w=>w.num===weekNum);
   if(!week)return;
+  const conRegistro=(week.days||[]).filter(d=>(act.sessions||{})[d.s]).length;
+  const aviso=conRegistro
+    ? '⚠️ Vas a borrar '+etiquetaSemana(week)+', y con ella '+conRegistro+
+      // "sesión" pierde la tilde en plural: 'sesión'+'es' daba "sesiónes".
+      (conRegistro===1?' sesión':' sesiones')+' que ya entrenaste.\n\n'+
+      'Ese historial no se puede recuperar.\n\n¿Seguir?'
+    : 'Vas a borrar '+etiquetaSemana(week)+'.\n\n'+
+      'No tiene ninguna sesión registrada, así que no pierdes historial.\n\n¿Seguir?';
+  if(!confirm(aviso))return;
   week.days.forEach(d=>{delete act.sessions[d.s];});
   act.plan=act.plan.filter(w=>w.num!==weekNum);
   renumberWeeks(act);
@@ -3678,11 +3708,18 @@ function deleteWeek(weekNum){
 }
 
 function deleteSession(weekNum,s){
-  if(!confirm('¿Eliminar esta sesión?'))return;
   const act=getActive();
   if(!act)return;
   const week=act.plan.find(w=>w.num===weekNum);
   if(!week)return;
+  const dia=(week.days||[]).find(d=>d.s===s);
+  const reg=(act.sessions||{})[s];
+  const aviso=reg
+    ? '⚠️ Vas a borrar "'+((dia&&dia.name)||'esta sesión')+'", que registraste el '+
+      (reg.date||'día que la entrenaste')+'.\n\nEse registro no se puede recuperar.\n\n¿Seguir?'
+    : 'Vas a quitar "'+((dia&&dia.name)||'esta sesión')+'" del plan.\n\n'+
+      'No la has entrenado todavía, así que no pierdes historial.\n\n¿Seguir?';
+  if(!confirm(aviso))return;
   week.days=week.days.filter(d=>d.s!==s);
   delete act.sessions[s];
   week.days.forEach((d,i)=>{
