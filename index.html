@@ -113,6 +113,17 @@ textarea{resize:vertical;min-height:60px;}
 .acciones-fila{display:flex;align-items:center;gap:4px;margin-left:8px;flex-shrink:0;}
 .acciones-fila .btn-sm{padding:6px 8px;font-size:11px;white-space:nowrap;}
 .acciones-fila .sep-peligro{margin-left:10px;}
+/* Descanso entre series: una línea, no un formulario. */
+.chip-descanso{display:flex;align-items:center;gap:6px;width:100%;text-align:left;font-family:inherit;
+  font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:9px 12px;cursor:pointer;}
+.chip-descanso b{color:var(--accent);font-size:15px;}
+.chip-lapiz{margin-left:auto;color:var(--muted);font-size:12px;}
+.rest-rapidos{display:flex;gap:6px;margin-top:6px;}
+.rest-rapidos button{flex:1;font-family:inherit;font-size:12px;padding:8px 4px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;}
+.rest-rapidos button.elegido{border-color:var(--accent);color:var(--accent);
+  background:rgba(var(--accent-rgb),0.1);font-weight:700;}
 .btn-danger{border-color:var(--danger);color:var(--danger);background:transparent;}
 .msg{font-size:12px;padding:8px 10px;border-radius:var(--radius-sm);margin-bottom:10px;line-height:1.45;}
 .msg-err{background:rgba(var(--danger-rgb),0.1);color:var(--danger);}
@@ -710,8 +721,26 @@ textarea{resize:vertical;min-height:60px;}
         <button class="btn-sm" id="btn-volver" onclick="volverAtras()">← Sesiones</button>
       </div>
       <div id="aviso-borrador" class="msg msg-info" style="display:none;"></div>
-      <label>Descanso entre series (seg)</label>
-      <input type="text" inputmode="numeric" id="rest" value="90">
+      <!-- El descanso ocupaba una etiqueta y un campo enteros ARRIBA DEL TODO,
+           por encima de los ejercicios: el valor que menos se toca en el sitio
+           más visible. Ahora es una línea que dice cuánto hay, y solo se abre
+           si la tocas. El <input id="rest"> sigue existiendo igual, así que
+           openSession(), saveSession() y startTimer() no cambian.
+           display:none explícito, no class="hidden": aquí no hay regla que la
+           cubra (ver el bloque de CSS de arriba). -->
+      <button type="button" class="chip-descanso" onclick="toggleDescanso()">
+        ⏱ Descanso entre series: <b id="rest-txt">90</b> s <span class="chip-lapiz">✎</span>
+      </button>
+      <div id="rest-editor" style="display:none;margin-top:8px;">
+        <input type="text" inputmode="numeric" id="rest" value="90"
+               onchange="ponDescanso(this.value)">
+        <div class="rest-rapidos">
+          <button type="button" onclick="ponDescanso(60)">60 s</button>
+          <button type="button" onclick="ponDescanso(90)">90 s</button>
+          <button type="button" onclick="ponDescanso(120)">2 min</button>
+          <button type="button" onclick="ponDescanso(180)">3 min</button>
+        </div>
+      </div>
     </div>
 
     <!-- Lista de ejercicios -->
@@ -1529,7 +1558,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-08 13:15';
+const APP_VERSION='2026-08-08 13:23';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2230,6 +2259,36 @@ function descartarBorrador(){
   openSession(curSession);   // recargar desde lo guardado (o desde el plan)
 }
 
+function toggleDescanso(){
+  const e=document.getElementById('rest-editor');
+  if(!e)return;
+  e.style.display=e.style.display==='none'?'block':'none';
+}
+
+/* Un solo sitio por donde pasa cualquier cambio del descanso: el campo, los
+   botones rápidos y la carga de la sesión. Los rápidos escriben el valor por
+   código, y eso NO dispara el 'change' delegado de #session-form que guarda el
+   borrador — hay que llamarlo a mano (mismo tropiezo que con añadir/quitar
+   serie cuando se hicieron los borradores). */
+function ponDescanso(v){
+  const seg=Math.max(5,Math.min(600,parseInt(v)||90));
+  const inp=document.getElementById('rest');
+  if(inp)inp.value=seg;
+  pintarDescanso();
+  guardarBorrador();
+}
+
+function pintarDescanso(){
+  const inp=document.getElementById('rest');
+  const seg=parseInt(inp&&inp.value)||90;
+  const txt=document.getElementById('rest-txt');
+  if(txt)txt.textContent=seg;
+  document.querySelectorAll('.rest-rapidos button').forEach(b=>{
+    b.classList.toggle('elegido',parseInt(b.textContent)===seg||
+      (b.textContent.includes('min')&&parseInt(b.textContent)*60===seg));
+  });
+}
+
 function openSession(n){
   curSession=n;
   const day=findDay(n);
@@ -2241,6 +2300,10 @@ function openSession(n){
   // El borrador manda si existe; si no, lo guardado; si no, valores por defecto.
   const base=borrador||saved;
   document.getElementById('rest').value=base?base.rest:90;
+  // La línea de descanso arranca cerrada y mostrando el valor de esta sesión.
+  const edDesc=document.getElementById('rest-editor');
+  if(edDesc)edDesc.style.display='none';
+  pintarDescanso();
   document.getElementById('c-tipo').value=base?.cardio?.tipo||'Caminadora';
   document.getElementById('c-time').value=base?.cardio?.tiempo||'';
   document.getElementById('c-kcal').value=base?.cardio?.kcal||'';
