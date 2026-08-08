@@ -23,8 +23,16 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
   --bg:#f7f5f0;--card:#ffffff;--surface:#f0ede6;--border:#e0dbd0;
-  /* Naranja de la paleta del mockup (08/08/2026). Antes #e63f1f. */
-  --accent:#ff6b00;--dark:#1a1a1a;--green:#2d7a4f;--orange:#c97820;
+  /* Naranja de la paleta del mockup (08/08/2026). Antes #e63f1f.
+     --accent-rgb existe porque media app usa tintes rgba(...,0.1) del acento y
+     un hex no sirve dentro de rgba(). Cambiar el acento en un solo sitio exige
+     que los tintes lo sigan; si no, queda medio naranja y medio rojo.
+     --danger es lo que ANTES era el mismo rojo que el acento por casualidad:
+     borrar, error de guardado, aviso de storage. Eso debe seguir siendo rojo
+     aunque la marca cambie de color. */
+  --accent:#ff6b00;--accent-rgb:255,107,0;
+  --danger:#e63f1f;--danger-rgb:230,63,31;
+  --dark:#1a1a1a;--green:#2d7a4f;--orange:#c97820;
   --text:#1a1a1a;--muted:#7a7060;--radius:12px;--radius-sm:8px;
 }
 @media(prefers-color-scheme:dark){
@@ -42,7 +50,7 @@ header{background:var(--dark);color:#f5f0e8;padding:20px 16px 16px;position:stic
 .tab{flex:1;min-width:56px;padding:8px 4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:9px;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .25s ease;overflow:hidden;}
 .tab.tab-hidden{flex:0;min-width:0;padding:8px 0;opacity:0;border-color:transparent;background:transparent;pointer-events:none;}
 .tab svg{width:20px;height:20px;}
-.tab.active{color:var(--accent);border-color:var(--accent);background:rgba(230,63,31,0.1);}
+.tab.active{color:var(--accent);border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
 .tab:active{transform:scale(0.95);}
 .pane{display:none;padding:12px;} .pane.active{display:block;}
 /* Modo entrenador. El selector solo existe para cuentas con role=trainer, y
@@ -59,7 +67,7 @@ body.modo-clientes .tabs,body.modo-clientes .pane{display:none;}
 body.modo-clientes #pane-clientes{display:block;}
 .client-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;}
 .preset-op{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-top:6px;cursor:pointer;font-family:inherit;color:var(--text);}
-.preset-op.elegida{border-color:var(--accent);background:rgba(230,63,31,0.1);}
+.preset-op.elegida{border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
 .preset-op-name{font-size:13px;font-weight:700;}
 .preset-op-desc{font-size:11px;color:var(--muted);margin-top:2px;}
 .preset-op-meta{font-size:10px;color:var(--muted);margin-top:4px;opacity:.8;}
@@ -100,9 +108,9 @@ textarea{resize:vertical;min-height:60px;}
 .btn-primary:active{opacity:0.85;}
 .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text);margin-top:8px;}
 .btn-sm{padding:6px 12px;font-size:12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;}
-.btn-danger{border-color:#e63f1f;color:#e63f1f;background:transparent;}
+.btn-danger{border-color:var(--danger);color:var(--danger);background:transparent;}
 .msg{font-size:12px;padding:8px 10px;border-radius:var(--radius-sm);margin-bottom:10px;line-height:1.45;}
-.msg-err{background:rgba(230,63,31,0.1);color:var(--accent);}
+.msg-err{background:rgba(var(--danger-rgb),0.1);color:var(--danger);}
 .msg-ok{background:rgba(45,122,79,0.1);color:var(--green);}
 .msg-info{background:var(--surface);color:var(--muted);}
 /* No hay una .hidden genérica en este fichero, y no puede haberla: los paneles
@@ -152,7 +160,7 @@ textarea{resize:vertical;min-height:60px;}
 .dot-todo{background:var(--border);}
 .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;}
 .badge-green{background:rgba(45,122,79,0.12);color:var(--green);}
-.badge-accent{background:rgba(230,63,31,0.12);color:var(--accent);}
+.badge-accent{background:rgba(var(--accent-rgb),0.12);color:var(--accent);}
 .hist-item{border-bottom:1px solid var(--border);padding:10px 0;}
 .hist-item:last-child{border-bottom:none;}
 .hist-title{font-size:13px;font-weight:700;margin-bottom:4px;}
@@ -165,7 +173,7 @@ textarea{resize:vertical;min-height:60px;}
 .medida-row:last-child{border-bottom:none;}
 .delta-pos{color:var(--accent);font-size:12px;}
 .delta-neg{color:var(--green);font-size:12px;}
-.week-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(230,63,31,0.1);color:var(--accent);}
+.week-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(var(--accent-rgb),0.1);color:var(--accent);}
 .home-prog{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;}
 .home-prog-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:8px;}
 .home-prog-head span:last-child{color:var(--accent);font-size:11px;}
@@ -254,7 +262,7 @@ textarea{resize:vertical;min-height:60px;}
 .routine-actions{display:flex;gap:6px;}
 .feeling-btn{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:24px;min-width:64px;}
 .feeling-btn span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
-.feeling-btn.selected{border-color:var(--accent);background:rgba(230,63,31,0.08);}
+.feeling-btn.selected{border-color:var(--accent);background:rgba(var(--accent-rgb),0.08);}
 .ex-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;}
 .ex-btn-info{flex:1;}
 .ex-btn-name{font-size:14px;font-weight:700;color:var(--text);}
@@ -266,7 +274,7 @@ textarea{resize:vertical;min-height:60px;}
 .ex-order-btn{background:var(--surface);border:1px solid var(--border);border-radius:4px;width:24px;height:20px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);}
 .ex-detail-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
 .week-btn{width:100%;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;display:flex;justify-content:space-between;align-items:center;}
-.week-btn.current-week{border-color:var(--accent);background:rgba(230,63,31,0.06);}
+.week-btn.current-week{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
 .week-btn.done-week{border-color:var(--green);background:rgba(45,122,79,0.06);}
 .week-btn-title{font-size:14px;font-weight:700;color:var(--text);}
 .week-btn-meta{font-size:11px;color:var(--muted);margin-top:3px;}
@@ -279,7 +287,7 @@ textarea{resize:vertical;min-height:60px;}
 .ob-title span{color:var(--accent);}
 .ob-sub{font-size:14px;color:var(--muted);margin-bottom:32px;line-height:1.6;}
 .ob-routine-btn{width:100%;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .2s;}
-.ob-routine-btn.selected{border-color:var(--accent);background:rgba(230,63,31,0.06);}
+.ob-routine-btn.selected{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
 .ob-routine-btn-name{font-size:14px;font-weight:700;color:var(--text);}
 .ob-routine-btn-desc{font-size:11px;color:var(--muted);margin-top:3px;}
 .ob-avatar{width:100px;height:120px;border-radius:12px;background:var(--surface);border:2px dashed var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin:0 auto 16px;}
@@ -308,7 +316,7 @@ textarea{resize:vertical;min-height:60px;}
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button onclick="toggleRoutinePanel()" style="padding:6px 10px;background:rgba(230,63,31,0.15);border:1px dashed var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-align:left;white-space:nowrap;width:fit-content;">
+        <button onclick="toggleRoutinePanel()" style="padding:6px 10px;background:rgba(var(--accent-rgb),0.15);border:1px dashed var(--accent);border-radius:var(--radius-sm);color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-align:left;white-space:nowrap;width:fit-content;">
           ⚡ Cambiar rutina
         </button>
         <button id="account-btn" onclick="toggleAuthPanel()" style="padding:6px 10px;background:rgba(255,255,255,0.08);border:1px dashed rgba(255,255,255,0.3);border-radius:var(--radius-sm);color:rgba(255,255,255,0.75);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;text-align:left;white-space:nowrap;width:fit-content;">
@@ -830,9 +838,12 @@ textarea{resize:vertical;min-height:60px;}
     <div class="section-title">Añadir medición</div>
     <div class="grid2" style="margin-bottom:8px;">
       <div><label>Semana</label><select id="med-sem"></select></div>
-      <div><label>Fecha</label><input type="text" id="med-fecha" placeholder="30/05/2026"></div>
-      <div><label>Peso (kg)</label><input type="text" inputmode="decimal" id="med-peso" placeholder="110"></div>
-      <div><label>Cintura (cm)</label><input type="text" inputmode="decimal" id="med-cin" placeholder="113"></div>
+      <!-- Los placeholders eran "30/05/2026", "110" y "113": parecían valores
+           ya escritos, no pistas. El de fecha además dice ahora lo que hace de
+           verdad si lo dejas vacío (saveMedida pone la de hoy). -->
+      <div><label>Fecha</label><input type="text" id="med-fecha" placeholder="Hoy"></div>
+      <div><label>Peso (kg)</label><input type="text" inputmode="decimal" id="med-peso" placeholder="Ej. 86,4"></div>
+      <div><label>Cintura (cm)</label><input type="text" inputmode="decimal" id="med-cin" placeholder="Ej. 89"></div>
     </div>
     <button class="btn btn-primary" onclick="saveMedida()">Guardar medida</button>
   </div>
@@ -915,7 +926,7 @@ textarea{resize:vertical;min-height:60px;}
   <div class="timer-ring">
     <svg width="48" height="48" viewBox="0 0 48 48">
       <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
-      <circle id="timer-arc" cx="24" cy="24" r="20" fill="none" stroke="#e63f1f" stroke-width="4"
+      <circle id="timer-arc" cx="24" cy="24" r="20" fill="none" stroke="var(--accent)" stroke-width="4"
         stroke-linecap="round" stroke-dasharray="125.66" stroke-dashoffset="0"/>
     </svg>
     <span class="timer-label" id="timer-label">●</span>
@@ -1491,7 +1502,7 @@ function sync(st){
   if(st==='ok'){d.style.background='#2d7a4f';t.textContent='Guardado';}
   else if(st==='saving'){d.style.background='#c97820';t.textContent='Guardando...';}
   else if(st==='load'){d.style.background='#888';t.textContent='Cargando...';}
-  else{d.style.background='#e63f1f';t.textContent='Error al guardar';}
+  else{d.style.background='var(--danger)';t.textContent='Error al guardar';}
 }
 
 /* ─────────── Capa de almacenamiento ───────────
@@ -1513,7 +1524,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-08 12:29';
+const APP_VERSION='2026-08-08 12:49';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -1949,7 +1960,7 @@ async function load(){
   sync('load');
   if(!storageAvailable()){
     const banner=document.createElement('div');
-    banner.style.cssText='background:#e63f1f;color:#fff;padding:10px 16px;font-size:12px;line-height:1.5;text-align:center;';
+    banner.style.cssText='background:var(--danger);color:#fff;padding:10px 16px;font-size:12px;line-height:1.5;text-align:center;';
     banner.innerHTML='⚠️ El guardado automático no está disponible. Usa <b>Exportar JSON</b> para no perder datos.';
     document.body.insertBefore(banner,document.body.firstChild);
   }
@@ -2072,10 +2083,10 @@ if(!plan.length){
     if(isComplete)cls+=' done-week';
     else if(isCurrent)cls+=' current-week';
     const badgeColor=isComplete?'var(--green)':isCurrent?'var(--accent)':'var(--muted)';
-    const badgeBg=isComplete?'rgba(45,122,79,0.12)':isCurrent?'rgba(230,63,31,0.12)':'rgba(0,0,0,0.06)';
+    const badgeBg=isComplete?'rgba(45,122,79,0.12)':isCurrent?'rgba(var(--accent-rgb),0.12)':'rgba(0,0,0,0.06)';
     return`<div class="${cls}">
       <div style="flex:1;cursor:pointer;" onclick="openWeekDetail(${w.num})">
-        <div class="week-btn-title">${isCurrent?'⚡ ':''}Semana ${w.num} — ${w.title}</div>
+        <div class="week-btn-title">${isCurrent?'⚡ ':''}${etiquetaSemana(w)}</div>
         <div class="week-btn-meta">${done}/${total} sesiones completadas</div>
       </div>
       <span class="week-btn-badge" style="color:${badgeColor};background:${badgeBg};">${isComplete?'✓ Lista':isCurrent?'Actual':done+'/'+total}</span>
@@ -2448,7 +2459,7 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
     const isComplete=wd===total;
     return`<div class="week-row" style="flex-direction:column;align-items:stretch;padding:0;overflow:hidden;margin-bottom:6px;">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;">
-        <div style="font-size:13px;font-weight:700;">${currentWeek===w.num?'⚡ ':'✓ '}Sem ${w.num} — ${w.title}</div>
+        <div style="font-size:13px;font-weight:700;">${currentWeek===w.num?'⚡ ':'✓ '}${etiquetaSemana(w,'Sem')}</div>
         <span class="badge ${isComplete?'badge-green':'badge-accent'}">${wd}/${total}</span>
       </div>
       <div style="padding:0 14px 12px;">
@@ -2480,9 +2491,22 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
   `;
 }
 
+/* Las semanas del plan REAL, no ocho fijas. Era el mismo fallo que el /40 de
+   Inicio: con 12 semanas no se podían registrar medidas de la 9 en adelante, y
+   con 4 ofrecía cuatro semanas inexistentes. Se reconstruye al abrir la
+   pestaña, así que sigue a los cambios de rutina y a las semanas añadidas. */
 function buildMedSel(){
   const s=document.getElementById('med-sem');
-  s.innerHTML=Array.from({length:8},(_,i)=>`<option value="${i+1}">Semana ${i+1}</option>`).join('');
+  if(!s)return;
+  const act=getActive();
+  const semanas=(act&&act.plan||[]).map(w=>w.num);
+  if(!semanas.length){
+    s.innerHTML='<option value="">Sin rutina activa</option>';
+    return;
+  }
+  const actual=act?semanaEnCurso(act):null;
+  s.innerHTML=semanas.map(n=>
+    `<option value="${n}"${n===actual?' selected':''}>Semana ${n}</option>`).join('');
 }
 
 function saveMedida(){
@@ -2600,7 +2624,7 @@ function showTab(id,el){
   if(id==='inicio')updateHome();
   if(id==='hist')renderHist();
   if(id==='resumen'){renderResumen();renderPhotos();}
-  if(id==='medidas'){renderMedidas();renderMedidasChart();}
+  if(id==='medidas'){buildMedSel();renderMedidas();renderMedidasChart();}
   window.scrollTo(0,0);
 }
 
@@ -2641,6 +2665,26 @@ function adherenciaSemana(r){
    solo se vio mirando la pantalla; el dato era correcto, el formato no. */
 function num(v){
   return Number(v).toLocaleString('es-ES',{maximumFractionDigits:1});
+}
+
+/* "Semana 1 — Semana 1". Varias rutinas preconstruidas titulan sus semanas
+   justo "Semana N", y el listado antepone "Semana N — " al título, así que
+   salía repetido. Si el título no añade nada, se enseña solo el número. */
+function etiquetaSemana(w,prefijo){
+  const p=(prefijo||'Semana')+' '+w.num;
+  const t=(w.title||'').trim();
+  if(!t||t===('Semana '+w.num)||t===('Sem '+w.num)||t===String(w.num))return p;
+  return p+' — '+t;
+}
+
+/* Chart.js pinta sobre canvas: no entiende var(--accent), necesita un color
+   de verdad. Se lee del CSS en vez de repetir el hex, para que las gráficas
+   sigan al acento igual que el resto. Vive en el script clásico y el módulo
+   la alcanza como global (la gráfica de cargas del cliente la usa). */
+function acentoCSS(alpha){
+  const rgb=(getComputedStyle(document.documentElement)
+    .getPropertyValue('--accent-rgb')||'').trim()||'255,107,0';
+  return alpha==null?'rgb('+rgb+')':'rgba('+rgb+','+alpha+')';
 }
 
 function pintarSaludo(){
@@ -3082,7 +3126,7 @@ c.innerHTML+=`
     <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Añadir rutina</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <button onclick="openNewRoutinePanel()" style="background:linear-gradient(135deg,#e63f1f,#9c2810);border:none;border-radius:16px;padding:20px 12px;cursor:pointer;text-align:left;color:#fff;font-family:inherit;min-height:100px;display:flex;flex-direction:column;justify-content:flex-end;">
+        <button onclick="openNewRoutinePanel()" style="background:linear-gradient(135deg,var(--accent),#9c3f00);border:none;border-radius:16px;padding:20px 12px;cursor:pointer;text-align:left;color:#fff;font-family:inherit;min-height:100px;display:flex;flex-direction:column;justify-content:flex-end;">
           <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;">Personalizada</span>
           <span style="font-size:16px;font-weight:800;margin-top:4px;">Nueva rutina</span>
         </button>
@@ -3167,7 +3211,7 @@ function renderMedidasChart(){
     data:{
       labels,
       datasets:[
-        {label:'Peso (kg)',data:pesos,borderColor:'#e63f1f',backgroundColor:'rgba(230,63,31,0.08)',tension:0.3,pointRadius:5,pointBackgroundColor:'#e63f1f',yAxisID:'y'},
+        {label:'Peso (kg)',data:pesos,borderColor:acentoCSS(),backgroundColor:acentoCSS(0.08),tension:0.3,pointRadius:5,pointBackgroundColor:acentoCSS(),yAxisID:'y'},
         {label:'Cintura (cm)',data:cinturas,borderColor:'#2d7a4f',backgroundColor:'rgba(45,122,79,0.08)',tension:0.3,pointRadius:5,pointBackgroundColor:'#2d7a4f',yAxisID:'y2'}
       ]
     },
@@ -3177,7 +3221,7 @@ function renderMedidasChart(){
       plugins:{legend:{labels:{color:textColor,font:{size:11}}}},
       scales:{
         x:{ticks:{color:textColor,font:{size:11}},grid:{color:gridColor}},
-        y:{position:'left',ticks:{color:'#e63f1f',font:{size:11}},grid:{color:gridColor},title:{display:true,text:'kg',color:'#e63f1f',font:{size:10}}},
+        y:{position:'left',ticks:{color:acentoCSS(),font:{size:11}},grid:{color:gridColor},title:{display:true,text:'kg',color:acentoCSS(),font:{size:10}}},
         y2:{position:'right',ticks:{color:'#2d7a4f',font:{size:11}},grid:{display:false},title:{display:true,text:'cm',color:'#2d7a4f',font:{size:10}}}
       }
     }
@@ -4944,8 +4988,8 @@ function pintarGraficaCargas(r, nombreEjercicio){
       datasets:[{
         label: nombreEjercicio + ' (kg máx.)',
         data: puntos.map(p => p.kg),
-        borderColor:'#e63f1f', backgroundColor:'rgba(230,63,31,0.08)',
-        tension:0.3, pointRadius:5, pointBackgroundColor:'#e63f1f'
+        borderColor:acentoCSS(), backgroundColor:acentoCSS(0.08),
+        tension:0.3, pointRadius:5, pointBackgroundColor:acentoCSS()
       }]
     },
     options:{

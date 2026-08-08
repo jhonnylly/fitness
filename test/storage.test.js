@@ -54,7 +54,7 @@ const puente = `
   planParaFirestore, planDesdeFirestore, buscarArraysAnidados,
   resumenDB, textoResumen, firmaDB, mismosDatos, diagnosticarSubida,
   fotosARecomprimir, LIMITE_FOTO,
-  totalSesiones, proximaSesion, adherenciaSemana,
+  totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -408,6 +408,26 @@ const ok = (cond, msg) => {
   [101, 102, 103, 104, 105, 106].forEach(s => { rutinaCorta.sessions[s] = { exercises: [], date: '08/08/2026' }; });
   ok(app.proximaSesion(rutinaCorta) === null, 'plan terminado: no hay próxima');
   ok(app.adherenciaSemana(rutinaCorta).pct === 100, 'y la última semana marca 100 %');
+
+  console.log('\n16. la etiqueta de una semana no se repite a sí misma');
+  // Varias PRESET_ROUTINES titulan sus semanas justo "Semana N", y el listado
+  // antepone "Semana N — ", así que salía "Semana 1 — Semana 1". Le pasa a
+  // datos reales, no solo a los de prueba.
+  ok(app.etiquetaSemana({ num: 1, title: 'Semana 1' }) === 'Semana 1',
+     'un título que solo repite el número se omite');
+  ok(app.etiquetaSemana({ num: 8, title: 'Semana final 🏆' }) === 'Semana 8 — Semana final 🏆',
+     'un título que aporta algo se conserva');
+  ok(app.etiquetaSemana({ num: 3, title: '' }) === 'Semana 3', 'sin título, solo el número');
+  ok(app.etiquetaSemana({ num: 3, title: '   ' }) === 'Semana 3', 'un título en blanco no cuenta');
+  ok(app.etiquetaSemana({ num: 2, title: 'Semana 2' }, 'Sem') === 'Sem 2',
+     'el prefijo corto también detecta la repetición');
+  ok(app.etiquetaSemana({ num: 5, title: 'Descarga' }, 'Sem') === 'Sem 5 — Descarga',
+     'y conserva el título con prefijo corto');
+
+  // El caso que de verdad importa: los ids de sesión NO son los números de
+  // semana, así que la etiqueta se construye con w.num y no con el índice.
+  ok(app.etiquetaSemana({ num: 12, title: 'Semana 12' }) === 'Semana 12',
+     'funciona más allá de la semana 8, que era el límite clavado a fuego');
 
   console.log(fallos === 0 ? '\n✅ TODO OK\n' : `\n❌ ${fallos} fallo(s)\n`);
   process.exit(fallos === 0 ? 0 : 1);
