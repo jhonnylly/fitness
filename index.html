@@ -48,7 +48,6 @@ header{background:var(--dark);color:#f5f0e8;padding:20px 16px 16px;position:stic
 .tabs{display:flex;background:var(--dark);padding:8px;gap:6px;overflow-x:auto;scrollbar-width:none;}
 .tabs::-webkit-scrollbar{display:none;}
 .tab{flex:1;min-width:56px;padding:8px 4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:9px;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .25s ease;overflow:hidden;}
-.tab.tab-hidden{flex:0;min-width:0;padding:8px 0;opacity:0;border-color:transparent;background:transparent;pointer-events:none;}
 .tab svg{width:20px;height:20px;}
 .tab.active{color:var(--accent);border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
 .tab:active{transform:scale(0.95);}
@@ -1524,7 +1523,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-08 12:49';
+const APP_VERSION='2026-08-08 13:03';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2603,22 +2602,17 @@ function importJSON(e){
   r.readAsText(file);
 }
 
+/* Las cinco pestañas están SIEMPRE visibles.
+   Antes, al salir de Inicio, las no activas se colapsaban a 0 de ancho
+   (`tab-hidden`): desde Registrar solo quedaban Inicio y la activa, así que
+   para ir a Historial había que pasar por Inicio. Venía de `80386c4`, que era
+   una animación y nada más — no protegía de nada. El coste era real: la
+   navegación desaparecía sin explicar por qué. Caben de sobra hasta en móvil
+   (5 × 56 px mínimo + separaciones), y `.tabs` tiene `overflow-x:auto` por si
+   algún día dejan de caber. */
 function showTab(id,el){
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(b=>{
-    b.classList.remove('active');
-    if(id==='inicio'){
-      b.classList.remove('tab-hidden');
-    } else {
-      const isInicio=b.id==='tab-inicio';
-      const isActive=b===el;
-      if(isInicio||isActive){
-        b.classList.remove('tab-hidden');
-      } else {
-        b.classList.add('tab-hidden');
-      }
-    }
-  });
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('pane-'+id).classList.add('active');
   el.classList.add('active');
   if(id==='inicio')updateHome();
