@@ -57,6 +57,7 @@ const puente = `
   totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana,
   migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
   repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
+  claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -598,6 +599,62 @@ const ok = (cond, msg) => {
 
   // Sin sesiones de origen no puede reventar.
   ok(app.repartirSesiones([], 4).length === 0, 'sin sesiones de origen devuelve vacío');
+
+  console.log('\n19. la imagen de un ejercicio se encuentra aunque el nombre varíe');
+  // Casos REALES sacados de los datos de Jhon: 118 nombres escritos para 112
+  // movimientos. Buscar por el literal dejaría media librería sin foto.
+  ok(app.claveEjercicio('Jalón al pecho') === 'jalon_al_pecho', 'minúsculas y sin tildes');
+  ok(app.claveEjercicio('jalón al pecho') === app.claveEjercicio('Jalón al pecho'),
+     'la mayúscula inicial no crea una entrada distinta');
+  ok(app.claveEjercicio('Triceps cuerda') === app.claveEjercicio('Tríceps cuerda'),
+     'la tilde que falta tampoco');
+  ok(app.claveEjercicio('Dominadas (o jalón al pecho)') === 'dominadas',
+     'el paréntesis es una anotación, no parte del nombre');
+  ok(app.claveEjercicio('Prensa 45°') === 'prensa_45', 'los símbolos no ensucian el nombre de fichero');
+  ok(app.claveEjercicio('Fondos captain\'s chair') === 'fondos_captain_s_chair',
+     'el apóstrofo se convierte en separador, no se pierde');
+  ok(!/^_|_$/.test(app.claveEjercicio('  Sentadilla  ')), 'sin guiones sueltos al principio ni al final');
+
+  // La laxa solo para casar plurales; NO vale de nombre de fichero.
+  ok(app.claveEjercicioLaxa('Press banca mancuernas') === app.claveEjercicioLaxa('Press banca mancuerna'),
+     'singular y plural son el mismo ejercicio');
+  ok(app.claveEjercicioLaxa('Tríceps en poleas') === app.claveEjercicioLaxa('Tríceps en polea'),
+     'y "poleas" casa con "polea"');
+  ok(app.claveEjercicio('Press banca') === 'press_banca',
+     'la clave de fichero NO destroza las palabras: sigue siendo "press", no "pres"');
+
+  // Conectores: pares reales que convivían en los datos de Jhon.
+  ok(app.claveEjercicioLaxa('Curl bíceps barra') === app.claveEjercicioLaxa('Curl bíceps con barra'),
+     '"con barra" y "barra" son el mismo ejercicio');
+  ok(app.claveEjercicioLaxa('Remo barra') === app.claveEjercicioLaxa('Remo con barra'),
+     'igual con el remo');
+  ok(app.claveEjercicioLaxa('Extensión piernas') === app.claveEjercicioLaxa('Extensión de piernas'),
+     'y el "de" tampoco separa');
+  ok(app.claveEjercicioLaxa('Tríceps polea') === app.claveEjercicioLaxa('Tríceps en polea'),
+     'ni el "en"');
+  // Pero quitar conectores NO puede fundir ejercicios distintos de verdad.
+  ok(app.claveEjercicioLaxa('Hip thrust') !== app.claveEjercicioLaxa('Hip thrust a una pierna'),
+     'a una pierna sigue siendo otro ejercicio');
+  ok(app.claveEjercicioLaxa('Elevación de piernas') !== app.claveEjercicioLaxa('Elevaciones laterales'),
+     'y elevaciones laterales no es elevación de piernas');
+  ok(app.claveEjercicio('Curl bíceps con barra') === 'curl_biceps_con_barra',
+     'el nombre de fichero conserva el conector y se sigue leyendo');
+
+  // La búsqueda: exacta primero, laxa después.
+  const mapa = {
+    jalon_al_pecho: 'img/jalon.webp',
+    press_banca_mancuernas: 'img/press.webp',
+    sentadilla: 'img/sentadilla.webp',
+  };
+  ok(app.buscarImagenEjercicio('Jalón al pecho', mapa) === 'img/jalon.webp', 'encuentra por clave exacta');
+  ok(app.buscarImagenEjercicio('jalón al pecho', mapa) === 'img/jalon.webp',
+     'y encuentra el que se escribió en minúscula, que era el que se quedaba sin foto');
+  ok(app.buscarImagenEjercicio('Press banca mancuerna', mapa) === 'img/press.webp',
+     'cae a la búsqueda laxa cuando solo cambia el plural');
+  ok(app.buscarImagenEjercicio('Peso muerto', mapa) === null,
+     'lo que no está devuelve null, no una imagen de otro ejercicio');
+  ok(app.buscarImagenEjercicio('Sentadilla', null) === null, 'sin librería cargada no revienta');
+  ok(app.buscarImagenEjercicio('', mapa) === null, 'un nombre vacío no casa con nada');
 
   console.log(fallos === 0 ? '\n✅ TODO OK\n' : `\n❌ ${fallos} fallo(s)\n`);
   process.exit(fallos === 0 ? 0 : 1);

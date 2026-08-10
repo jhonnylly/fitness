@@ -1569,7 +1569,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-11 01:12';
+const APP_VERSION='2026-08-11 01:49';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2877,6 +2877,61 @@ function etiquetaSemana(w,prefijo){
   const t=(w.title||'').trim();
   if(!t||t===('Semana '+w.num)||t===('Sem '+w.num)||t===String(w.num))return p;
   return p+' — '+t;
+}
+
+/* ═══════════ Nombres de ejercicio ═══════════
+   El nombre lo escribe una persona a mano cada vez que añade un ejercicio, así
+   que el MISMO movimiento aparece escrito de varias formas. En los datos
+   reales de Jhon (7 rutinas + 45 sesiones registradas) había 118 nombres para
+   112 movimientos: "jalón al pecho" y "Jalón al pecho", "Tríceps cuerda" y
+   "Triceps cuerda", "Press banca mancuerna" y "...mancuernas".
+   Buscar la imagen por el literal dejaría sin foto a media librería.
+
+   Dos claves a propósito:
+   - claveEjercicio: legible, sirve de nombre de fichero ("jalon_al_pecho").
+     Minúsculas, sin tildes, sin paréntesis (son anotaciones: "Dominadas (o
+     jalón al pecho)" es el mismo ejercicio que "Dominadas").
+   - claveEjercicioLaxa: además ignora plurales, para casar "mancuerna" con
+     "mancuernas". No se usa como nombre de fichero porque destroza palabras
+     ("press" -> "pres") y el nombre dejaría de reconocerse a simple vista. */
+function claveEjercicio(n){
+  return (n||'').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/\([^)]*\)/g,' ')
+    .replace(/[^a-z0-9]+/g,'_')
+    .replace(/^_+|_+$/g,'');
+}
+
+/* Además de plurales, ignora los conectores: en los datos reales conviven
+   "Curl bíceps barra" y "Curl bíceps con barra", "Remo barra" y "Remo con
+   barra", "Extensión piernas" y "Extensión de piernas", "Tríceps polea" y
+   "Tríceps en polea". Son el mismo movimiento y deben compartir imagen.
+   Los conectores SÍ se conservan en claveEjercicio(), que es el nombre de
+   fichero y tiene que seguir leyéndose bien. */
+const CONECTORES_EJ=['de','del','la','el','en','con','a','al','y','o','una','un','los','las'];
+
+function claveEjercicioLaxa(n){
+  return claveEjercicio(n).split('_')
+    .filter(p=>p&&!CONECTORES_EJ.includes(p))
+    .map(p=>p.replace(/es$/,'').replace(/s$/,''))
+    .filter(Boolean).join('_');
+}
+
+/* Busca la imagen de un ejercicio en un mapa {clave: url}.
+   Primero por la clave exacta y solo después por la laxa: así una diferencia
+   real ("Curl femoral" vs "Curl femorales", si algún día existieran como
+   ejercicios distintos) no se resuelve por accidente antes de intentar el
+   nombre tal cual. */
+function buscarImagenEjercicio(nombre,mapa){
+  if(!mapa)return null;
+  const exacta=claveEjercicio(nombre);
+  if(mapa[exacta])return mapa[exacta];
+  const laxa=claveEjercicioLaxa(nombre);
+  if(mapa[laxa])return mapa[laxa];
+  for(const k of Object.keys(mapa)){
+    if(claveEjercicioLaxa(k)===laxa)return mapa[k];
+  }
+  return null;
 }
 
 /* Chart.js pinta sobre canvas: no entiende var(--accent), necesita un color
