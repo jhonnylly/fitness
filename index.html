@@ -1569,7 +1569,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-08 14:10';
+const APP_VERSION='2026-08-11 01:12';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3126,35 +3126,112 @@ function semanasSinEmpezar(){
    "he juntado las que iban seguidas"— y respeta el orden en que estaban
    pensadas. Si se pide MÁS días de los que hay, se añaden sesiones vacías
    para rellenar a mano. */
+/* Cuántos ejercicios aguanta una sesión según los días que entrenes: con menos
+   días cada sesión abarca más, pero hay un techo por encima del cual la sesión
+   deja de ser realizable. Los números son los que pidió Jhon tras encontrarse
+   12 ejercicios en una sesión al pasar de 5 días a 4. */
+function maxEjerciciosPorSesion(dias){
+  const tabla={1:10,2:9,3:8,4:7,5:7,6:5,7:5};
+  return tabla[dias]||7;
+}
+
+/* Qué pasó en el último reparto, para poder contarlo en pantalla en vez de
+   quitar ejercicios en silencio. */
+let infoReparto={repetidos:0,movidos:0,descartados:[]};
+
+function mismoEjercicio(a,b){
+  return (a||'').trim().toLowerCase()===(b||'').trim().toLowerCase();
+}
+
+/* Reparte las sesiones actuales en `destino` días.
+   Antes se limitaba a fundir bloques consecutivos y concatenar sus ejercicios:
+   de 5 días a 4, dos sesiones caían juntas y salía una de 12 ejercicios,
+   imposible de hacer. Ahora, tras fundir:
+     1. se quitan los repetidos (fundir dos días de pierna repite sentadilla),
+     2. se respeta el tope de maxEjerciciosPorSesion(),
+     3. lo que sobra se INTENTA COLOCAR en otra sesión del mismo tipo de
+        trabajo antes de descartarlo,
+     4. y lo que aun así no cabe se descarta, pero se dice cuál.
+   Cada ejercicio viaja como [nombre, esquema, tipoDeOrigen]: el tercer
+   elemento es el que permite devolverlo a una sesión del trabajo que le
+   corresponde. aplicarCambioDias() lo ignora al guardar. */
 function repartirSesiones(dias, destino){
   const origen=dias.map(d=>({
     nombre:(d.name||'').replace(/^S\d+\s*·\s*/,''),
     tipo:d.type||'',
-    ex:(d.ex||[]).map(e=>Array.isArray(e)?[e[0],e[1]]:[e.name,e.scheme])
+    ex:(d.ex||[]).map(e=>Array.isArray(e)?[e[0],e[1],d.type||'']:[e.name,e.scheme,d.type||''])
   }));
+  infoReparto={repetidos:0,movidos:0,descartados:[]};
   if(!origen.length)return [];
 
+  let out;
   if(destino>=origen.length){
-    const out=origen.slice();
+    out=origen.map(o=>({nombre:o.nombre,tipo:o.tipo,ex:o.ex.slice()}));
     while(out.length<destino)out.push({nombre:'Nueva sesión',tipo:'',ex:[]});
-    return out;
+  }else{
+    // Bloques consecutivos lo más iguales posible, respetando el orden pensado.
+    out=[];
+    let i=0;
+    for(let b=0;b<destino;b++){
+      const restantes=origen.length-i;
+      const bloques=destino-b;
+      const cuantas=Math.ceil(restantes/bloques);
+      const trozo=origen.slice(i,i+cuantas);
+      i+=cuantas;
+      out.push({
+        nombre:trozo.map(t=>t.nombre).join(' + '),
+        tipo:trozo.map(t=>t.tipo).filter(Boolean).join('+'),
+        ex:trozo.flatMap(t=>t.ex)
+      });
+    }
   }
 
-  // Repartir en bloques lo más iguales posible, respetando el orden.
-  const out=[];
-  let i=0;
-  for(let b=0;b<destino;b++){
-    const restantes=origen.length-i;
-    const bloques=destino-b;
-    const cuantas=Math.ceil(restantes/bloques);
-    const trozo=origen.slice(i,i+cuantas);
-    i+=cuantas;
-    out.push({
-      nombre:trozo.map(t=>t.nombre).join(' + '),
-      tipo:trozo.map(t=>t.tipo).filter(Boolean).join('+'),
-      ex:trozo.flatMap(t=>t.ex)
+  // 1. Repetidos dentro de una misma sesión.
+  for(const s of out){
+    const vistos=[];
+    s.ex=s.ex.filter(e=>{
+      if(vistos.some(v=>mismoEjercicio(v,e[0]))){ infoReparto.repetidos++; return false; }
+      vistos.push(e[0]);
+      return true;
     });
   }
+
+  // 2. Lo que pasa del tope sale de las sesiones cargadas.
+  const tope=maxEjerciciosPorSesion(destino);
+  const sobrantes=[];
+  for(const s of out){
+    while(s.ex.length>tope) sobrantes.push({de:s,ex:s.ex.pop()});
+  }
+
+  // 3. Recolocar: primero en una sesión del mismo trabajo, luego en cualquiera
+  //    con hueco. Se prueba la que menos ejercicios tenga, para igualar.
+  /* Solo se recoloca en una sesión DEL MISMO TRABAJO (o en una recién creada,
+     que aún no tiene tipo y puede adoptarlo). Antes, si no quedaba hueco del
+     tipo correcto, se metía donde fuera: así acababa un ejercicio de espalda
+     en el día de pierna. Es preferible descartarlo y decirlo — una sesión
+     incoherente es peor que una sesión con un ejercicio menos, y la propuesta
+     se puede editar a mano antes de aplicar. */
+  const conHueco=()=>out.filter(s=>s.ex.length<tope).sort((a,b)=>a.ex.length-b.ex.length);
+  for(const sob of sobrantes){
+    const tipo=(sob.ex[2]||'').trim().toLowerCase();
+    const destinoEx=conHueco().find(s=>
+      s!==sob.de
+      && !s.ex.some(e=>mismoEjercicio(e[0],sob.ex[0]))
+      && (!tipo || !s.tipo || (s.tipo||'').toLowerCase().includes(tipo)));
+    if(destinoEx){
+      /* Las sesiones nuevas se quedan SIN tipo a propósito: son el hueco donde
+         cabe lo que sobra. Si adoptaran el trabajo del primer ejercicio que
+         reciben, rechazarían los siguientes y se perderían ejercicios al
+         AÑADIR días, que es justo lo contrario de lo que espera cualquiera.
+         Salió con los números delante: de 5 a 6 días se descartaban dos
+         aunque la capacidad total daba de sobra. */
+      destinoEx.ex.push(sob.ex);
+      infoReparto.movidos++;
+    }else{
+      infoReparto.descartados.push(sob.ex[0]);
+    }
+  }
+
   return out;
 }
 
@@ -3182,10 +3259,25 @@ window.proponerCambioDias=function(){
   const num=semanaEnCurso(act);
   const modelo=(act.plan.find(w=>w.num===num)||act.plan[act.plan.length-1]).days||[];
   propuestaDias=repartirSesiones(modelo,destino);
+  /* Se cuenta lo que ha hecho el reparto. Quitar ejercicios sin decirlo es
+     justo lo que convierte un ajuste en una sorpresa desagradable. */
+  const ajustes=[];
+  if(infoReparto.repetidos)
+    ajustes.push('se ha'+(infoReparto.repetidos===1?' quitado 1 ejercicio repetido':
+      'n quitado '+infoReparto.repetidos+' ejercicios repetidos'));
+  if(infoReparto.movidos)
+    ajustes.push('se ha'+(infoReparto.movidos===1?' movido 1 ejercicio a otra sesión':
+      'n movido '+infoReparto.movidos+' ejercicios a otra sesión'));
   document.getElementById('cfg-propuesta-info').innerHTML=
     'Se aplicará a <b>'+sinEmpezar.length+' semana'+(sinEmpezar.length===1?'':'s')+'</b> sin empezar '+
-    '(la '+sinEmpezar.map(w=>w.num).join(', la ')+'). Puedes renombrar cada sesión '+
-    'y mover ejercicios antes de aplicar.';
+    '(la '+sinEmpezar.map(w=>w.num).join(', la ')+'). Con '+destino+' días, cada sesión se deja en '+
+    '<b>'+maxEjerciciosPorSesion(destino)+' ejercicios como mucho</b>'+
+    (ajustes.length?': '+ajustes.join(' y ')+'.':'.')+
+    (infoReparto.descartados.length
+      ? ' <b style="color:var(--danger);">No cabían '+infoReparto.descartados.length+
+        ': '+infoReparto.descartados.map(escaparHTML).join(', ')+'.</b>'
+      : '')+
+    ' Puedes renombrar cada sesión y mover ejercicios antes de aplicar.';
   pintarPropuesta();
   document.getElementById('cfg-propuesta').classList.remove('hidden');
   document.getElementById('cfg-propuesta').scrollIntoView({behavior:'smooth',block:'nearest'});

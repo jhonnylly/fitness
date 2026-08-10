@@ -56,6 +56,7 @@ const puente = `
   fotosARecomprimir, LIMITE_FOTO,
   totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana,
   migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
+  repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -497,6 +498,106 @@ const ok = (cond, msg) => {
   const pend = app.fotosARecomprimir(grandes, 100);
   ok(pend.length === 1 && pend[0].tipo === 'foto' && pend[0].foto === 'f1',
      'las fotos grandes de DB.fotos siguen detectándose para recomprimir');
+
+  console.log('\n18. cambiar los días no deja sesiones imposibles');
+  // Reportado por Jhon usándola: al pasar de 5 días a 4, dos sesiones se
+  // fundían y salía una de 12 ejercicios. El reparto concatenaba y ya está.
+  const ej = (pre, n) => Array.from({ length: n }, (_, i) => [pre + (i + 1), '4×8']);
+  const cinco = [
+    { name: 'S1 · Pecho',   type: 'Torso',  ex: ej('Pecho', 6) },
+    { name: 'S2 · Espalda', type: 'Torso',  ex: ej('Espalda', 6) },
+    { name: 'S3 · Pierna',  type: 'Pierna', ex: ej('Pierna', 6) },
+    { name: 'S4 · Hombro',  type: 'Torso',  ex: ej('Hombro', 6) },
+    { name: 'S5 · Glúteo',  type: 'Pierna', ex: ej('Gluteo', 6) },
+  ];
+
+  const a4 = app.repartirSesiones(cinco, 4);
+  ok(a4.length === 4, 'de 5 días salen 4 sesiones');
+  ok(a4.every(s => s.ex.length <= app.maxEjerciciosPorSesion(4)),
+     'ninguna pasa del tope de 4 días (7): antes salía una de 12');
+  ok(Math.max(...a4.map(s => s.ex.length)) - Math.min(...a4.map(s => s.ex.length)) <= 3,
+     'y quedan repartidas, no una cargada y tres vacías');
+
+  const a3 = app.repartirSesiones(cinco, 3);
+  ok(a3.every(s => s.ex.length <= 8), 'a 3 días, tope 8');
+  const a6 = app.repartirSesiones(cinco, 6);
+  ok(a6.every(s => s.ex.length <= 5), 'a 6 días, tope 5');
+  ok(a6.length === 6, 'y se crean las sesiones que faltan');
+  // Subiendo de días, lo que sobraba arriba debe bajar a las nuevas, no
+  // dejarlas vacías mientras otra revienta.
+  ok(a6.filter(s => s.ex.length === 0).length < 6 - cinco.length + 1,
+     'las sesiones nuevas reciben ejercicios en vez de quedarse vacías');
+
+  ok(app.maxEjerciciosPorSesion(3) === 8 && app.maxEjerciciosPorSesion(4) === 7
+     && app.maxEjerciciosPorSesion(5) === 7 && app.maxEjerciciosPorSesion(6) === 5,
+     'los topes son los que pidió Jhon: 3->8, 4->7, 5->7, 6->5');
+
+  // Repetidos: fundir dos días de pierna repite sentadilla.
+  const conRepes = [
+    { name: 'S1 · Pierna A', type: 'Pierna', ex: [['Sentadilla', '4×8'], ['Prensa', '3×10']] },
+    { name: 'S2 · Pierna B', type: 'Pierna', ex: [['sentadilla', '4×8'], ['Zancadas', '3×12']] },
+  ];
+  const fundido = app.repartirSesiones(conRepes, 1);
+  ok(fundido[0].ex.length === 3, 'la sentadilla repetida se queda en una');
+  ok(app.infoReparto.repetidos === 1, 'y se cuenta para poder decirlo en pantalla');
+
+  // Nada se tira sin dejar constancia.
+  const bestia = [
+    { name: 'S1', type: 'Torso',  ex: ej('A', 10) },
+    { name: 'S2', type: 'Pierna', ex: ej('B', 10) },
+  ];
+  const apretado = app.repartirSesiones(bestia, 1);
+  ok(apretado[0].ex.length === app.maxEjerciciosPorSesion(1), 'con 1 día se respeta el tope de 10');
+  ok(app.infoReparto.descartados.length === 10, 'y los 10 que no caben quedan listados, no desaparecen');
+  ok(app.infoReparto.descartados.every(n => typeof n === 'string' && n),
+     'los descartados se nombran uno a uno');
+
+  // El tipo de trabajo manda al recolocar: un ejercicio de pierna no debe
+  // acabar en un día de torso si hay un día de pierna con hueco.
+  const porTipo = [
+    { name: 'S1 · Torso',   type: 'Torso',  ex: ej('T', 7) },
+    { name: 'S2 · Pierna',  type: 'Pierna', ex: ej('P', 8) },
+    { name: 'S3 · Pierna2', type: 'Pierna', ex: ej('Q', 2) },
+  ];
+  const recolocado = app.repartirSesiones(porTipo, 3);
+  const dondeQuedo = recolocado.find(s => s.ex.some(e => e[0] === 'P8'));
+  ok(dondeQuedo && (dondeQuedo.tipo || '').toLowerCase().includes('pierna'),
+     'el ejercicio de pierna que sobra va a otra sesión de pierna, no a la de torso');
+
+  // Y si NO queda hueco del trabajo correcto, se descarta en vez de ensuciar
+  // una sesión de otro grupo muscular. Salió mirando la propuesta en pantalla:
+  // un "Espalda 5" había aterrizado en el día de pierna.
+  const sinHuecoDelTipo = [
+    { name: 'S1 · Torso',  type: 'Torso',  ex: ej('T', 12) },
+    { name: 'S2 · Pierna', type: 'Pierna', ex: ej('P', 6) },
+  ];
+  const estricto = app.repartirSesiones(sinHuecoDelTipo, 2);
+  const pierna = estricto.find(s => (s.tipo || '').toLowerCase().includes('pierna'));
+  ok(pierna.ex.every(e => e[0].startsWith('P')),
+     'la sesión de pierna no recibe ejercicios de torso aunque le sobre sitio');
+  ok(app.infoReparto.descartados.length > 0, 'los que no caben en su trabajo se descartan');
+  ok(app.infoReparto.descartados.every(n => n.startsWith('T')),
+     'y los descartados son los de torso, que era el grupo pasado de vueltas');
+
+  // Una sesión recién creada no tiene tipo todavía: debe poder adoptar uno.
+  // 12 ejercicios y tope 9 (2 días): sobran 3 y tienen a dónde ir.
+  const subiendo = [{ name: 'S1 · Pierna', type: 'Pierna', ex: ej('P', 12) }];
+  const repartido = app.repartirSesiones(subiendo, 2);
+  ok(repartido[1].ex.length > 0, 'la sesión nueva recibe lo que sobra de la cargada');
+
+  /* AÑADIR días no puede hacer perder ejercicios: hay más sitio, no menos.
+     Con 5 sesiones de 6 y 6 días (tope 5) la capacidad es 30 y hay 30
+     ejercicios, así que no debe caer ninguno. Antes caían dos, porque la
+     sesión nueva adoptaba el trabajo del primero que recibía y luego
+     rechazaba los de otros grupos. */
+  const aMasDias = app.repartirSesiones(cinco, 6);
+  ok(app.infoReparto.descartados.length === 0,
+     'subir de 5 a 6 días no descarta nada: hay capacidad para los 30');
+  ok(aMasDias.reduce((t, s) => t + s.ex.length, 0) === 30,
+     'y los 30 ejercicios siguen ahí, repartidos');
+
+  // Sin sesiones de origen no puede reventar.
+  ok(app.repartirSesiones([], 4).length === 0, 'sin sesiones de origen devuelve vacío');
 
   console.log(fallos === 0 ? '\n✅ TODO OK\n' : `\n❌ ${fallos} fallo(s)\n`);
   process.exit(fallos === 0 ? 0 : 1);
