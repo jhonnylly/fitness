@@ -39,6 +39,12 @@
   :root{--bg:#111;--card:#1c1c1c;--surface:#242424;--border:#333;--text:#f0f0f0;--muted:#888;}
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;max-width:600px;margin:0 auto;}
+/* Mientras hay una capa abierta (onboarding, paneles, comparador) la página
+   de detrás no debe tener scroll. En el móvil, arrastrar dentro de un panel
+   fijo se lo llevaba el documento, y como el panel es position:fixed no se
+   movía nada: lo de abajo del panel (el "Continuar" del onboarding) no había
+   forma de alcanzarlo. Sin scroll detrás, el gesto va al panel. */
+body.capa-abierta{overflow:hidden;}
 header{background:var(--dark);color:#f5f0e8;padding:20px 16px 16px;position:sticky;top:0;z-index:100;}
 .header-title{font-size:22px;font-weight:800;letter-spacing:1px;}
 .header-title span{color:var(--accent);}
@@ -287,7 +293,7 @@ textarea{resize:vertical;min-height:60px;}
 .session-sel-item:hover{background:var(--surface);}
 .session-sel-item:last-child{border-bottom:none;}
 .done-check{color:var(--green);font-weight:700;font-size:14px;}
-.routine-panel{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;background:var(--bg);z-index:300;display:flex;flex-direction:column;transition:transform .3s ease;}
+.routine-panel{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;height:100dvh;background:var(--bg);z-index:300;display:flex;flex-direction:column;transition:transform .3s ease;}
 .routine-panel.hidden{transform:translate(-50%,-110%);}
 .routine-panel-header{background:var(--dark);color:#f5f0e8;padding:16px;display:flex;justify-content:space-between;align-items:center;}
 .routine-panel-header h2{font-size:16px;font-weight:800;letter-spacing:1px;}
@@ -315,7 +321,7 @@ textarea{resize:vertical;min-height:60px;}
 .week-btn-title{font-size:14px;font-weight:700;color:var(--text);}
 .week-btn-meta{font-size:11px;color:var(--muted);margin-top:3px;}
 .week-btn-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
-.onboarding{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;background:var(--bg);z-index:500;display:flex;flex-direction:column;overflow-y:auto;}
+.onboarding{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;height:100dvh;background:var(--bg);z-index:500;display:flex;flex-direction:column;overflow-y:auto;}
 .onboarding.hidden{display:none;}
 .ob-step{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;text-align:center;}
 .ob-step.active{display:flex;}
@@ -326,6 +332,13 @@ textarea{resize:vertical;min-height:60px;}
 .ob-routine-btn.selected{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
 .ob-routine-btn-name{font-size:14px;font-weight:700;color:var(--text);}
 .ob-routine-btn-desc{font-size:11px;color:var(--muted);margin-top:3px;}
+/* Los botones de cada paso, pegados abajo del panel. En el móvil la lista de
+   rutinas empuja el "Continuar" fuera de la pantalla, y encima la barra de
+   direcciones del navegador se come la franja de abajo: el botón quedaba donde
+   no se llegaba ni desplazando. Pegado abajo se ve siempre, mida lo que mida
+   el contenido del paso. */
+.ob-acciones{position:sticky;bottom:0;z-index:1;display:flex;gap:8px;width:100%;
+  margin-top:16px;padding:12px 0 8px;background:var(--bg);}
 .ob-avatar{width:100px;height:120px;border-radius:12px;background:var(--surface);border:2px dashed var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin:0 auto 16px;}
 .ob-avatar img{width:100%;height:100%;object-fit:cover;}
 .ob-dots{display:flex;gap:8px;justify-content:center;margin-bottom:24px;}
@@ -1569,7 +1582,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-08-11 01:49';
+const APP_VERSION='2026-09-02 13:28';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3854,6 +3867,29 @@ function renderProfileName(){
   if(el)el.textContent=(DB.profileName||'JHON')+' ✎';
 }
 
+/* Capas a pantalla completa que tapan la app. Las tres se ocultan con
+   class="hidden", pero de tres maneras distintas (display:none el onboarding y
+   el comparador, transform los paneles), así que lo único fiable para saber si
+   una está abierta es la propia clase. */
+const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador';
+
+function sincronizarBloqueoFondo(){
+  const hayCapa=[...document.querySelectorAll(SELECTOR_CAPAS)]
+    .some(c=>!c.classList.contains('hidden'));
+  document.body.classList.toggle('capa-abierta',hayCapa);
+}
+
+/* Se vigila con MutationObserver en lugar de llamar al bloqueo desde los doce
+   sitios que abren o cierran capas. Además de no olvidarse ninguno hoy, vale
+   para las capas que se añadan mañana: basta con que usen class="hidden". */
+function vigilarCapas(){
+  const obs=new MutationObserver(sincronizarBloqueoFondo);
+  document.querySelectorAll(SELECTOR_CAPAS).forEach(c=>{
+    obs.observe(c,{attributes:true,attributeFilter:['class']});
+  });
+  sincronizarBloqueoFondo();
+}
+
 function openPresetPanel(){
   document.getElementById('preset-panel').classList.remove('hidden');
   renderPresetList();
@@ -4171,6 +4207,7 @@ let resolverCargaInicial;
 window.cargaInicial=new Promise(res=>{resolverCargaInicial=res;});
 
 document.addEventListener('DOMContentLoaded', ()=>{
+  vigilarCapas();
   load()
     .catch(e=>console.error('[init] fallo al arrancar',e))
     .finally(resolverCargaInicial);
@@ -4208,7 +4245,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <input type="file" id="ob-photo-input" accept="image/*" style="display:none;" onchange="obSetPhoto(this)">
     <p style="font-size:11px;color:var(--muted);margin-bottom:16px;">Toca para añadir foto de perfil</p>
     <input type="text" id="ob-name" placeholder="Tu nombre" style="text-align:center;font-size:18px;font-weight:700;margin-bottom:24px;">
-    <button class="btn btn-primary" onclick="obNext(1)">Continuar →</button>
+    <div class="ob-acciones">
+      <button class="btn btn-primary" onclick="obNext(1)">Continuar →</button>
+    </div>
   </div>
 
   <!-- Paso 2: Elegir rutina -->
@@ -4216,7 +4255,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <div class="ob-title" style="text-align:left;">Elige tu rutina</div>
     <div class="ob-sub" style="text-align:left;">Selecciona el programa que mejor se adapte a tu objetivo.</div>
     <div id="ob-routine-list" style="width:100%;"></div>
-    <div style="display:flex;gap:8px;margin-top:16px;">
+    <div class="ob-acciones">
       <button class="btn btn-secondary" style="flex:1;" onclick="obNext(0)">← Atrás</button>
       <button class="btn btn-primary" style="flex:2;" onclick="obNext(2)">Continuar →</button>
     </div>
@@ -4227,7 +4266,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <div style="font-size:64px;margin-bottom:16px;">🏆</div>
     <div class="ob-title">¡Todo listo!</div>
     <div class="ob-sub" id="ob-summary">Estás listo para empezar tu entrenamiento.</div>
-    <button class="btn btn-primary" style="width:100%;" onclick="obFinish()">Empezar ahora →</button>
+    <div class="ob-acciones">
+      <button class="btn btn-primary" style="width:100%;" onclick="obFinish()">Empezar ahora →</button>
+    </div>
   </div>
 </div>
 

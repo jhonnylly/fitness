@@ -33,12 +33,20 @@ const document = {
   getElementById: () => el(),
   createElement: () => el(),
   addEventListener: (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); },
-  body: { insertBefore(){}, firstChild: null },
+  // querySelectorAll: vigilarCapas() recorre las capas al arrancar. Aquí no hay
+  // ninguna, y eso está bien: lo que se prueba en este arnés es STORAGE, no el
+  // bloqueo del fondo, que es puro DOM.
+  querySelectorAll: () => [],
+  body: { insertBefore(){}, firstChild: null,
+          classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } } },
 };
+// Íd.: el arranque engancha un MutationObserver para saber cuándo hay una capa
+// abierta. Sin este apaño el arnés revienta al disparar DOMContentLoaded.
+class MutationObserver { constructor(){} observe(){} disconnect(){} }
 const disparar = ev => (listeners[ev] || []).forEach(fn => fn());
 
 const ctx = {
-  localStorage, document, console,
+  localStorage, document, console, MutationObserver,
   window: { scrollTo(){} },
   setTimeout, clearTimeout, setInterval, clearInterval,
   navigator: { vibrate(){} },
