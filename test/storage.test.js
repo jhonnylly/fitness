@@ -65,7 +65,7 @@ const puente = `
   totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana, semanaEnCurso,
   migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
   repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
-  claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio,
+  claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -449,6 +449,31 @@ const ok = (cond, msg) => {
   [101, 102, 103, 104, 105, 106].forEach(s => { rutinaCorta.sessions[s] = { exercises: [], date: '08/08/2026' }; });
   ok(app.proximaSesion(rutinaCorta) === null, 'plan terminado: no hay próxima');
   ok(app.adherenciaSemana(rutinaCorta).pct === 100, 'y la última semana marca 100 %');
+
+  console.log('\n15b. la progresión de cargas de un ejercicio');
+  const conCargas = {
+    plan: [{ num: 1, days: [{ s: 1 }, { s: 2 }, { s: 3 }, { s: 4 }] }],
+    sessions: {
+      1: { date: '5/8/2026',  exercises: [{ name: 'Curl bíceps con barra', sets: [{ kg: 20, reps: 10 }, { kg: 22, reps: 8 }] }] },
+      2: { date: '12/8/2026', exercises: [{ name: 'Sentadilla', sets: [{ kg: 60, reps: 10 }] }] },
+      // Mismo ejercicio escrito distinto: en los datos reales pasa constantemente.
+      3: { date: '19/8/2026', exercises: [{ name: 'Curl bíceps barra', sets: [{ kg: 24, reps: 10 }] }] },
+      4: { date: '26/8/2026', exercises: [{ name: 'Curl bíceps con barra', sets: [{ kg: '', reps: 10 }] }] },
+    },
+  };
+  const serie = app.serieDeCargas(conCargas, 'Curl bíceps con barra');
+  ok(serie.length === 2, 'una entrada por sesión, no una por serie');
+  ok(serie[0].kg === 22, 'de cada sesión se queda el peso MÁXIMO, no el último');
+  ok(serie[1].kg === 24, '"Curl bíceps barra" cuenta como el mismo ejercicio que "con barra"');
+  ok(serie[0].s === 1 && serie[1].s === 3, 'salen en orden de sesión');
+  ok(!serie.some(p => p.s === 4), 'la sesión con el kg en blanco no pinta punto: no dice nada');
+  ok(serie.every(p => p.fecha), 'cada punto lleva su fecha para el eje X');
+
+  // Que la laxa no junte ejercicios que de verdad son distintos.
+  ok(app.serieDeCargas(conCargas, 'Sentadilla').length === 1, 'la sentadilla va por su cuenta');
+  ok(app.serieDeCargas(conCargas, 'Press banca').length === 0, 'un ejercicio nunca hecho no da puntos');
+  ok(app.serieDeCargas(conCargas, '').length === 0, 'sin nombre no hay serie (y no revienta)');
+  ok(app.serieDeCargas({ sessions: {} }, 'Lo que sea').length === 0, 'sin sesiones tampoco');
 
   console.log('\n16. la etiqueta de una semana no se repite a sí misma');
   // Varias PRESET_ROUTINES titulan sus semanas justo "Semana N", y el listado

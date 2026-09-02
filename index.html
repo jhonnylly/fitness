@@ -815,7 +815,7 @@ textarea{resize:vertical;min-height:60px;}
     <div id="ex-detail-view" style="display:none;">
       <div class="card">
         <div class="ex-detail-header">
-          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" onchange="if(curExIndex!==null){curEx[curExIndex].name=this.value;pintarImagenEjercicio();}">
+          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" onchange="if(curExIndex!==null){curEx[curExIndex].name=this.value;pintarImagenEjercicio();pintarGraficaCargasEjercicio();}">
           <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
         </div>
       </div>
@@ -823,6 +823,9 @@ textarea{resize:vertical;min-height:60px;}
       <div class="section-title">Series</div>
       <div id="exercises-container"></div>
       <button class="btn btn-secondary" onclick="addSetToCurrentEx()">+ Serie</button>
+      <!-- La progresión va DEBAJO de las series: primero registrar, que es a lo
+           que vienes al gimnasio, y luego mirar el histórico si te interesa. -->
+      <div id="ex-grafica" style="margin-top:14px;"></div>
     </div>
 
     <!-- Panel cardio -->
@@ -1597,7 +1600,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-02 19:05';
+const APP_VERSION='2026-09-02 19:14';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2594,6 +2597,7 @@ function renderEx(){
     </div>
   `;
   pintarImagenEjercicio();
+  pintarGraficaCargasEjercicio();
 }
 
 function removeSetFromCurrent(si){
@@ -2978,6 +2982,33 @@ function buscarImagenEjercicio(nombre,mapa){
   return null;
 }
 
+/* Peso máximo levantado en cada sesión que registró este ejercicio, en orden.
+   Vive en el script CLÁSICO a propósito: la usan la app (la gráfica de tu
+   propio progreso) y el módulo (la del cliente en modo entrenador), y el
+   módulo puede llamar al clásico pero no al revés.
+
+   Casa los nombres con claveEjercicioLaxa y no con === porque en los datos
+   reales conviven "Curl bíceps barra" y "Curl bíceps con barra": son el mismo
+   movimiento y partir su historial en dos líneas de una sola sesión no ayuda a
+   nadie. La laxa solo ignora plurales y conectores, así que "Press banca" y
+   "Press banca mancuernas" siguen siendo ejercicios distintos, que es lo
+   correcto: no se levanta el mismo peso. */
+function serieDeCargas(r, nombreEjercicio){
+  const puntos = [];
+  const buscada = claveEjercicioLaxa(nombreEjercicio);
+  if(!buscada) return puntos;
+  const claves = Object.keys((r && r.sessions) || {}).map(Number).sort((a,b)=>a-b);
+  for(const s of claves){
+    const ses = r.sessions[s];
+    const ex = (ses.exercises || []).find(e => claveEjercicioLaxa(e.name) === buscada);
+    if(!ex) continue;
+    const kgs = (ex.sets || []).map(v => parseFloat(v.kg)).filter(v => !isNaN(v));
+    if(!kgs.length) continue;
+    puntos.push({ s, kg: Math.max(...kgs), fecha: ses.date || '' });
+  }
+  return puntos;
+}
+
 /* Las imágenes son ficheros sueltos en img/ejercicios/ y la lista de las que
    existen la escribe tools/generar-imagenes.js en lista.js. Hace falta la lista
    —no vale probar URLs— porque buscarImagenEjercicio() casa el nombre contra
@@ -3006,6 +3037,75 @@ function pintarImagenEjercicio(){
       <img src="${url}" alt="Músculos que trabaja: ${escaparHTML(ex.name||'')}" loading="lazy">
       <figcaption>Músculos que trabaja · <span class="ex-mus-ampliar">toca para ampliar</span><span class="ex-mus-reducir">toca para reducir</span></figcaption>
     </figure>`;
+}
+
+/* Progresión de cargas del ejercicio abierto: el peso máximo de cada sesión
+   en la que se registró. Es lo que contesta "¿estoy subiendo o llevo semanas
+   igual?", que a ojo, entre sesiones sueltas, no se ve.
+
+   Solo cuenta lo YA GUARDADO: lo que estés escribiendo ahora mismo aparece al
+   guardar la sesión, no antes. Con un único registro no se pinta gráfica (una
+   línea de un punto no dice nada) y se avisa en texto. */
+function pintarGraficaCargasEjercicio(){
+  const wrap=document.getElementById('ex-grafica');
+  if(!wrap)return;
+  if(window._exChart){ window._exChart.destroy(); window._exChart=null; }
+  const ex=curExIndex!==null?curEx[curExIndex]:null;
+  const r=getActive();
+  if(!ex||!ex.name||!r){ wrap.innerHTML=''; return; }
+
+  const puntos=serieDeCargas(r,ex.name);
+  if(puntos.length<2){
+    wrap.innerHTML='<div class="section-title">Progresión</div>'+
+      '<p style="font-size:12px;color:var(--muted);">'+
+      (puntos.length
+        ? 'Solo hay una sesión registrada con este ejercicio. Con la siguiente ya se ve si subes.'
+        : 'Aún no has guardado ninguna sesión con este ejercicio.')+'</p>';
+    return;
+  }
+
+  const primero=puntos[0].kg, ultimo=puntos[puntos.length-1].kg;
+  const dif=Math.round((ultimo-primero)*10)/10;
+  const resumen = dif>0 ? `+${num(dif)} kg desde la primera vez`
+                : dif<0 ? `${num(dif)} kg desde la primera vez`
+                        : 'mismo peso que la primera vez';
+
+  /* El año sobra en el eje: con ocho o diez sesiones las etiquetas se pisan y
+     lo que importa es el día. toLocaleDateString('es-ES') no rellena con ceros
+     ("2/9/2026"), así que se parte por "/" en vez de cortar por posición. */
+  const etiquetaFecha=f=>{ const t=String(f||'').split('/'); return t.length>=2?t[0]+'/'+t[1]:f; };
+
+  wrap.innerHTML='<div class="section-title">Progresión</div>'+
+    `<p style="font-size:12px;color:var(--muted);margin-bottom:6px;">`+
+    `${puntos.length} sesiones · ${escaparHTML(resumen)}</p>`+
+    '<canvas id="ex-chart" height="170"></canvas>';
+
+  const oscuro=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const colorTexto=oscuro?'#888':'#7a7060';
+  const colorRejilla=oscuro?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)';
+  window._exChart=new Chart(document.getElementById('ex-chart').getContext('2d'),{
+    type:'line',
+    data:{
+      labels:puntos.map(p=>p.fecha?etiquetaFecha(p.fecha):('S'+p.s)),
+      datasets:[{
+        label:'kg máx. por sesión',
+        data:puntos.map(p=>p.kg),
+        borderColor:acentoCSS(), backgroundColor:acentoCSS(0.08),
+        tension:0.3, pointRadius:4, pointBackgroundColor:acentoCSS()
+      }]
+    },
+    options:{
+      responsive:true,
+      // Una sola serie: la leyenda solo ocupa sitio y el texto de arriba ya dice
+      // qué se está viendo.
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:colorTexto,font:{size:10}},grid:{color:colorRejilla}},
+        y:{ticks:{color:colorTexto,font:{size:10}},grid:{color:colorRejilla},
+           title:{display:true,text:'kg',color:colorTexto,font:{size:10}}}
+      }
+    }
+  });
 }
 
 /* Chart.js pinta sobre canvas: no entiende var(--accent), necesita un color
@@ -5283,20 +5383,6 @@ function ejerciciosDeRutina(r){
 
 /* Serie de carga máxima por sesión para un ejercicio. Se toma el kg más alto
    de la sesión, no el promedio: es lo que enseña la progresión. */
-function serieDeCargas(r, nombreEjercicio){
-  const puntos = [];
-  const claves = Object.keys(r.sessions || {}).map(Number).sort((a,b)=>a-b);
-  for(const s of claves){
-    const ses = r.sessions[s];
-    const ex = (ses.exercises || []).find(e => e.name === nombreEjercicio);
-    if(!ex) continue;
-    const kgs = (ex.sets || []).map(v => parseFloat(v.kg)).filter(v => !isNaN(v));
-    if(!kgs.length) continue;
-    puntos.push({ s, kg: Math.max(...kgs), fecha: ses.date || '' });
-  }
-  return puntos;
-}
-
 function pintarDetalle(){
   const cuerpo = document.getElementById('detalle-cuerpo');
   if(!detalle.rutinas.length){
