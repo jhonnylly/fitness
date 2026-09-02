@@ -315,6 +315,16 @@ textarea{resize:vertical;min-height:60px;}
 .ex-order-btns{display:flex;flex-direction:column;gap:2px;margin-right:8px;}
 .ex-order-btn{background:var(--surface);border:1px solid var(--border);border-radius:4px;width:24px;height:20px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);}
 .ex-detail-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+/* Mapa muscular del ejercicio abierto. Compacto por defecto: encima de las
+   series, en un móvil, a tamaño completo se comería media pantalla. Al tocarlo
+   se agranda, que es cuando de verdad quieres mirarlo. */
+.ex-musculos{display:flex;flex-direction:column;align-items:center;gap:4px;margin:0 0 10px;cursor:pointer;}
+.ex-musculos img{height:130px;width:auto;max-width:100%;transition:height .2s ease;}
+.ex-musculos.grande img{height:280px;}
+.ex-musculos figcaption{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+.ex-musculos .ex-mus-reducir{display:none;}
+.ex-musculos.grande .ex-mus-ampliar{display:none;}
+.ex-musculos.grande .ex-mus-reducir{display:inline;}
 .week-btn{width:100%;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;display:flex;justify-content:space-between;align-items:center;}
 .week-btn.current-week{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
 .week-btn.done-week{border-color:var(--green);background:rgba(45,122,79,0.06);}
@@ -346,6 +356,10 @@ textarea{resize:vertical;min-height:60px;}
 .ob-dot.active{background:var(--accent);}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Qué mapas musculares existen en img/ejercicios/. Lo genera
+     tools/generar-imagenes.js; si falta, la app funciona igual, solo que sin
+     imagen en el detalle del ejercicio (ver mapaImagenesEjercicios). -->
+<script src="img/ejercicios/lista.js"></script>
 </head>
 <body>
 
@@ -801,10 +815,11 @@ textarea{resize:vertical;min-height:60px;}
     <div id="ex-detail-view" style="display:none;">
       <div class="card">
         <div class="ex-detail-header">
-          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" onchange="if(curExIndex!==null)curEx[curExIndex].name=this.value">
+          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" onchange="if(curExIndex!==null){curEx[curExIndex].name=this.value;pintarImagenEjercicio();}">
           <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
         </div>
       </div>
+      <div id="ex-musculos"></div>
       <div class="section-title">Series</div>
       <div id="exercises-container"></div>
       <button class="btn btn-secondary" onclick="addSetToCurrentEx()">+ Serie</button>
@@ -1582,7 +1597,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-02 13:38';
+const APP_VERSION='2026-09-02 19:05';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2578,6 +2593,7 @@ function renderEx(){
       </div>
     </div>
   `;
+  pintarImagenEjercicio();
 }
 
 function removeSetFromCurrent(si){
@@ -2960,6 +2976,36 @@ function buscarImagenEjercicio(nombre,mapa){
     if(claveEjercicioLaxa(k)===laxa)return mapa[k];
   }
   return null;
+}
+
+/* Las imágenes son ficheros sueltos en img/ejercicios/ y la lista de las que
+   existen la escribe tools/generar-imagenes.js en lista.js. Hace falta la lista
+   —no vale probar URLs— porque buscarImagenEjercicio() casa el nombre contra
+   las claves disponibles con su búsqueda laxa. Si lista.js no está cargado, no
+   hay mapa y la app se comporta como antes: sin imagen y sin ruido. */
+let _mapaImagenes;
+function mapaImagenesEjercicios(){
+  if(_mapaImagenes!==undefined)return _mapaImagenes;
+  const claves=window.IMAGENES_EJERCICIOS;
+  if(!Array.isArray(claves)||!claves.length){ _mapaImagenes=null; return null; }
+  _mapaImagenes={};
+  claves.forEach(c=>{ _mapaImagenes[c]='img/ejercicios/'+c+'.svg'; });
+  return _mapaImagenes;
+}
+
+/* Silueta con el músculo resaltado, no una ilustración del movimiento: dice
+   QUÉ trabaja el ejercicio, no CÓMO se hace. Un ejercicio sin mapa (uno nuevo
+   escrito a mano, por ejemplo) simplemente no enseña nada. */
+function pintarImagenEjercicio(){
+  const c=document.getElementById('ex-musculos');
+  if(!c)return;
+  const ex=curExIndex!==null?curEx[curExIndex]:null;
+  const url=ex?buscarImagenEjercicio(ex.name,mapaImagenesEjercicios()):null;
+  if(!url){ c.innerHTML=''; return; }
+  c.innerHTML=`<figure class="ex-musculos" onclick="this.classList.toggle('grande')">
+      <img src="${url}" alt="Músculos que trabaja: ${escaparHTML(ex.name||'')}" loading="lazy">
+      <figcaption>Músculos que trabaja · <span class="ex-mus-ampliar">toca para ampliar</span><span class="ex-mus-reducir">toca para reducir</span></figcaption>
+    </figure>`;
 }
 
 /* Chart.js pinta sobre canvas: no entiende var(--accent), necesita un color

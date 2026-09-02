@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 322" width="200" height="322" role="img" aria-label="Músculos que trabaja: Curl femoral tumbado">
+  <title>Curl femoral tumbado</title>
+  <defs>
+    <clipPath id="cuerpoF">
+    <circle cx="50" cy="25" r="14"/>
+    <path d="M 44 36 h 12 v 12 h -12 Z"/>
+    <path d="M 21 57
+             C 21 48, 28 45, 38 44
+             L 62 44 C 72 45, 79 48, 79 57
+             L 75 92 C 73 104, 71 112, 71 122
+             L 73 148 L 27 148 L 29 122
+             C 29 112, 27 104, 25 92 Z"/>
+    <path d="M 21 55 C 13 60, 12 70, 13 82
+             L 12 108 C 12 118, 14 126, 16 132
+             L 23 132 C 22 124, 21 116, 21 106
+             L 22 82 C 22 72, 24 63, 28 58 Z"/>
+    <path d="M 79 55 C 87 60, 88 70, 87 82
+             L 88 108 C 88 118, 86 126, 84 132
+             L 77 132 C 78 124, 79 116, 79 106
+             L 78 82 C 78 72, 76 63, 72 58 Z"/>
+    <path d="M 27 148 C 26 176, 28 196, 30 212
+             C 31 232, 32 252, 33 286
+             L 45 286 C 45 252, 46 232, 47 212
+             C 48 196, 48 176, 48 148 Z"/>
+    <path d="M 73 148 C 74 176, 72 196, 70 212
+             C 69 232, 68 252, 67 286
+             L 55 286 C 55 252, 54 232, 53 212
+             C 52 196, 52 176, 52 148 Z"/></clipPath>
+    <clipPath id="cuerpoD">
+    <circle cx="150" cy="25" r="14"/>
+    <path d="M 144 36 h 12 v 12 h -12 Z"/>
+    <path d="M 121 57
+             C 121 48, 128 45, 138 44
+             L 162 44 C 172 45, 179 48, 179 57
+             L 175 92 C 173 104, 171 112, 171 122
+             L 173 148 L 127 148 L 129 122
+             C 129 112, 127 104, 125 92 Z"/>
+    <path d="M 121 55 C 113 60, 112 70, 113 82
+             L 112 108 C 112 118, 114 126, 116 132
+             L 123 132 C 122 124, 121 116, 121 106
+             L 122 82 C 122 72, 124 63, 128 58 Z"/>
+    <path d="M 179 55 C 187 60, 188 70, 187 82
+             L 188 108 C 188 118, 186 126, 184 132
+             L 177 132 C 178 124, 179 116, 179 106
+             L 178 82 C 178 72, 176 63, 172 58 Z"/>
+    <path d="M 127 148 C 126 176, 128 196, 130 212
+             C 131 232, 132 252, 133 286
+             L 145 286 C 145 252, 146 232, 147 212
+             C 148 196, 148 176, 148 148 Z"/>
+    <path d="M 173 148 C 174 176, 172 196, 170 212
+             C 169 232, 168 252, 167 286
+             L 155 286 C 155 252, 154 232, 153 212
+             C 152 196, 152 176, 152 148 Z"/></clipPath>
+  </defs>
+  <style>
+    .base { fill: #3f3f3f; }
+    /* El borde del color del fondo separa grupos contiguos. Sin él, lumbar +
+       glúteo + isquios se fundían en un único bloque naranja de la cintura a
+       la rodilla y no se distinguía qué trabajaba qué. */
+    .prim, .sec { stroke: #111; stroke-width: 1.5; paint-order: stroke; }
+    .prim { fill: #ff6b00; }
+    .sec  { fill: #ff6b00; opacity: .38; }
+    .et   { fill: #8a8a8a; font: 600 9px system-ui, sans-serif; text-anchor: middle; letter-spacing: 1px; }
+    @media (prefers-color-scheme: light) {
+      .base { fill: #d6d1c6; }
+      .et   { fill: #7a7060; }
+      .prim, .sec { stroke: #f7f5f0; }
+    }
+  </style>
+  <g class="base">
+    <circle cx="50" cy="25" r="14"/>
+    <path d="M 44 36 h 12 v 12 h -12 Z"/>
+    <path d="M 21 57
+             C 21 48, 28 45, 38 44
+             L 62 44 C 72 45, 79 48, 79 57
+             L 75 92 C 73 104, 71 112, 71 122
+             L 73 148 L 27 148 L 29 122
+             C 29 112, 27 104, 25 92 Z"/>
+    <path d="M 21 55 C 13 60, 12 70, 13 82
+             L 12 108 C 12 118, 14 126, 16 132
+             L 23 132 C 22 124, 21 116, 21 106
+             L 22 82 C 22 72, 24 63, 28 58 Z"/>
+    <path d="M 79 55 C 87 60, 88 70, 87 82
+             L 88 108 C 88 118, 86 126, 84 132
+             L 77 132 C 78 124, 79 116, 79 106
+             L 78 82 C 78 72, 76 63, 72 58 Z"/>
+    <path d="M 27 148 C 26 176, 28 196, 30 212
+             C 31 232, 32 252, 33 286
+             L 45 286 C 45 252, 46 232, 47 212
+             C 48 196, 48 176, 48 148 Z"/>
+    <path d="M 73 148 C 74 176, 72 196, 70 212
+             C 69 232, 68 252, 67 286
+             L 55 286 C 55 252, 54 232, 53 212
+             C 52 196, 52 176, 52 148 Z"/>
+    <circle cx="150" cy="25" r="14"/>
+    <path d="M 144 36 h 12 v 12 h -12 Z"/>
+    <path d="M 121 57
+             C 121 48, 128 45, 138 44
+             L 162 44 C 172 45, 179 48, 179 57
+             L 175 92 C 173 104, 171 112, 171 122
+             L 173 148 L 127 148 L 129 122
+             C 129 112, 127 104, 125 92 Z"/>
+    <path d="M 121 55 C 113 60, 112 70, 113 82
+             L 112 108 C 112 118, 114 126, 116 132
+             L 123 132 C 122 124, 121 116, 121 106
+             L 122 82 C 122 72, 124 63, 128 58 Z"/>
+    <path d="M 179 55 C 187 60, 188 70, 187 82
+             L 188 108 C 188 118, 186 126, 184 132
+             L 177 132 C 178 124, 179 116, 179 106
+             L 178 82 C 178 72, 176 63, 172 58 Z"/>
+    <path d="M 127 148 C 126 176, 128 196, 130 212
+             C 131 232, 132 252, 133 286
+             L 145 286 C 145 252, 146 232, 147 212
+             C 148 196, 148 176, 148 148 Z"/>
+    <path d="M 173 148 C 174 176, 172 196, 170 212
+             C 169 232, 168 252, 167 286
+             L 155 286 C 155 252, 154 232, 153 212
+             C 152 196, 152 176, 152 148 Z"/></g>
+  <g class="sec" clip-path="url(#cuerpoD)"><g transform="translate(100,0)"><ellipse cx="38" cy="245" rx="10" ry="26"/><ellipse cx="62" cy="245" rx="10" ry="26"/></g></g>
+  <g class="prim" clip-path="url(#cuerpoD)"><g transform="translate(100,0)"><ellipse cx="37" cy="192" rx="12" ry="26"/><ellipse cx="63" cy="192" rx="12" ry="26"/></g></g>
+  <text class="et" x="50" y="315">FRENTE</text>
+  <text class="et" x="150" y="315">ESPALDA</text>
+</svg>
