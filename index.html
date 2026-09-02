@@ -1582,7 +1582,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-02 13:28';
+const APP_VERSION='2026-09-02 13:38';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2243,12 +2243,7 @@ if(!plan.length){
   return;
 }
 
-  // Encuentra la semana actual (primera con sesiones incompletas)
-  let currentWeek=null;
-  for(const w of plan){
-    const done=w.days.filter(d=>sessions[d.s]).length;
-    if(done<w.days.length){currentWeek=w.num;break;}
-  }
+  const currentWeek=getCurrentWeekNum();
 
   c.innerHTML=plan.map(w=>{
     const done=w.days.filter(d=>sessions[d.s]).length;
@@ -2515,39 +2510,51 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(form)form.addEventListener('change',()=>guardarBorrador());
 });
 
+/* Se vuelve a la semana que estaba abierta (curWeekNum), no a la semana en
+   curso. Volvían a la 2 desde cualquier ejercicio de la 3, y con los nombres de
+   sesión repetidos entre semanas era muy fácil seguir registrando en la semana
+   equivocada sin darse cuenta. */
 function closeForm(){
   document.getElementById('session-form').style.display='none';
   document.getElementById('session-list-view').style.display='block';
   document.getElementById('week-list-view').style.display='none';
   renderWeekButtons();
   const act=getActive();
-  if(act)openWeekDetail(getCurrentWeekNum());
+  if(act)openWeekDetail(curWeekNum!=null?curWeekNum:getCurrentWeekNum());
 }
 
 /* Semana en curso (vive en el script CLÁSICO a propósito: la usan tanto la app
    como el módulo, y el módulo puede llamar al clásico pero no al revés).
-   Semana en curso: la que contiene la primera sesión sin registrar, mismo
-   criterio que "Próxima: S…" de la pantalla de Inicio. Si están todas hechas,
-   la última. Es la que interesa por defecto: revisar el plan entero es la
-   excepción, no lo normal. */
+   Es la semana que se está entrenando AHORA: la última con algo registrado y,
+   si esa ya está entera, la siguiente que tenga algo pendiente.
+
+   Antes era "la primera semana con alguna sesión sin registrar". Suena igual y
+   no lo es: quien deja una semana a medias y sigue con la siguiente se quedaba
+   con la vieja marcada como actual para siempre, y la nueva sin marcar. Le pasó
+   a Jhon con la 2 (hecha hasta la s8) y la 3 ya empezada.
+   Lo que quedó suelto atrás no se pierde ni se da por hecho: sigue sin marcar y
+   se abre cuando se quiera desde la lista de semanas. */
 function semanaEnCurso(r){
-  for(const sem of (r.plan || [])){
-    for(const d of (sem.days || [])){
-      if(!(r.sessions || {})[d.s]) return sem.num;
-    }
-  }
-  const ultima = (r.plan || [])[(r.plan || []).length - 1];
-  return ultima ? ultima.num : null;
+  const plan=(r && r.plan) || [];
+  if(!plan.length) return null;
+  const sessions=(r && r.sessions) || {};
+  const tieneAlgo=w=>(w.days||[]).some(d=>sessions[d.s]);
+  // Una semana sin días cuenta como hecha: no hay nada que registrar en ella,
+  // y si contara como pendiente dejaría la semana en curso clavada ahí.
+  const completa=w=>(w.days||[]).every(d=>sessions[d.s]);
+
+  let ultimaConActividad=-1;
+  plan.forEach((w,i)=>{ if(tieneAlgo(w)) ultimaConActividad=i; });
+  if(ultimaConActividad===-1) return plan[0].num;          // aún no ha empezado
+  const actual=plan[ultimaConActividad];
+  if(!completa(actual)) return actual.num;                 // está a mitad: es esta
+  const siguiente=plan.slice(ultimaConActividad+1).find(w=>!completa(w));
+  return (siguiente || plan[plan.length-1]).num;
 }
 
 function getCurrentWeekNum(){
-  const plan=getActivePlan();
-  const sessions=getActiveSessions();
-  for(const w of plan){
-    const done=w.days.filter(d=>sessions[d.s]).length;
-    if(done<w.days.length)return w.num;
-  }
-  return plan.length?plan[plan.length-1].num:1;
+  const act=getActive();
+  return (act && semanaEnCurso(act)) || 1;
 }
 
 function renderEx(){
@@ -2665,12 +2672,12 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     ${(()=>{
-  let currentWeek=null;
-  for(const w of getActivePlan()){
-    const wd=w.days.filter(d=>act.sessions[d.s]).length;
-    if(wd<w.days.length){currentWeek=w.num;break;}
-  }
   const completedWeeks=getActivePlan().filter(w=>w.days.filter(d=>act.sessions[d.s]).length===w.days.length);
+  // Con el plan entero hecho no hay semana en curso que enseñar: la tarjeta de
+  // arriba deja paso al "🏆 Plan completado". (semanaEnCurso sí devuelve la
+  // última en ese caso, que es lo que quiere el resto de la app.)
+  const planEntero=completedWeeks.length===getActivePlan().length;
+  const currentWeek=planEntero?null:getCurrentWeekNum();
   const cur=getActivePlan().find(w=>w.num===currentWeek);
 
   const weekCard=(w,expanded)=>{
@@ -2858,10 +2865,18 @@ function totalSesiones(r){
    Tampoco vale recorrer los ids del 1 al 40: aplicarCambioDias() reparte ids
    por encima de todos los existentes, así que pueden pasar de 40 de sobra y
    no tienen por qué ser correlativos. */
+/* La próxima sesión se busca DESDE la semana en curso, no desde el principio
+   del plan: si no, al saltar de semana el "Próxima: S…" de Inicio seguiría
+   mandando a los huecos de la semana que se dejó atrás. Dentro de la semana en
+   curso y las de después sí se respeta el orden del plan. */
 function proximaSesion(r){
-  for(const w of (r&&r.plan||[]))
+  const plan=(r&&r.plan)||[];
+  const sessions=(r&&r.sessions)||{};
+  const desde=semanaEnCurso(r);
+  const i=plan.findIndex(w=>w.num===desde);
+  for(const w of plan.slice(i<0?0:i))
     for(const d of (w.days||[]))
-      if(!(r.sessions||{})[d.s]) return {dia:d,semana:w.num};
+      if(!sessions[d.s]) return {dia:d,semana:w.num};
   return null;
 }
 

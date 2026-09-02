@@ -62,7 +62,7 @@ const puente = `
   planParaFirestore, planDesdeFirestore, buscarArraysAnidados,
   resumenDB, textoResumen, firmaDB, mismosDatos, diagnosticarSubida,
   fotosARecomprimir, LIMITE_FOTO,
-  totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana,
+  totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana, semanaEnCurso,
   migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
   repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
   claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio,
@@ -406,15 +406,45 @@ const ok = (cond, msg) => {
   rutinaCorta.sessions[102] = { exercises: [], date: '06/08/2026' };
   ok(app.proximaSesion(rutinaCorta).dia.s === 103, 'avanza saltando las ya registradas');
 
-  // Un hueco en medio no debe adelantar a una anterior sin registrar.
-  rutinaCorta.sessions[104] = { exercises: [], date: '07/08/2026' };
-  ok(app.proximaSesion(rutinaCorta).dia.s === 103,
-     'respeta el orden del plan aunque haya registros más adelante');
-
-  ok(app.adherenciaSemana(rutinaCorta).num === 1, 'la semana en curso es la 1: le falta la 103');
-  ok(app.adherenciaSemana(rutinaCorta).hechas === 2, 'lleva 2 de esa semana');
-  ok(app.adherenciaSemana(rutinaCorta).previstas === 3, 'sobre 3 previstas');
+  // Mientras no se toque la semana siguiente, manda el orden del plan.
+  ok(app.semanaEnCurso(rutinaCorta) === 1, 'con la 1 a medias y la 2 sin tocar, la actual es la 1');
   ok(app.adherenciaSemana(rutinaCorta).pct === 67, '2 de 3 se redondea a 67 %');
+
+  /* Saltar de semana dejando huecos atrás. Antes la semana vieja se quedaba
+     clavada como actual y "Próxima: S…" seguía mandando al hueco de la 1; con
+     los nombres de sesión repetidos entre semanas, se acababa registrando en la
+     semana equivocada. Lo reportó Jhon el 02/09/2026 con la 2 a medias y la 3
+     ya empezada. */
+  rutinaCorta.sessions[104] = { exercises: [], date: '07/08/2026' };
+  ok(app.semanaEnCurso(rutinaCorta) === 2,
+     'empezar la semana 2 la vuelve la actual, aunque la 1 tenga huecos');
+  ok(app.proximaSesion(rutinaCorta).dia.s === 105,
+     'y la próxima es la siguiente de la 2, no el hueco que quedó en la 1');
+  ok(app.proximaSesion(rutinaCorta).semana === 2, 'con su número de semana');
+  ok(app.adherenciaSemana(rutinaCorta).num === 2, 'la adherencia pasa a mirar la 2');
+  ok(app.adherenciaSemana(rutinaCorta).hechas === 1, 'lleva 1 de esa semana');
+  ok(app.adherenciaSemana(rutinaCorta).previstas === 3, 'sobre 3 previstas');
+  ok(app.adherenciaSemana(rutinaCorta).pct === 33, '1 de 3 se redondea a 33 %');
+
+  // Lo que se saltó no se da por hecho: sigue ahí, sin registrar.
+  ok(!rutinaCorta.sessions[103], 'la sesión saltada sigue sin registrar');
+
+  // Casos de borde de semanaEnCurso, con planes recién hechos.
+  const dosSemanas = () => ({
+    plan: [
+      { num: 1, days: [{ s: 1 }, { s: 2 }] },
+      { num: 2, days: [{ s: 3 }, { s: 4 }] },
+    ],
+    sessions: {},
+  });
+  ok(app.semanaEnCurso(dosSemanas()) === 1, 'sin nada registrado se empieza por la primera');
+  const reciénAcabada = dosSemanas();
+  reciénAcabada.sessions = { 1: {}, 2: {} };
+  ok(app.semanaEnCurso(reciénAcabada) === 2, 'terminada la 1 entera, la actual pasa a ser la 2');
+  const todoHecho = dosSemanas();
+  todoHecho.sessions = { 1: {}, 2: {}, 3: {}, 4: {} };
+  ok(app.semanaEnCurso(todoHecho) === 2, 'con el plan entero hecho se queda en la última');
+  ok(app.semanaEnCurso({ plan: [], sessions: {} }) === null, 'un plan vacío no tiene semana en curso');
 
   [101, 102, 103, 104, 105, 106].forEach(s => { rutinaCorta.sessions[s] = { exercises: [], date: '08/08/2026' }; });
   ok(app.proximaSesion(rutinaCorta) === null, 'plan terminado: no hay próxima');
