@@ -46,6 +46,18 @@ function silueta(cx) {
              C ${cx + 2} 196, ${cx + 2} 176, ${cx + 2} 148 Z"/>`;
 }
 
+/* Frente y espalda eran EXACTAMENTE la misma silueta: lo único que las
+   distinguía era una etiqueta de 9 px, ilegible en la miniatura de la app. Dos
+   señas mínimas lo arreglan sin ensuciar el dibujo: la cara mira al frente, la
+   columna se ve por detrás. Van fuera de silueta() porque esa función también
+   hace de clipPath y estos trazos no deben recortar nada. */
+function caraFrontal(cx) {
+  return `<circle cx="${cx - 5}" cy="23" r="2.2"/><circle cx="${cx + 5}" cy="23" r="2.2"/>`;
+}
+function columnaDorsal(cx) {
+  return `<rect x="${cx - 1.2}" y="46" width="2.4" height="88" rx="1.2"/>`;
+}
+
 /* Coordenadas pensadas para el cuerpo frontal (cx=50). El dorsal se desplaza.
    Se dibujan a lo grande a propósito: el recorte contra la silueta les da el
    borde correcto. */
@@ -94,6 +106,15 @@ function svgEjercicio({ nombre, primarios = [], secundarios = [] }) {
     return `<g class="${clase}" clip-path="url(#${clip})">${dentro}</g>`;
   }).join('');
 
+  /* Si un ejercicio no toca nada por detrás, esa silueta salía idéntica al
+     cuerpo base y no se sabía si es que no trabaja nada o si al dibujo le
+     faltaba algo. Apagada, se lee de un vistazo: "aquí no hay nada". */
+  const vistas = [...primarios, ...secundarios].map(m => MUSCULOS[m]).filter(Boolean);
+  const hayFrente  = vistas.some(d => d.vista === 'f');
+  const hayEspalda = vistas.some(d => d.vista === 'd');
+  const claseF = hayFrente  ? '' : ' apagado';
+  const claseD = hayEspalda ? '' : ' apagado';
+
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -108,21 +129,32 @@ function svgEjercicio({ nombre, primarios = [], secundarios = [] }) {
     /* El borde del color del fondo separa grupos contiguos. Sin él, lumbar +
        glúteo + isquios se fundían en un único bloque naranja de la cintura a
        la rodilla y no se distinguía qué trabajaba qué. */
+    /* La cara y la columna: lo justo para saber de qué lado se mira. Tienen
+       que verse a tamaño miniatura, así que no pueden ser un matiz del gris. */
+    .detalle { fill: #1e1e1e; }
     .prim, .sec { stroke: #111; stroke-width: 1.5; paint-order: stroke; }
     .prim { fill: #ff6b00; }
-    .sec  { fill: #ff6b00; opacity: .38; }
-    .et   { fill: #8a8a8a; font: 600 9px system-ui, sans-serif; text-anchor: middle; letter-spacing: 1px; }
+    /* .38 quedaba marrón apagado sobre el gris del cuerpo y se confundía con
+       él: a este tamaño "también trabaja esto" tiene que verse. */
+    .sec  { fill: #ff6b00; opacity: .55; }
+    .et   { fill: #8a8a8a; font: 700 12px system-ui, sans-serif; text-anchor: middle; letter-spacing: 1px; }
+    /* El lado que no trabaja nada, y su etiqueta, en segundo plano. */
+    .apagado { opacity: .28; }
     @media (prefers-color-scheme: light) {
       .base { fill: #d6d1c6; }
+      .detalle { fill: #a49d8e; }
       .et   { fill: #7a7060; }
       .prim, .sec { stroke: #f7f5f0; }
     }
   </style>
-  <g class="base">${silueta(50)}${silueta(50 + OFF_D)}</g>
+  <g class="base${claseF}">${silueta(50)}</g>
+  <g class="detalle${claseF}">${caraFrontal(50)}</g>
+  <g class="base${claseD}">${silueta(50 + OFF_D)}</g>
+  <g class="detalle${claseD}">${columnaDorsal(50 + OFF_D)}</g>
   ${pinta(secundarios, 'sec')}
   ${pinta(primarios, 'prim')}
-  <text class="et" x="50" y="${H + 15}">FRENTE</text>
-  <text class="et" x="${50 + OFF_D}" y="${H + 15}">ESPALDA</text>
+  <text class="et${claseF}" x="50" y="${H + 15}">FRENTE</text>
+  <text class="et${claseD}" x="${50 + OFF_D}" y="${H + 15}">ESPALDA</text>
 </svg>
 `;
 }

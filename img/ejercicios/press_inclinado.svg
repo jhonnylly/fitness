@@ -58,12 +58,20 @@
     /* El borde del color del fondo separa grupos contiguos. Sin él, lumbar +
        glúteo + isquios se fundían en un único bloque naranja de la cintura a
        la rodilla y no se distinguía qué trabajaba qué. */
+    /* La cara y la columna: lo justo para saber de qué lado se mira. Tienen
+       que verse a tamaño miniatura, así que no pueden ser un matiz del gris. */
+    .detalle { fill: #1e1e1e; }
     .prim, .sec { stroke: #111; stroke-width: 1.5; paint-order: stroke; }
     .prim { fill: #ff6b00; }
-    .sec  { fill: #ff6b00; opacity: .38; }
-    .et   { fill: #8a8a8a; font: 600 9px system-ui, sans-serif; text-anchor: middle; letter-spacing: 1px; }
+    /* .38 quedaba marrón apagado sobre el gris del cuerpo y se confundía con
+       él: a este tamaño "también trabaja esto" tiene que verse. */
+    .sec  { fill: #ff6b00; opacity: .55; }
+    .et   { fill: #8a8a8a; font: 700 12px system-ui, sans-serif; text-anchor: middle; letter-spacing: 1px; }
+    /* El lado que no trabaja nada, y su etiqueta, en segundo plano. */
+    .apagado { opacity: .28; }
     @media (prefers-color-scheme: light) {
       .base { fill: #d6d1c6; }
+      .detalle { fill: #a49d8e; }
       .et   { fill: #7a7060; }
       .prim, .sec { stroke: #f7f5f0; }
     }
@@ -92,7 +100,9 @@
     <path d="M 73 148 C 74 176, 72 196, 70 212
              C 69 232, 68 252, 67 286
              L 55 286 C 55 252, 54 232, 53 212
-             C 52 196, 52 176, 52 148 Z"/>
+             C 52 196, 52 176, 52 148 Z"/></g>
+  <g class="detalle"><circle cx="45" cy="23" r="2.2"/><circle cx="55" cy="23" r="2.2"/></g>
+  <g class="base">
     <circle cx="150" cy="25" r="14"/>
     <path d="M 144 36 h 12 v 12 h -12 Z"/>
     <path d="M 121 57
@@ -117,6 +127,7 @@
              C 169 232, 168 252, 167 286
              L 155 286 C 155 252, 154 232, 153 212
              C 152 196, 152 176, 152 148 Z"/></g>
+  <g class="detalle"><rect x="148.8" y="46" width="2.4" height="88" rx="1.2"/></g>
   <g class="sec" clip-path="url(#cuerpoD)"><g transform="translate(100,0)"><ellipse cx="27" cy="84" rx="8" ry="17"/><ellipse cx="73" cy="84" rx="8" ry="17"/></g></g>
   <g class="prim" clip-path="url(#cuerpoF)"><ellipse cx="39" cy="66" rx="12" ry="10"/><ellipse cx="61" cy="66" rx="12" ry="10"/></g><g class="prim" clip-path="url(#cuerpoF)"><circle cx="29" cy="57" r="12"/><circle cx="71" cy="57" r="12"/></g>
   <text class="et" x="50" y="315">FRENTE</text>
