@@ -356,8 +356,10 @@ textarea{resize:vertical;min-height:60px;}
    pantalla confusa. */
 .routine-item{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--card);}
 .routine-item.active-routine{border-left:3px solid var(--accent);}
+.routine-item-nombre{display:block;width:100%;background:none;border:none;padding:0;margin:0;
+  text-align:left;font-family:inherit;color:inherit;cursor:pointer;}
 .routine-item-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.routine-item-meta{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5;}
+.routine-item-meta{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5;display:block;}
 .routine-badge{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
   color:var(--accent);background:rgba(var(--accent-rgb),.12);padding:2px 8px;border-radius:20px;}
 .routine-item .acciones-fila{margin-left:0;margin-top:10px;}
@@ -1725,7 +1727,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 20:47';
+const APP_VERSION='2026-09-04 20:50';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3955,13 +3957,18 @@ function renderRoutineList(){
   c.innerHTML+=DB.routines.map(r=>{
     const isActive=r.id===DB.activeRoutine;
     return`<div class="routine-item${isActive?' active-routine':''}">
-      <div class="routine-item-name">
-        <span>${escaparHTML(r.name)}</span>
-        ${isActive?'<span class="routine-badge">● En curso</span>':''}
-      </div>
-      <div class="routine-item-meta">${escaparHTML(resumenRutina(r))}</div>
+      <!-- Tocar el nombre es el atajo: la pone en curso si no lo estaba y te
+           deja en Registrar, que es a lo que ibas. El botón de abajo hace lo
+           mismo con su etiqueta, para que se vea que se puede. -->
+      <button class="routine-item-nombre" onclick="entrenarRutina('${r.id}')">
+        <span class="routine-item-name">
+          <span>${escaparHTML(r.name)}</span>
+          ${isActive?'<span class="routine-badge">● En curso</span>':''}
+        </span>
+        <span class="routine-item-meta">${escaparHTML(resumenRutina(r))}</span>
+      </button>
       <div class="acciones-fila">
-        ${!isActive?`<button class="btn-sm" onclick="activateRoutine('${r.id}')">▶ Entrenar esta</button>`:''}
+        <button class="btn-sm" onclick="entrenarRutina('${r.id}')">▶ ${isActive?'Ir a registrar':'Entrenar esta'}</button>
         <button class="btn-sm" onclick="renombrarRutina('${r.id}')">✎ Renombrar</button>
         <button class="btn-sm btn-danger sep-peligro" onclick="deleteRoutine('${r.id}')">🗑 Borrar</button>
       </div>
@@ -3995,6 +4002,15 @@ function renombrarRutina(id){
   save();
   renderRoutineList();
   updateHeaderRoutine();
+}
+
+/* Del listado directo a entrenar: si no era la que estaba en curso, la pone, y
+   en cualquier caso cierra el panel y deja en Registrar. Antes había que
+   activar, cerrar el panel y buscar la pestaña a mano. */
+function entrenarRutina(id){
+  if(DB.activeRoutine!==id) activateRoutine(id);
+  toggleRoutinePanel();
+  goTo('log');
 }
 
 function activateRoutine(id){
