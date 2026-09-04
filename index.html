@@ -1773,7 +1773,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 21:23';
+const APP_VERSION='2026-09-04 22:16';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2582,11 +2582,11 @@ function openWeekDetail(weekNum){
      Duplicar y borrar la sesión se fueron DENTRO de la sesión, por lo mismo que
      en las semanas: en una celda estrecha engordaban la tarjeta. */
   const c=document.getElementById('session-list');
-  c.innerHTML='<div class="mos-grid">'+week.days.map(d=>{
+  c.innerHTML='<div class="mos-grid" id="ses-mosaico">'+week.days.map((d,di)=>{
     const reg=sessions[d.s];
     const hecha=!!reg;
     const nEj=(d.ex||[]).length;
-    return`<button class="mos-card${hecha?' lista':''}" onclick="openSession(${d.s})">
+    return`<button class="mos-card${hecha?' lista':''}" data-ei="${di}" onclick="sesToque(${d.s})">
       <div class="mos-num">${escaparHTML(d.name)}</div>
       <div class="mos-tit">${nEjercicios(nEj)}</div>
       <div class="mos-pie">
@@ -2595,7 +2595,26 @@ function openWeekDetail(weekNum){
       </div>
     </button>`;
   }).join('')+'</div>';
+
+  /* Reordenar las sesiones de la semana arrastrando, igual que los ejercicios.
+     Se mueve el orden de week.days; el identificador de cada sesión (d.s) no se
+     toca, así que lo que ya registraste sigue enganchado a su sesión. Solo se
+     renumeran los nombres, que es lo que se ve. */
+  montarArrastre(document.getElementById('ses-mosaico'), orden=>{
+    const act=getActive();
+    week.days=orden.map(i=>week.days[i]);
+    renumerarNombresSesiones(act);
+    save();
+    buildSessionList();
+    openWeekDetail(weekNum);
+  });
   window.scrollTo(0,0);
+}
+
+/* Igual que en los ejercicios: si venimos de arrastrar, el toque no abre. */
+function sesToque(s){
+  if(exArrastrando)return;
+  openSession(s);
 }
 
 function closeWeekDetail(){
@@ -4347,11 +4366,16 @@ function renderExButtons(){
       </div>
     </button>`;
   }).join('')+'</div>';
-  montarArrastre(document.getElementById('ex-mosaico'));
+  montarArrastre(document.getElementById('ex-mosaico'), orden=>{
+    curEx=orden.map(i=>curEx[i]);
+    renderExButtons();
+    guardarBorrador();
+  });
 }
 
-/* Un toque abre el ejercicio; si venimos de arrastrar, no. El propio arrastre
-   marca la bandera y la limpia en el siguiente ciclo. */
+/* Un toque abre; si venimos de arrastrar, no. El propio arrastre marca la
+   bandera y la limpia en el siguiente ciclo. La comparten los dos mosaicos
+   reordenables: nunca hay dos arrastres a la vez. */
 let exArrastrando=false;
 function exToque(ei){
   if(exArrastrando)return;
@@ -4366,7 +4390,7 @@ function exToque(ei){
    Se arranca con PULSACIÓN LARGA (350 ms) y no al primer contacto: si no,
    intentar desplazar la pantalla arrastraría una tarjeta. Un movimiento antes
    de ese tiempo cancela: eso era scroll, no un arrastre. */
-function montarArrastre(cont){
+function montarArrastre(cont, alSoltar){
   if(!cont)return;
   let temporizador=null, arrastrado=null, hueco=null, inicio=null, caja=null;
 
@@ -4386,14 +4410,12 @@ function montarArrastre(cont){
       if(hueco) hueco.remove();
       cont.classList.remove('reordenando');
       const movido=parseInt(arrastrado.dataset.ei);
-      curEx=orden.map(i=>curEx[i]);
-      renderExButtons();
-      guardarBorrador();
+      alSoltar(orden);
       /* Un destello en la que acaba de moverse: el cambio de sitio solo, en un
          mosaico de tarjetas iguales, pasa desapercibido.
          Hay que buscarla en el mosaico NUEVO: renderExButtons() acaba de
          rehacerlo y `cont` ya no está en la página. */
-      const nuevoCont=document.getElementById('ex-mosaico');
+      const nuevoCont=document.getElementById(cont.id);
       const nueva=nuevoCont && nuevoCont.children[orden.indexOf(movido)];
       if(nueva) nueva.classList.add('recien-movido');
       setTimeout(()=>{ exArrastrando=false; },0);
@@ -5164,6 +5186,20 @@ function deleteWeek(weekNum){
   updateHome();
 }
 
+/* Los nombres de sesión llevan el número delante ("S7 · Push"). Al reordenar o
+   borrar, ese número tiene que seguir el orden real, y es GLOBAL: la semana 2
+   empieza donde acaba la 1, como en las rutinas prehechas.
+   Solo se toca el prefijo: si alguien renombró el día a mano, el resto se
+   respeta. El identificador interno (d.s) NO se toca nunca — es la clave con la
+   que se guarda lo que entrenaste. */
+function renumerarNombresSesiones(act){
+  let n=1;
+  (act.plan||[]).forEach(w=>(w.days||[]).forEach(d=>{
+    d.name=String(d.name||'').replace(/^S\d+/, 'S'+n);
+    n++;
+  }));
+}
+
 function deleteSession(weekNum,s){
   const act=getActive();
   if(!act)return;
@@ -5179,9 +5215,9 @@ function deleteSession(weekNum,s){
   if(!confirm(aviso))return;
   week.days=week.days.filter(d=>d.s!==s);
   delete act.sessions[s];
-  week.days.forEach((d,i)=>{
-    d.name=d.name.replace(/^S\d+/,'S'+(i+1));
-  });
+  /* Renumeraba con el índice DENTRO de la semana, así que en la semana 2 dejaba
+     S1..S6 en vez de S7..S12. La numeración es global. */
+  renumerarNombresSesiones(act);
   save();
   buildSessionList();
   openWeekDetail(weekNum);
