@@ -91,7 +91,13 @@ const MUSCULOS = {
 };
 
 /* primarios a plena opacidad, secundarios apagados: el ojo distingue
-   "sobre todo esto" de "también esto" sin necesitar leyenda. */
+   "sobre todo esto" de "también esto" sin necesitar leyenda.
+
+   El naranja (#ff6b00) es DELIBERADO aunque la app pasara a violeta el
+   04/09/2026: aquí ya no es el color de marca, es "esto es músculo" — el mismo
+   código que usan las fotos anatómicas de img/musculos/, que lo llevan quemado
+   en el píxel. Pintar estas siluetas de violeta las separaría de las fotos con
+   las que conviven en la misma pantalla. */
 function svgEjercicio({ nombre, primarios = [], secundarios = [] }) {
   /* El clip va en un <g> SIN transform y el desplazamiento en otro <g> dentro.
      Poner ambos en el mismo elemento deja en el aire si el recorte se evalúa
