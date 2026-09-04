@@ -188,9 +188,17 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
+/* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
+   pantalla completa que se oculta con class="hidden" (declarada abajo con las
+   demás) y que entra en SELECTOR_CAPAS para que el fondo no haga scroll. */
+#visor-foto{position:fixed;inset:0;z-index:420;background:var(--bg);display:flex;flex-direction:column;}
+#visor-foto .comp-barra{justify-content:flex-end;}
+.visor-cuerpo{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:14px;}
+.visor-cuerpo img{max-width:100%;max-height:100%;object-fit:contain;border-radius:var(--radius);}
+.visor-pie{padding:0 14px 18px;display:flex;gap:8px;justify-content:center;}
 .comp-barra{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--dark);}
 .comp-tabs{display:flex;gap:6px;}
 .comp-tabs button{padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
@@ -402,7 +410,7 @@ textarea{resize:vertical;min-height:60px;}
 
 <header>
   <div class="cab">
-    <div id="profile-pic" class="cab-avatar" onclick="document.getElementById('profile-input').click()">
+    <div id="profile-pic" class="cab-avatar" onclick="abrirVisorFoto()">
       <span>👤</span>
     </div>
     <input type="file" id="profile-input" accept="image/*" onchange="saveProfilePic(this)" style="display:none;">
@@ -951,6 +959,19 @@ textarea{resize:vertical;min-height:60px;}
     <button class="btn-sm" onclick="cerrarComparador()">✕</button>
   </div>
   <div id="comp-cuerpo"></div>
+</div>
+
+<!-- Ver la foto de perfil en grande. Antes tocarla abría directamente el
+     selector de archivos y no había manera de mirarla: ahora se ve, y cambiarla
+     es un botón dentro del visor. -->
+<div id="visor-foto" class="hidden">
+  <div class="comp-barra">
+    <button class="btn-sm" onclick="cerrarVisorFoto()">✕ Cerrar</button>
+  </div>
+  <div class="visor-cuerpo" id="visor-foto-cuerpo"></div>
+  <div class="visor-pie">
+    <button class="btn-sm" onclick="document.getElementById('profile-input').click()">📷 Cambiar foto</button>
+  </div>
 </div>
 
 <!-- MEDIDAS -->
@@ -1645,7 +1666,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 19:16';
+const APP_VERSION='2026-09-04 19:20';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2144,10 +2165,35 @@ function saveProfilePic(input){
     DB.profilePic=dataUrl;
     save();
     renderProfilePic();
+    /* Si se cambió DESDE el visor, la grande seguiría siendo la vieja: se
+       repinta con la nueva en vez de cerrarlo, que es lo que uno espera al
+       acabar de elegirla. */
+    const visor=document.getElementById('visor-foto');
+    if(visor && !visor.classList.contains('hidden')){
+      document.getElementById('visor-foto-cuerpo').innerHTML=
+        `<img src="${dataUrl}" alt="Tu foto de perfil">`;
+    }
   }).catch(e=>{
     console.error('[fotos] no se pudo procesar la foto de perfil',e);
     alert('No se pudo procesar esa imagen. Prueba con otra.');
   });
+}
+
+/* Tocar la foto de la cabecera la enseña en grande; cambiarla es un botón
+   dentro del visor. Antes el toque abría el selector de archivos directamente y
+   no existía forma de ver la foto que tenías puesta.
+   Sin foto todavía no hay nada que enseñar, así que va derecho a elegirla. */
+function abrirVisorFoto(){
+  if(!DB.profilePic){ document.getElementById('profile-input').click(); return; }
+  const cuerpo=document.getElementById('visor-foto-cuerpo');
+  cuerpo.innerHTML=`<img src="${DB.profilePic}" alt="Tu foto de perfil">`;
+  document.getElementById('visor-foto').classList.remove('hidden');
+}
+
+function cerrarVisorFoto(){
+  document.getElementById('visor-foto').classList.add('hidden');
+  // La foto puede pesar bastante: no tiene por qué quedarse en memoria.
+  document.getElementById('visor-foto-cuerpo').innerHTML='';
 }
 
 function renderProfilePic(){
@@ -4149,7 +4195,7 @@ function renderProfileName(){
    class="hidden", pero de tres maneras distintas (display:none el onboarding y
    el comparador, transform los paneles), así que lo único fiable para saber si
    una está abierta es la propia clase. */
-const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador';
+const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto';
 
 function sincronizarBloqueoFondo(){
   const hayCapa=[...document.querySelectorAll(SELECTOR_CAPAS)]
