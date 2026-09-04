@@ -327,10 +327,14 @@ textarea{resize:vertical;min-height:60px;}
 .ex-mus-fotos{display:flex;justify-content:center;align-items:flex-end;gap:10px;width:100%;}
 .ex-musculos img{height:150px;width:auto;max-width:100%;transition:height .2s ease;}
 .ex-musculos.grande img{height:280px;}
-/* Con dos músculos principales caben las dos fotos en fila, algo más bajas:
-   en un móvil de 390 px eso son ~170 px por foto y siguen leyéndose. */
+/* Varias fotos en fila, cada una con su parte del ancho. El máximo por foto no
+   es adorno: sin él, tres fotos ampliadas pedían más ancho del que hay y se
+   salían de la fila. Tres es el tope real —solo el peso muerto tiene tres
+   músculos principales— pero la regla vale para los que vengan. */
 .ex-musculos.dos img{height:130px;max-width:calc(50% - 5px);object-fit:contain;}
 .ex-musculos.dos.grande img{height:230px;}
+.ex-musculos.tres img{height:110px;max-width:calc(33.33% - 7px);object-fit:contain;}
+.ex-musculos.tres.grande img{height:185px;}
 .ex-musculos figcaption{font-size:11.5px;color:var(--muted);line-height:1.45;text-align:center;}
 .ex-musculos figcaption b{color:var(--text);font-weight:700;}
 /* El pie del mapa de siluetas sí es una etiqueta, no una frase. */
@@ -1625,7 +1629,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 18:55';
+const APP_VERSION='2026-09-04 18:59';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3056,18 +3060,22 @@ const NOMBRE_MUSCULO={
 };
 
 /* Qué foto enseña cada músculo (img/musculos/CLAVE.webp).
-   Los de abajo del todo no tienen la suya todavía y usan la del grupo que los
-   contiene: la foto de abdominales resalta también los oblicuos, y la de dorsal
-   resalta trapecio y zona lumbar. La imagen no miente, solo es menos precisa
-   que el texto. Cuando exista la propia, se borra esa línea y ya está.
-   Los que no aparecen (abductor, aductor) se quedan sin foto: ahí se cae a la
-   silueta dibujada, que sí sabe pintar cualquier músculo. */
+   Dieciséis de dieciocho con imagen propia desde el 04/09/2026: las cinco que
+   faltaban (abductor, oblicuo, romboides, lumbar y deltoides posterior) las
+   generó Jhon y sustituyen a las aproximaciones que había.
+
+   Quedan dos casos sin foto propia, y ninguno se llega a ver hoy porque la foto
+   solo se enseña para el músculo PRINCIPAL:
+   - trapecio: nunca es principal en el plan (sí secundario en 5 ejercicios), y
+     si algún día lo fuera, la de dorsal lo resalta también. Se queda de red.
+   - aductor: nunca es principal (secundario en 1). Sin foto → silueta. */
 const FOTO_MUSCULO={
-  pectoral:'pectoral', deltoides:'deltoides', biceps:'biceps', triceps:'triceps',
-  antebrazo:'antebrazo', abdominal:'abdominal', cuadriceps:'cuadriceps',
-  isquios:'isquios', gemelo:'gemelo', gluteo:'gluteo', dorsal:'dorsal',
-  oblicuo:'abdominal', trapecio:'dorsal', romboides:'dorsal', lumbar:'dorsal',
-  deltoides_post:'deltoides'
+  pectoral:'pectoral', deltoides:'deltoides', deltoides_post:'deltoides_post',
+  biceps:'biceps', triceps:'triceps', antebrazo:'antebrazo',
+  abdominal:'abdominal', oblicuo:'oblicuo', lumbar:'lumbar',
+  romboides:'romboides', dorsal:'dorsal', gluteo:'gluteo', abductor:'abductor',
+  cuadriceps:'cuadriceps', isquios:'isquios', gemelo:'gemelo',
+  trapecio:'dorsal'
 };
 
 /* "cuádriceps y glúteos", no "cuádriceps, glúteos". */
@@ -3109,7 +3117,8 @@ function pintarImagenEjercicio(){
       + (m.secundarios.length
           ? '<br>También trabaja: '+escaparHTML(listaEnEspanol(m.secundarios.map(x=>NOMBRE_MUSCULO[x]||x)))
           : '');
-    c.innerHTML=`<figure class="ex-musculos${unicas.length>1?' dos':''}" onclick="this.classList.toggle('grande')">
+    const reparto = unicas.length>2 ? ' tres' : unicas.length>1 ? ' dos' : '';
+    c.innerHTML=`<figure class="ex-musculos${reparto}" onclick="this.classList.toggle('grande')">
         <div class="ex-mus-fotos">${unicas.map(f=>
           `<img src="img/musculos/${f}.webp" alt="Músculo: ${escaparHTML(f)}" loading="lazy">`).join('')}</div>
         <figcaption>${pie}</figcaption>
