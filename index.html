@@ -591,14 +591,6 @@ textarea{resize:vertical;min-height:60px;}
       </div>
     </div>
 
-    <!-- Fuera de las ramas con/sin sesión: es información de la app, no de la
-         cuenta, y hace falta poder consultarla siempre. -->
-    <div class="card">
-      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Versión</div>
-      <div style="font-size:13px;margin-top:4px;" id="version-txt">—</div>
-      <div id="version-aviso"></div>
-    </div>
-
   </div>
 </div>
 
@@ -627,6 +619,16 @@ textarea{resize:vertical;min-height:60px;}
         <label class="btn-sm" style="cursor:pointer;text-align:center;text-transform:none;">📂 Importar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
         <button class="btn-sm" onclick="copyForChat()">📋 Copiar para chat</button>
       </div>
+    </div>
+
+    <!-- Estaba en el panel de Cuenta, donde ya chirriaba: es información de la
+         APP, no de la cuenta (lo decía el propio comentario que tenía al lado).
+         Aquí acompaña a la copia de seguridad, que es el mismo tipo de cosa:
+         mantenimiento. En Cuenta se queda lo de identidad y sincronización. -->
+    <div class="card">
+      <div class="section-title">Versión</div>
+      <div style="font-size:13px;" id="version-txt">—</div>
+      <div id="version-aviso"></div>
     </div>
 
     <div class="card">
@@ -1666,7 +1668,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 19:20';
+const APP_VERSION='2026-09-04 19:26';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3431,7 +3433,9 @@ function recargarUltimaVersion(){
 function toggleConfigPanel(){
   const p=document.getElementById('config-panel');
   p.classList.toggle('hidden');
-  if(!p.classList.contains('hidden'))pintarConfig();
+  /* La versión se consulta al ABRIR, no al arrancar: comprobar si hay una más
+     nueva descarga el HTML entero y no merece la pena en cada visita. */
+  if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); comprobarVersionNueva(); }
 }
 
 function irAMedidas(){
@@ -3777,7 +3781,6 @@ window.cerrarConfirmacionDias=function(){ restaurarTarjetaPropuesta(); };
 function toggleAuthPanel(){
   const p=document.getElementById('auth-panel');
   p.classList.toggle('hidden');
-  if(!p.classList.contains('hidden')){ pintarVersion(); comprobarVersionNueva(); }
   if(!p.classList.contains('hidden')&&!window.__authReady){
     document.getElementById('auth-msg').innerHTML=
       '<div class="msg msg-err">No se pudo cargar el servicio de cuentas. '+
