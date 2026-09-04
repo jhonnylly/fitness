@@ -1745,7 +1745,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 20:29';
+const APP_VERSION='2026-09-04 20:32';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4639,7 +4639,38 @@ function nrPintarDias(){
         </div>`).join('')
         : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">Sin ejercicios todavía.</div>'}
       <button class="btn btn-secondary" onclick="nrAbrirSelector(${i})">+ Añadir ejercicio</button>
+      ${nrDias.some((o,k)=>k!==i&&o.ex.length)
+        ? `<button class="btn btn-secondary" style="margin-top:6px;" onclick="nrMenuCopiar(${i})">⧉ Copiar de otro día</button>
+           <div id="nr-copiar-${i}"></div>`
+        : ''}
     </div>`).join('');
+}
+
+/* Copiar de otro día: con cuatro días parecidos, montar el segundo desde cero
+   repitiendo los mismos seis ejercicios es trabajo tonto. Se enseña un botón
+   por día con contenido, y solo aparece si hay alguno del que copiar. */
+function nrMenuCopiar(i){
+  const c=document.getElementById('nr-copiar-'+i);
+  if(!c)return;
+  if(c.innerHTML){ c.innerHTML=''; return; }   // volver a tocarlo lo cierra
+  const candidatos=nrDias.map((d,k)=>({d,k})).filter(x=>x.k!==i&&x.d.ex.length);
+  c.innerHTML='<div style="margin-top:8px;">'+candidatos.map(x=>
+    `<button class="btn-sm" style="width:100%;text-align:left;margin-bottom:4px;"
+       onclick="nrCopiarDia(${x.k},${i})">Día ${x.k+1} · ${escaparHTML(x.d.nombre)} (${x.d.ex.length} ejercicios)</button>`
+  ).join('')+'</div>';
+}
+
+/* Añade los que falten, no reemplaza: si el día ya tenía algo, borrárselo sin
+   avisar sería peor que dejar que quite lo que sobre. */
+function nrCopiarDia(desde,hasta){
+  const origen=nrDias[desde], destino=nrDias[hasta];
+  if(!origen||!destino)return;
+  let nuevos=0;
+  origen.ex.forEach(e=>{
+    if(!destino.ex.some(x=>x.nombre===e.nombre)){ destino.ex.push({...e}); nuevos++; }
+  });
+  nrPintarDias();
+  if(!nuevos) alert('Ese día ya tiene todos esos ejercicios.');
 }
 
 function nrQuitar(i,j){ nrDias[i].ex.splice(j,1); nrPintarDias(); }
