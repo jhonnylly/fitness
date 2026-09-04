@@ -628,6 +628,8 @@ textarea{resize:vertical;min-height:60px;}
         <label class="btn-sm" style="cursor:pointer;text-align:center;text-transform:none;">📂 Importar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
         <button class="btn-sm" onclick="copyForChat()">📋 Copiar para chat</button>
       </div>
+      <!-- Solo aparece si la app guardó algo antes de sobrescribir. -->
+      <div id="copia-previa" style="margin-top:10px;"></div>
     </div>
 
     <!-- Estaba en el panel de Cuenta, donde ya chirriaba: es información de la
@@ -1677,7 +1679,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 19:39';
+const APP_VERSION='2026-09-04 19:58';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -1996,6 +1998,73 @@ function leerDecisionSync(){
 }
 function guardarDecisionSync(uid,modo){
   try{ localStorage.setItem(DECISION_KEY,JSON.stringify({uid,modo,ts:Date.now()})); }catch(e){}
+}
+
+/* ── Copia de lo que se va a sobrescribir ──
+   Reemplazar la cuenta con lo de un dispositivo es la única operación de la app
+   que destruye datos que no están en ninguna otra parte: Firestore en plan
+   gratuito no guarda versiones. El 04/09/2026 costó 3 semanas de
+   entrenamientos. Antes de sobrescribir se guarda aquí lo que había, para poder
+   deshacerlo desde Ajustes.
+
+   Sin fotos a propósito: ocupan ~215 KB cada una y localStorage anda por los
+   5 MB, así que meterlas haría fallar el guardado justo cuando más importa. Lo
+   que no se puede reconstruir son las sesiones. */
+const COPIA_PREVIA_KEY='jhon_copia_previa';
+
+function guardarCopiaPrevia(db,origen){
+  try{
+    const sinFotos={...db, routines:(db.routines||[]).map(r=>{const {photos,...resto}=r; return resto;}), fotos:[]};
+    localStorage.setItem(COPIA_PREVIA_KEY,JSON.stringify({ts:Date.now(),origen,db:sinFotos}));
+    return true;
+  }catch(e){
+    console.error('[sync] no se pudo guardar la copia previa',e);
+    return false;
+  }
+}
+
+function leerCopiaPrevia(){
+  try{ return JSON.parse(localStorage.getItem(COPIA_PREVIA_KEY))||null; }catch(e){ return null; }
+}
+
+function pintarCopiaPrevia(){
+  const c=document.getElementById('copia-previa');
+  if(!c)return;
+  const copia=leerCopiaPrevia();
+  if(!copia||!copia.db){ c.innerHTML=''; return; }
+  const cuando=new Date(copia.ts||0).toLocaleString('es-ES');
+  c.innerHTML='<div class="msg msg-info">'+
+    'Copia automática de '+escaparHTML(copia.origen||'antes de sobrescribir')+
+    '<br><b>'+escaparHTML(cuando)+'</b> — '+escaparHTML(textoResumen(resumenDB(copia.db)))+
+    '<br><a href="#" onclick="restaurarCopiaPrevia();return false;" style="color:var(--accent);font-weight:700;">Restaurar</a>'+
+    '</div>';
+}
+
+/* Deshacer un "subir este dispositivo" equivocado. La copia no lleva fotos (no
+   caben en localStorage), así que se conservan las de ahora: restaurar
+   entrenamientos no debe borrar el álbum. */
+async function restaurarCopiaPrevia(){
+  const copia=leerCopiaPrevia();
+  if(!copia||!copia.db)return;
+  const res=resumenDB(copia.db);
+  if(!confirm('Vas a volver a '+textoResumen(res)+', de '+
+              new Date(copia.ts||0).toLocaleString('es-ES')+'.\n\n'+
+              'Lo que tienes ahora se guardará como copia por si acaso.\n\n¿Seguir?'))return;
+  const actual=JSON.parse(JSON.stringify(DB));
+  const restaurada=JSON.parse(JSON.stringify(copia.db));
+  restaurada.fotos=DB.fotos||[];        // las fotos de ahora no se tocan
+  guardarCopiaPrevia(actual,'lo que había antes de restaurar');
+  DB=restaurada;
+  try{
+    await saveEstricto();
+    await load();
+    alert('Restaurado ✓');
+  }catch(e){
+    console.error('[sync] no se pudo restaurar',e);
+    DB=actual;
+    alert('No se pudo restaurar ('+(e.code||e.message)+'). Se deja todo como estaba.');
+  }
+  pintarCopiaPrevia();
 }
 
 /* ─────────── Conversión de formato para Firestore ───────────
@@ -3444,7 +3513,7 @@ function toggleConfigPanel(){
   p.classList.toggle('hidden');
   /* La versión se consulta al ABRIR, no al arrancar: comprobar si hay una más
      nueva descarga el HTML entero y no merece la pena en cada visita. */
-  if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); comprobarVersionNueva(); }
+  if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); pintarCopiaPrevia(); comprobarVersionNueva(); }
 }
 
 function irAMedidas(){
@@ -5073,8 +5142,18 @@ function ocultarPreguntas(){
   document.getElementById('sync-conflicto').classList.add('hidden');
 }
 
+/* Activar la nube ES la decisión: a partir de aquí manda ella en este
+   dispositivo. Antes solo se anotaba desde los botones del conflicto, así que
+   los dos caminos que activan la nube sin preguntar (datos iguales, o
+   dispositivo sin datos) no dejaban rastro. Como en modo nube el localStorage
+   se queda congelado, local y nube divergen SIEMPRE con el tiempo, y sin
+   decisión anotada la app volvía a preguntar "¿cuál manda?" en una recarga
+   cualquiera. Eso le costó a Jhon 3 semanas de entrenamientos el 04/09/2026:
+   contestó "este dispositivo" y subió un localStorage congelado en la semana 1.
+   La trampa se rearmaba sola; esta línea es lo que la desarma. */
 async function activarNube(){
   STORAGE.use(StorageFirestore);
+  if(auth.currentUser) guardarDecisionSync(auth.currentUser.uid, 'nube');
   await load();          // load() ya repinta toda la app
   ocultarPreguntas();
   pintarEstadoSync();
@@ -6077,12 +6156,38 @@ window.asignarRutina = async function(){
 /* Reemplaza el contenido de la cuenta por el de este dispositivo. */
 window.subirEsteDispositivo = async function(){
   const btn = document.getElementById('conflicto-subir-btn');
+  const local = await StorageLocal.read();
+  if(!local || !(local.routines || []).length){
+    document.getElementById('conflicto-msg').innerHTML =
+      '<div class="msg msg-err">Este dispositivo no tiene nada que subir.</div>';
+    return;
+  }
+
+  /* Aviso con lo que se PIERDE, no con lo que se sube. El botón decía "subir
+     este dispositivo" y no dejaba ver que eso reemplaza la cuenta entera: el
+     04/09/2026 costó 3 semanas de entrenamientos. Las cifras delante y en este
+     orden —primero lo que desaparece— para que la decisión se tome mirándolo. */
+  let remoto = null;
+  try{ remoto = await StorageFirestore.read(); }catch(e){}
+  const enNube = resumenDB(remoto || {});
+  const aqui = resumenDB(local);
+  if(enNube.sesiones > aqui.sesiones){
+    const pierde = enNube.sesiones - aqui.sesiones;
+    if(!confirm(
+      'ATENCIÓN: vas a perder '+pierde+' sesión'+(pierde===1?'':'es')+'.\n\n'+
+      'En tu cuenta hay '+textoResumen(enNube)+'.\n'+
+      'En este dispositivo hay '+textoResumen(aqui)+'.\n\n'+
+      'Lo de la cuenta se reemplaza por lo de este dispositivo y no se puede '+
+      'recuperar desde la nube.\n\n¿Seguro?'
+    )) return;
+  }
+
   btn.disabled = true;
   const txt = btn.textContent;
   btn.textContent = 'Subiendo...';
   try{
-    const local = await StorageLocal.read();
-    if(!local || !(local.routines || []).length) throw new Error('no hay datos locales que subir');
+    // Copia de lo que se va a sobrescribir, antes de tocar nada.
+    if(remoto) guardarCopiaPrevia(remoto,'la cuenta, antes de subir este dispositivo');
     DB = local;                       // lo del dispositivo pasa a ser lo vigente
     STORAGE.use(StorageFirestore);
     await saveEstricto();             // estricto: si falla la escritura, queremos el motivo
