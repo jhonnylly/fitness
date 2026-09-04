@@ -422,8 +422,20 @@ textarea{resize:vertical;min-height:60px;}
 /* Mientras se reordena: la tarjeta cogida se levanta y el contenedor deja de
    interpretar el gesto como desplazamiento de la pantalla. */
 .mos-grid.reordenando{touch-action:none;}
-.mos-card.arrastrando{opacity:.85;transform:scale(1.04);
-  box-shadow:0 8px 22px rgba(0,0,0,.45);border-color:var(--accent);}
+/* La tarjeta cogida: levantada, con sombra y un punto de giro, para que se vea
+   que va en el dedo y no es la que está en la rejilla. */
+.mos-card.arrastrando{opacity:.95;transform:scale(1.05) rotate(-1.5deg);
+  box-shadow:0 12px 28px rgba(0,0,0,.5);border-color:var(--accent);}
+/* El sitio donde caerá, marcado a rayas mientras se arrastra. */
+.mos-hueco{border:2px dashed var(--accent);border-radius:var(--radius-sm);
+  background:rgba(var(--accent-rgb),.06);}
+/* Al soltar, un destello: cambiar de sitio en un mosaico de tarjetas iguales
+   pasa desapercibido si nada lo señala. */
+.mos-card.recien-movido{animation:destello 1s ease-out;}
+@keyframes destello{
+  0%{border-color:var(--accent);background:rgba(var(--accent-rgb),.28);}
+  100%{border-color:var(--border);background:var(--card);}
+}
 .onboarding{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;height:100dvh;background:var(--bg);z-index:500;display:flex;flex-direction:column;overflow-y:auto;}
 .onboarding.hidden{display:none;}
 .ob-step{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;text-align:center;}
@@ -1761,7 +1773,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 21:16';
+const APP_VERSION='2026-09-04 21:23';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4356,22 +4368,37 @@ function exToque(ei){
    de ese tiempo cancela: eso era scroll, no un arrastre. */
 function montarArrastre(cont){
   if(!cont)return;
-  let temporizador=null, arrastrado=null, inicio=null;
+  let temporizador=null, arrastrado=null, hueco=null, inicio=null, caja=null;
 
   const soltar=()=>{
     clearTimeout(temporizador);
     if(arrastrado){
+      /* El orden sale del DOM, con el hueco marcando dónde cae la arrastrada:
+         lo que se guarda es exactamente lo que se ha visto.
+         La arrastrada se EXCLUYE: está en position:fixed pero sigue siendo hija
+         del contenedor, así que contaría dos veces —como hueco y como ella
+         misma— y el ejercicio saldría duplicado. */
+      const orden=[...cont.children]
+        .filter(el=>el!==arrastrado)
+        .map(el=> el===hueco ? parseInt(arrastrado.dataset.ei) : parseInt(el.dataset.ei));
+      arrastrado.removeAttribute('style');
       arrastrado.classList.remove('arrastrando');
+      if(hueco) hueco.remove();
       cont.classList.remove('reordenando');
-      // El array pasa a seguir el orden del DOM, que es lo que se ha visto.
-      const orden=[...cont.children].map(el=>parseInt(el.dataset.ei));
+      const movido=parseInt(arrastrado.dataset.ei);
       curEx=orden.map(i=>curEx[i]);
       renderExButtons();
       guardarBorrador();
-      // Se limpia después del click que llega tras soltar, para no abrirlo.
+      /* Un destello en la que acaba de moverse: el cambio de sitio solo, en un
+         mosaico de tarjetas iguales, pasa desapercibido.
+         Hay que buscarla en el mosaico NUEVO: renderExButtons() acaba de
+         rehacerlo y `cont` ya no está en la página. */
+      const nuevoCont=document.getElementById('ex-mosaico');
+      const nueva=nuevoCont && nuevoCont.children[orden.indexOf(movido)];
+      if(nueva) nueva.classList.add('recien-movido');
       setTimeout(()=>{ exArrastrando=false; },0);
     }
-    arrastrado=null; inicio=null;
+    arrastrado=null; hueco=null; inicio=null; caja=null;
   };
 
   cont.addEventListener('pointerdown', e=>{
@@ -4380,37 +4407,54 @@ function montarArrastre(cont){
     inicio={x:e.clientX,y:e.clientY};
     temporizador=setTimeout(()=>{
       arrastrado=card; exArrastrando=true;
-      /* Por si el navegador ya empezó a seleccionar antes de que el CSS lo
-         impidiera: sin limpiarla, se arrastra la selección y no la tarjeta. */
       const sel=document.getSelection && document.getSelection();
       if(sel && sel.removeAllRanges) sel.removeAllRanges();
+      caja=card.getBoundingClientRect();
+      /* Un hueco del mismo tamaño ocupa su sitio en la rejilla, y la tarjeta
+         sale del flujo para poder seguir al dedo sin descolocar a las demás. */
+      hueco=document.createElement('div');
+      hueco.className='mos-hueco';
+      hueco.style.height=caja.height+'px';
+      card.parentNode.insertBefore(hueco,card);
+      card.style.position='fixed';
+      card.style.width=caja.width+'px';
+      card.style.height=caja.height+'px';
+      card.style.left=caja.left+'px';
+      card.style.top=caja.top+'px';
+      card.style.pointerEvents='none';   // para que elementFromPoint vea lo de debajo
+      card.style.zIndex='500';
       card.classList.add('arrastrando');
       cont.classList.add('reordenando');
-      card.setPointerCapture(e.pointerId);
-      if(navigator.vibrate)navigator.vibrate(15);   // "lo tienes cogido"
+      try{ card.setPointerCapture(e.pointerId); }catch(err){}
+      if(navigator.vibrate)navigator.vibrate(15);
     },350);
   });
 
   cont.addEventListener('pointermove', e=>{
     if(!arrastrado){
-      // Aún en la espera: si se mueve, es que quería desplazar la pantalla.
       if(inicio && Math.hypot(e.clientX-inicio.x, e.clientY-inicio.y)>10) clearTimeout(temporizador);
       return;
     }
-    e.preventDefault();
+    // La tarjeta va donde va el dedo.
+    arrastrado.style.left=(caja.left + e.clientX - inicio.x)+'px';
+    arrastrado.style.top =(caja.top  + e.clientY - inicio.y)+'px';
     const bajo=document.elementFromPoint(e.clientX,e.clientY);
     const destino=bajo && bajo.closest ? bajo.closest('.mos-card') : null;
     if(!destino || destino===arrastrado || destino.parentNode!==cont)return;
-    // Antes o después según por dónde se entre, para que no dé saltos.
-    const caja=destino.getBoundingClientRect();
-    const despues=(e.clientY-caja.top)>caja.height/2 ||
-                  (Math.abs(e.clientY-(caja.top+caja.height/2))<caja.height/2 && e.clientX>caja.left+caja.width/2);
-    cont.insertBefore(arrastrado, despues?destino.nextSibling:destino);
+    const c=destino.getBoundingClientRect();
+    const despues=(e.clientY>c.top+c.height/2) || (e.clientX>c.left+c.width/2 && Math.abs(e.clientY-(c.top+c.height/2))<c.height/2);
+    cont.insertBefore(hueco, despues?destino.nextSibling:destino);
   });
+
+  /* preventDefault en pointermove NO detiene el scroll: el navegador solo
+     atiende a touch-action (que se fija al empezar el gesto, cuando aún no
+     sabemos si habrá arrastre) o a un preventDefault en touchmove NO PASIVO.
+     Sin esto, arrastrar hacia arriba o abajo desplazaba la pantalla en vez de
+     mover la tarjeta. */
+  cont.addEventListener('touchmove', e=>{ if(arrastrado) e.preventDefault(); }, {passive:false});
 
   cont.addEventListener('pointerup', soltar);
   cont.addEventListener('pointercancel', soltar);
-  // La pulsación larga abre el menú contextual en varios navegadores.
   cont.addEventListener('contextmenu', e=>{ if(arrastrado||temporizador) e.preventDefault(); });
 }
 
