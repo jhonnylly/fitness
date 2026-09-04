@@ -1002,6 +1002,13 @@ textarea{resize:vertical;min-height:60px;}
     <div id="sel-titulo" style="font-size:13px;font-weight:800;"></div>
     <button class="btn-sm" onclick="nrCerrarSelector()">✕</button>
   </div>
+  <!-- Buscar por nombre, siempre visible: con 24 ejercicios de glúteos, ir a
+       buscar "hip thrust" bajando la lista es peor que escribirlo. Busca en
+       TODOS los músculos, no solo en el que estés mirando. -->
+  <div style="padding:10px 12px 0;">
+    <input type="text" id="sel-buscar" placeholder="Buscar ejercicio por nombre..."
+           oninput="nrBuscar(this.value)" autocomplete="off">
+  </div>
   <div id="sel-cuerpo" style="flex:1;min-height:0;overflow-y:auto;padding:12px;"></div>
 </div>
 
@@ -1738,7 +1745,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 20:23';
+const APP_VERSION='2026-09-04 20:29';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4660,6 +4667,9 @@ function nrCerrarSelector(){
 }
 
 function nrVolverAMusculos(){
+  nrVista = null;
+  const buscador = document.getElementById('sel-buscar');
+  if(buscador && buscador.value.trim()) buscador.value = '';
   document.getElementById('sel-volver').style.visibility = 'hidden';
   document.getElementById('sel-titulo').textContent =
     'Día ' + (nrDiaActivo + 1) + ' · ¿qué trabajas?';
@@ -4678,18 +4688,56 @@ function nrVolverAMusculos(){
    onclick="...('...')" el navegador lo decodifica antes de que lo lea el JS y
    parte la cadena. Con el índice no hay nada que escapar. */
 let nrListaVisible = [];
-let nrMusculoVisible = null;
+/* Qué se está mirando, para poder repintar lo mismo tras añadir un ejercicio:
+   {tipo:'musculo', musculo} o {tipo:'busqueda'}. */
+let nrVista = null;
 
-function nrAbrirMusculo(musculo){
-  nrMusculoVisible = musculo;
-  nrListaVisible = nrEjerciciosDe(musculo);
+/* Sin tildes ni mayúsculas: "jalon" tiene que encontrar "Jalón al pecho". */
+function nrNormaliza(t){
+  return (t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+/* Cada ejercicio con su músculo principal, para poder decir en los resultados
+   qué trabaja lo que has encontrado. */
+function nrTodosLosEjercicios(){
+  const cat = window.MUSCULOS_EJERCICIOS || {};
+  const nombres = window.NOMBRES_EJERCICIOS || {};
+  return Object.keys(cat).map(clave => ({
+    nombre: nombres[clave] || clave,
+    musculo: (cat[clave][0] || [])[0] || null
+  })).sort((a,b) => a.nombre.localeCompare(b.nombre,'es'));
+}
+
+function nrBuscar(texto){
+  const q = nrNormaliza(texto).trim();
+  if(!q){ nrVolverAMusculos(); return; }
+  nrVista = { tipo:'busqueda' };
+  // Visible durante la búsqueda: vuelve a la cuadrícula y de paso vacía el
+  // campo, que es lo que quieres cuando no encuentras lo que buscabas.
   document.getElementById('sel-volver').style.visibility = 'visible';
-  document.getElementById('sel-titulo').textContent = NOMBRE_MUSCULO[musculo] || musculo;
+  document.getElementById('sel-titulo').textContent = 'Buscando';
+  const encontrados = nrTodosLosEjercicios().filter(e => nrNormaliza(e.nombre).includes(q));
+  nrListaVisible = encontrados.map(e => e.nombre);
+  const c = document.getElementById('sel-cuerpo');
+  if(!encontrados.length){
+    c.innerHTML = '<p style="font-size:13px;color:var(--muted);padding:10px 2px;">'+
+      'Ningún ejercicio con ese nombre. Prueba con una palabra suelta ("press", "curl").</p>';
+    return;
+  }
+  c.innerHTML = nrPintarFilas(encontrados.map(e => ({ ...e, conMusculo:true })));
+}
+
+/* Una fila por ejercicio. Se usa igual en la lista de un músculo y en los
+   resultados de búsqueda; en la búsqueda además se dice qué músculo trabaja,
+   que es lo que no se sabe cuando no vienes de la cuadrícula. */
+function nrPintarFilas(items){
   const yaPuestos = new Set((nrDias[nrDiaActivo].ex || []).map(e => e.nombre));
-  document.getElementById('sel-cuerpo').innerHTML = nrListaVisible.map((nombre, i) => {
-    const puesto = yaPuestos.has(nombre);
+  return items.map((e, i) => {
+    const puesto = yaPuestos.has(e.nombre);
+    const musc = e.conMusculo && e.musculo
+      ? `<div style="font-size:10.5px;color:var(--muted);margin-top:1px;">${escaparHTML(NOMBRE_MUSCULO[e.musculo]||e.musculo)}</div>` : '';
     return `<div class="sel-ej${puesto ? ' puesto' : ''}">
-      <div class="sel-ej-nombre">${escaparHTML(nombre)}</div>
+      <div class="sel-ej-nombre">${escaparHTML(e.nombre)}${musc}</div>
       ${puesto
         ? '<span style="font-size:11px;color:var(--green);font-weight:700;">✓ añadido</span>'
         : `<button class="btn-sm" onclick="nrAnadir(${i})">+ Añadir</button>`}
@@ -4697,14 +4745,24 @@ function nrAbrirMusculo(musculo){
   }).join('');
 }
 
-/* Se queda en la lista tras añadir: lo normal es meter dos o tres seguidos del
-   mismo músculo, y salir y volver por cada uno sería absurdo. */
+function nrAbrirMusculo(musculo){
+  nrVista = { tipo:'musculo', musculo };
+  nrListaVisible = nrEjerciciosDe(musculo);
+  document.getElementById('sel-volver').style.visibility = 'visible';
+  document.getElementById('sel-titulo').textContent = NOMBRE_MUSCULO[musculo] || musculo;
+  document.getElementById('sel-cuerpo').innerHTML =
+    nrPintarFilas(nrListaVisible.map(n => ({ nombre:n })));
+}
+
+/* Se queda donde estabas tras añadir: lo normal es meter dos o tres seguidos, y
+   salir y volver por cada uno sería absurdo. */
 function nrAnadir(i){
   const nombre = nrListaVisible[i];
   if(!nombre) return;
   const dia = nrDias[nrDiaActivo];
   if(!dia.ex.some(e => e.nombre === nombre)) dia.ex.push({ nombre, esquema:'4×10' });
-  nrAbrirMusculo(nrMusculoVisible);
+  if(nrVista && nrVista.tipo === 'busqueda') nrBuscar(document.getElementById('sel-buscar').value);
+  else if(nrVista) nrAbrirMusculo(nrVista.musculo);
 }
 
 function createNewRoutine(){
