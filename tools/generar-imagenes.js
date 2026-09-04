@@ -77,7 +77,11 @@ ${filas.map(f => `<figure style="margin:0;text-align:center;background:#1a1a1a;b
 fs.writeFileSync(path.join(SALIDA, 'musculos.js'),
   '/* Generado por tools/generar-imagenes.js — no editar a mano. */\n' +
   'window.MUSCULOS_EJERCICIOS=' + JSON.stringify(
-    Object.fromEntries(filas.map(f => [f.clave, MUSCULOS_POR_EJERCICIO[f.clave]]))) + ';\n');
+    Object.fromEntries(filas.map(f => [f.clave, MUSCULOS_POR_EJERCICIO[f.clave]]))) + ';\n' +
+  /* Los NOMBRES legibles, para el constructor de rutinas: la app solo tenía las
+     claves ("press_banca_mancuernas"), que no se pueden enseñar en una lista. */
+  'window.NOMBRES_EJERCICIOS=' + JSON.stringify(
+    Object.fromEntries(filas.map(f => [f.clave, f.nombre]))) + ';\n');
 
 /* La app necesita saber QUÉ imágenes existen: buscarImagenEjercicio() casa el
    nombre del ejercicio contra la lista de claves disponibles (con su búsqueda

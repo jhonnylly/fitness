@@ -196,12 +196,25 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
    pantalla completa que se oculta con class="hidden" (declarada abajo con las
    demás) y que entra en SELECTOR_CAPAS para que el fondo no haga scroll. */
+#selector-ejercicio{position:fixed;inset:0;z-index:340;background:var(--bg);display:flex;flex-direction:column;}
+/* Cuadrícula de músculos: la foto manda, el nombre debajo. Tres por fila entran
+   en 390 px con la foto lo bastante grande para reconocerla de un vistazo. */
+.mus-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.mus-btn{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:8px 6px 10px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;
+  align-items:center;gap:6px;color:var(--text);}
+.mus-btn img{height:78px;width:auto;max-width:100%;object-fit:contain;}
+.mus-btn span{font-size:11px;font-weight:700;text-align:center;line-height:1.25;}
+.mus-btn small{font-size:10px;color:var(--muted);font-weight:400;}
+.sel-ej{display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid var(--border);}
+.sel-ej-nombre{flex:1;min-width:0;font-size:13.5px;}
+.sel-ej.puesto{opacity:.55;}
 #visor-foto{position:fixed;inset:0;z-index:420;background:var(--bg);display:flex;flex-direction:column;}
 #visor-foto .comp-barra{justify-content:flex-end;}
 .visor-cuerpo{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:14px;}
@@ -980,6 +993,18 @@ textarea{resize:vertical;min-height:60px;}
   <div id="comp-cuerpo"></div>
 </div>
 
+<!-- Elegir ejercicios por músculo, para el constructor de rutinas. Va en capa
+     propia y por encima del panel de nueva rutina (z-index 340 contra 300):
+     así se elige sin perder de vista lo que llevas montado. -->
+<div id="selector-ejercicio" class="hidden">
+  <div class="comp-barra">
+    <button class="btn-sm" id="sel-volver" onclick="nrVolverAMusculos()">← Músculos</button>
+    <div id="sel-titulo" style="font-size:13px;font-weight:800;"></div>
+    <button class="btn-sm" onclick="nrCerrarSelector()">✕</button>
+  </div>
+  <div id="sel-cuerpo" style="flex:1;min-height:0;overflow-y:auto;padding:12px;"></div>
+</div>
+
 <!-- Ver la foto de perfil en grande. Antes tocarla abría directamente el
      selector de archivos y no había manera de mirarla: ahora se ve, y cambiarla
      es un botón dentro del visor. -->
@@ -1106,16 +1131,44 @@ textarea{resize:vertical;min-height:60px;}
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
     <div class="card">
-      <div style="margin-bottom:8px;">
-        <label>Nombre de la rutina</label>
-        <input type="text" id="nr-name" placeholder="Ej: Mi rutina de volumen...">
+      <label>Nombre de la rutina</label>
+      <input type="text" id="nr-name" placeholder="Ej: Mi rutina de volumen...">
+      <div class="grid2" style="margin-top:10px;">
+        <div>
+          <label>Días por semana</label>
+          <select id="nr-dias-sem" onchange="nrCambiarDias(this.value)">
+            <option>1</option><option>2</option><option>3</option>
+            <option selected>4</option><option>5</option><option>6</option><option>7</option>
+          </select>
+        </div>
+        <div>
+          <label>Semanas</label>
+          <select id="nr-semanas">
+            <option>4</option><option>6</option><option selected>8</option>
+            <option>10</option><option>12</option><option>16</option>
+          </select>
+        </div>
       </div>
-      <div style="margin-bottom:8px;">
-        <label>Plan JSON (opcional)</label>
-        <textarea id="nr-json" placeholder='Pega aquí el JSON generado por Claude...' style="min-height:80px;font-size:12px;"></textarea>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5;">
+        Los días que montes aquí se repiten en todas las semanas. Luego puedes
+        cambiar lo que quieras en cada semana por separado.
       </div>
-      <button class="btn btn-primary" onclick="createNewRoutine()">+ Crear rutina</button>
     </div>
+
+    <div id="nr-dias"></div>
+
+    <!-- El pegado de JSON sigue estando: es como Jhon montaba las rutinas antes
+         y no hay motivo para quitárselo. Pero deja de ser lo primero que se ve. -->
+    <details class="card" style="margin-top:10px;">
+      <summary style="cursor:pointer;font-size:12px;color:var(--muted);">Pegar un plan en JSON (avanzado)</summary>
+      <textarea id="nr-json" placeholder='Pega aquí el JSON generado por Claude...' style="min-height:80px;font-size:12px;margin-top:8px;"></textarea>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">Si pegas un plan, manda este y se ignoran los días de arriba.</div>
+    </details>
+  </div>
+  <!-- Pegado abajo: con cuatro días llenos de ejercicios, el botón de crear
+       quedaba a un scroll largo del final. -->
+  <div style="padding:10px 12px;border-top:1px solid var(--border);background:var(--bg);">
+    <button class="btn btn-primary" style="margin:0;" onclick="createNewRoutine()">✓ Crear rutina</button>
   </div>
 </div>
 
@@ -1685,7 +1738,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 20:10';
+const APP_VERSION='2026-09-04 20:23';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4339,7 +4392,7 @@ function renderProfileName(){
    class="hidden", pero de tres maneras distintas (display:none el onboarding y
    el comparador, transform los paneles), así que lo único fiable para saber si
    una está abierta es la propia clase. */
-const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto';
+const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#selector-ejercicio';
 
 function sincronizarBloqueoFondo(){
   const hayCapa=[...document.querySelectorAll(SELECTOR_CAPAS)]
@@ -4516,10 +4569,142 @@ function openNewRoutinePanel(){
   document.getElementById('new-routine-panel').classList.remove('hidden');
   document.getElementById('nr-name').value='';
   document.getElementById('nr-json').value='';
+  // Se empieza en limpio cada vez: media rutina de la vez anterior confundiría.
+  nrDias=[];
+  document.getElementById('nr-dias-sem').value='4';
+  nrCambiarDias(4);
 }
 
 function closeNewRoutinePanel(){
   document.getElementById('new-routine-panel').classList.add('hidden');
+}
+
+/* ═══════════ Constructor de rutinas ═══════════
+   Antes esta pantalla era un nombre y un textarea para pegar JSON: servía si te
+   lo generaba alguien, y no servía para nada si querías montar la tuya.
+   Ahora se eligen los ejercicios por músculo, con las mismas fotos que enseña
+   el detalle del ejercicio, y los días se repiten en todas las semanas. */
+let nrDias = [];          // [{nombre, ex:[{nombre, esquema}]}]
+let nrDiaActivo = null;   // a qué día se está añadiendo
+
+/* Solo los músculos que son PRINCIPALES en algún ejercicio: un músculo del que
+   no puedes elegir nada no pinta nada en la cuadrícula. */
+function nrMusculosConEjercicios(){
+  const cat = window.MUSCULOS_EJERCICIOS || {};
+  const cuenta = {};
+  for(const clave of Object.keys(cat)){
+    for(const m of (cat[clave][0] || [])) cuenta[m] = (cuenta[m] || 0) + 1;
+  }
+  return Object.keys(cuenta)
+    .sort((a,b) => cuenta[b] - cuenta[a])
+    .map(m => ({ clave:m, n:cuenta[m] }));
+}
+
+function nrEjerciciosDe(musculo){
+  const cat = window.MUSCULOS_EJERCICIOS || {};
+  const nombres = window.NOMBRES_EJERCICIOS || {};
+  return Object.keys(cat)
+    .filter(clave => (cat[clave][0] || []).includes(musculo))
+    .map(clave => nombres[clave] || clave)
+    .sort((a,b) => a.localeCompare(b,'es'));
+}
+
+function nrCambiarDias(n){
+  n = parseInt(n) || 1;
+  while(nrDias.length < n) nrDias.push({ nombre:'Día '+(nrDias.length+1), ex:[] });
+  nrDias.length = n;
+  nrPintarDias();
+}
+
+function nrPintarDias(){
+  const c = document.getElementById('nr-dias');
+  if(!c) return;
+  c.innerHTML = nrDias.map((d,i) => `
+    <div class="card">
+      <label>Día ${i+1}</label>
+      <input type="text" value="${escaparHTML(d.nombre)}" placeholder="Torso, Pierna, Full body..."
+             onchange="nrDias[${i}].nombre=this.value.trim()||('Día '+${i+1});nrPintarDias();">
+      ${d.ex.length ? d.ex.map((e,j) => `
+        <div class="sel-ej" style="padding-left:0;padding-right:0;">
+          <div class="sel-ej-nombre">${escaparHTML(e.nombre)}</div>
+          <button class="btn-sm" onclick="nrEsquema(${i},${j})">${escaparHTML(e.esquema)}</button>
+          <button class="btn-sm btn-danger" onclick="nrQuitar(${i},${j})">×</button>
+        </div>`).join('')
+        : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">Sin ejercicios todavía.</div>'}
+      <button class="btn btn-secondary" onclick="nrAbrirSelector(${i})">+ Añadir ejercicio</button>
+    </div>`).join('');
+}
+
+function nrQuitar(i,j){ nrDias[i].ex.splice(j,1); nrPintarDias(); }
+
+function nrEsquema(i,j){
+  const actual = nrDias[i].ex[j].esquema;
+  const nuevo = prompt('Series × repeticiones (por ejemplo 4×10):', actual);
+  if(nuevo === null) return;
+  const limpio = nuevo.trim();
+  if(limpio) nrDias[i].ex[j].esquema = limpio;
+  nrPintarDias();
+}
+
+/* ── El selector ── */
+function nrAbrirSelector(i){
+  nrDiaActivo = i;
+  document.getElementById('selector-ejercicio').classList.remove('hidden');
+  nrVolverAMusculos();
+}
+
+function nrCerrarSelector(){
+  document.getElementById('selector-ejercicio').classList.add('hidden');
+  document.getElementById('sel-cuerpo').innerHTML = '';
+  nrPintarDias();
+}
+
+function nrVolverAMusculos(){
+  document.getElementById('sel-volver').style.visibility = 'hidden';
+  document.getElementById('sel-titulo').textContent =
+    'Día ' + (nrDiaActivo + 1) + ' · ¿qué trabajas?';
+  document.getElementById('sel-cuerpo').innerHTML =
+    '<div class="mus-grid">' + nrMusculosConEjercicios().map(m => `
+      <button class="mus-btn" onclick="nrAbrirMusculo('${m.clave}')">
+        ${FOTO_MUSCULO[m.clave]
+          ? `<img src="img/musculos/${FOTO_MUSCULO[m.clave]}.webp" alt="" loading="lazy">`
+          : '<div style="height:78px;display:flex;align-items:center;font-size:26px;">💪</div>'}
+        <span>${escaparHTML(NOMBRE_MUSCULO[m.clave] || m.clave)}<br><small>${m.n} ejercicios</small></span>
+      </button>`).join('') + '</div>';
+}
+
+/* La lista que se está enseñando, para que los botones referencien por ÍNDICE y
+   no por nombre. "Fondos captain's chair" lleva un apóstrofo: metido en un
+   onclick="...('...')" el navegador lo decodifica antes de que lo lea el JS y
+   parte la cadena. Con el índice no hay nada que escapar. */
+let nrListaVisible = [];
+let nrMusculoVisible = null;
+
+function nrAbrirMusculo(musculo){
+  nrMusculoVisible = musculo;
+  nrListaVisible = nrEjerciciosDe(musculo);
+  document.getElementById('sel-volver').style.visibility = 'visible';
+  document.getElementById('sel-titulo').textContent = NOMBRE_MUSCULO[musculo] || musculo;
+  const yaPuestos = new Set((nrDias[nrDiaActivo].ex || []).map(e => e.nombre));
+  document.getElementById('sel-cuerpo').innerHTML = nrListaVisible.map((nombre, i) => {
+    const puesto = yaPuestos.has(nombre);
+    return `<div class="sel-ej${puesto ? ' puesto' : ''}">
+      <div class="sel-ej-nombre">${escaparHTML(nombre)}</div>
+      ${puesto
+        ? '<span style="font-size:11px;color:var(--green);font-weight:700;">✓ añadido</span>'
+        : `<button class="btn-sm" onclick="nrAnadir(${i})">+ Añadir</button>`}
+    </div>`;
+  }).join('');
+}
+
+/* Se queda en la lista tras añadir: lo normal es meter dos o tres seguidos del
+   mismo músculo, y salir y volver por cada uno sería absurdo. */
+function nrAnadir(i){
+  const nombre = nrListaVisible[i];
+  if(!nombre) return;
+  const dia = nrDias[nrDiaActivo];
+  if(!dia.ex.some(e => e.nombre === nombre)) dia.ex.push({ nombre, esquema:'4×10' });
+  nrAbrirMusculo(nrMusculoVisible);
 }
 
 function createNewRoutine(){
@@ -4530,6 +4715,30 @@ function createNewRoutine(){
   if(jsonTxt){
     try{plan=JSON.parse(jsonTxt);}
     catch{alert('El JSON del plan no es válido');return;}
+  }else{
+    /* Los días montados arriba se repiten en todas las semanas. La numeración
+       de sesiones (s) es correlativa y global, como en las rutinas prehechas:
+       semana 2 empieza donde acaba la 1. El nombre del día lleva ese número
+       delante ("S7 · Torso") porque es lo que enseña la lista de sesiones. */
+    const conEjercicios=nrDias.filter(d=>d.ex.length);
+    if(!conEjercicios.length){
+      alert('Añade al menos un ejercicio a algún día, o pega un plan en JSON.');
+      return;
+    }
+    const semanas=parseInt(document.getElementById('nr-semanas').value)||8;
+    let s=1;
+    for(let w=1;w<=semanas;w++){
+      plan.push({
+        num:w,
+        title:'Semana '+w,
+        days:conEjercicios.map(d=>({
+          s:s,
+          name:'S'+(s++)+' · '+d.nombre,
+          type:d.nombre,
+          ex:d.ex.map(e=>[e.nombre,e.esquema])
+        }))
+      });
+    }
   }
   const id='r_'+Date.now();
   DB.routines.push({id,name,plan,sessions:{},medidas:[]});
