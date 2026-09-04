@@ -404,7 +404,11 @@ textarea{resize:vertical;min-height:60px;}
 .mos-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
 .mos-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:11px 12px;cursor:pointer;text-align:left;font-family:inherit;color:inherit;
-  display:flex;flex-direction:column;gap:5px;min-height:92px;}
+  display:flex;flex-direction:column;gap:5px;min-height:92px;
+  /* Sin esto, mantener pulsado para reordenar activa la selección de texto del
+     navegador: la tarjeta se levanta pero lo que se arrastra es el cursor de
+     selección. El callout es el menú de iOS al pulsación larga. */
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
 .mos-card.actual{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
 .mos-card.lista{border-color:var(--green);background:rgba(45,122,79,0.06);}
 .mos-num{font-size:15px;font-weight:800;color:var(--text);}
@@ -1757,7 +1761,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 21:11';
+const APP_VERSION='2026-09-04 21:16';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4376,6 +4380,10 @@ function montarArrastre(cont){
     inicio={x:e.clientX,y:e.clientY};
     temporizador=setTimeout(()=>{
       arrastrado=card; exArrastrando=true;
+      /* Por si el navegador ya empezó a seleccionar antes de que el CSS lo
+         impidiera: sin limpiarla, se arrastra la selección y no la tarjeta. */
+      const sel=document.getSelection && document.getSelection();
+      if(sel && sel.removeAllRanges) sel.removeAllRanges();
       card.classList.add('arrastrando');
       cont.classList.add('reordenando');
       card.setPointerCapture(e.pointerId);
@@ -4402,6 +4410,8 @@ function montarArrastre(cont){
 
   cont.addEventListener('pointerup', soltar);
   cont.addEventListener('pointercancel', soltar);
+  // La pulsación larga abre el menú contextual en varios navegadores.
+  cont.addEventListener('contextmenu', e=>{ if(arrastrado||temporizador) e.preventDefault(); });
 }
 
 function openExDetail(ei){
