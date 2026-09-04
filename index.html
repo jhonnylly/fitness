@@ -336,10 +336,16 @@ textarea{resize:vertical;min-height:60px;}
 .routine-panel.hidden{transform:translate(-50%,-110%);}
 .routine-panel-header{background:var(--dark);color:#f2f0f7;padding:16px;display:flex;justify-content:space-between;align-items:center;}
 .routine-panel-header h2{font-size:16px;font-weight:800;letter-spacing:1px;}
-.routine-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card);}
+/* Cada rutina en bloque, no en fila: con tres botones y dos líneas de datos no
+   caben en horizontal en 390 px, y apretarlos era parte de lo que hacía esta
+   pantalla confusa. */
+.routine-item{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--card);}
 .routine-item.active-routine{border-left:3px solid var(--accent);}
-.routine-item-name{font-size:14px;font-weight:700;}
-.routine-item-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.routine-item-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.routine-item-meta{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5;}
+.routine-badge{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--accent);background:rgba(var(--accent-rgb),.12);padding:2px 8px;border-radius:20px;}
+.routine-item .acciones-fila{margin-left:0;margin-top:10px;}
 .routine-actions{display:flex;gap:6px;}
 .feeling-btn{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:24px;min-width:64px;}
 .feeling-btn span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
@@ -1679,7 +1685,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 19:58';
+const APP_VERSION='2026-09-04 20:10';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -1728,6 +1734,13 @@ function resumenDB(db){
     fotos:((db&&db.fotos)||[]).length
       +rutinas.reduce((t,r)=>t+Object.keys(r.photos||{}).length,0)
   };
+}
+
+/* "sesión" pierde la tilde en plural: 'sesión'+'es' da "sesiónes". Ya estaba
+   avisado más abajo y aun así se coló dos veces (04/09/2026), así que ahora hay
+   una función y no se repite la cuenta a mano. */
+function nSesiones(n){
+  return n===1 ? '1 sesión' : n+' sesiones';
 }
 
 function textoResumen(res){
@@ -3866,39 +3879,79 @@ function toggleAuthPanel(){
   }
 }
 
+/* Qué se ve de una rutina sin abrirla. "0/48 sesiones · 8 semanas" salía igual
+   en dos rutinas distintas y no distinguía nada: lo que identifica una rutina
+   es por dónde vas y cuándo la tocaste por última vez. */
+function resumenRutina(r){
+  const total=(r.plan||[]).reduce((s,w)=>s+w.days.length,0);
+  const hechas=Object.keys(r.sessions||{}).length;
+  if(!hechas) return 'Sin empezar · '+(r.plan||[]).length+' semanas · '+total+' sesiones';
+  const sem=semanaEnCurso(r);
+  // La fecha más reciente de sus sesiones: "cuándo la entrené por última vez".
+  let ultima='';
+  for(const k of Object.keys(r.sessions)){
+    const f=r.sessions[k] && r.sessions[k].date;
+    if(f) ultima=f;                       // basta la última encontrada en orden
+  }
+  return 'Semana '+sem+' de '+(r.plan||[]).length+' · '+hechas+'/'+total+' sesiones'+
+         (ultima?' · última: '+ultima:'');
+}
+
 function renderRoutineList(){
   const c=document.getElementById('routine-list');
   if(!DB.routines.length){c.innerHTML='<p style="color:var(--muted);font-size:13px;padding:8px 0;">Sin rutinas. Crea una abajo.</p>';return;}
-  c.innerHTML=DB.routines.map(r=>{
+
+  /* La duda que nadie resolvía: qué significa cambiar de rutina. Después de
+     perder datos por una sincronización, "¿esto borra algo?" no es una duda
+     menor: se contesta antes de que se la haga. */
+  c.innerHTML='<div class="msg msg-info" style="margin-bottom:10px;">'+
+    'La rutina <b>en curso</b> es la que ves en Inicio y en Registrar. '+
+    'Cambiar de rutina <b>no borra nada</b>: cada una guarda su propio historial.'+
+    '</div>';
+
+  c.innerHTML+=DB.routines.map(r=>{
     const isActive=r.id===DB.activeRoutine;
-    const totalSess=r.plan.reduce((s,w)=>s+w.days.length,0);
-    const done=Object.keys(r.sessions).length;
     return`<div class="routine-item${isActive?' active-routine':''}">
-      <div>
-        <div class="routine-item-name">${r.name}${isActive?' <span style="color:var(--accent);font-size:11px;">● activa</span>':''}</div>
-        <div class="routine-item-meta">${done}/${totalSess} sesiones · ${r.plan.length} semanas</div>
+      <div class="routine-item-name">
+        <span>${escaparHTML(r.name)}</span>
+        ${isActive?'<span class="routine-badge">● En curso</span>':''}
       </div>
-      <div class="routine-actions">
-        ${!isActive?`<button class="btn-sm" onclick="activateRoutine('${r.id}')">Activar</button>`:''}
-        <button class="btn-sm btn-danger" onclick="deleteRoutine('${r.id}')">×</button>
+      <div class="routine-item-meta">${escaparHTML(resumenRutina(r))}</div>
+      <div class="acciones-fila">
+        ${!isActive?`<button class="btn-sm" onclick="activateRoutine('${r.id}')">▶ Entrenar esta</button>`:''}
+        <button class="btn-sm" onclick="renombrarRutina('${r.id}')">✎ Renombrar</button>
+        <button class="btn-sm btn-danger sep-peligro" onclick="deleteRoutine('${r.id}')">🗑 Borrar</button>
       </div>
     </div>`;
   }).join('');
-c.innerHTML+=`
-    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+
+  /* Los dos botones de añadir eran tarjetas grandes con degradado, y una verde
+     —color que en el resto de la app significa "hecho"—: pesaban más que la
+     lista de rutinas, que es a lo que se viene aquí. */
+  c.innerHTML+=`
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Añadir rutina</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <button onclick="openNewRoutinePanel()" style="background:linear-gradient(135deg,var(--accent),#4c2ba0);border:none;border-radius:16px;padding:20px 12px;cursor:pointer;text-align:left;color:#fff;font-family:inherit;min-height:100px;display:flex;flex-direction:column;justify-content:flex-end;">
-          <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;">Personalizada</span>
-          <span style="font-size:16px;font-weight:800;margin-top:4px;">Nueva rutina</span>
-        </button>
-        <button onclick="openPresetPanel()" style="background:linear-gradient(135deg,#2d7a4f,#1a4d30);border:none;border-radius:16px;padding:20px 12px;cursor:pointer;text-align:left;color:#fff;font-family:inherit;min-height:100px;display:flex;flex-direction:column;justify-content:flex-end;">
-          <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;">Biblioteca</span>
-          <span style="font-size:16px;font-weight:800;margin-top:4px;">Explorar</span>
-        </button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="openPresetPanel()">📚 Explorar rutinas</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="openNewRoutinePanel()">+ Crear la mía</button>
       </div>
     </div>
   `;
+}
+
+/* Renombrar sin tener que activarla ni recrearla: antes el nombre solo se podía
+   poner al crearla. */
+function renombrarRutina(id){
+  const r=DB.routines.find(x=>x.id===id);
+  if(!r)return;
+  const nuevo=prompt('Nombre de la rutina:',r.name);
+  if(nuevo===null)return;
+  const limpio=nuevo.trim();
+  if(!limpio)return;
+  r.name=limpio;
+  save();
+  renderRoutineList();
+  updateHeaderRoutine();
 }
 
 function activateRoutine(id){
@@ -3910,8 +3963,18 @@ function activateRoutine(id){
   renderRoutineList();
 }
 
+/* El aviso dice qué se pierde, con la cifra delante: "todos sus datos" no
+   deja ver que ahí dentro puede haber meses de entrenamientos. */
 function deleteRoutine(id){
-  if(!confirm('¿Eliminar esta rutina y todos sus datos?'))return;
+  const r=DB.routines.find(x=>x.id===id);
+  if(!r)return;
+  const hechas=Object.keys(r.sessions||{}).length;
+  const aviso=hechas
+    ? 'Vas a borrar "'+r.name+'" y las '+nSesiones(hechas)+
+      ' que registraste en ella.\n\nEse historial no se puede recuperar.\n\n¿Seguir?'
+    : 'Vas a borrar "'+r.name+'".\n\nNo la has entrenado todavía, así que no '+
+      'pierdes historial.\n\n¿Seguir?';
+  if(!confirm(aviso))return;
   DB.routines=DB.routines.filter(r=>r.id!==id);
   if(DB.activeRoutine===id)DB.activeRoutine=DB.routines.length?DB.routines[0].id:null;
   save();
@@ -6174,7 +6237,7 @@ window.subirEsteDispositivo = async function(){
   if(enNube.sesiones > aqui.sesiones){
     const pierde = enNube.sesiones - aqui.sesiones;
     if(!confirm(
-      'ATENCIÓN: vas a perder '+pierde+' sesión'+(pierde===1?'':'es')+'.\n\n'+
+      'ATENCIÓN: vas a perder '+nSesiones(pierde)+'.\n\n'+
       'En tu cuenta hay '+textoResumen(enNube)+'.\n'+
       'En este dispositivo hay '+textoResumen(aqui)+'.\n\n'+
       'Lo de la cuenta se reemplaza por lo de este dispositivo y no se puede '+
