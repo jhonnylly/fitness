@@ -70,6 +70,15 @@ ${filas.map(f => `<figure style="margin:0;text-align:center;background:#1a1a1a;b
   </figcaption></figure>`).join('\n')}
 </div></body>`);
 
+/* Los músculos de cada ejercicio, para la app. Hasta ahora esta información
+   solo vivía aquí, en Node, y el navegador no la veía: le bastaba con la
+   silueta ya dibujada. Con las fotos por músculo sí hace falta, porque la app
+   tiene que elegir QUÉ foto enseña y escribir los nombres debajo. */
+fs.writeFileSync(path.join(SALIDA, 'musculos.js'),
+  '/* Generado por tools/generar-imagenes.js — no editar a mano. */\n' +
+  'window.MUSCULOS_EJERCICIOS=' + JSON.stringify(
+    Object.fromEntries(filas.map(f => [f.clave, MUSCULOS_POR_EJERCICIO[f.clave]]))) + ';\n');
+
 /* La app necesita saber QUÉ imágenes existen: buscarImagenEjercicio() casa el
    nombre del ejercicio contra la lista de claves disponibles (con su búsqueda
    laxa para plurales y conectores), y eso no se puede adivinar probando URLs.
@@ -79,7 +88,7 @@ fs.writeFileSync(path.join(SALIDA, 'lista.js'),
   '/* Generado por tools/generar-imagenes.js — no editar a mano. */\n' +
   'window.IMAGENES_EJERCICIOS=' + JSON.stringify(filas.map(f => f.clave)) + ';\n');
 
-console.log(`✓ ${filas.length} SVG en img/ejercicios/`);
+console.log(`✓ ${filas.length} SVG en img/ejercicios/ (+ lista.js y musculos.js)`);
 console.log(REVISAR.length
   ? `  revisar a mano: ${REVISAR.length} (${REVISAR.join(', ')})`
   : '  ninguno pendiente de revisar');

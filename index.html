@@ -318,10 +318,18 @@ textarea{resize:vertical;min-height:60px;}
 /* Mapa muscular del ejercicio abierto. Compacto por defecto: encima de las
    series, en un móvil, a tamaño completo se comería media pantalla. Al tocarlo
    se agranda, que es cuando de verdad quieres mirarlo. */
-.ex-musculos{display:flex;flex-direction:column;align-items:center;gap:4px;margin:0 0 10px;cursor:pointer;}
+.ex-musculos{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 0 10px;cursor:pointer;}
+.ex-mus-fotos{display:flex;justify-content:center;align-items:flex-end;gap:10px;width:100%;}
 .ex-musculos img{height:150px;width:auto;max-width:100%;transition:height .2s ease;}
 .ex-musculos.grande img{height:280px;}
-.ex-musculos figcaption{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+/* Con dos músculos principales caben las dos fotos en fila, algo más bajas:
+   en un móvil de 390 px eso son ~170 px por foto y siguen leyéndose. */
+.ex-musculos.dos img{height:130px;max-width:calc(50% - 5px);object-fit:contain;}
+.ex-musculos.dos.grande img{height:230px;}
+.ex-musculos figcaption{font-size:11.5px;color:var(--muted);line-height:1.45;text-align:center;}
+.ex-musculos figcaption b{color:var(--text);font-weight:700;}
+/* El pie del mapa de siluetas sí es una etiqueta, no una frase. */
+.ex-musculos.silueta figcaption{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;}
 .ex-musculos .ex-mus-reducir{display:none;}
 .ex-musculos.grande .ex-mus-ampliar{display:none;}
 .ex-musculos.grande .ex-mus-reducir{display:inline;}
@@ -360,6 +368,7 @@ textarea{resize:vertical;min-height:60px;}
      tools/generar-imagenes.js; si falta, la app funciona igual, solo que sin
      imagen en el detalle del ejercicio (ver mapaImagenesEjercicios). -->
 <script src="img/ejercicios/lista.js"></script>
+<script src="img/ejercicios/musculos.js"></script>
 </head>
 <body>
 
@@ -1600,7 +1609,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-02 20:42';
+const APP_VERSION='2026-09-04 17:32';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3024,16 +3033,83 @@ function mapaImagenesEjercicios(){
   return _mapaImagenes;
 }
 
-/* Silueta con el músculo resaltado, no una ilustración del movimiento: dice
-   QUÉ trabaja el ejercicio, no CÓMO se hace. Un ejercicio sin mapa (uno nuevo
-   escrito a mano, por ejemplo) simplemente no enseña nada. */
+/* Cómo se llama cada músculo por escrito. Las claves internas son de
+   programa ("deltoides_post", "isquios") y a nadie le dicen nada leídas. */
+const NOMBRE_MUSCULO={
+  pectoral:'pectoral', deltoides:'deltoides', deltoides_post:'deltoides posterior',
+  biceps:'bíceps', triceps:'tríceps', antebrazo:'antebrazo',
+  abdominal:'abdominales', oblicuo:'oblicuos', lumbar:'lumbar',
+  trapecio:'trapecio', romboides:'romboides', dorsal:'dorsal',
+  gluteo:'glúteos', cuadriceps:'cuádriceps', isquios:'femorales',
+  aductor:'aductores', abductor:'abductores', gemelo:'gemelos', tibial:'tibial'
+};
+
+/* Qué foto enseña cada músculo (img/musculos/CLAVE.webp).
+   Los de abajo del todo no tienen la suya todavía y usan la del grupo que los
+   contiene: la foto de abdominales resalta también los oblicuos, y la de dorsal
+   resalta trapecio y zona lumbar. La imagen no miente, solo es menos precisa
+   que el texto. Cuando exista la propia, se borra esa línea y ya está.
+   Los que no aparecen (abductor, aductor) se quedan sin foto: ahí se cae a la
+   silueta dibujada, que sí sabe pintar cualquier músculo. */
+const FOTO_MUSCULO={
+  pectoral:'pectoral', deltoides:'deltoides', biceps:'biceps', triceps:'triceps',
+  antebrazo:'antebrazo', abdominal:'abdominal', cuadriceps:'cuadriceps',
+  isquios:'isquios', gemelo:'gemelo', gluteo:'gluteo', dorsal:'dorsal',
+  oblicuo:'abdominal', trapecio:'dorsal', romboides:'dorsal', lumbar:'dorsal',
+  deltoides_post:'deltoides'
+};
+
+/* "cuádriceps y glúteos", no "cuádriceps, glúteos". */
+function listaEnEspanol(nombres){
+  if(nombres.length<2) return nombres[0]||'';
+  return nombres.slice(0,-1).join(', ')+' y '+nombres[nombres.length-1];
+}
+
+/* Qué músculos trabaja un ejercicio. Se busca por nombre con la misma cortesía
+   que las imágenes (exacto primero, laxo después), así "Curl bíceps barra"
+   encuentra lo de "Curl bíceps con barra". */
+function musculosDeEjercicio(nombre){
+  const par=buscarImagenEjercicio(nombre, window.MUSCULOS_EJERCICIOS);
+  if(!Array.isArray(par)) return null;
+  return { primarios: par[0]||[], secundarios: par[1]||[] };
+}
+
+/* Foto del músculo que trabaja el ejercicio abierto, con los nombres escritos
+   debajo. Una foto por músculo principal (65 ejercicios tienen uno, 36 tienen
+   dos) y los secundarios en texto: son cinco palabras y una foto por cada uno
+   llenaría la pantalla sin añadir nada.
+
+   Si algún principal no tiene foto todavía, se enseña la silueta dibujada en
+   su lugar: prefiere el mapa completo antes que media información. */
 function pintarImagenEjercicio(){
   const c=document.getElementById('ex-musculos');
   if(!c)return;
   const ex=curExIndex!==null?curEx[curExIndex]:null;
-  const url=ex?buscarImagenEjercicio(ex.name,mapaImagenesEjercicios()):null;
+  if(!ex||!ex.name){ c.innerHTML=''; return; }
+
+  const m=musculosDeEjercicio(ex.name);
+  const fotos=m ? m.primarios.map(x=>FOTO_MUSCULO[x]) : [];
+  const todasConFoto = m && m.primarios.length && fotos.every(Boolean);
+
+  if(todasConFoto){
+    // Sin repetidas: dos principales pueden compartir foto de apoyo.
+    const unicas=[...new Set(fotos)];
+    const pie='<b>Principal:</b> '+escaparHTML(listaEnEspanol(m.primarios.map(x=>NOMBRE_MUSCULO[x]||x)))
+      + (m.secundarios.length
+          ? '<br>También trabaja: '+escaparHTML(listaEnEspanol(m.secundarios.map(x=>NOMBRE_MUSCULO[x]||x)))
+          : '');
+    c.innerHTML=`<figure class="ex-musculos${unicas.length>1?' dos':''}" onclick="this.classList.toggle('grande')">
+        <div class="ex-mus-fotos">${unicas.map(f=>
+          `<img src="img/musculos/${f}.webp" alt="Músculo: ${escaparHTML(f)}" loading="lazy">`).join('')}</div>
+        <figcaption>${pie}</figcaption>
+      </figure>`;
+    return;
+  }
+
+  // Sin foto para algún principal: la silueta de siempre.
+  const url=buscarImagenEjercicio(ex.name, mapaImagenesEjercicios());
   if(!url){ c.innerHTML=''; return; }
-  c.innerHTML=`<figure class="ex-musculos" onclick="this.classList.toggle('grande')">
+  c.innerHTML=`<figure class="ex-musculos silueta" onclick="this.classList.toggle('grande')">
       <img src="${url}" alt="Músculos que trabaja: ${escaparHTML(ex.name||'')}" loading="lazy">
       <figcaption>Músculos que trabaja · <span class="ex-mus-ampliar">toca para ampliar</span><span class="ex-mus-reducir">toca para reducir</span></figcaption>
     </figure>`;
