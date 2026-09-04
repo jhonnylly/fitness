@@ -1133,49 +1133,21 @@ textarea{resize:vertical;min-height:60px;}
 
 <div id="new-routine-panel" class="routine-panel hidden">
   <div class="routine-panel-header">
-    <h2>NUEVA RUTINA</h2>
+    <h2 id="nr-titulo">NUEVA RUTINA</h2>
     <button class="btn-sm" onclick="closeNewRoutinePanel()">✕ Cerrar</button>
   </div>
-  <div style="padding:12px;flex:1;overflow-y:auto;">
-    <div class="card">
-      <label>Nombre de la rutina</label>
-      <input type="text" id="nr-name" placeholder="Ej: Mi rutina de volumen...">
-      <div class="grid2" style="margin-top:10px;">
-        <div>
-          <label>Días por semana</label>
-          <select id="nr-dias-sem" onchange="nrCambiarDias(this.value)">
-            <option>1</option><option>2</option><option>3</option>
-            <option selected>4</option><option>5</option><option>6</option><option>7</option>
-          </select>
-        </div>
-        <div>
-          <label>Semanas</label>
-          <select id="nr-semanas">
-            <option>4</option><option>6</option><option selected>8</option>
-            <option>10</option><option>12</option><option>16</option>
-          </select>
-        </div>
-      </div>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5;">
-        Los días que montes aquí se repiten en todas las semanas. Luego puedes
-        cambiar lo que quieras en cada semana por separado.
-      </div>
-    </div>
-
-    <div id="nr-dias"></div>
-
-    <!-- El pegado de JSON sigue estando: es como Jhon montaba las rutinas antes
-         y no hay motivo para quitárselo. Pero deja de ser lo primero que se ve. -->
-    <details class="card" style="margin-top:10px;">
-      <summary style="cursor:pointer;font-size:12px;color:var(--muted);">Pegar un plan en JSON (avanzado)</summary>
-      <textarea id="nr-json" placeholder='Pega aquí el JSON generado por Claude...' style="min-height:80px;font-size:12px;margin-top:8px;"></textarea>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;">Si pegas un plan, manda este y se ignoran los días de arriba.</div>
-    </details>
+  <div class="ob-dots" style="margin-top:12px;">
+    <div class="ob-dot" id="nr-dot-1"></div>
+    <div class="ob-dot" id="nr-dot-2"></div>
+    <div class="ob-dot" id="nr-dot-3"></div>
+    <div class="ob-dot" id="nr-dot-4"></div>
   </div>
-  <!-- Pegado abajo: con cuatro días llenos de ejercicios, el botón de crear
-       quedaba a un scroll largo del final. -->
-  <div style="padding:10px 12px;border-top:1px solid var(--border);background:var(--bg);">
-    <button class="btn btn-primary" style="margin:0;" onclick="createNewRoutine()">✓ Crear rutina</button>
+  <div style="padding:12px;flex:1;overflow-y:auto;" id="nr-cuerpo"></div>
+  <!-- Los botones, pegados abajo: con un día lleno de ejercicios, "Continuar"
+       quedaba a un scroll del final. -->
+  <div style="padding:10px 12px;border-top:1px solid var(--border);background:var(--bg);display:flex;gap:8px;">
+    <button class="btn btn-secondary" style="flex:1;margin:0;" id="nr-atras" onclick="nrAtras()">← Atrás</button>
+    <button class="btn btn-primary" style="flex:2;margin:0;" id="nr-siguiente" onclick="nrSiguiente()">Continuar →</button>
   </div>
 </div>
 
@@ -1745,7 +1717,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 20:32';
+const APP_VERSION='2026-09-04 20:38';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -1801,6 +1773,9 @@ function resumenDB(db){
    una función y no se repite la cuenta a mano. */
 function nSesiones(n){
   return n===1 ? '1 sesión' : n+' sesiones';
+}
+function nEjercicios(n){
+  return n===1 ? '1 ejercicio' : n+' ejercicios';
 }
 
 function textoResumen(res){
@@ -4574,12 +4549,9 @@ function obFinish(){
 
 function openNewRoutinePanel(){
   document.getElementById('new-routine-panel').classList.remove('hidden');
-  document.getElementById('nr-name').value='';
-  document.getElementById('nr-json').value='';
   // Se empieza en limpio cada vez: media rutina de la vez anterior confundiría.
-  nrDias=[];
-  document.getElementById('nr-dias-sem').value='4';
-  nrCambiarDias(4);
+  nrDias=[]; nrNombre=''; nrSemanas=8; nrPaso=1; nrDiaEditando=0;
+  nrPintarPaso();
 }
 
 function closeNewRoutinePanel(){
@@ -4620,35 +4592,138 @@ function nrCambiarDias(n){
   n = parseInt(n) || 1;
   while(nrDias.length < n) nrDias.push({ nombre:'Día '+(nrDias.length+1), ex:[] });
   nrDias.length = n;
-  nrPintarDias();
 }
 
-function nrPintarDias(){
-  const c = document.getElementById('nr-dias');
-  if(!c) return;
-  c.innerHTML = nrDias.map((d,i) => `
+/* ── El asistente ──
+   Antes era una única pantalla con todo: nombre, semanas, días y los cuatro
+   días con sus ejercicios, uno detrás de otro. En un móvil eso es un scroll
+   largo donde no sabes por dónde vas. Ahora es paso a paso, y el paso de los
+   ejercicios se hace un día cada vez. */
+let nrPaso = 1;          // 1 semanas · 2 días · 3 ejercicios · 4 nombre
+let nrDiaEditando = 0;   // qué día se está montando en el paso 3
+let nrSemanas = 8;
+
+function nrPintarPaso(){
+  const cuerpo = document.getElementById('nr-cuerpo');
+  const atras = document.getElementById('nr-atras');
+  const siguiente = document.getElementById('nr-siguiente');
+  [1,2,3,4].forEach(n=>{
+    const d=document.getElementById('nr-dot-'+n);
+    if(d) d.classList.toggle('active', n===nrPaso);
+  });
+  atras.style.visibility = (nrPaso===1) ? 'hidden' : 'visible';
+  siguiente.textContent = 'Continuar →';
+
+  if(nrPaso===1){
+    document.getElementById('nr-titulo').textContent='NUEVA RUTINA';
+    cuerpo.innerHTML=`
+      <div class="card">
+        <div style="font-size:19px;font-weight:800;margin-bottom:6px;">Vamos a crear tu rutina</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">
+          En cuatro pasos: cuánto dura, cuántos días entrenas, qué ejercicios
+          haces cada día y cómo la llamas.
+        </div>
+        <label>¿Cuántas semanas quieres el plan?</label>
+        <select id="nr-semanas" onchange="nrSemanas=parseInt(this.value)">
+          ${[4,6,8,10,12,16].map(n=>`<option${n===nrSemanas?' selected':''}>${n}</option>`).join('')}
+        </select>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:8px;">
+          Puedes añadir o quitar semanas más adelante.
+        </div>
+      </div>`;
+    return;
+  }
+
+  if(nrPaso===2){
+    document.getElementById('nr-titulo').textContent='DÍAS POR SEMANA';
+    cuerpo.innerHTML=`
+      <div class="card">
+        <div style="font-size:17px;font-weight:800;margin-bottom:6px;">¿Cuántos días entrenas a la semana?</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">
+          Montarás cada día una vez y se repetirá en las ${nrSemanas} semanas.
+        </div>
+        <label>Días por semana</label>
+        <select id="nr-dias-sem" onchange="nrCambiarDias(this.value)">
+          ${[1,2,3,4,5,6,7].map(n=>`<option${n===nrDias.length?' selected':''}>${n}</option>`).join('')}
+        </select>
+      </div>`;
+    return;
+  }
+
+  if(nrPaso===3){
+    const i = nrDiaEditando, d = nrDias[i];
+    document.getElementById('nr-titulo').textContent='DÍA '+(i+1)+' DE '+nrDias.length;
+    siguiente.textContent = (i===nrDias.length-1) ? 'Listo, seguir →' : 'Siguiente día →';
+    cuerpo.innerHTML=`
+      <div class="card">
+        <label>¿Qué trabajas este día?</label>
+        <input type="text" value="${escaparHTML(d.nombre)}" placeholder="Torso, Pierna, Full body..."
+               onchange="nrDias[${i}].nombre=this.value.trim()||('Día '+${i+1});nrPintarPaso();">
+        ${d.ex.length ? d.ex.map((e,j)=>`
+          <div class="sel-ej" style="padding-left:0;padding-right:0;">
+            <div class="sel-ej-nombre">${escaparHTML(e.nombre)}</div>
+            <button class="btn-sm" onclick="nrEsquema(${i},${j})">${escaparHTML(e.esquema)}</button>
+            <button class="btn-sm btn-danger" onclick="nrQuitar(${i},${j})">×</button>
+          </div>`).join('')
+          : '<div style="font-size:12.5px;color:var(--muted);padding:12px 0;">Todavía no has añadido ejercicios a este día.</div>'}
+        <button class="btn btn-secondary" onclick="nrAbrirSelector(${i})">+ Añadir ejercicio</button>
+        ${nrDias.some((o,k)=>k!==i&&o.ex.length)
+          ? `<button class="btn btn-secondary" style="margin-top:6px;" onclick="nrMenuCopiar(${i})">⧉ Copiar de otro día</button>
+             <div id="nr-copiar-${i}"></div>` : ''}
+      </div>`;
+    return;
+  }
+
+  // Paso 4
+  document.getElementById('nr-titulo').textContent='CASI ESTÁ';
+  siguiente.textContent='✓ Crear rutina';
+  const conEj = nrDias.filter(d=>d.ex.length);
+  const totalSesiones = conEj.length * nrSemanas;
+  cuerpo.innerHTML=`
     <div class="card">
-      <label>Día ${i+1}</label>
-      <input type="text" value="${escaparHTML(d.nombre)}" placeholder="Torso, Pierna, Full body..."
-             onchange="nrDias[${i}].nombre=this.value.trim()||('Día '+${i+1});nrPintarDias();">
-      ${d.ex.length ? d.ex.map((e,j) => `
-        <div class="sel-ej" style="padding-left:0;padding-right:0;">
-          <div class="sel-ej-nombre">${escaparHTML(e.nombre)}</div>
-          <button class="btn-sm" onclick="nrEsquema(${i},${j})">${escaparHTML(e.esquema)}</button>
-          <button class="btn-sm btn-danger" onclick="nrQuitar(${i},${j})">×</button>
-        </div>`).join('')
-        : '<div style="font-size:12px;color:var(--muted);padding:10px 0;">Sin ejercicios todavía.</div>'}
-      <button class="btn btn-secondary" onclick="nrAbrirSelector(${i})">+ Añadir ejercicio</button>
-      ${nrDias.some((o,k)=>k!==i&&o.ex.length)
-        ? `<button class="btn btn-secondary" style="margin-top:6px;" onclick="nrMenuCopiar(${i})">⧉ Copiar de otro día</button>
-           <div id="nr-copiar-${i}"></div>`
-        : ''}
-    </div>`).join('');
+      <label>¿Cómo se llama tu rutina?</label>
+      <input type="text" id="nr-name" placeholder="Ej: Mi rutina de volumen..." value="${escaparHTML(nrNombre)}"
+             onchange="nrNombre=this.value">
+      <div class="msg msg-info" style="margin-top:12px;">
+        <b>${nrSemanas} semanas</b> · <b>${conEj.length} días por semana</b> ·
+        <b>${totalSesiones} sesiones</b> en total
+        ${conEj.map(d=>`<div style="margin-top:6px;font-size:12px;">${escaparHTML(d.nombre)}: ${nEjercicios(d.ex.length)}</div>`).join('')}
+      </div>
+      ${nrDias.length!==conEj.length
+        ? '<div class="msg msg-err" style="margin-top:8px;">Hay días sin ejercicios: no se incluirán.</div>' : ''}
+    </div>
+    <details class="card" style="margin-top:10px;">
+      <summary style="cursor:pointer;font-size:12px;color:var(--muted);">Pegar un plan en JSON (avanzado)</summary>
+      <textarea id="nr-json" placeholder='Pega aquí el JSON generado por Claude...' style="min-height:80px;font-size:12px;margin-top:8px;"></textarea>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">Si pegas un plan, manda este y se ignora lo de arriba.</div>
+    </details>`;
 }
 
-/* Copiar de otro día: con cuatro días parecidos, montar el segundo desde cero
-   repitiendo los mismos seis ejercicios es trabajo tonto. Se enseña un botón
-   por día con contenido, y solo aparece si hay alguno del que copiar. */
+let nrNombre = '';
+
+function nrSiguiente(){
+  if(nrPaso===1){ nrPaso=2; if(!nrDias.length) nrCambiarDias(4); nrPintarPaso(); return; }
+  if(nrPaso===2){ nrPaso=3; nrDiaEditando=0; nrPintarPaso(); return; }
+  if(nrPaso===3){
+    if(nrDiaEditando < nrDias.length-1){ nrDiaEditando++; nrPintarPaso(); return; }
+    if(!nrDias.some(d=>d.ex.length)){
+      alert('Añade al menos un ejercicio a algún día antes de seguir.');
+      return;
+    }
+    nrPaso=4; nrPintarPaso(); return;
+  }
+  createNewRoutine();
+}
+
+function nrAtras(){
+  if(nrPaso===4){ nrPaso=3; nrDiaEditando=nrDias.length-1; nrPintarPaso(); return; }
+  if(nrPaso===3){
+    if(nrDiaEditando>0){ nrDiaEditando--; nrPintarPaso(); return; }
+    nrPaso=2; nrPintarPaso(); return;
+  }
+  if(nrPaso===2){ nrPaso=1; nrPintarPaso(); return; }
+}
+
 function nrMenuCopiar(i){
   const c=document.getElementById('nr-copiar-'+i);
   if(!c)return;
@@ -4656,7 +4731,7 @@ function nrMenuCopiar(i){
   const candidatos=nrDias.map((d,k)=>({d,k})).filter(x=>x.k!==i&&x.d.ex.length);
   c.innerHTML='<div style="margin-top:8px;">'+candidatos.map(x=>
     `<button class="btn-sm" style="width:100%;text-align:left;margin-bottom:4px;"
-       onclick="nrCopiarDia(${x.k},${i})">Día ${x.k+1} · ${escaparHTML(x.d.nombre)} (${x.d.ex.length} ejercicios)</button>`
+       onclick="nrCopiarDia(${x.k},${i})">Día ${x.k+1} · ${escaparHTML(x.d.nombre)} (${nEjercicios(x.d.ex.length)})</button>`
   ).join('')+'</div>';
 }
 
@@ -4669,11 +4744,11 @@ function nrCopiarDia(desde,hasta){
   origen.ex.forEach(e=>{
     if(!destino.ex.some(x=>x.nombre===e.nombre)){ destino.ex.push({...e}); nuevos++; }
   });
-  nrPintarDias();
+  nrPintarPaso();
   if(!nuevos) alert('Ese día ya tiene todos esos ejercicios.');
 }
 
-function nrQuitar(i,j){ nrDias[i].ex.splice(j,1); nrPintarDias(); }
+function nrQuitar(i,j){ nrDias[i].ex.splice(j,1); nrPintarPaso(); }
 
 function nrEsquema(i,j){
   const actual = nrDias[i].ex[j].esquema;
@@ -4681,7 +4756,7 @@ function nrEsquema(i,j){
   if(nuevo === null) return;
   const limpio = nuevo.trim();
   if(limpio) nrDias[i].ex[j].esquema = limpio;
-  nrPintarDias();
+  nrPintarPaso();
 }
 
 /* ── El selector ── */
@@ -4694,7 +4769,7 @@ function nrAbrirSelector(i){
 function nrCerrarSelector(){
   document.getElementById('selector-ejercicio').classList.add('hidden');
   document.getElementById('sel-cuerpo').innerHTML = '';
-  nrPintarDias();
+  nrPintarPaso();
 }
 
 function nrVolverAMusculos(){
@@ -4710,7 +4785,7 @@ function nrVolverAMusculos(){
         ${FOTO_MUSCULO[m.clave]
           ? `<img src="img/musculos/${FOTO_MUSCULO[m.clave]}.webp" alt="" loading="lazy">`
           : '<div style="height:78px;display:flex;align-items:center;font-size:26px;">💪</div>'}
-        <span>${escaparHTML(NOMBRE_MUSCULO[m.clave] || m.clave)}<br><small>${m.n} ejercicios</small></span>
+        <span>${escaparHTML(NOMBRE_MUSCULO[m.clave] || m.clave)}<br><small>${nEjercicios(m.n)}</small></span>
       </button>`).join('') + '</div>';
 }
 
@@ -4797,9 +4872,14 @@ function nrAnadir(i){
 }
 
 function createNewRoutine(){
-  const name=document.getElementById('nr-name').value.trim();
+  /* El nombre y el JSON solo existen en el DOM durante el paso 4; las semanas
+     vivían en un <select> del paso 1, que ya no está. Por eso el estado manda y
+     el DOM solo se consulta para lo que hay delante. */
+  const campo=document.getElementById('nr-name');
+  const name=((campo?campo.value:nrNombre)||'').trim();
   if(!name){alert('Escribe un nombre para la rutina');return;}
-  const jsonTxt=document.getElementById('nr-json').value.trim();
+  const areaJson=document.getElementById('nr-json');
+  const jsonTxt=areaJson?areaJson.value.trim():'';
   let plan=[];
   if(jsonTxt){
     try{plan=JSON.parse(jsonTxt);}
@@ -4814,7 +4894,7 @@ function createNewRoutine(){
       alert('Añade al menos un ejercicio a algún día, o pega un plan en JSON.');
       return;
     }
-    const semanas=parseInt(document.getElementById('nr-semanas').value)||8;
+    const semanas=nrSemanas||8;
     let s=1;
     for(let w=1;w<=semanas;w++){
       plan.push({
