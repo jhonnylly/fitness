@@ -1773,7 +1773,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 22:16';
+const APP_VERSION='2026-09-04 22:34';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4460,12 +4460,25 @@ function montarArrastre(cont, alSoltar){
     // La tarjeta va donde va el dedo.
     arrastrado.style.left=(caja.left + e.clientX - inicio.x)+'px';
     arrastrado.style.top =(caja.top  + e.clientY - inicio.y)+'px';
-    const bajo=document.elementFromPoint(e.clientX,e.clientY);
-    const destino=bajo && bajo.closest ? bajo.closest('.mos-card') : null;
-    if(!destino || destino===arrastrado || destino.parentNode!==cont)return;
+    /* La tarjeta MÁS CERCANA al dedo, no la que esté justo debajo. Con
+       elementFromPoint, si el dedo caía en el hueco entre dos tarjetas o sobre
+       el sitio que va a dejar libre, no había destino y no pasaba nada: había
+       que acertar la posición exacta. Así siempre hay a dónde ir. */
+    let destino=null, cerca=Infinity;
+    for(const el of cont.children){
+      if(el===arrastrado || el===hueco) continue;
+      const r=el.getBoundingClientRect();
+      const d=Math.hypot(e.clientX-(r.left+r.width/2), e.clientY-(r.top+r.height/2));
+      if(d<cerca){ cerca=d; destino=el; }
+    }
+    if(!destino)return;
+    /* Antes o después, en orden de lectura: primero la fila, y dentro de la
+       misma fila, la columna. */
     const c=destino.getBoundingClientRect();
-    const despues=(e.clientY>c.top+c.height/2) || (e.clientX>c.left+c.width/2 && Math.abs(e.clientY-(c.top+c.height/2))<c.height/2);
-    cont.insertBefore(hueco, despues?destino.nextSibling:destino);
+    const mismaFila=Math.abs(e.clientY-(c.top+c.height/2))<=c.height/2;
+    const despues=mismaFila ? e.clientX>c.left+c.width/2 : e.clientY>c.top+c.height/2;
+    const siguiente=despues?destino.nextSibling:destino;
+    if(hueco!==siguiente) cont.insertBefore(hueco, siguiente);
   });
 
   /* preventDefault en pointermove NO detiene el scroll: el navegador solo
