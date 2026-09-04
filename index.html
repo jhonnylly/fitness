@@ -583,6 +583,25 @@ textarea{resize:vertical;min-height:60px;}
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
 
+    <!-- Vivían arriba del todo de la pestaña Historial, que era lo primero que
+         se veía al entrar ahí y lo que menos se usa. Son mantenimiento, no
+         entrenamiento: su sitio es Ajustes. -->
+    <div class="card">
+      <div class="section-title">Copia de seguridad</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
+        Exporta de vez en cuando: es un fichero con todo lo que has registrado y
+        te deja a salvo pase lo que pase con el móvil o con la nube.
+      </div>
+      <div class="action-row">
+        <button class="btn-sm" onclick="exportJSON()">💾 Exportar JSON</button>
+        <!-- text-transform:none porque es un <label>, y la regla de las etiquetas
+             de formulario lo pondría en mayúsculas al lado de dos botones que no
+             lo están. -->
+        <label class="btn-sm" style="cursor:pointer;text-align:center;text-transform:none;">📂 Importar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
+        <button class="btn-sm" onclick="copyForChat()">📋 Copiar para chat</button>
+      </div>
+    </div>
+
     <div class="card">
       <div class="section-title">Tus datos</div>
       <label>Altura (cm)</label>
@@ -655,10 +674,6 @@ textarea{resize:vertical;min-height:60px;}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>
     <span>Registrar</span>
   </button>
-  <button class="tab" id="tab-hist" onclick="showTab('hist',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg>
-    <span>Historial</span>
-  </button>
   <button class="tab" id="tab-resumen" onclick="showTab('resumen',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19v-6M10 19V9M15 19v-8M20 19V5"/></svg>
     <span>Resumen</span>
@@ -705,7 +720,9 @@ textarea{resize:vertical;min-height:60px;}
       <div class="rt-nom">Entreno</div>
       <div class="rt-val" id="rt-entreno">—</div>
     </button>
-    <button class="rt" onclick="goTo('hist')">
+    <!-- Llevaba al Historial, que se retiró. La racha se explica en Resumen,
+         que es donde vive esa cifra junto a la mejor racha. -->
+    <button class="rt" onclick="goTo('resumen')">
       <div class="rt-ico" style="background:rgba(255,107,0,.15);">🔥</div>
       <div class="rt-nom">Racha</div>
       <div class="rt-val" id="rt-racha">—</div>
@@ -818,6 +835,9 @@ textarea{resize:vertical;min-height:60px;}
         </div>
       </div>
       <button class="btn btn-primary" onclick="saveSession()">💾 Guardar sesión</button>
+      <!-- Solo sale si esta sesión ya tiene registro. Deshacer lo apuntado sin
+           sacar la sesión del plan: el gesto que hacía la "×" del historial. -->
+      <div id="borrar-registro" style="margin-top:10px;text-align:center;"></div>
     </div>
 
     <!-- Detalle de ejercicio -->
@@ -874,15 +894,6 @@ textarea{resize:vertical;min-height:60px;}
 </div>
 
 <!-- HISTORIAL -->
-<div id="pane-hist" class="pane">
-  <div class="action-row">
-    <button class="btn-sm" onclick="copyForChat()">📋 Copiar para chat</button>
-    <button class="btn-sm" onclick="exportJSON()">💾 Exportar JSON</button>
-    <label class="btn-sm" style="cursor:pointer;text-align:center;">📂 Importar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
-  </div>
-  <div id="hist-content"></div>
-</div>
-
 <!-- RESUMEN -->
 <div id="pane-resumen" class="pane">
   <div id="resumen-content"></div>
@@ -1609,7 +1620,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 17:32';
+const APP_VERSION='2026-09-04 18:40';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2455,6 +2466,7 @@ function pintarDescanso(){
 
 function openSession(n){
   curSession=n;
+  setTimeout(pintarBorrarRegistro,0);   // tras fijar curSession
   const day=findDay(n);
   const saved=getActiveSessions()[n];
   // El borrador gana sobre lo guardado: es la edición más reciente.
@@ -2641,43 +2653,38 @@ feeling:curFeeling||null,
   closeForm();
 }
 
-function renderHist(){
-const act=getActive();
-const c=document.getElementById('hist-content');
-if(!act){c.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;">Ninguna rutina seleccionada.</p></div>';return;}
-const keys=Object.keys(act.sessions).map(Number).sort((a,b)=>b-a);
-if(!keys.length){c.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;">Sin sesiones registradas.</p></div>';return;}
-c.innerHTML='<div class="card">'+keys.map(n=>{
-    const s=act.sessions[n];
-    const day=findDay(n);
-    if(!day)return'';
-    const exRows=s.exercises.map(ex=>{
-      const sets=ex.sets.filter(v=>v.kg!=='');
-      if(!sets.length)return'';
-      return '<div>'+ex.name+': '+sets.map((v,i)=>'S'+(i+1)+' '+v.kg+'kg×'+v.reps).join(' | ')+'</div>';
-    }).join('');
-    const cd=s.cardio;
-    const cardioStr=cd?.tiempo?`<div class="hist-cardio">Cardio: ${cd.tipo} ${cd.tiempo}min · ${cd.kcal}kcal · ${cd.fc}bpm</div>`:'';
-    return`<div class="hist-item">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div class="hist-title">${day.name} <span style="font-size:11px;color:var(--muted);">${s.date||''}</span></div>
-        <button class="btn-sm btn-danger" onclick="delSession(${n})">×</button>
-      </div>
-      <div class="hist-detail">${exRows}</div>
-      ${cardioStr}
-      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-  ${s.feeling?`<span style="font-size:18px;">${s.feeling}</span>`:''}
-  ${s.note?`<span style="font-size:11px;font-style:italic;color:var(--muted);">${s.note}</span>`:''}
-</div>
-    </div>`;
-  }).join('')+'</div>';
+/* Borrar el REGISTRO de una sesión, dejándola en el plan como pendiente. No es
+   lo mismo que el "🗑 Borrar" de la lista de semanas, que quita la sesión del
+   plan entero. Vivía en la pestaña Historial, que se retiró (04/09/2026)
+   porque la lista de semanas ya enseña lo mismo mejor; el gesto sí hacía
+   falta, así que ahora está dentro de la propia sesión, que es donde te das
+   cuenta de que la registraste mal. */
+function borrarRegistroSesion(n){
+  const act=getActive();
+  if(!act||!act.sessions[n])return;
+  const day=findDay(n);
+  const reg=act.sessions[n];
+  if(!confirm('Vas a borrar lo que registraste en "'+((day&&day.name)||('sesión '+n))+'"'+
+              (reg.date?' el '+reg.date:'')+'.\n\n'+
+              'La sesión sigue en tu plan y podrás volver a hacerla, pero los pesos '+
+              'y las repeticiones que apuntaste no se pueden recuperar.\n\n¿Seguir?'))return;
+  delete act.sessions[n];
+  save();
+  pintarBorrarRegistro();
+  buildSessionList();
+  updateHome();
+  openSession(n);            // se recarga vacía, lista para rehacerla
 }
 
-function delSession(n){
-  if(!confirm('¿Eliminar sesión '+n+'?'))return;
-  delete getActive().sessions[n];
-  save();
-  renderHist();
+/* El botón solo aparece si hay algo que borrar. */
+function pintarBorrarRegistro(){
+  const c=document.getElementById('borrar-registro');
+  if(!c)return;
+  const act=getActive();
+  const hay=act&&curSession!=null&&act.sessions[curSession];
+  c.innerHTML=hay
+    ? `<button class="btn-sm btn-danger" onclick="borrarRegistroSesion(${curSession})">🗑 Borrar lo registrado en esta sesión</button>`
+    : '';
 }
 
 function renderResumen(){
@@ -2852,7 +2859,7 @@ function importJSON(e){
       const data=JSON.parse(ev.target.result);
       if(data.sessions)DB.sessions=data.sessions;
       if(data.medidas)DB.medidas=data.medidas;
-      save();buildSessionList();renderHist();renderResumen();renderMedidas();
+      save();buildSessionList();renderResumen();renderMedidas();
       alert('Importado correctamente ✓');
     }catch{alert('Archivo inválido');}
   };
@@ -2873,7 +2880,6 @@ function showTab(id,el){
   document.getElementById('pane-'+id).classList.add('active');
   el.classList.add('active');
   if(id==='inicio')updateHome();
-  if(id==='hist')renderHist();
   if(id==='resumen'){renderResumen();renderPhotos();}
   if(id==='medidas'){buildMedSel();renderMedidas();renderMedidasChart();}
   window.scrollTo(0,0);
