@@ -71,12 +71,14 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 .cab-marca{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;
   color:rgba(255,255,255,0.32);line-height:1;margin-bottom:3px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-/* Tocar el nombre de la rutina abre el selector: es lo que antes hacía el
-   botón "⚡ Cambiar rutina". El chevron es la única pista de que se puede. */
-.cab-rutina{background:none;border:none;padding:0;color:inherit;font-family:inherit;font-size:17px;
-  font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;max-width:100%;}
-.cab-rutina>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cab-chevron{color:var(--accent);font-size:13px;flex-shrink:0;}
+.cab-rutina{display:flex;align-items:center;gap:2px;max-width:100%;}
+.cab-rutina-nombre{background:none;border:none;padding:0;color:inherit;font-family:inherit;
+  font-size:17px;font-weight:800;cursor:pointer;min-width:0;text-align:left;}
+.cab-rutina-nombre span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Zona de toque de verdad: un chevron de 13 px es imposible de acertar con el
+   pulgar, y es la única puerta a "Mis rutinas". */
+.cab-chevron{background:none;border:none;color:var(--accent);font-size:16px;line-height:1;
+  cursor:pointer;flex-shrink:0;padding:11px 12px;margin:-4px 0;}
 .cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:10.5px;
   color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;}
 .cab-ico{background:rgba(255,255,255,0.08);border:none;border-radius:10px;width:36px;height:36px;
@@ -444,9 +446,15 @@ textarea{resize:vertical;min-height:60px;}
 
     <div class="cab-centro">
       <div class="cab-marca">My Fitness Tracker</div>
-      <button class="cab-rutina" onclick="toggleRoutinePanel()">
-        <span id="header-routine-name">—</span><span class="cab-chevron">⌄</span>
-      </button>
+      <!-- Dos destinos en una línea: el NOMBRE lleva a Registrar (que es a lo
+           que vienes a la app) y el chevron abre Mis rutinas, que es lo que esa
+           flecha insinúa. Antes todo el bloque abría Mis rutinas. -->
+      <div class="cab-rutina">
+        <button class="cab-rutina-nombre" onclick="goTo('log')" title="Ir a registrar">
+          <span id="header-routine-name">—</span>
+        </button>
+        <button class="cab-chevron" onclick="toggleRoutinePanel()" title="Cambiar de rutina" aria-label="Cambiar de rutina">⌄</button>
+      </div>
       <!-- Solo el estado de guardado. Las sesiones y semanas estaban aquí y se
            cortaban a mitad en 390 px, y además la tarjeta de Inicio las dice
            justo debajo ("Semana 1 de 8 · 0/48 sesiones"). Esto no lo dice nadie
@@ -1717,7 +1725,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 20:38';
+const APP_VERSION='2026-09-04 20:47';
 
 const LOCAL_KEY='jhon_db_v2';
 
