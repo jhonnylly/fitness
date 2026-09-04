@@ -415,6 +415,11 @@ textarea{resize:vertical;min-height:60px;}
 .mos-pie{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:6px;}
 .mos-badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap;}
 .mos-card .prog-bar{height:5px;margin:0;}
+/* Mientras se reordena: la tarjeta cogida se levanta y el contenedor deja de
+   interpretar el gesto como desplazamiento de la pantalla. */
+.mos-grid.reordenando{touch-action:none;}
+.mos-card.arrastrando{opacity:.85;transform:scale(1.04);
+  box-shadow:0 8px 22px rgba(0,0,0,.45);border-color:var(--accent);}
 .onboarding{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;height:100dvh;background:var(--bg);z-index:500;display:flex;flex-direction:column;overflow-y:auto;}
 .onboarding.hidden{display:none;}
 .ob-step{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;text-align:center;}
@@ -1752,7 +1757,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 21:04';
+const APP_VERSION='2026-09-04 21:11';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4312,31 +4317,91 @@ function selectFeeling(emoji){
 
 let curExIndex=null;
 
+/* Los ejercicios, en el mismo mosaico que semanas y sesiones. Las flechitas de
+   subir/bajar desaparecen: se reordena arrastrando (mantener pulsado). */
 function renderExButtons(){
   const c=document.getElementById('ex-buttons-container');
-  c.innerHTML=curEx.map((ex,ei)=>{
+  c.innerHTML='<div class="mos-grid" id="ex-mosaico">'+curEx.map((ex,ei)=>{
     const done=ex.sets.some(s=>s.kg!==''&&s.reps!=='');
-    const scheme=ex.sets.length+'×'+( ex.sets[0]?.reps||'?');
-    return`<div class="ex-btn${done?' ex-btn-done':''}" >
-      <div class="ex-order-btns">
-        <button class="ex-order-btn" onclick="moveEx(${ei},-1)">▲</button>
-        <button class="ex-order-btn" onclick="moveEx(${ei},1)">▼</button>
+    return`<button class="mos-card${done?' lista':''}" data-ei="${ei}" onclick="exToque(${ei})">
+      <div class="mos-num" style="font-size:13.5px;">${escaparHTML(ex.name||'Ejercicio sin nombre')}</div>
+      <div class="mos-pie">
+        <span style="font-size:11px;color:var(--muted);">${ex.sets.length} series</span>
+        ${done?'<span class="mos-badge" style="color:var(--green);background:rgba(45,122,79,0.14);">✓ Hecho</span>':''}
       </div>
-      <div class="ex-btn-info" onclick="openExDetail(${ei})">
-        <div class="ex-btn-name">${ex.name||'Ejercicio sin nombre'}</div>
-        <div class="ex-btn-meta">${ex.sets.length} series${done?' · ✓ Registrado':''}</div>
-      </div>
-      <span class="ex-btn-arrow" onclick="openExDetail(${ei})">›</span>
-    </div>`;
-  }).join('');
+    </button>`;
+  }).join('')+'</div>';
+  montarArrastre(document.getElementById('ex-mosaico'));
 }
 
-function moveEx(ei,dir){
-  const ni=ei+dir;
-  if(ni<0||ni>=curEx.length)return;
-  const tmp=curEx[ei];curEx[ei]=curEx[ni];curEx[ni]=tmp;
-  renderExButtons();
-  guardarBorrador();
+/* Un toque abre el ejercicio; si venimos de arrastrar, no. El propio arrastre
+   marca la bandera y la limpia en el siguiente ciclo. */
+let exArrastrando=false;
+function exToque(ei){
+  if(exArrastrando)return;
+  openExDetail(ei);
+}
+
+/* ── Reordenar arrastrando ──
+   Las flechitas ▲▼ obligaban a varios toques para mover un ejercicio de la
+   cuarta a la primera posición, y en el mosaico no caben. Con puntero, que
+   cubre dedo y ratón con el mismo código.
+
+   Se arranca con PULSACIÓN LARGA (350 ms) y no al primer contacto: si no,
+   intentar desplazar la pantalla arrastraría una tarjeta. Un movimiento antes
+   de ese tiempo cancela: eso era scroll, no un arrastre. */
+function montarArrastre(cont){
+  if(!cont)return;
+  let temporizador=null, arrastrado=null, inicio=null;
+
+  const soltar=()=>{
+    clearTimeout(temporizador);
+    if(arrastrado){
+      arrastrado.classList.remove('arrastrando');
+      cont.classList.remove('reordenando');
+      // El array pasa a seguir el orden del DOM, que es lo que se ha visto.
+      const orden=[...cont.children].map(el=>parseInt(el.dataset.ei));
+      curEx=orden.map(i=>curEx[i]);
+      renderExButtons();
+      guardarBorrador();
+      // Se limpia después del click que llega tras soltar, para no abrirlo.
+      setTimeout(()=>{ exArrastrando=false; },0);
+    }
+    arrastrado=null; inicio=null;
+  };
+
+  cont.addEventListener('pointerdown', e=>{
+    const card=e.target.closest('.mos-card');
+    if(!card)return;
+    inicio={x:e.clientX,y:e.clientY};
+    temporizador=setTimeout(()=>{
+      arrastrado=card; exArrastrando=true;
+      card.classList.add('arrastrando');
+      cont.classList.add('reordenando');
+      card.setPointerCapture(e.pointerId);
+      if(navigator.vibrate)navigator.vibrate(15);   // "lo tienes cogido"
+    },350);
+  });
+
+  cont.addEventListener('pointermove', e=>{
+    if(!arrastrado){
+      // Aún en la espera: si se mueve, es que quería desplazar la pantalla.
+      if(inicio && Math.hypot(e.clientX-inicio.x, e.clientY-inicio.y)>10) clearTimeout(temporizador);
+      return;
+    }
+    e.preventDefault();
+    const bajo=document.elementFromPoint(e.clientX,e.clientY);
+    const destino=bajo && bajo.closest ? bajo.closest('.mos-card') : null;
+    if(!destino || destino===arrastrado || destino.parentNode!==cont)return;
+    // Antes o después según por dónde se entre, para que no dé saltos.
+    const caja=destino.getBoundingClientRect();
+    const despues=(e.clientY-caja.top)>caja.height/2 ||
+                  (Math.abs(e.clientY-(caja.top+caja.height/2))<caja.height/2 && e.clientX>caja.left+caja.width/2);
+    cont.insertBefore(arrastrado, despues?destino.nextSibling:destino);
+  });
+
+  cont.addEventListener('pointerup', soltar);
+  cont.addEventListener('pointercancel', soltar);
 }
 
 function openExDetail(ei){
