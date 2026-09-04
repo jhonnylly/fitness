@@ -401,20 +401,20 @@ textarea{resize:vertical;min-height:60px;}
    doce filas y mucho scroll para llegar a la que entrenas. Las acciones de cada
    semana (duplicar, borrar) se fueron DENTRO de la semana: en una celda de
    ~170 px engordaban la tarjeta y se perdía justo lo que se venía a ganar. */
-.sem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
-.sem-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
+.mos-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
+.mos-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:11px 12px;cursor:pointer;text-align:left;font-family:inherit;color:inherit;
   display:flex;flex-direction:column;gap:5px;min-height:92px;}
-.sem-card.actual{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
-.sem-card.lista{border-color:var(--green);background:rgba(45,122,79,0.06);}
-.sem-num{font-size:15px;font-weight:800;color:var(--text);}
+.mos-card.actual{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
+.mos-card.lista{border-color:var(--green);background:rgba(45,122,79,0.06);}
+.mos-num{font-size:15px;font-weight:800;color:var(--text);}
 /* El título de la semana ("Circuito quema") a dos líneas como mucho: si no,
    una semana con nombre largo estira toda la fila del mosaico. */
-.sem-tit{font-size:10.5px;color:var(--muted);line-height:1.35;
+.mos-tit{font-size:10.5px;color:var(--muted);line-height:1.35;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.sem-pie{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:6px;}
-.sem-badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap;}
-.sem-card .prog-bar{height:5px;margin:0;}
+.mos-pie{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.mos-badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+.mos-card .prog-bar{height:5px;margin:0;}
 .onboarding{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;height:100dvh;background:var(--bg);z-index:500;display:flex;flex-direction:column;overflow-y:auto;}
 .onboarding.hidden{display:none;}
 .ob-step{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;text-align:center;}
@@ -863,7 +863,7 @@ textarea{resize:vertical;min-height:60px;}
         <div style="font-size:15px;font-weight:800;" id="week-detail-title"></div>
         <button class="btn-sm" onclick="closeWeekDetail()">← Semanas</button>
       </div>
-      <div id="session-list" style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;"></div>
+      <div id="session-list"></div>
       <button class="btn btn-secondary" onclick="addSessionToWeek(curWeekNum)">+ Añadir sesión</button>
       <!-- Duplicar y borrar la semana vivían en cada tarjeta del listado. En el
            mosaico de dos columnas engordaban la celda y se perdía lo ganado, y
@@ -929,6 +929,15 @@ textarea{resize:vertical;min-height:60px;}
       <!-- Solo sale si esta sesión ya tiene registro. Deshacer lo apuntado sin
            sacar la sesión del plan: el gesto que hacía la "×" del historial. -->
       <div id="borrar-registro" style="margin-top:10px;text-align:center;"></div>
+      <!-- Duplicar y quitar del plan vivían en cada fila de la lista de
+           sesiones. Con el mosaico se movieron aquí, igual que las de la
+           semana. Las etiquetas distinguen las dos cosas que se pueden borrar:
+           "lo registrado" (arriba) deja la sesión en el plan; "quitar del plan"
+           se lleva la sesión entera. -->
+      <div class="acciones-fila" style="margin-left:0;margin-top:12px;">
+        <button class="btn-sm" onclick="duplicateSession(curWeekNum,curSession)">⧉ Duplicar sesión</button>
+        <button class="btn-sm btn-danger sep-peligro" onclick="deleteSession(curWeekNum,curSession)">🗑 Quitar del plan</button>
+      </div>
     </div>
 
     <!-- Detalle de ejercicio -->
@@ -1743,7 +1752,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-04 21:00';
+const APP_VERSION='2026-09-04 21:04';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2508,13 +2517,13 @@ if(!plan.length){
 
   const currentWeek=getCurrentWeekNum();
 
-  c.innerHTML='<div class="sem-grid">'+plan.map(w=>{
+  c.innerHTML='<div class="mos-grid">'+plan.map(w=>{
     const done=w.days.filter(d=>sessions[d.s]).length;
     const total=w.days.length;
     const isComplete=total>0&&done===total;
     const isCurrent=w.num===currentWeek;
     const pct=total?Math.round(done/total*100):0;
-    let cls='sem-card';
+    let cls='mos-card';
     if(isComplete)cls+=' lista';
     else if(isCurrent)cls+=' actual';
     const color=isComplete?'var(--green)':isCurrent?'var(--accent)':'var(--muted)';
@@ -2523,11 +2532,11 @@ if(!plan.length){
     const etiqueta=etiquetaSemana(w);
     const soloTitulo=etiqueta.includes(' — ')?etiqueta.split(' — ').slice(1).join(' — '):'';
     return`<button class="${cls}" onclick="openWeekDetail(${w.num})">
-      <div class="sem-num">${isCurrent?'⚡ ':''}Semana ${w.num}</div>
-      ${soloTitulo?`<div class="sem-tit">${escaparHTML(soloTitulo)}</div>`:''}
-      <div class="sem-pie">
+      <div class="mos-num">${isCurrent?'⚡ ':''}Semana ${w.num}</div>
+      ${soloTitulo?`<div class="mos-tit">${escaparHTML(soloTitulo)}</div>`:''}
+      <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${done}/${total}</span>
-        <span class="sem-badge" style="color:${color};background:${fondo};">${isComplete?'✓ Lista':isCurrent?'Actual':'Pendiente'}</span>
+        <span class="mos-badge" style="color:${color};background:${fondo};">${isComplete?'✓ Lista':isCurrent?'Actual':'Pendiente'}</span>
       </div>
       <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     </button>`;
@@ -2535,6 +2544,11 @@ if(!plan.length){
 }
 
 function openWeekDetail(weekNum){
+  /* Se llama también desde DENTRO de una sesión (al duplicarla o quitarla del
+     plan): sin esto el formulario se quedaría encima de la lista que acabamos
+     de repintar. */
+  const form=document.getElementById('session-form');
+  if(form) form.style.display='none';
   const plan=getActivePlan();
   const sessions=getActiveSessions();
   const week=plan.find(w=>w.num===weekNum);
@@ -2543,23 +2557,23 @@ function openWeekDetail(weekNum){
   document.getElementById('week-detail-title').textContent=etiquetaSemana(week);
   document.getElementById('week-list-view').style.display='none';
   document.getElementById('session-list-view').style.display='block';
+  /* Mismo mosaico que las semanas, para que las dos pantallas se lean igual.
+     Duplicar y borrar la sesión se fueron DENTRO de la sesión, por lo mismo que
+     en las semanas: en una celda estrecha engordaban la tarjeta. */
   const c=document.getElementById('session-list');
-  c.innerHTML=week.days.map(d=>{
-    const done=!!sessions[d.s];
-    return`<div class="session-sel-item" style="${done?'border-left:3px solid var(--green);':''}">
-      <div style="flex:1;cursor:pointer;" onclick="openSession(${d.s})">
-        <div style="font-size:13px;font-weight:${done?'700':'400'}">${d.name}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${d.type}${done?' · ✓ Completada':''}</div>
+  c.innerHTML='<div class="mos-grid">'+week.days.map(d=>{
+    const reg=sessions[d.s];
+    const hecha=!!reg;
+    const nEj=(d.ex||[]).length;
+    return`<button class="mos-card${hecha?' lista':''}" onclick="openSession(${d.s})">
+      <div class="mos-num">${escaparHTML(d.name)}</div>
+      <div class="mos-tit">${nEjercicios(nEj)}</div>
+      <div class="mos-pie">
+        <span style="font-size:11px;color:var(--muted);">${hecha&&reg.date?escaparHTML(reg.date):''}</span>
+        <span class="mos-badge" style="color:${hecha?'var(--green)':'var(--muted)'};background:${hecha?'rgba(45,122,79,0.14)':'rgba(127,127,127,0.12)'};">${hecha?'✓ Hecha':'Pendiente'}</span>
       </div>
-      <span style="margin-right:8px;">${done?'<span class="done-check">✓</span>':'<span style="color:var(--muted);font-size:12px;">›</span>'}</span>
-      <div class="acciones-fila">
-        <button class="btn-sm" onclick="duplicateSession(${weekNum},${d.s})"
-                aria-label="Duplicar ${escaparHTML(d.name)}">⧉ Duplicar</button>
-        <button class="btn-sm btn-danger sep-peligro" onclick="deleteSession(${weekNum},${d.s})"
-                aria-label="Borrar ${escaparHTML(d.name)}">🗑 Borrar</button>
-      </div>
-    </div>`;
-  }).join('');
+    </button>`;
+  }).join('')+'</div>';
   window.scrollTo(0,0);
 }
 
