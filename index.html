@@ -724,6 +724,23 @@ textarea{resize:vertical;min-height:60px;}
       <div id="cfg-imc" style="margin-top:6px;font-size:12px;color:var(--muted);"></div>
     </div>
 
+    <!-- Opcional a propósito: quien no entrena mirando el RIR tendría una
+         casilla más que rellenar cuarenta veces por semana a cambio de nada. -->
+    <div class="card">
+      <div class="section-title">Anotar el esfuerzo (RIR)</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px;">
+        El <b>RIR</b> son las repeticiones que te quedaban en el depósito al acabar
+        la serie: 0 es al fallo, 2 es "aguantaba dos más".<br><br>
+        Sirve para ver progreso donde el peso no lo enseña: si el mismo 60×10 te
+        dejaba RIR 0 y ahora te deja RIR 3, has mejorado aunque la gráfica de
+        cargas salga plana.
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;text-transform:none;font-size:13px;">
+        <input type="checkbox" id="cfg-rir" onchange="alternarRIR(this.checked)" style="width:auto;margin:0;">
+        Añadir una casilla de RIR a cada serie
+      </label>
+    </div>
+
     <div class="card">
       <div class="section-title">Días de entrenamiento</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
@@ -1778,7 +1795,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 15:42';
+const APP_VERSION='2026-09-05 15:54';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2891,6 +2908,9 @@ function renderEx(){
             <span class="set-unit">kg</span>
             <input type="text" inputmode="numeric" class="set-inp" value="${set.reps||''}" placeholder="reps" onchange="curEx[${curExIndex}].sets[${si}].reps=this.value;if(this.value)startTimer(parseInt(document.getElementById('rest').value)||90)">
             <span class="set-unit">reps</span>
+            ${DB.rirActivo?`
+            <input type="text" inputmode="numeric" class="set-inp" value="${set.rir!=null?set.rir:''}" placeholder="RIR" onchange="curEx[${curExIndex}].sets[${si}].rir=this.value">
+            <span class="set-unit">rir</span>`:''}
             <button class="btn-sm" onclick="removeSetFromCurrent(${si})" style="padding:6px 8px;">−</button>
           </div>
         `).join('')}
@@ -3690,9 +3710,19 @@ function diasPorSemanaActuales(){
   return (sem.days||[]).length;
 }
 
+/* Encender o apagar la casilla de RIR. Si hay una sesión abierta se repinta al
+   momento: si no, habría que salir y volver a entrar para verlo. */
+function alternarRIR(v){
+  DB.rirActivo=!!v;
+  save();
+  if(curExIndex!==null)renderEx();
+}
+
 function pintarConfig(){
   const alt=document.getElementById('cfg-altura');
   if(alt)alt.value=DB.altura||'';
+  const rir=document.getElementById('cfg-rir');
+  if(rir)rir.checked=!!DB.rirActivo;
   const p=ultimoPeso();
   const elPeso=document.getElementById('cfg-peso');
   if(elPeso)elPeso.textContent=p?(p.peso+' kg · semana '+p.semana):'sin registrar';
@@ -5758,7 +5788,8 @@ const StorageFirestore = {
       activeRoutine: cab.activeRoutine || null,
       profileName: cab.profileName || cab.name || '',
       profilePic: cab.profilePic || null,
-      altura: cab.altura != null ? cab.altura : null
+      altura: cab.altura != null ? cab.altura : null,
+      rirActivo: !!cab.rirActivo
     };
   },
 
@@ -5770,7 +5801,10 @@ const StorageFirestore = {
       activeRoutine: db.activeRoutine || null,
       profileName: db.profileName || '',
       profilePic: db.profilePic || null,
-      altura: db.altura != null ? db.altura : null
+      altura: db.altura != null ? db.altura : null,
+      // Ajuste de la persona, no de la rutina: viaja con el perfil, como la
+      // altura, para que esté igual en el móvil y en el ordenador.
+      rirActivo: !!db.rirActivo
     };
     comprobarApto(cabecera, 'Perfil');
     await setDoc(doc(fdb, 'users', user.uid), cabecera, { merge: true });
