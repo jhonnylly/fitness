@@ -581,6 +581,12 @@ textarea{resize:vertical;min-height:60px;}
         <div style="height:8px;"></div>
         <label>Contraseña</label>
         <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+        <!-- Solo al iniciar sesión: en el registro no tiene sentido. Lo esconde
+             setAuthTab(). -->
+        <div id="olvide-fila" style="margin-top:6px;text-align:right;">
+          <a href="#" onclick="recuperarContrasena();return false;"
+             style="font-size:12px;color:var(--accent);font-weight:700;">¿Has olvidado la contraseña?</a>
+        </div>
 
         <div id="register-extra" class="hidden">
           <div style="height:8px;"></div>
@@ -1847,7 +1853,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 16:22';
+const APP_VERSION='2026-09-05 16:31';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5510,7 +5516,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  onAuthStateChanged, signOut, updateProfile
+  onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, deleteDoc,
@@ -5578,7 +5584,37 @@ window.setAuthTab = function(mode){
   $('register-extra').classList.toggle('hidden', mode !== 'register');
   $('auth-password').setAttribute('autocomplete', mode === 'register' ? 'new-password' : 'current-password');
   $('auth-submit').textContent = mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta';
+  const olvide = $('olvide-fila');
+  if(olvide) olvide.style.display = (mode === 'login') ? 'block' : 'none';
   $('auth-msg').innerHTML = '';
+};
+
+/* Recuperar la contraseña. Lo hace Firebase: manda un correo con un enlace para
+   ponerse una nueva, y la app no llega a ver ninguna contraseña en ningún
+   momento.
+
+   Se responde LO MISMO exista o no la cuenta. Si dijéramos "ese correo no está
+   registrado", cualquiera podría averiguar quién tiene cuenta probando
+   direcciones. Firebase avisa del intento igual, pero solo al dueño del buzón. */
+window.recuperarContrasena = async function(){
+  let email = $('auth-email').value.trim();
+  if(!email){
+    email = (prompt('¿A qué correo te mandamos el enlace para cambiarla?') || '').trim();
+    if(!email) return;
+    $('auth-email').value = email;
+  }
+  try{
+    await sendPasswordResetEmail(auth, email);
+  }catch(e){
+    // Un correo mal escrito sí se dice: es un error de quien escribe, no un dato de otro.
+    if(e && e.code === 'auth/invalid-email'){
+      showMsg('Ese correo no tiene buena pinta. Revísalo.');
+      return;
+    }
+    console.warn('[auth] recuperación', e && e.code);
+  }
+  showMsg('Si ese correo tiene cuenta, te llega un enlace para poner una '+
+          'contraseña nueva. Mira también en spam.', 'ok');
 };
 
 window.submitAuth = async function(){
