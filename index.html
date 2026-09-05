@@ -120,6 +120,15 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 .tabs::-webkit-scrollbar{display:none;}
 .tab{flex:1;min-width:56px;padding:8px 4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:9px;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .25s ease;overflow:hidden;}
 .tab svg{width:20px;height:20px;}
+/* Iconos de trazo, el mismo juego que estas pestañas. Sustituyen a los emoji
+   que había (🏋️ 🔥 ❤️ 📏 ⚡ 🏆): un emoji lo dibuja cada sistema a su manera
+   —en el iPhone salen los de Apple, aquí los de Google— y trae sus propios
+   colores, que peleaban con el violeta. Con currentColor heredan el color del
+   sitio donde caen, incluido el estado apagado.
+   Siguen siendo emoji, a propósito, los que SON contenido y no interfaz: la
+   escala de sensación (😴 😐 💪 🔥) y los títulos de las rutinas de ejemplo. */
+.ico{width:18px;height:18px;flex-shrink:0;display:block;}
+.ico-txt{width:1em;height:1em;display:inline-block;vertical-align:-.14em;}
 .tab.active{color:var(--accent);border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
 .tab:active{transform:scale(0.95);}
 .pane{display:none;padding:12px;} .pane.active{display:block;animation:entrar .24s ease both;}
@@ -294,7 +303,12 @@ textarea{resize:vertical;min-height:60px;}
 .set-unit{font-size:11px;color:var(--muted);min-width:26px;}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
 .stat{background:var(--surface);border-radius:var(--radius-sm);padding:12px;text-align:center;}
-.stat-val{font-size:24px;font-weight:800;color:var(--accent);}
+.stat-val{font-size:24px;font-weight:800;color:var(--accent);
+  /* Cifras de ancho fijo: sin esto, al pasar de 9 a 10 sesiones el número
+     entero se descoloca porque el 1 mide menos que el 9. */
+  font-variant-numeric:tabular-nums;}
+/* Misma regla que en Inicio: un 0 no es un logro, no se lleva el acento. */
+.stat-val.vacio{color:var(--muted);opacity:.55;}
 .stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
 .prog-bar{background:var(--border);border-radius:4px;height:8px;overflow:hidden;margin-bottom:12px;}
 /* La barra se llena al aparecer. Con scaleX y no con width: el ancho lo pone el
@@ -367,9 +381,18 @@ textarea{resize:vertical;min-height:60px;}
   text-align:center;cursor:pointer;font-family:inherit;transition:transform .15s ease;}
 .rt:active{transform:scale(.95);}
 .rt-ico{width:34px;height:34px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;
-  justify-content:center;font-size:16px;}
+  justify-content:center;font-size:16px;background:rgba(var(--accent-rgb),.15);color:var(--accent);}
+.rt-ico.cardio{background:rgba(45,122,79,.15);color:var(--green);}
+.rt-ico.medidas{background:rgba(59,130,246,.15);color:#3b82f6;}
 .rt-nom{font-size:10px;color:var(--muted);font-weight:600;}
 .rt-val{font-size:11px;font-weight:800;margin-top:2px;line-height:1.3;overflow-wrap:anywhere;}
+/* Apagado mientras no hay dato. Recién estrenada la app, "Tu resumen de hoy"
+   eran cuatro círculos de color diciendo Pendiente / Sin racha / Sin cardio /
+   Sin datos: el acento gastado en la nada. Apagados, el color pasa a significar
+   logro y la fila cuenta el progreso sola. El icono y la cifra se apagan
+   JUNTOS, por eso la clase va en la tarjeta y no en cada trozo. */
+.rt.vacio .rt-ico{background:rgba(127,127,127,.12);color:var(--muted);}
+.rt.vacio .rt-val{color:var(--muted);font-weight:600;}
 
 .hoy{position:relative;overflow:hidden;border-radius:18px;padding:16px;margin-bottom:14px;width:100%;
   border:none;text-align:left;font-family:inherit;color:#fff;cursor:pointer;display:block;
@@ -914,24 +937,24 @@ textarea{resize:vertical;min-height:60px;}
   <div class="home-sec">Tu resumen de hoy</div>
   <div class="resumen">
     <button class="rt" onclick="irAProximaSesion()">
-      <div class="rt-ico" style="background:rgba(var(--accent-rgb),.15);color:var(--accent);">🏋️</div>
+      <div class="rt-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg></div>
       <div class="rt-nom">Entreno</div>
       <div class="rt-val" id="rt-entreno">—</div>
     </button>
     <!-- Llevaba al Historial, que se retiró. La racha se explica en Resumen,
          que es donde vive esa cifra junto a la mejor racha. -->
     <button class="rt" onclick="goTo('resumen')">
-      <div class="rt-ico" style="background:rgba(var(--accent-rgb),.15);">🔥</div>
+      <div class="rt-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2c.5 3.5 2.3 5 3.8 6.6C17.2 10.2 18 11.9 18 14a6 6 0 0 1-12 0c0-1.9.6-3.2 1.6-4.4.2 1.3.8 2.2 1.7 2.7C10 9 9.4 5.7 12 2z"/></svg></div>
       <div class="rt-nom">Racha</div>
       <div class="rt-val" id="rt-racha">—</div>
     </button>
     <button class="rt" onclick="goTo('resumen')">
-      <div class="rt-ico" style="background:rgba(45,122,79,.15);">❤️</div>
+      <div class="rt-ico cardio"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3 4.7 13a4.5 4.5 0 0 1 6.4-6.3l.9.9.9-.9A4.5 4.5 0 0 1 19.3 13z"/></svg></div>
       <div class="rt-nom">Cardio</div>
       <div class="rt-val" id="rt-cardio">—</div>
     </button>
     <button class="rt" onclick="goTo('medidas')">
-      <div class="rt-ico" style="background:rgba(59,130,246,.15);">📏</div>
+      <div class="rt-ico medidas"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="18" height="7" rx="1.5"/><path d="M7 9v3M11 9v2.3M15 9v3M19 9v2.3"/></svg></div>
       <div class="rt-nom">Medidas</div>
       <div class="rt-val" id="rt-medidas">—</div>
     </button>
@@ -1302,6 +1325,19 @@ textarea{resize:vertical;min-height:60px;}
 </div>
 
 <script>
+
+/* Iconos de trazo para lo que se pinta desde JavaScript. Los estáticos van
+   inline en el HTML; estos no pueden, así que viven aquí. Mismo juego que las
+   pestañas: viewBox de 24, trazo de 2 y currentColor, para que hereden el color
+   del sitio donde caen. Ver el comentario de .ico en el CSS. */
+const ICO={
+  rayo:'<path d="M13 2 4.5 13.5H11l-1 8.5L19 10.5h-6.5z"/>',
+  llama:'<path d="M12 2c.5 3.5 2.3 5 3.8 6.6C17.2 10.2 18 11.9 18 14a6 6 0 0 1-12 0c0-1.9.6-3.2 1.6-4.4.2 1.3.8 2.2 1.7 2.7C10 9 9.4 5.7 12 2z"/>',
+  trofeo:'<path d="M7 4h10v5.5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a3 3 0 0 0 2.9 3M17 6h2.5a3 3 0 0 1-2.9 3"/><path d="M12 14.5V18M8.5 21h7l-.8-3H9.3z"/>',
+};
+const ico=(n,cls)=>`<svg class="${cls||'ico-txt'}" viewBox="0 0 24 24" fill="none" `+
+  `stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" `+
+  `aria-hidden="true">${ICO[n]||''}</svg>`;
 
 /* Descripción corta de cada rutina prehecha. La usan el onboarding y el panel
    de asignar rutina a un cliente. (El gestor de rutinas tiene su propia
@@ -1867,7 +1903,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 17:39';
+const APP_VERSION='2026-09-05 20:44';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2647,7 +2683,7 @@ if(!plan.length){
     const etiqueta=etiquetaSemana(w);
     const soloTitulo=etiqueta.includes(' — ')?etiqueta.split(' — ').slice(1).join(' — '):'';
     return`<button class="${cls}" style="--i:${Math.min(wi,8)}" onclick="openWeekDetail(${w.num})">
-      <div class="mos-num">${isCurrent?'⚡ ':''}Semana ${w.num}</div>
+      <div class="mos-num">${isCurrent?ico('rayo')+' ':''}Semana ${w.num}</div>
       ${soloTitulo?`<div class="mos-tit">${escaparHTML(soloTitulo)}</div>`:''}
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${done}/${total}</span>
@@ -3065,18 +3101,28 @@ const c2=document.getElementById('resumen-content');
 if(!act){c2.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;">Ninguna rutina seleccionada.</p></div>';return;}
 const keys=Object.keys(act.sessions).map(Number);
 const done=keys.length;
-const pct=Math.round(done/act.plan.reduce((s,w)=>s+w.days.length,0)*100);
+const totalSes=act.plan.reduce((s,w)=>s+w.days.length,0);
+const pct=Math.round(done/totalSes*100);
 const kcal=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.kcal||0),0);
 const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
   const c=document.getElementById('resumen-content');
+  /* En violeta solo lo que ya has hecho; un 0 sale apagado. Con la rutina
+     recién empezada esto eran seis cifras de acento diciendo cero. */
+  /* Sin icono en las etiquetas: a 11 px una llama de trazo no se lee, parece
+     una gota. La llama vive en la tarjeta de Inicio, que mide 18. Y así las
+     seis etiquetas son iguales, que era el otro motivo. */
+  const stat=(val,lbl,hay)=>
+    `<div class="stat"><div class="stat-val${hay?'':' vacio'}">${val}</div>`+
+    `<div class="stat-lbl">${lbl}</div></div>`;
+  const streak=calcStreak(), maxStreak=calcMaxStreak();
   c.innerHTML=`
     <div class="stat-grid">
-      <div class="stat"><div class="stat-val">${done}/40</div><div class="stat-lbl">Sesiones</div></div>
-      <div class="stat"><div class="stat-val">${pct}%</div><div class="stat-lbl">Progreso</div></div>
-      <div class="stat"><div class="stat-val">${kcal}</div><div class="stat-lbl">Kcal cardio</div></div>
-      <div class="stat"><div class="stat-val">${mins}m</div><div class="stat-lbl">Tiempo cardio</div></div>
-      <div class="stat"><div class="stat-val">${calcStreak()}</div><div class="stat-lbl">🔥 Racha (días)</div></div>
-      <div class="stat"><div class="stat-val">${calcMaxStreak()}</div><div class="stat-lbl">Mejor racha</div></div>
+      ${stat(done+'/'+totalSes,'Sesiones',done>0)}
+      ${stat(pct+'%','Progreso',pct>0)}
+      ${stat(kcal,'Kcal cardio',kcal>0)}
+      ${stat(mins+'m','Tiempo cardio',mins>0)}
+      ${stat(streak,'Racha (días)',streak>0)}
+      ${stat(maxStreak,'Mejor racha',maxStreak>0)}
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     ${(()=>{
@@ -3094,7 +3140,7 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
     const isComplete=wd===total;
     return`<div class="week-row" style="flex-direction:column;align-items:stretch;padding:0;overflow:hidden;margin-bottom:6px;">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;">
-        <div style="font-size:13px;font-weight:700;">${currentWeek===w.num?'⚡ ':'✓ '}${etiquetaSemana(w,'Sem')}</div>
+        <div style="font-size:13px;font-weight:700;">${currentWeek===w.num?ico('rayo')+' ':'✓ '}${etiquetaSemana(w,'Sem')}</div>
         <span class="badge ${isComplete?'badge-green':'badge-accent'}">${wd}/${total}</span>
       </div>
       <div style="padding:0 14px 12px;">
@@ -3110,7 +3156,7 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
   };
 
   return`
-    ${cur?weekCard(cur,true):'<div class="week-row"><div style="font-size:13px;font-weight:700;">🏆 Plan completado</div></div>'}
+    ${cur?weekCard(cur,true):'<div class="week-row"><div style="font-size:13px;font-weight:700;">'+ico('trofeo')+' Plan completado</div></div>'}
     ${completedWeeks.length?`
       <div style="margin-top:4px;">
         <button class="btn btn-secondary" style="font-size:12px;padding:8px;" onclick="toggleCompletedWeeks()">
@@ -3632,13 +3678,21 @@ function updateHome(){
     }));
   }
 
-  set('rt-entreno',prox?'Pendiente':(total?'Completado':'—'));
+  /* Escribe la cifra y enciende o apaga la tarjeta entera. La clase va en el
+     botón, no en la cifra, para que el icono se apague con ella (ver .rt.vacio
+     en el CSS). "Pendiente" no cuenta como dato: es justo lo que NO has hecho. */
+  const enc=(id,txt,hay)=>{
+    const e=document.getElementById(id); if(!e) return;
+    e.textContent=txt;
+    const tarjeta=e.closest('.rt'); if(tarjeta) tarjeta.classList.toggle('vacio',!hay);
+  };
+  enc('rt-entreno',prox?'Pendiente':(total?'Completado':'—'),!prox&&total>0);
   const streak=calcStreak();
-  set('rt-racha',streak?streak+(streak===1?' día':' días'):'Sin racha');
+  enc('rt-racha',streak?streak+(streak===1?' día':' días'):'Sin racha',streak>0);
   const totalKcal=Object.values(ses||{}).reduce((s,x)=>s+(x.cardio&&x.cardio.kcal?x.cardio.kcal:0),0);
-  set('rt-cardio',totalKcal?totalKcal.toLocaleString('es-ES')+' kcal':'Sin cardio');
+  enc('rt-cardio',totalKcal?totalKcal.toLocaleString('es-ES')+' kcal':'Sin cardio',totalKcal>0);
   const lastM=medidas.length?medidas[medidas.length-1]:null;
-  set('rt-medidas',lastM&&lastM.peso?num(lastM.peso)+' kg':'Sin datos');
+  enc('rt-medidas',lastM&&lastM.peso?num(lastM.peso)+' kg':'Sin datos',!!(lastM&&lastM.peso));
 
   // Entrenamiento de hoy
   const tag=document.getElementById('hoy-tag');
@@ -5509,7 +5563,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   <!-- Paso 3: Listo -->
   <div class="ob-step" id="ob-step-2">
-    <div style="font-size:64px;margin-bottom:16px;">🏆</div>
+    <svg class="ico" style="width:64px;height:64px;margin:0 auto 16px;color:var(--accent);"
+         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M7 4h10v5.5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a3 3 0 0 0 2.9 3M17 6h2.5a3 3 0 0 1-2.9 3"/>
+      <path d="M12 14.5V18M8.5 21h7l-.8-3H9.3z"/>
+    </svg>
     <div class="ob-title">¡Todo listo!</div>
     <div class="ob-sub" id="ob-summary">Estás listo para empezar tu entrenamiento.</div>
     <div class="ob-acciones">

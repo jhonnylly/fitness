@@ -25,6 +25,11 @@ const el = () => ({
   setAttribute(){}, getAttribute(){ return null; },
   appendChild(){}, removeChild(){}, firstChild: null,
   querySelector(){ return null; }, querySelectorAll(){ return []; },
+  // Íd.: updateHome() sube del valor a su tarjeta con closest('.rt') para
+  // encenderla o apagarla. Aquí no hay árbol al que subir; devolver null es
+  // exactamente lo que hace el navegador cuando no encuentra el ancestro, y el
+  // código ya lo contempla.
+  closest(){ return null; },
 });
 // Se guardan los listeners para poder disparar DOMContentLoaded a mano y
 // comprobar el arranque real de la app.
