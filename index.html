@@ -3,6 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<!-- Para poder instalarla en la pantalla de inicio y que se abra a pantalla
+     completa, sin la barra del navegador. El Service Worker ya estaba; esto es
+     lo que le faltaba. -->
+<link rel="manifest" href="manifest.json">
+<!-- Tiñe la barra de estado del móvil del color de la cabecera (var(--dark)),
+     que es oscura en los dos temas. -->
+<meta name="theme-color" content="#17161f">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- iOS no lee los iconos del manifest: usa este. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Fitness">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="My Fitness Tracker">
@@ -1853,7 +1867,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 16:31';
+const APP_VERSION='2026-09-05 17:12';
 
 const LOCAL_KEY='jhon_db_v2';
 

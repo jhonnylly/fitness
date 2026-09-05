@@ -24,6 +24,9 @@ const ESENCIALES = [
   './index.html',
   './img/ejercicios/lista.js',
   './img/ejercicios/musculos.js',
+  './manifest.json',
+  './icons/icono-192.png',
+  './icons/icono-512.png',
   /* Las 16 fotos de músculo entran de entrada (~1,1 MB) y no bajo demanda: son
      lo que miras al abrir un ejercicio, y sin cobertura no da tiempo a que se
      guarden solas la primera vez. Los 102 SVG de siluetas NO: solo se usan de
