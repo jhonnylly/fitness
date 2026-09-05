@@ -171,19 +171,42 @@ async function appLista(page, url){
        'el que se arrastró queda el primero: '+arrastre.despues[0]);
     ok(new Set(arrastre.despues).size === arrastre.despues.length, 'y no hay repetidos');
 
-    console.log('\n5. Guardar una sesión avisa sin cuadros del navegador');
+    console.log('\n5. Registrar una sesión se celebra; corregirla, no');
     const guardado = await page.evaluate(async ()=>{
       curEx[0].sets[0].kg = '60'; curEx[0].sets[0].reps = '10';
+      const n = curSession;
       saveSession();
-      await new Promise(r=>setTimeout(r,200));
-      const a = document.getElementById('aviso-flotante');
-      const ses = getActive().sessions[curSession];
-      return {texto: a.textContent, visible: a.className.includes('visible'),
-              registrada: !!ses, kg: ses && ses.exercises[0].sets[0].kg};
+      await new Promise(r=>setTimeout(r,350));
+      const capa = document.getElementById('celebracion');
+      const ses = getActive().sessions[n];
+      return {registrada: !!ses, kg: ses && ses.exercises[0].sets[0].kg,
+              celebra: !capa.classList.contains('hidden'),
+              titulo: document.getElementById('cel-tit').textContent,
+              sub: document.getElementById('cel-sub').textContent,
+              fondoQuieto: document.body.classList.contains('capa-abierta')};
     });
     ok(guardado.registrada, 'la sesión queda registrada');
     ok(guardado.kg === '60', 'con los kilos que se apuntaron');
-    ok(guardado.visible && /guardada/i.test(guardado.texto), 'y avisa con el mensaje propio de la app');
+    ok(guardado.celebra, 'y se celebra al terminarla');
+    ok(/completada|terminado/i.test(guardado.titulo), 'con su titular: '+guardado.titulo);
+    ok(/\d+ de \d+ sesiones/.test(guardado.sub), 'y por dónde vas: '+guardado.sub);
+    ok(guardado.fondoQuieto, 'el fondo no hace scroll mientras está abierta');
+
+    /* Reabrir una sesión ya registrada para corregir un peso NO vuelve a
+       celebrarla: ahí lo que hace falta es el aviso de siempre. */
+    const corregida = await page.evaluate(async ()=>{
+      cerrarCelebracion();
+      const r = getActive();
+      openSession(r.plan[0].days[0].s);
+      saveSession();
+      await new Promise(r=>setTimeout(r,250));
+      const a = document.getElementById('aviso-flotante');
+      return {celebra: !document.getElementById('celebracion').classList.contains('hidden'),
+              texto: a.textContent, visible: a.className.includes('visible')};
+    });
+    ok(!corregida.celebra, 'corregirla no la vuelve a celebrar');
+    ok(corregida.visible && /guardada/i.test(corregida.texto),
+       'y avisa con el mensaje propio de la app');
 
     console.log('\n6. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });

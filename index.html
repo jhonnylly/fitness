@@ -549,6 +549,57 @@ textarea{resize:vertical;min-height:60px;}
   0%{border-color:var(--accent);background:rgba(var(--accent-rgb),.28);}
   100%{border-color:var(--border);background:var(--card);}
 }
+/* ═══ Celebrar al terminar una sesión ═══
+   Registrar una sesión no daba más señal que un aviso de 2,4 s igual al de
+   cualquier otro guardado. Terminar de entrenar es lo único que de verdad
+   quieres que te devuelva algo, y es lo que hace que apetezca volver.
+   Solo aparece la PRIMERA vez que se registra una sesión: si la reabres para
+   corregir un peso, celebrarlo otra vez la convertiría en un estorbo.
+   z-index por encima de todo (el onboarding, que es lo más alto, va a 500):
+   se dispara al cerrar el formulario y no debe quedar debajo de nada. */
+#celebracion{position:fixed;inset:0;z-index:550;display:flex;align-items:center;
+  justify-content:center;padding:22px;background:rgba(8,7,12,.74);
+  animation:cel-fondo .25s ease both;}
+#celebracion.hidden{display:none;}
+@keyframes cel-fondo{from{opacity:0;}to{opacity:1;}}
+/* El lienzo del confeti ocupa la capa entera y no la caja: las partículas
+   tienen que poder caer por delante del panel y salirse por abajo. */
+#cel-confeti{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.cel-caja{position:relative;width:100%;max-width:340px;background:var(--card);
+  border:1px solid var(--border);border-radius:20px;padding:24px 20px 20px;
+  text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.5);
+  /* Con varias marcas y la semana completa la caja crece; en una pantalla baja
+     el botón "Seguir" tiene que seguir alcanzable. */
+  max-height:88vh;overflow-y:auto;
+  animation:cel-entrar .34s cubic-bezier(.2,1.1,.3,1) both;}
+@keyframes cel-entrar{from{opacity:0;transform:scale(.88) translateY(12px);}to{opacity:1;transform:none;}}
+.cel-anillo{position:relative;width:104px;height:104px;margin:0 auto 14px;}
+.cel-anillo svg{width:104px;height:104px;transform:rotate(-90deg);}
+.cel-anillo .anillo-fill{stroke-width:8;}
+.cel-anillo .anillo-fondo{stroke-width:8;}
+/* El número del centro cuenta desde el porcentaje que tenías: lo que se
+   celebra es el salto, no la cifra. */
+.cel-centro{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;}
+.cel-centro b{font-size:26px;font-weight:800;font-family:'Cifras',-apple-system,sans-serif;}
+.cel-centro span{font-size:8px;letter-spacing:.9px;color:var(--muted);text-transform:uppercase;margin-top:2px;}
+.cel-tit{font-size:21px;font-weight:800;line-height:1.2;}
+.cel-sub{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.45;}
+.cel-lineas{margin-top:14px;display:flex;flex-direction:column;gap:7px;}
+.cel-linea{display:flex;align-items:center;gap:9px;text-align:left;font-size:12.5px;
+  background:var(--surface);border-radius:var(--radius-sm);padding:9px 11px;line-height:1.35;}
+.cel-linea svg{color:var(--accent);}
+.cel-linea b{font-weight:800;}
+/* El récord es lo más gordo que puede pasar en una sesión: se distingue del
+   resto de líneas en vez de perderse entre ellas. */
+.cel-linea.record{background:rgba(var(--accent-rgb),.12);
+  border:1px solid rgba(var(--accent-rgb),.35);}
+.cel-linea.hito{background:rgba(45,122,79,.12);border:1px solid rgba(45,122,79,.35);}
+.cel-linea.hito svg{color:var(--green);}
+.cel-cifra{margin-left:auto;font-family:'Cifras',-apple-system,sans-serif;font-weight:800;
+  font-size:14px;color:var(--accent);white-space:nowrap;}
+.cel-linea.hito .cel-cifra{color:var(--green);}
+
 .onboarding{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;height:100dvh;background:var(--bg);z-index:500;display:flex;flex-direction:column;overflow-y:auto;}
 .onboarding.hidden{display:none;}
 .ob-step{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;text-align:center;}
@@ -1220,6 +1271,26 @@ textarea{resize:vertical;min-height:60px;}
   <div class="visor-cuerpo" id="visor-foto-cuerpo"></div>
   <div class="visor-pie">
     <button class="btn-sm" onclick="document.getElementById('profile-input').click()">📷 Cambiar foto</button>
+  </div>
+</div>
+
+<!-- Celebración al registrar una sesión. Se rellena entera desde
+     celebrarSesion(); aquí solo está el esqueleto. -->
+<div id="celebracion" class="hidden" role="dialog" aria-live="polite" onclick="cerrarCelebracion()">
+  <canvas id="cel-confeti" aria-hidden="true"></canvas>
+  <div class="cel-caja" onclick="event.stopPropagation()">
+    <div class="cel-anillo">
+      <svg viewBox="0 0 104 104" aria-hidden="true">
+        <circle class="anillo-fondo" cx="52" cy="52" r="44"/>
+        <circle class="anillo-fill" id="cel-aro" cx="52" cy="52" r="44"
+                stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
+      </svg>
+      <div class="cel-centro"><b id="cel-pct">0%</b><span>Completado</span></div>
+    </div>
+    <div class="cel-tit" id="cel-tit">¡Sesión completada!</div>
+    <div class="cel-sub" id="cel-sub"></div>
+    <div class="cel-lineas" id="cel-lineas"></div>
+    <button class="btn btn-primary" onclick="cerrarCelebracion()">Seguir</button>
   </div>
 </div>
 
@@ -1928,7 +1999,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 21:06';
+const APP_VERSION='2026-09-05 21:21';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3065,7 +3136,18 @@ function addExercise(){curEx.push({name:'',sets:[{kg:'',reps:''},{kg:'',reps:''}
 function removeEx(ei){curEx.splice(ei,1);renderEx();}
 
 function saveSession(){
-  getActive().sessions[curSession]={
+  const act=getActive();
+  /* Antes de escribir nada: los récords se miden contra el historial SIN esta
+     sesión, y "ya estaba" distingue registrar de corregir. Después de la
+     asignación de abajo las dos cosas serían mentira. */
+  const yaEstaba=!!act.sessions[curSession];
+  const records=yaEstaba?[]:recordsDeSesion(act,curEx);
+  const hechasAntes=Object.keys(act.sessions).length;
+  /* Cuál es la sesión, apuntado ahora. La celebración va después de
+     closeForm(), que repinta la semana; que hoy no toque curSession no es
+     motivo para depender de ello. */
+  const nSesion=curSession;
+  act.sessions[curSession]={
     rest:parseInt(document.getElementById('rest').value)||90,
     exercises:curEx,
     cardio:{
@@ -3082,8 +3164,175 @@ feeling:curFeeling||null,
   borrarBorrador(curSession);
   ocultarAvisoBorrador();
   save();
-  aviso('Sesión guardada ✓','bien');
   closeForm();
+  /* Corregir una sesión ya registrada no se celebra: el aviso de siempre. */
+  if(yaEstaba){ aviso('Sesión guardada ✓','bien'); return; }
+  celebrarSesion({records,hechasAntes,sesion:nSesion});
+}
+
+/* Pesos que superan tu mejor marca en ese ejercicio. Se llama ANTES de guardar,
+   así que serieDeCargas() todavía no ve la sesión de hoy.
+   Un ejercicio que haces por primera vez NO cuenta como récord: si contara,
+   la primera sesión saldría con seis "récords" y la palabra dejaría de
+   significar nada justo el día que se estrena la app. */
+function recordsDeSesion(rutina, ejercicios){
+  const out=[];
+  (ejercicios||[]).forEach(ex=>{
+    if(!ex||!ex.name)return;
+    const kgs=(ex.sets||[]).map(v=>parseFloat(v.kg)).filter(v=>!isNaN(v)&&v>0);
+    if(!kgs.length)return;
+    const previos=serieDeCargas(rutina,ex.name).map(p=>p.kg);
+    if(!previos.length)return;
+    const mejor=Math.max(...previos), ahora=Math.max(...kgs);
+    if(ahora>mejor)out.push({nombre:ex.name,kg:ahora,mas:Math.round((ahora-mejor)*10)/10});
+  });
+  return out;
+}
+
+/* La semana a la que pertenece una sesión, con lo que lleva hecho. */
+function semanaDeSesion(rutina,n){
+  for(const w of (rutina&&rutina.plan)||[]){
+    if((w.days||[]).some(d=>d.s===n)){
+      const hechas=w.days.filter(d=>(rutina.sessions||{})[d.s]).length;
+      return {num:w.num,titulo:w.title||'',hechas,total:w.days.length};
+    }
+  }
+  return null;
+}
+
+function celebrarSesion({records,hechasAntes,sesion}){
+  const capa=document.getElementById('celebracion');
+  if(!capa)return;                       // sin la capa, la app sigue igual
+  const act=getActive();
+  const total=totalSesiones(act);
+  const hechas=Object.keys(act.sessions).length;
+  const pctAntes=total?Math.round(hechasAntes/total*100):0;
+  const pct=total?Math.round(hechas/total*100):0;
+  const dia=findDay(sesion);
+  const semana=semanaDeSesion(act,sesion);
+  const racha=calcStreak();
+
+  document.getElementById('cel-tit').textContent=
+    hechas===total?'¡Plan terminado!':'¡Sesión completada!';
+  document.getElementById('cel-sub').textContent=
+    ((dia&&dia.name)||'Sesión')+' · '+hechas+' de '+total+' sesiones';
+
+  const linea=(clase,icono,texto,cifra)=>
+    '<div class="cel-linea '+clase+'">'+ico(icono)+'<span>'+texto+'</span>'+
+    (cifra?'<span class="cel-cifra">'+cifra+'</span>':'')+'</div>';
+  const filas=[];
+  /* Como mucho tres marcas, y las de mayor salto primero. En las primeras
+     semanas se superan casi todos los ejercicios a la vez: sin tope, la caja
+     se convertía en una lista de la compra y no se leía ninguna. */
+  const TOPE=3;
+  const ordenados=records.slice().sort((a,b)=>b.mas-a.mas);
+  ordenados.slice(0,TOPE).forEach(r=>filas.push(linea('record','trofeo',
+    'Marca personal en <b>'+escaparHTML(r.nombre)+'</b>', num(r.kg)+' kg')));
+  if(ordenados.length>TOPE){
+    const resto=ordenados.length-TOPE;
+    filas.push(linea('record','trofeo',
+      'Y <b>'+resto+'</b> marca'+(resto===1?'':'s')+' personal'+(resto===1?'':'es')+' más'));
+  }
+  if(racha>1)filas.push(linea('','llama',
+    'Llevas <b>'+racha+' días</b> seguidos entrenando'));
+  if(semana&&semana.hechas===semana.total)filas.push(linea('hito','trofeo',
+    'Semana <b>'+semana.num+'</b> completa'+(semana.titulo?' — '+escaparHTML(semana.titulo):''),
+    semana.total+'/'+semana.total));
+  document.getElementById('cel-lineas').innerHTML=filas.join('');
+
+  capa.classList.remove('hidden');
+  sincronizarBloqueoFondo();
+
+  /* El aro y el número van del porcentaje que tenías al nuevo: lo que se
+     celebra es el salto. El salto de fotograma es el mismo truco que en
+     updateHome(): sin él el navegador junta las dos escrituras y no hay
+     transición que animar. */
+  const aro=document.getElementById('cel-aro');
+  const C=2*Math.PI*44;
+  aro.setAttribute('stroke-dasharray',C.toFixed(1));
+  aro.setAttribute('stroke-dashoffset',(C*(1-pctAntes/100)).toFixed(1));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    aro.setAttribute('stroke-dashoffset',(C*(1-pct/100)).toFixed(1));
+  }));
+  contarHasta(document.getElementById('cel-pct'),pctAntes,pct);
+  confeti(records.length?90:55);
+
+  /* Vibración corta, como el resto de la app. La ignora el navegador que no la
+     tenga, y en iOS no existe: no se comprueba porque no cambia nada. */
+  if(navigator.vibrate)navigator.vibrate(records.length?[18,60,18]:18);
+}
+
+/* Se cierra tocando fuera o con "Seguir". No hace falta mirar el evento: la
+   caja para la propagación, así que aquí solo llegan los toques de fuera. */
+function cerrarCelebracion(){
+  const capa=document.getElementById('celebracion');
+  if(!capa)return;
+  capa.classList.add('hidden');
+  sincronizarBloqueoFondo();
+  _celParticulas=[];
+  updateHome();
+}
+
+/* Cuenta del número viejo al nuevo. Con prefers-reduced-motion se escribe el
+   final y ya: quien pide no ver movimiento tampoco quiere cifras saltando. */
+function contarHasta(el,desde,hasta){
+  if(!el)return;
+  if(sinMovimiento()){ el.textContent=hasta+'%'; return; }
+  const ms=700, t0=performance.now();
+  const paso=ahora=>{
+    const k=Math.min(1,(ahora-t0)/ms);
+    const suave=1-Math.pow(1-k,3);
+    el.textContent=Math.round(desde+(hasta-desde)*suave)+'%';
+    if(k<1)requestAnimationFrame(paso);
+  };
+  requestAnimationFrame(paso);
+}
+
+function sinMovimiento(){
+  return window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/* Confeti a mano, sin librería: son 40 líneas y la app no carga nada de fuera
+   que no esté ya cacheado para el gimnasio. Colores de la casa —violeta,
+   verde y blanco— y nada de rojo, que aquí significa borrar.
+   Se dibuja en un canvas a pantalla completa por delante del panel, para que
+   las partículas puedan caer por encima de él y salirse por abajo. */
+let _celParticulas=[];
+function confeti(n){
+  const c=document.getElementById('cel-confeti');
+  if(!c||sinMovimiento())return;
+  const ctx=c.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const an=c.clientWidth, al=c.clientHeight;
+  c.width=an*dpr; c.height=al*dpr; ctx.scale(dpr,dpr);
+  const colores=['#8b5cf6','#a78bfa','#2d7a4f','#f2f0f7'];
+  _celParticulas=Array.from({length:n},()=>({
+    x:an/2+(Math.random()-.5)*an*.5, y:al*.42+(Math.random()-.5)*40,
+    vx:(Math.random()-.5)*7, vy:-4-Math.random()*7,
+    ancho:4+Math.random()*5, alto:6+Math.random()*7,
+    giro:Math.random()*Math.PI, vgiro:(Math.random()-.5)*.35,
+    color:colores[(Math.random()*colores.length)|0], vida:0,
+  }));
+  const t0=performance.now();
+  const paso=ahora=>{
+    if(!_celParticulas.length){ ctx.clearRect(0,0,an,al); return; }
+    const t=ahora-t0;
+    ctx.clearRect(0,0,an,al);
+    _celParticulas.forEach(p=>{
+      p.vy+=0.22; p.vx*=0.995;      // gravedad y un roce mínimo
+      p.x+=p.vx; p.y+=p.vy; p.giro+=p.vgiro;
+      ctx.save();
+      ctx.translate(p.x,p.y); ctx.rotate(p.giro);
+      ctx.globalAlpha=Math.max(0,1-t/2600);
+      ctx.fillStyle=p.color;
+      ctx.fillRect(-p.ancho/2,-p.alto/2,p.ancho,p.alto);
+      ctx.restore();
+    });
+    // Cuando ya han caído todas fuera, se para: un rAF eterno gasta batería.
+    if(t<2600&&_celParticulas.some(p=>p.y<al+40))requestAnimationFrame(paso);
+    else{ ctx.clearRect(0,0,an,al); _celParticulas=[]; }
+  };
+  requestAnimationFrame(paso);
 }
 
 /* Borrar el REGISTRO de una sesión, dejándola en el plan como pendiente. No es
@@ -4787,7 +5036,7 @@ function renderProfileName(){
    class="hidden", pero de tres maneras distintas (display:none el onboarding y
    el comparador, transform los paneles), así que lo único fiable para saber si
    una está abierta es la propia clase. */
-const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#selector-ejercicio';
+const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#selector-ejercicio,#celebracion';
 
 /* Sustituye a aviso(). Tres motivos: no bloquea, no obliga a pulsar nada y se
    ve como la app y no como el navegador.
