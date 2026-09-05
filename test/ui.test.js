@@ -21,7 +21,7 @@ const PUERTO = 8791;
 
 const TIPOS = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
   '.json':'application/json; charset=utf-8', '.webp':'image/webp', '.svg':'image/svg+xml',
-  '.png':'image/png', '.jpeg':'image/jpeg', '.jpg':'image/jpeg' };
+  '.png':'image/png', '.jpeg':'image/jpeg', '.jpg':'image/jpeg', '.woff2':'font/woff2' };
 
 function servidor(){
   return http.createServer((req,res)=>{
@@ -209,6 +209,14 @@ async function appLista(page, url){
       return i ? i.complete && i.naturalWidth>0 : false;
     });
     ok(fotoOffline, 'y las fotos de músculo se ven sin red');
+    /* La fuente de las cifras está alojada en el repo justamente para esto: sin
+       red tiene que salir del caché del Service Worker. Si un día se enlaza a
+       Google Fonts en vez de servirla, esta comprobación se cae. */
+    const fuenteOffline = await page.evaluate(async ()=>{
+      await document.fonts.ready;
+      return document.fonts.check('600 24px Cifras');
+    });
+    ok(fuenteOffline, 'y las cifras siguen en su fuente, no en la del sistema');
     await page.setOfflineMode(false);
 
     console.log('\n7. Nada ha reventado por el camino');

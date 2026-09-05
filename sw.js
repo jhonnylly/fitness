@@ -25,6 +25,10 @@ const ESENCIALES = [
   './img/ejercicios/lista.js',
   './img/ejercicios/musculos.js',
   './manifest.json',
+  /* La fuente de las cifras (2,1 KB). Entra de entrada y no bajo demanda: con
+     font-display:swap, llegar tarde significa ver los números saltar de una
+     fuente a otra delante de ti. */
+  './fuentes/oswald-cifras.woff2',
   './icons/icono-192.png',
   './icons/icono-512.png',
   /* Las 16 fotos de músculo entran de entrada (~1,1 MB) y no bajo demanda: son

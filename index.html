@@ -48,6 +48,31 @@
 .timer-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;}
 
 
+/* Cifras en Oswald. Los números son lo que se mira de reojo entre serie y
+   serie —el peso, el cronómetro, cuánto llevas— y en la fuente del sistema no
+   se distinguían del resto del texto.
+   Va ALOJADA AQUÍ, no enlazada a Google Fonts: la app tiene que verse igual en
+   el gimnasio sin cobertura, y un enlace externo se cae. Pesa 2,1 KB porque
+   lleva solo las cifras y sus signos; entra en ESENCIALES del Service Worker.
+   El unicode-range hace el trabajo fino: acota la fuente a 0-9 y a , - . / : %
+   así que en "78,4 kg" el número sale en Oswald y el "kg" en la del sistema,
+   sin marcar nada a mano. El espacio (U+0020) se queda FUERA a propósito: si
+   entrara, el ancho de los espacios lo pondría Oswald y el texto respiraría
+   distinto según llevara números o no. Ver fuentes/README.md. */
+@font-face{
+  font-family:'Cifras';
+  font-style:normal;
+  font-weight:600;
+  font-display:swap;
+  src:url('fuentes/oswald-cifras.woff2') format('woff2');
+  unicode-range:U+0025,U+002C-003A;
+}
+/* Dónde se usan: las cifras que se leen como cifra, no cualquier número suelto
+   dentro de una frase. Siempre con la del sistema detrás, que es la que pinta
+   las letras que las acompañan. */
+.stat-val,.duo-val,.rt-val,.hp-centro b,.timer-secs,.timer-label,.mos-num{
+  font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
   --bg:#f7f6fa;--card:#ffffff;--surface:#efedf5;--border:#dedbe8;
@@ -1903,7 +1928,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 20:44';
+const APP_VERSION='2026-09-05 21:06';
 
 const LOCAL_KEY='jhon_db_v2';
 
