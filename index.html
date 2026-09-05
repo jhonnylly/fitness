@@ -1867,7 +1867,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 17:12';
+const APP_VERSION='2026-09-05 17:30';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2659,6 +2659,7 @@ if(!plan.length){
 }
 
 function openWeekDetail(weekNum){
+  setTimeout(revisarGuardia,0);
   /* Se llama también desde DENTRO de una sesión (al duplicarla o quitarla del
      plan): sin esto el formulario se quedaría encima de la lista que acabamos
      de repintar. */
@@ -2712,6 +2713,7 @@ function sesToque(s){
 }
 
 function closeWeekDetail(){
+  setTimeout(revisarGuardia,0);
   document.getElementById('session-list-view').style.display='none';
   document.getElementById('week-list-view').style.display='block';
   renderWeekButtons();
@@ -2834,6 +2836,7 @@ function pintarDescanso(){
 }
 
 function openSession(n){
+  setTimeout(revisarGuardia,0);
   curSession=n;
   setTimeout(pintarBorrarRegistro,0);   // tras fijar curSession
   const day=findDay(n);
@@ -2923,6 +2926,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    sesión repetidos entre semanas era muy fácil seguir registrando en la semana
    equivocada sin darse cuenta. */
 function closeForm(){
+  setTimeout(revisarGuardia,0);
   document.getElementById('session-form').style.display='none';
   document.getElementById('session-list-view').style.display='block';
   document.getElementById('week-list-view').style.display='none';
@@ -4625,6 +4629,7 @@ function montarArrastre(cont, alSoltar){
 
 function openExDetail(ei){
   setTimeout(actualizarBotonVolver,0);
+  setTimeout(revisarGuardia,0);
   curExIndex=ei;
   const ex=curEx[ei];
   document.getElementById('ex-detail-title').value=ex.name||'';
@@ -4636,6 +4641,7 @@ function openExDetail(ei){
 
 function closeExDetail(){
   setTimeout(actualizarBotonVolver,0);
+  setTimeout(revisarGuardia,0);
   curExIndex=null;
   document.getElementById('ex-detail-view').style.display='none';
   document.getElementById('ex-list-view').style.display='block';
@@ -4725,10 +4731,81 @@ function aviso(texto, tipo){
   _avisoTimer=setTimeout(()=>{ el.className=''; }, tipo==='mal'?4200:2400);
 }
 
+/* ═══════════ El botón (y el gesto) de "atrás" ═══════════
+   Instalada en la pantalla de inicio, la app va a pantalla completa: deslizar
+   para atrás en Android te sacaba fuera, aunque tuvieras un panel abierto.
+   Ahora ese gesto cierra lo que esté abierto, que es lo que uno espera.
+
+   Se deriva del DOM y no de una lista de pantallas abiertas: la app cierra
+   cosas por su cuenta en varios sitios (al crear una rutina, al borrar una
+   semana, al terminar el onboarding) y una lista se desincronizaría enseguida,
+   dejando el botón de atrás haciendo cosas que no toca.
+
+   Una sola entrada de historial —la "guardia"— mientras haya algo abierto.
+   Al volver atrás se cierra lo más profundo y, si queda algo, se repone. */
+const PANTALLAS_ATRAS = [
+  // De más profunda a menos: el orden es el que decide qué se cierra primero.
+  ['visor-foto',          'clase', () => cerrarVisorFoto()],
+  ['selector-ejercicio',  'clase', () => nrCerrarSelector()],
+  ['comparador',          'clase', () => cerrarComparador()],
+  ['new-routine-panel',   'clase', () => closeNewRoutinePanel()],
+  ['preset-panel',        'clase', () => closePresetPanel()],
+  ['auth-panel',          'clase', () => toggleAuthPanel()],
+  ['config-panel',        'clase', () => toggleConfigPanel()],
+  ['routine-panel',       'clase', () => toggleRoutinePanel()],
+  ['ex-detail-view',      'display', () => closeExDetail()],
+  ['session-form',        'display', () => closeForm()],
+  ['session-list-view',   'display', () => closeWeekDetail()],
+];
+
+function pantallaAbierta(){
+  for(const [id, modo, cerrar] of PANTALLAS_ATRAS){
+    const el = document.getElementById(id);
+    if(!el) continue;
+    const abierta = modo === 'clase'
+      ? !el.classList.contains('hidden')
+      : el.style.display && el.style.display !== 'none';
+    if(abierta) return cerrar;
+  }
+  return null;
+}
+
+let guardiaPuesta = false;
+let ignorarPop = false;
+
+/* Pone o quita la guardia según lo que haya abierto. Se llama tras cualquier
+   cosa que abra o cierre: el MutationObserver de las capas lo cubre casi todo,
+   y las vistas de dentro de Registrar lo llaman a mano porque se ocultan con
+   style.display y ahí no hay clase que vigilar. */
+function revisarGuardia(){
+  const hayAlgo = !!pantallaAbierta();
+  if(hayAlgo && !guardiaPuesta){
+    history.pushState({fitnessGuardia:true}, '');
+    guardiaPuesta = true;
+  }else if(!hayAlgo && guardiaPuesta){
+    // Se cerró desde la propia app: sobra la entrada, se consume sin cerrar nada.
+    ignorarPop = true;
+    guardiaPuesta = false;
+    history.back();
+  }
+}
+
+window.addEventListener('popstate', () => {
+  if(ignorarPop){ ignorarPop = false; return; }
+  guardiaPuesta = false;
+  const cerrar = pantallaAbierta();
+  if(cerrar){
+    try{ cerrar(); }catch(e){ console.error('[atras]', e); }
+    revisarGuardia();          // si queda algo abierto detrás, se repone
+  }
+  // Si no había nada abierto, no se hace nada: el navegador ya ha ido atrás.
+});
+
 function sincronizarBloqueoFondo(){
   const hayCapa=[...document.querySelectorAll(SELECTOR_CAPAS)]
     .some(c=>!c.classList.contains('hidden'));
   document.body.classList.toggle('capa-abierta',hayCapa);
+  revisarGuardia();
 }
 
 /* Se vigila con MutationObserver en lugar de llamar al bloqueo desde los doce
