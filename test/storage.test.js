@@ -50,10 +50,7 @@ const disparar = ev => (listeners[ev] || []).forEach(fn => fn());
 
 const ctx = {
   localStorage, document, console, MutationObserver, requestAnimationFrame,
-  // addEventListener: la app engancha popstate para que el botón de atrás cierre
-  // pantallas. history: pushState/back para la "guardia" de ese mismo mecanismo.
-  window: { scrollTo(){}, addEventListener(){}, removeEventListener(){} },
-  history: { pushState(){}, replaceState(){}, back(){} },
+  window: { scrollTo(){} },
   setTimeout, clearTimeout, setInterval, clearInterval,
   navigator: { vibrate(){} },
   fetch: () => Promise.reject(new Error('sin red')),
