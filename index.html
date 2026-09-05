@@ -8,7 +8,21 @@
 <meta name="apple-mobile-web-app-title" content="My Fitness Tracker">
 <title>My Fitness Tracker</title>
 <style>
-  #rest-timer{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:var(--dark);color:#f2f0f7;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:200;border-top:2px solid var(--accent);transition:transform .3s ease;}
+  /* Avisos propios en vez de aviso(). El del sistema bloquea la app, obliga a
+   pulsar "Aceptar" y sale con la cara del navegador: justo después de terminar
+   una serie es lo último que quieres. Este aparece, se lee y se va solo. */
+/* Abajo y no arriba: arriba tapaba la cabecera justo cuando dice qué rutina
+   llevas. A 88 px del borde queda por encima del cronómetro de descanso, que
+   es fijo abajo y puede estar corriendo cuando guardas. */
+#aviso-flotante{position:fixed;bottom:88px;left:50%;transform:translate(-50%,14px);
+  z-index:600;max-width:min(92vw,420px);padding:12px 16px;border-radius:var(--radius);
+  background:var(--dark);color:#f2f0f7;font-size:13.5px;font-weight:600;line-height:1.45;
+  box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;
+  transition:opacity .22s ease, transform .22s ease;text-align:center;}
+#aviso-flotante.visible{opacity:1;transform:translate(-50%,0);}
+#aviso-flotante.bien{border-left:4px solid var(--green);}
+#aviso-flotante.mal{border-left:4px solid var(--danger);}
+#rest-timer{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:var(--dark);color:#f2f0f7;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:200;border-top:2px solid var(--accent);transition:transform .3s ease;}
 #rest-timer.hidden{transform:translate(-50%,110%);}
 .timer-ring{position:relative;width:48px;height:48px;flex-shrink:0;}
 .timer-ring svg{transform:rotate(-90deg);}
@@ -139,7 +153,19 @@ label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:
 select,input,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:14px;outline:none;font-family:inherit;}
 select:focus,input:focus,textarea:focus{border-color:var(--accent);}
 textarea{resize:vertical;min-height:60px;}
-.btn{display:block;width:100%;padding:12px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:700;cursor:pointer;text-align:center;letter-spacing:0.5px;}
+/* Tacto al pulsar. Lo tenían las pestañas y las tarjetas de Inicio, pero no los
+   botones ni las tarjetas del mosaico, que es lo que más se toca ahora: sin
+   respuesta al dedo, la app se siente muerta aunque vaya rápida. */
+.btn{display:block;width:100%;padding:12px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:700;cursor:pointer;text-align:center;letter-spacing:0.5px;transition:transform .12s ease, opacity .12s ease;}
+.btn:active{transform:scale(.97);opacity:.9;}
+.btn-sm{transition:transform .12s ease, opacity .12s ease;}
+.btn-sm:active{transform:scale(.94);opacity:.85;}
+/* La tarjeta arrastrada tiene su propio transform: si el :active se lo pisara,
+   daría un salto al engancharla. */
+.mos-card{transition:transform .12s ease, box-shadow .12s ease;}
+.mos-card:not(.arrastrando):active{transform:scale(.97);}
+.ex-musculos img, .cab-avatar, .cab-ico{transition:transform .12s ease;}
+.cab-ico:active, .cab-avatar:active{transform:scale(.92);}
 .btn-primary{background:var(--accent);color:#fff;margin-top:10px;}
 .btn-primary:active{opacity:0.85;}
 .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text);margin-top:8px;}
@@ -468,6 +494,7 @@ textarea{resize:vertical;min-height:60px;}
 <script src="img/ejercicios/musculos.js"></script>
 </head>
 <body>
+<div id="aviso-flotante" role="status" aria-live="polite"></div>
 
 
 <header>
@@ -1795,7 +1822,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 15:54';
+const APP_VERSION='2026-09-05 16:05';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2184,11 +2211,11 @@ async function restaurarCopiaPrevia(){
   try{
     await saveEstricto();
     await load();
-    alert('Restaurado ✓');
+    aviso('Restaurado ✓','bien');
   }catch(e){
     console.error('[sync] no se pudo restaurar',e);
     DB=actual;
-    alert('No se pudo restaurar ('+(e.code||e.message)+'). Se deja todo como estaba.');
+    aviso('No se pudo restaurar ('+(e.code||e.message)+'). Se deja todo como estaba.','mal');
   }
   pintarCopiaPrevia();
 }
@@ -2381,7 +2408,7 @@ function saveProfilePic(input){
     }
   }).catch(e=>{
     console.error('[fotos] no se pudo procesar la foto de perfil',e);
-    alert('No se pudo procesar esa imagen. Prueba con otra.');
+    aviso('No se pudo procesar esa imagen. Prueba con otra.','mal');
   });
 }
 
@@ -2949,7 +2976,7 @@ feeling:curFeeling||null,
   borrarBorrador(curSession);
   ocultarAvisoBorrador();
   save();
-  alert('Sesión guardada ✓');
+  aviso('Sesión guardada ✓','bien');
   closeForm();
 }
 
@@ -3077,7 +3104,7 @@ function saveMedida(){
   const peso=parseFloat(document.getElementById('med-peso').value);
   const cin=parseFloat(document.getElementById('med-cin').value);
   const fecha=document.getElementById('med-fecha').value||new Date().toLocaleDateString('es-ES');
-  if(isNaN(peso)&&isNaN(cin)){alert('Introduce al menos un valor');return;}
+  if(isNaN(peso)&&isNaN(cin)){aviso('Introduce al menos un valor','mal');return;}
 getActive().medidas=getActive().medidas.filter(m=>m.semana!==sem);
 getActive().medidas.push({semana:sem,peso:isNaN(peso)?null:peso,cintura:isNaN(cin)?null:cin,fecha});
 getActive().medidas.sort((a,b)=>a.semana-b.semana);
@@ -3118,7 +3145,7 @@ function delMedida(sem){
 
 function copyForChat(){
 const act=getActive();
-if(!act){alert('Ninguna rutina seleccionada');return;}
+if(!act){aviso('Ninguna rutina seleccionada','mal');return;}
 const keys=Object.keys(act.sessions).map(Number).sort((a,b)=>a-b);
 let txt='=== '+act.name.toUpperCase()+' — '+new Date().toLocaleDateString('es-ES')+' ===\n\n';
 keys.forEach(n=>{
@@ -3139,8 +3166,8 @@ keys.forEach(n=>{
     txt+='=== MEDIDAS ===\n';
     act.medidas.forEach(m=>txt+='Sem '+m.semana+': '+(m.peso||'—')+'kg · '+(m.cintura||'—')+'cm ('+m.fecha+')\n');
   }
-  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>alert('¡Copiado! Pégalo en el chat con Claude.')).catch(()=>alert(txt));}
-  else{alert(txt);}
+  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>aviso('¡Copiado! Pégalo en el chat con Claude.','bien')).catch(()=>aviso(txt));}
+  else{aviso(txt);}
 }
 
 function exportJSON(){
@@ -3160,8 +3187,8 @@ function importJSON(e){
       if(data.sessions)DB.sessions=data.sessions;
       if(data.medidas)DB.medidas=data.medidas;
       save();buildSessionList();renderResumen();renderMedidas();
-      alert('Importado correctamente ✓');
-    }catch{alert('Archivo inválido');}
+      aviso('Importado correctamente ✓','bien');
+    }catch{aviso('Archivo inválido','mal');}
   };
   r.readAsText(file);
 }
@@ -4156,12 +4183,12 @@ function deleteRoutine(id){
 
 function createRoutine(){
   const name=document.getElementById('new-routine-name').value.trim();
-  if(!name){alert('Escribe un nombre para la rutina');return;}
+  if(!name){aviso('Escribe un nombre para la rutina','mal');return;}
   const jsonTxt=document.getElementById('new-routine-json').value.trim();
   let plan=[];
   if(jsonTxt){
     try{plan=JSON.parse(jsonTxt);}
-    catch{alert('El JSON del plan no es válido');return;}
+    catch{aviso('El JSON del plan no es válido','mal');return;}
   }
   const id='r_'+Date.now();
   DB.routines.push({id,name,plan,sessions:{},medidas:[]});
@@ -4170,7 +4197,7 @@ function createRoutine(){
   document.getElementById('new-routine-name').value='';
   document.getElementById('new-routine-json').value='';
   renderRoutineList();
-  alert('Rutina "'+name+'" creada ✓');
+  aviso('Rutina "'+name+'" creada ✓');
 }
 
 function updateHeaderRoutine(){
@@ -4248,7 +4275,7 @@ function savePhoto(input){
     renderPhotos();
   }).catch(e=>{
     console.error('[fotos] no se pudo procesar la foto de progreso',e);
-    alert('No se pudo procesar esa imagen. Prueba con otra.');
+    aviso('No se pudo procesar esa imagen. Prueba con otra.','mal');
   });
 }
 
@@ -4626,6 +4653,21 @@ function renderProfileName(){
    una está abierta es la propia clase. */
 const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#selector-ejercicio';
 
+/* Sustituye a aviso(). Tres motivos: no bloquea, no obliga a pulsar nada y se
+   ve como la app y no como el navegador.
+   Los confirm() de borrar NO se tocan: ahí el freno del diálogo del sistema es
+   una virtud, no un estorbo. */
+let _avisoTimer=null;
+function aviso(texto, tipo){
+  const el=document.getElementById('aviso-flotante');
+  if(!el){ console.log('[aviso]',texto); return; }
+  el.textContent=texto;
+  el.className='visible '+(tipo==='mal'?'mal':tipo==='bien'?'bien':'');
+  clearTimeout(_avisoTimer);
+  // Los errores duran más: si algo ha fallado, hay que poder leerlo entero.
+  _avisoTimer=setTimeout(()=>{ el.className=''; }, tipo==='mal'?4200:2400);
+}
+
 function sincronizarBloqueoFondo(){
   const hayCapa=[...document.querySelectorAll(SELECTOR_CAPAS)]
     .some(c=>!c.classList.contains('hidden'));
@@ -4685,7 +4727,7 @@ function renderPresetList(){
 function addPresetRoutine(id){
   const preset=PRESET_ROUTINES.find(r=>r.id===id);
   if(!preset)return;
-  if(DB.routines.some(r=>r.id===id)){alert('Esta rutina ya está en tu biblioteca.');return;}
+  if(DB.routines.some(r=>r.id===id)){aviso('Esta rutina ya está en tu biblioteca.');return;}
   DB.routines.push({
     id:preset.id,
     name:preset.name,
@@ -4696,7 +4738,7 @@ function addPresetRoutine(id){
   if(!DB.activeRoutine)DB.activeRoutine=preset.id;
   save();
   renderPresetList();
-  alert('Rutina "'+preset.name+'" añadida a tu biblioteca ✓');
+  aviso('Rutina "'+preset.name+'" añadida a tu biblioteca ✓');
 }
 
 function toggleCompletedWeeks(){
@@ -4728,7 +4770,7 @@ function obSetPhoto(input){
     av.innerHTML=`<img src="${obPhotoData}">`;
   }).catch(e=>{
     console.error('[fotos] no se pudo procesar la foto del onboarding',e);
-    alert('No se pudo procesar esa imagen. Prueba con otra.');
+    aviso('No se pudo procesar esa imagen. Prueba con otra.','mal');
   });
 }
 
@@ -4751,10 +4793,10 @@ function obSelectRoutine(id){
 function obNext(step){
   if(step===1){
     const name=document.getElementById('ob-name').value.trim();
-    if(!name){alert('Escribe tu nombre para continuar.');return;}
+    if(!name){aviso('Escribe tu nombre para continuar.');return;}
   }
   if(step===2){
-    if(!obSelectedRoutine){alert('Elige una rutina para continuar.');return;}
+    if(!obSelectedRoutine){aviso('Elige una rutina para continuar.');return;}
     const preset=PRESET_ROUTINES.find(r=>r.id===obSelectedRoutine);
     const name=document.getElementById('ob-name').value.trim();
     document.getElementById('ob-summary').textContent=
@@ -4957,7 +4999,7 @@ function nrSiguiente(){
   if(nrPaso===3){
     if(nrDiaEditando < nrDias.length-1){ nrDiaEditando++; nrPintarPaso(); return; }
     if(!nrDias.some(d=>d.ex.length)){
-      alert('Añade al menos un ejercicio a algún día antes de seguir.');
+      aviso('Añade al menos un ejercicio a algún día antes de seguir.','mal');
       return;
     }
     nrPaso=4; nrPintarPaso(); return;
@@ -4995,7 +5037,7 @@ function nrCopiarDia(desde,hasta){
     if(!destino.ex.some(x=>x.nombre===e.nombre)){ destino.ex.push({...e}); nuevos++; }
   });
   nrPintarPaso();
-  if(!nuevos) alert('Ese día ya tiene todos esos ejercicios.');
+  if(!nuevos) aviso('Ese día ya tiene todos esos ejercicios.','mal');
 }
 
 function nrQuitar(i,j){ nrDias[i].ex.splice(j,1); nrPintarPaso(); }
@@ -5127,13 +5169,13 @@ function createNewRoutine(){
      el DOM solo se consulta para lo que hay delante. */
   const campo=document.getElementById('nr-name');
   const name=((campo?campo.value:nrNombre)||'').trim();
-  if(!name){alert('Escribe un nombre para la rutina');return;}
+  if(!name){aviso('Escribe un nombre para la rutina','mal');return;}
   const areaJson=document.getElementById('nr-json');
   const jsonTxt=areaJson?areaJson.value.trim():'';
   let plan=[];
   if(jsonTxt){
     try{plan=JSON.parse(jsonTxt);}
-    catch{alert('El JSON del plan no es válido');return;}
+    catch{aviso('El JSON del plan no es válido','mal');return;}
   }else{
     /* Los días montados arriba se repiten en todas las semanas. La numeración
        de sesiones (s) es correlativa y global, como en las rutinas prehechas:
@@ -5141,7 +5183,7 @@ function createNewRoutine(){
        delante ("S7 · Torso") porque es lo que enseña la lista de sesiones. */
     const conEjercicios=nrDias.filter(d=>d.ex.length);
     if(!conEjercicios.length){
-      alert('Añade al menos un ejercicio a algún día, o pega un plan en JSON.');
+      aviso('Añade al menos un ejercicio a algún día, o pega un plan en JSON.','mal');
       return;
     }
     const semanas=nrSemanas||8;
