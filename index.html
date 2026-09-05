@@ -70,7 +70,7 @@
 /* Dónde se usan: las cifras que se leen como cifra, no cualquier número suelto
    dentro de una frase. Siempre con la del sistema detrás, que es la que pinta
    las letras que las acompañan. */
-.stat-val,.duo-val,.rt-val,.hp-centro b,.timer-secs,.timer-label,.mos-num{
+.stat-val,.duo-val,.rt-val,.hp-centro b,.timer-secs,.timer-label,.mos-num,.racha-num{
   font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -434,6 +434,49 @@ textarea{resize:vertical;min-height:60px;}
 .hoy-meta{display:block;font-size:12px;color:rgba(255,255,255,.66);margin-top:6px;position:relative;}
 .hoy-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);
   color:#fff;font-weight:800;font-size:14px;border-radius:11px;padding:12px;margin-top:14px;position:relative;}
+
+/* ═══ Una protagonista por pantalla ═══
+   "Entrenamiento de hoy" (degradado + halo) era lo único con personalidad de
+   toda la app, y vivía solo en Inicio. Ahora Registrar y Resumen tienen la
+   suya: la semana en curso y la racha. UNA por pestaña y ni una más — si todo
+   lleva degradado, el degradado deja de querer decir "esto es lo importante",
+   y por eso el mosaico de semanas y las cifras del resumen siguen planos.
+   Reutilizan .hoy entero: mismo fondo, mismo halo, mismos .hoy-tag/-tit/-meta.
+   Lo de aquí abajo es solo lo que cada una añade. */
+
+/* El nombre de la sesión puede ser largo ("S12 · Empuje y hombro"): en una sola
+   línea con puntos suspensivos antes que romper el botón en dos. */
+.hoy-cta .cta-txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Una barra por sesión en vez de una barra de progreso sola: además de cuánto
+   llevas dice cuántas sesiones tiene la semana, que es lo que se viene a ver. */
+.sem-puntos{display:flex;gap:5px;margin-top:12px;position:relative;}
+.sem-punto{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.16);}
+.sem-punto.hecha{background:var(--accent);}
+
+/* La racha no lleva a ninguna parte, así que es un <div> y no un botón: sin
+   cursor de mano y sin el encogido al pulsar, que prometerían un destino. */
+.hoy-racha{cursor:default;}
+.hoy-racha:active{transform:none;}
+.racha-fila{display:flex;align-items:center;gap:9px;margin-top:6px;position:relative;}
+.racha-num{font-size:40px;font-weight:800;line-height:1;}
+.racha-llama{width:26px;height:26px;color:var(--accent);}
+.racha-dias{font-size:13px;color:rgba(255,255,255,.72);align-self:flex-end;padding-bottom:5px;}
+/* Con la racha a cero se apaga ENTERA —etiqueta incluida—, igual que las
+   cifras del resumen: el violeta solo cuando hay algo que celebrar (ver
+   .rt.vacio y .stat-val.vacio). */
+.hoy-racha.vacio .racha-num{color:rgba(255,255,255,.42);}
+.hoy-racha.vacio .racha-llama{color:rgba(255,255,255,.30);}
+.hoy-racha.vacio .hoy-tag{color:rgba(255,255,255,.45);}
+/* Los últimos catorce días. Una cifra sola ("5 días") no dice si vienes de un
+   mes constante o de encadenar cinco después de dos semanas parado. */
+.racha-cal{display:flex;gap:4px;margin-top:14px;position:relative;}
+.racha-dia{flex:1;min-width:0;text-align:center;}
+.racha-dia i{display:block;height:22px;border-radius:5px;background:rgba(255,255,255,.10);}
+.racha-dia.hecho i{background:var(--accent);}
+/* Hoy va marcado con un aro: sin él no se sabe por qué extremo se lee. */
+.racha-dia.es-hoy i{box-shadow:0 0 0 2px rgba(255,255,255,.55);}
+.racha-dia span{display:block;font-size:8.5px;color:rgba(255,255,255,.45);margin-top:4px;}
 
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .duo .card{margin-bottom:0;}
@@ -1999,7 +2042,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 21:21';
+const APP_VERSION='2026-09-05 21:40';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2705,16 +2748,20 @@ async function load(){
     recomprimirFotosAntiguas().then(n=>{ if(n) renderProfilePic(); });
   }
 }
-function calcStreak(){
-  const dates=[...new Set(
+/* Los DÍAS en que se entrenó (no las sesiones: dos el mismo día son un día),
+   sin repetir y de más antiguo a más nuevo. Lo usan la racha, la mejor racha y
+   el calendario de Resumen; era el mismo trozo copiado en cada sitio. */
+function fechasEntrenadas(){
+  return [...new Set(
     Object.values(getActiveSessions()||{})
       .map(s=>s.date)
       .filter(Boolean)
-  )].map(d=>{
-    const[dd,mm,yyyy]=d.split('/');
-    return new Date(yyyy,mm-1,dd).toDateString();
-  });
-  const unique=[...new Set(dates)].sort((a,b)=>new Date(b)-new Date(a));
+      .map(d=>{const[dd,mm,yyyy]=d.split('/');return new Date(yyyy,mm-1,dd).toDateString();})
+  )].sort((a,b)=>new Date(a)-new Date(b));
+}
+
+function calcStreak(){
+  const unique=fechasEntrenadas().reverse();     // de hoy hacia atrás
   if(!unique.length)return 0;
   const today=new Date().toDateString();
   const yesterday=new Date(Date.now()-864e5).toDateString();
@@ -2728,12 +2775,7 @@ function calcStreak(){
   return streak;
 }
 function calcMaxStreak(){
-  const dates=[...new Set(
-   Object.values(getActiveSessions()||{})
-      .map(s=>s.date)
-      .filter(Boolean)
-      .map(d=>{const[dd,mm,yyyy]=d.split('/');return new Date(yyyy,mm-1,dd).toDateString();})
-  )].sort((a,b)=>new Date(a)-new Date(b));
+  const dates=fechasEntrenadas();
   if(!dates.length)return 0;
   let max=1,cur=1;
   for(let i=1;i<dates.length;i++){
@@ -2763,31 +2805,97 @@ if(!plan.length){
 }
 
   const currentWeek=getCurrentWeekNum();
+  /* La semana en curso sale del mosaico y se pinta arriba en grande. NO se
+     repite abajo: verla dos veces en la misma pantalla la devolvería a ser una
+     tarjeta más, que es justo lo que se quiere evitar. Por eso el mosaico ya no
+     tiene estado "Actual" — el único que quedaba dentro se ha ido arriba. */
+  const resto=plan.filter(w=>w.num!==currentWeek);
 
-  c.innerHTML='<div class="'+claseCascada()+'">'+plan.map((w,wi)=>{
+  c.innerHTML=tarjetaSemanaEnCurso(plan,sessions,currentWeek)
+    +(resto.length?'<div class="home-sec">El resto del plan</div>':'')
+    +'<div class="'+claseCascada()+'">'+resto.map((w,wi)=>{
     const done=w.days.filter(d=>sessions[d.s]).length;
     const total=w.days.length;
     const isComplete=total>0&&done===total;
-    const isCurrent=w.num===currentWeek;
     const pct=total?Math.round(done/total*100):0;
-    let cls='mos-card';
-    if(isComplete)cls+=' lista';
-    else if(isCurrent)cls+=' actual';
-    const color=isComplete?'var(--green)':isCurrent?'var(--accent)':'var(--muted)';
-    const fondo=isComplete?'rgba(45,122,79,0.14)':isCurrent?'rgba(var(--accent-rgb),0.14)':'rgba(127,127,127,0.12)';
+    const color=isComplete?'var(--green)':'var(--muted)';
+    const fondo=isComplete?'rgba(45,122,79,0.14)':'rgba(127,127,127,0.12)';
     // El título solo si aporta algo: etiquetaSemana ya evita "Semana 3 — Semana 3".
     const etiqueta=etiquetaSemana(w);
     const soloTitulo=etiqueta.includes(' — ')?etiqueta.split(' — ').slice(1).join(' — '):'';
-    return`<button class="${cls}" style="--i:${Math.min(wi,8)}" onclick="openWeekDetail(${w.num})">
-      <div class="mos-num">${isCurrent?ico('rayo')+' ':''}Semana ${w.num}</div>
+    return`<button class="mos-card${isComplete?' lista':''}" style="--i:${Math.min(wi,8)}" onclick="openWeekDetail(${w.num})">
+      <div class="mos-num">Semana ${w.num}</div>
       ${soloTitulo?`<div class="mos-tit">${escaparHTML(soloTitulo)}</div>`:''}
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${done}/${total}</span>
-        <span class="mos-badge" style="color:${color};background:${fondo};">${isComplete?'✓ Lista':isCurrent?'Actual':'Pendiente'}</span>
+        <span class="mos-badge" style="color:${color};background:${fondo};">${isComplete?'✓ Lista':'Pendiente'}</span>
       </div>
       <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     </button>`;
   }).join('')+'</div>';
+}
+
+/* La protagonista de Registrar: la semana en curso con el trato de
+   "Entrenamiento de hoy" (ver el bloque .hoy del CSS). Devuelve HTML porque
+   renderWeekButtons pinta toda la pantalla de una vez.
+   El botón entero lleva a la sesión que toca, no a la lista: en esta pestaña se
+   viene a registrar, y la lista de la semana está a un toque en el mosaico. */
+function tarjetaSemanaEnCurso(plan,sessions,num){
+  const w=plan.find(x=>x.num===num)||plan[plan.length-1];
+  const dias=w.days||[];
+  const total=dias.length;
+  const hechas=dias.filter(d=>sessions[d.s]).length;
+  const pendiente=dias.find(d=>!sessions[d.s]);
+  /* Ojo con el plan vacío: "todas las sesiones registradas" es CIERTO cuando no
+     hay ninguna (every sobre una lista vacía), y una rutina recién creada
+     saludaba con "lo has terminado entero". */
+  const totalPlan=plan.reduce((a,x)=>a+(x.days||[]).length,0);
+  const planEntero=totalPlan>0&&plan.every(x=>(x.days||[]).every(d=>sessions[d.s]));
+  const puntos=total?'<span class="sem-puntos">'+dias.map(d=>
+    `<span class="sem-punto${sessions[d.s]?' hecha':''}"></span>`).join('')+'</span>':'';
+
+  let tag,tit,meta,cta;
+  if(planEntero){
+    /* Con el plan entero hecho no hay semana que continuar. Se dice, y el
+       "+ Añadir semana" de debajo del mosaico es el siguiente paso natural. */
+    tag=ico('trofeo')+' Plan completado';
+    tit='Lo has terminado entero';
+    meta='Las '+totalPlan+' sesiones registradas. Añade una semana más abajo o activa otra rutina.';
+    cta='Ver la última semana →';
+  }else if(!total){
+    tag=ico('rayo')+' Semana en curso';
+    tit=escaparHTML(etiquetaSemana(w));
+    meta='Todavía no tiene sesiones.';
+    cta='Abrir la semana →';
+  }else if(!pendiente){
+    // Semana entera pero quedan sesiones sueltas en semanas anteriores.
+    tag=ico('rayo')+' Semana en curso';
+    tit=escaparHTML(etiquetaSemana(w));
+    meta='Completa · '+total+' de '+total+' sesiones';
+    cta='Ver la semana →';
+  }else{
+    const quedan=total-hechas;
+    tag=ico('rayo')+' Semana en curso';
+    tit=escaparHTML(etiquetaSemana(w));
+    meta=hechas+' de '+total+' sesiones · '+(quedan===1?'queda 1':'quedan '+quedan);
+    cta='Continuar: <span class="cta-txt">'+escaparHTML(pendiente.name)+'</span> →';
+  }
+
+  return`<button class="hoy" onclick="abrirDeSemana(${w.num},${pendiente?pendiente.s:'null'})">
+    <span class="hoy-tag">${tag}</span>
+    <span class="hoy-tit">${tit}</span>
+    <span class="hoy-meta">${meta}</span>
+    ${puntos}
+    <span class="hoy-cta">${cta}</span>
+  </button>`;
+}
+
+/* Abrir una sesión PASANDO por su semana: openWeekDetail fija curWeekNum, y sin
+   eso el "← Sesiones" de dentro volvería a la semana que se mirase por última
+   vez (el mismo fallo que se arregló en closeForm el 02/09). */
+function abrirDeSemana(num,s){
+  openWeekDetail(num);
+  if(s!=null) openSession(s);
 }
 
 function openWeekDetail(weekNum){
@@ -3369,6 +3477,40 @@ function pintarBorrarRegistro(){
     : '';
 }
 
+/* La protagonista de Resumen: la racha, con el mismo trato que
+   "Entrenamiento de hoy" en Inicio (ver el bloque .hoy del CSS). Era una de
+   seis cifras iguales de 24 px, y es lo único de esta pantalla que se mira a
+   diario. No es un botón: no lleva a ninguna parte.
+   Debajo, los últimos catorce días. "5 días" solo no distingue venir de un mes
+   constante de encadenar cinco tras dos semanas parado; el calendario sí. */
+function tarjetaRacha(){
+  const racha=calcStreak(), mejor=calcMaxStreak();
+  const dias=new Set(fechasEntrenadas());
+  const LETRAS=['D','L','M','X','J','V','S'];
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  let celdas='';
+  for(let i=13;i>=0;i--){
+    /* setDate y no restar 864e5: en el cambio de hora un día no dura 24 h y se
+       repetiría o se saltaría una casilla. */
+    const d=new Date(hoy); d.setDate(hoy.getDate()-i);
+    celdas+=`<span class="racha-dia${dias.has(d.toDateString())?' hecho':''}${i?'':' es-hoy'}">`+
+            `<i></i><span>${LETRAS[d.getDay()]}</span></span>`;
+  }
+  const meta=racha>0
+    ? (mejor>racha?'Tu mejor racha: '+mejor+' días':'Es tu mejor racha hasta ahora')
+    : (mejor?'Tu mejor racha fueron '+mejor+' días seguidos':'Registra una sesión y empieza una.');
+  return`<div class="hoy hoy-racha${racha?'':' vacio'}">
+    <span class="hoy-tag">Racha</span>
+    <span class="racha-fila">
+      ${ico('llama','racha-llama')}
+      <b class="racha-num">${racha}</b>
+      <span class="racha-dias">${racha===0?'Sin racha ahora mismo':racha===1?'día seguido':'días seguidos'}</span>
+    </span>
+    <span class="hoy-meta">${meta}</span>
+    <span class="racha-cal">${celdas}</span>
+  </div>`;
+}
+
 function renderResumen(){
 const act=getActive();
 const c2=document.getElementById('resumen-content');
@@ -3381,22 +3523,22 @@ const kcal=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.kcal||0),0);
 const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
   const c=document.getElementById('resumen-content');
   /* En violeta solo lo que ya has hecho; un 0 sale apagado. Con la rutina
-     recién empezada esto eran seis cifras de acento diciendo cero. */
+     recién empezada esto eran cifras de acento diciendo cero. */
   /* Sin icono en las etiquetas: a 11 px una llama de trazo no se lee, parece
-     una gota. La llama vive en la tarjeta de Inicio, que mide 18. Y así las
-     seis etiquetas son iguales, que era el otro motivo. */
+     una gota. La llama vive donde mide 26, en la tarjeta de la racha de aquí
+     arriba. Y así las cuatro etiquetas son iguales, que era el otro motivo. */
   const stat=(val,lbl,hay)=>
     `<div class="stat"><div class="stat-val${hay?'':' vacio'}">${val}</div>`+
     `<div class="stat-lbl">${lbl}</div></div>`;
-  const streak=calcStreak(), maxStreak=calcMaxStreak();
+  /* Racha y mejor racha ya no son dos celdas más de la rejilla: son la
+     protagonista de la pestaña y van arriba, en grande. */
   c.innerHTML=`
+    ${tarjetaRacha()}
     <div class="stat-grid">
       ${stat(done+'/'+totalSes,'Sesiones',done>0)}
       ${stat(pct+'%','Progreso',pct>0)}
       ${stat(kcal,'Kcal cardio',kcal>0)}
       ${stat(mins+'m','Tiempo cardio',mins>0)}
-      ${stat(streak,'Racha (días)',streak>0)}
-      ${stat(maxStreak,'Mejor racha',maxStreak>0)}
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     ${(()=>{
@@ -3572,6 +3714,11 @@ function showTab(id,el){
   document.getElementById('pane-'+id).classList.add('active');
   el.classList.add('active');
   if(id==='inicio')updateHome();
+  /* Registrar se repintaba solo al guardar o al volver de una semana, así que
+     al entrar en la pestaña podía enseñar cuentas viejas: sincronizar desde la
+     nube o borrar una sesión desde otro sitio no la tocaban. Se notaba poco con
+     el mosaico plano; con la semana en curso arriba en grande, cantaría. */
+  if(id==='log')buildSessionList();
   if(id==='resumen'){renderResumen();renderPhotos();}
   if(id==='medidas'){buildMedSel();renderMedidas();renderMedidasChart();}
   window.scrollTo(0,0);

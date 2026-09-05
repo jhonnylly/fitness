@@ -208,7 +208,73 @@ async function appLista(page, url){
     ok(corregida.visible && /guardada/i.test(corregida.texto),
        'y avisa con el mensaje propio de la app');
 
-    console.log('\n6. Sin cobertura: la app sigue abriendo');
+    console.log('\n6. Una protagonista por pantalla');
+    /* Registrar: la semana en curso, fuera del mosaico y con el trato de
+       "Entrenamiento de hoy". Se vuelve a la lista de semanas primero: la
+       sección anterior deja abierta una sesión. */
+    const prota = await page.evaluate(()=>{
+      closeForm(); closeWeekDetail();
+      showTab('log', document.getElementById('tab-log'));
+      const hero = document.querySelector('#week-buttons-container .hoy');
+      return {
+        hay: !!hero,
+        titulo: hero ? hero.querySelector('.hoy-tit').textContent : '',
+        cta: hero ? hero.querySelector('.hoy-cta').textContent.trim() : '',
+        curso: getCurrentWeekNum(),
+        mosaico: [...document.querySelectorAll('#week-buttons-container .mos-num')]
+                   .map(e=>e.textContent.trim()),
+        puntos: hero ? hero.querySelectorAll('.sem-punto').length : 0,
+        hechos: hero ? hero.querySelectorAll('.sem-punto.hecha').length : 0,
+        // Lo que dice el plan, para comparar con lo que se ve.
+        dias: (getActivePlan().find(w=>w.num===getCurrentWeekNum()).days||[]).length,
+        registradas: (getActivePlan().find(w=>w.num===getCurrentWeekNum()).days||[])
+                       .filter(d=>getActiveSessions()[d.s]).length,
+      };
+    });
+    ok(prota.hay, 'Registrar abre con la semana en curso en grande');
+    ok(prota.titulo.includes('Semana '+prota.curso), 'y es la semana en curso: '+prota.titulo);
+    ok(!prota.mosaico.includes('Semana '+prota.curso),
+       'que ya no se repite dentro del mosaico: '+prota.mosaico.join(', '));
+    ok(prota.puntos === prota.dias && prota.hechos === prota.registradas && prota.hechos > 0,
+       'una marca por sesión, encendidas las hechas ('+prota.hechos+'/'+prota.puntos+')');
+    ok(/Continuar/.test(prota.cta), 'y el botón nombra la sesión que toca: '+prota.cta);
+
+    /* Lleva a la sesión pendiente, pero PASANDO por su semana: si no fijara
+       curWeekNum, el "← Sesiones" de dentro volvería a otra. */
+    const salto = await page.evaluate(()=>{
+      document.querySelector('#week-buttons-container .hoy').click();
+      return {form: document.getElementById('session-form').style.display,
+              titulo: document.getElementById('form-title').textContent,
+              semana: curWeekNum};
+    });
+    ok(salto.form === 'block', 'al tocarla se abre la sesión pendiente: '+salto.titulo);
+    ok(salto.semana === prota.curso, 'y entra por su semana, no por la que se mirase antes');
+
+    // Resumen: la racha, que era una de seis cifras iguales de 24 px.
+    const resumen = await page.evaluate(()=>{
+      closeForm(); closeWeekDetail();
+      showTab('resumen', document.getElementById('tab-resumen'));
+      const r = document.querySelector('#resumen-content .hoy-racha');
+      return {hay: !!r,
+              num: r ? r.querySelector('.racha-num').textContent : '',
+              apagada: r ? r.classList.contains('vacio') : null,
+              celdas: r ? r.querySelectorAll('.racha-dia').length : 0,
+              hoy: r ? r.querySelectorAll('.racha-dia.es-hoy').length : 0,
+              hechos: r ? r.querySelectorAll('.racha-dia.hecho').length : 0,
+              cifras: [...document.querySelectorAll('#resumen-content .stat-lbl')]
+                        .map(e=>e.textContent)};
+    });
+    ok(resumen.hay, 'Resumen abre con la racha en grande');
+    ok(resumen.num === '1' && !resumen.apagada,
+       'encendida y contando el día de hoy, que es cuando se registró: '+resumen.num);
+    ok(resumen.celdas === 14 && resumen.hoy === 1,
+       'con los últimos 14 días y hoy marcado');
+    ok(resumen.hechos === 1, 'y solo el día entrenado encendido');
+    ok(!resumen.cifras.some(t=>/racha/i.test(t)),
+       'la racha ya no es una cifra más de la rejilla: '+resumen.cifras.join(', '));
+    ok(resumen.cifras.length === 4, 'que se queda en cuatro');
+
+    console.log('\n7. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });
     await esperar(2500);                                  // que termine de precargar
     await page.setOfflineMode(true);
@@ -242,7 +308,7 @@ async function appLista(page, url){
     ok(fuenteOffline, 'y las cifras siguen en su fuente, no en la del sistema');
     await page.setOfflineMode(false);
 
-    console.log('\n7. Nada ha reventado por el camino');
+    console.log('\n8. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
 
