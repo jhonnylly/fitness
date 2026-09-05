@@ -1,0 +1,15 @@
+{
+  "name": "fitness",
+  "private": true,
+  "description": "My Fitness Tracker — app de entrenamiento en un solo index.html",
+  "scripts": {
+    "test": "node test/storage.test.js",
+    "test:ui": "node test/ui.test.js",
+    "test:todo": "node test/storage.test.js && node test/ui.test.js",
+    "imagenes": "node tools/generar-imagenes.js"
+  },
+  "comentario": "Sin dependencias en tiempo de ejecución: la app es un index.html que se abre y ya. puppeteer-core solo hace falta para test:ui, y se instala suelto (npm install --no-save puppeteer-core) para no arrastrar 300 MB en el repo.",
+  "devDependencies": {
+    "puppeteer-core": "*"
+  }
+}

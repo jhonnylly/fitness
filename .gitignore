@@ -28,3 +28,7 @@ projects/**
 !projects/*/
 !projects/*/memory/
 !projects/*/memory/**
+
+# Las pruebas de interfaz usan puppeteer-core, que se instala aparte:
+#   npm install --no-save puppeteer-core
+node_modules/
