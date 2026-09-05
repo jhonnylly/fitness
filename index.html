@@ -443,6 +443,16 @@ textarea{resize:vertical;min-height:60px;}
    semana (duplicar, borrar) se fueron DENTRO de la semana: en una celda de
    ~170 px engordaban la tarjeta y se perdía justo lo que se venía a ganar. */
 .mos-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
+/* Entrada en cascada al abrir la pantalla. Dos cuidados:
+   - `backwards` y no `both`: con `both` el último fotograma (transform:none) se
+     queda aplicado y GANA a las reglas normales, así que se cargaría el
+     transform de la tarjeta arrastrada y el encogido al pulsar. Con backwards
+     solo manda antes de empezar, que es lo que hace falta para el retardo.
+   - Se pide con una clase en la rejilla, no siempre: tras soltar una tarjeta al
+     reordenar se repinta todo, y ver la cuadrícula entera reaparecer cada vez
+     que mueves algo cansa. */
+.mos-grid.escalonado .mos-card{animation:entrar .28s ease backwards;
+  animation-delay:calc(var(--i,0) * 35ms);}
 .mos-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:11px 12px;cursor:pointer;text-align:left;font-family:inherit;color:inherit;
   display:flex;flex-direction:column;gap:5px;min-height:92px;
@@ -1837,7 +1847,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 16:14';
+const APP_VERSION='2026-09-05 16:22';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2602,7 +2612,7 @@ if(!plan.length){
 
   const currentWeek=getCurrentWeekNum();
 
-  c.innerHTML='<div class="mos-grid">'+plan.map(w=>{
+  c.innerHTML='<div class="'+claseCascada()+'">'+plan.map((w,wi)=>{
     const done=w.days.filter(d=>sessions[d.s]).length;
     const total=w.days.length;
     const isComplete=total>0&&done===total;
@@ -2616,7 +2626,7 @@ if(!plan.length){
     // El título solo si aporta algo: etiquetaSemana ya evita "Semana 3 — Semana 3".
     const etiqueta=etiquetaSemana(w);
     const soloTitulo=etiqueta.includes(' — ')?etiqueta.split(' — ').slice(1).join(' — '):'';
-    return`<button class="${cls}" onclick="openWeekDetail(${w.num})">
+    return`<button class="${cls}" style="--i:${Math.min(wi,8)}" onclick="openWeekDetail(${w.num})">
       <div class="mos-num">${isCurrent?'⚡ ':''}Semana ${w.num}</div>
       ${soloTitulo?`<div class="mos-tit">${escaparHTML(soloTitulo)}</div>`:''}
       <div class="mos-pie">
@@ -2646,11 +2656,11 @@ function openWeekDetail(weekNum){
      Duplicar y borrar la sesión se fueron DENTRO de la sesión, por lo mismo que
      en las semanas: en una celda estrecha engordaban la tarjeta. */
   const c=document.getElementById('session-list');
-  c.innerHTML='<div class="mos-grid" id="ses-mosaico">'+week.days.map((d,di)=>{
+  c.innerHTML='<div class="'+claseCascada()+'" id="ses-mosaico">'+week.days.map((d,di)=>{
     const reg=sessions[d.s];
     const hecha=!!reg;
     const nEj=(d.ex||[]).length;
-    return`<button class="mos-card${hecha?' lista':''}" data-ei="${di}" onclick="sesToque(${d.s})">
+    return`<button class="mos-card${hecha?' lista':''}" data-ei="${di}" style="--i:${Math.min(di,8)}" onclick="sesToque(${d.s})">
       <div class="mos-num">${escaparHTML(d.name)}</div>
       <div class="mos-tit">${nEjercicios(nEj)}</div>
       <div class="mos-pie">
@@ -4450,9 +4460,9 @@ let curExIndex=null;
    subir/bajar desaparecen: se reordena arrastrando (mantener pulsado). */
 function renderExButtons(){
   const c=document.getElementById('ex-buttons-container');
-  c.innerHTML='<div class="mos-grid" id="ex-mosaico">'+curEx.map((ex,ei)=>{
+  c.innerHTML='<div class="'+claseCascada()+'" id="ex-mosaico">'+curEx.map((ex,ei)=>{
     const done=ex.sets.some(s=>s.kg!==''&&s.reps!=='');
-    return`<button class="mos-card${done?' lista':''}" data-ei="${ei}" onclick="exToque(${ei})">
+    return`<button class="mos-card${done?' lista':''}" data-ei="${ei}" style="--i:${Math.min(ei,8)}" onclick="exToque(${ei})">
       <div class="mos-num" style="font-size:13.5px;">${escaparHTML(ex.name||'Ejercicio sin nombre')}</div>
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${ex.sets.length} series</span>
@@ -4471,6 +4481,10 @@ function renderExButtons(){
    bandera y la limpia en el siguiente ciclo. La comparten los dos mosaicos
    reordenables: nunca hay dos arrastres a la vez. */
 let exArrastrando=false;
+/* Se pone mientras se repinta tras soltar una tarjeta: ese repintado no debe
+   volver a lanzar la cascada de entrada. */
+let sinEscalonar=false;
+const claseCascada=()=> sinEscalonar ? 'mos-grid' : 'mos-grid escalonado';
 function exToque(ei){
   if(exArrastrando)return;
   openExDetail(ei);
@@ -4504,7 +4518,9 @@ function montarArrastre(cont, alSoltar){
       if(hueco) hueco.remove();
       cont.classList.remove('reordenando');
       const movido=parseInt(arrastrado.dataset.ei);
+      sinEscalonar=true;
       alSoltar(orden);
+      sinEscalonar=false;
       /* Un destello en la que acaba de moverse: el cambio de sitio solo, en un
          mosaico de tarjetas iguales, pasa desapercibido.
          Hay que buscarla en el mosaico NUEVO: renderExButtons() acaba de
