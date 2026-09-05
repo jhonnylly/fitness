@@ -64,6 +64,12 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
    movía nada: lo de abajo del panel (el "Continuar" del onboarding) no había
    forma de alcanzarlo. Sin scroll detrás, el gesto va al panel. */
 body.capa-abierta{overflow:hidden;}
+/* Hay quien marca en su sistema que no quiere animaciones (mareos, migrañas).
+   Se respeta: la app sigue funcionando igual, sin movimiento. */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;}
+}
 /* Cabecera compacta desde el 04/09/2026. La anterior ocupaba 203 px —con las
    pestañas, 271: el 34 % de la pantalla antes de ver nada— y abría con
    "MY FITNESS TRACKER" en mayúsculas y a dos colores, que es prácticamente
@@ -102,7 +108,11 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 .tab svg{width:20px;height:20px;}
 .tab.active{color:var(--accent);border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
 .tab:active{transform:scale(0.95);}
-.pane{display:none;padding:12px;} .pane.active{display:block;}
+.pane{display:none;padding:12px;} .pane.active{display:block;animation:entrar .24s ease both;}
+/* Entrada suave al cambiar de pestaña o de vista. Antes el cambio era seco
+   —display none/block— y la app parecía dar saltos aunque fuera rápida. */
+@keyframes entrar{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.aparece{animation:entrar .24s ease both;}
 /* Modo entrenador. El selector solo existe para cuentas con role=trainer, y
    al pasar a "Mis clientes" se ocultan las pestañas y los paneles de
    entrenamiento en bloque, sin tocar showTab(): así el modo entreno vuelve
@@ -273,7 +283,12 @@ textarea{resize:vertical;min-height:60px;}
 .stat-val{font-size:24px;font-weight:800;color:var(--accent);}
 .stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
 .prog-bar{background:var(--border);border-radius:4px;height:8px;overflow:hidden;margin-bottom:12px;}
-.prog-fill{height:100%;background:var(--green);border-radius:4px;transition:width .4s;}
+/* La barra se llena al aparecer. Con scaleX y no con width: el ancho lo pone el
+   JS en línea, así que animarlo obligaría a tocar cada sitio que la pinta;
+   escalando desde la izquierda se llena sola dondequiera que esté. */
+.prog-fill{height:100%;background:var(--green);border-radius:4px;transition:width .4s;
+  transform-origin:left;animation:llenar .65s cubic-bezier(.2,.8,.2,1) both;}
+@keyframes llenar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
 .week-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin:0 2px;}
 .dot-done{background:var(--green);}
@@ -1822,7 +1837,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 16:05';
+const APP_VERSION='2026-09-05 16:14';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3578,7 +3593,13 @@ function updateHome(){
   if(anillo){
     const C=2*Math.PI*37;                       // r=37 en el viewBox de 88
     anillo.setAttribute('stroke-dasharray',C.toFixed(1));
-    anillo.setAttribute('stroke-dashoffset',(C*(1-pct/100)).toFixed(1));
+    /* Se vacía y se rellena en el siguiente fotograma, así se ve crecer cada vez
+       que entras en Inicio y no solo la primera. Sin el salto de fotograma el
+       navegador junta las dos escrituras y no hay transición que animar. */
+    anillo.setAttribute('stroke-dashoffset',C.toFixed(1));
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      anillo.setAttribute('stroke-dashoffset',(C*(1-pct/100)).toFixed(1));
+    }));
   }
 
   set('rt-entreno',prox?'Pendiente':(total?'Completado':'—'));

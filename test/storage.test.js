@@ -43,10 +43,13 @@ const document = {
 // Íd.: el arranque engancha un MutationObserver para saber cuándo hay una capa
 // abierta. Sin este apaño el arnés revienta al disparar DOMContentLoaded.
 class MutationObserver { constructor(){} observe(){} disconnect(){} }
+// Y updateHome() anima el anillo de progreso con requestAnimationFrame. Aquí no
+// hay fotogramas que esperar: se ejecuta y punto.
+const requestAnimationFrame = fn => fn();
 const disparar = ev => (listeners[ev] || []).forEach(fn => fn());
 
 const ctx = {
-  localStorage, document, console, MutationObserver,
+  localStorage, document, console, MutationObserver, requestAnimationFrame,
   window: { scrollTo(){} },
   setTimeout, clearTimeout, setInterval, clearInterval,
   navigator: { vibrate(){} },
