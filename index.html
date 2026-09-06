@@ -194,6 +194,29 @@ body.modo-clientes #pane-clientes{display:block;}
 /* Caja de la lista de invitaciones pendientes. La usaba también la ficha de
    cliente, que ahora es un mosaico. */
 .client-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;}
+/* ═══ Retos ═══
+   El aviso de Inicio es lo único de la pantalla con borde de acento: es una
+   propuesta que caduca y hay que contestarla, no una tarjeta más. Cuando ya se
+   participa se apaga y se queda como marcador. */
+.reto-aviso{background:var(--card);border:1px solid var(--accent);border-radius:var(--radius-sm);
+  padding:14px;margin-bottom:12px;}
+.reto-aviso.aceptado{border-color:var(--border);}
+.reto-tag{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);font-weight:700;}
+.reto-tit{font-size:16px;font-weight:800;margin-top:4px;}
+.reto-sub{font-size:12px;color:var(--muted);line-height:1.45;margin-top:4px;}
+.fila-reto{display:flex;align-items:center;gap:8px;}
+.fila-reto input{margin:0;}
+/* Una fila por participante. El puesto delante para que se lea como una
+   clasificación y no como una lista de nombres. */
+.reto-fila{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);}
+.reto-puesto{font-size:13px;font-weight:800;color:var(--muted);min-width:22px;}
+.reto-fila.yo .reto-puesto,.reto-fila.yo .reto-nombre{color:var(--accent);}
+.reto-nombre{font-size:13px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.reto-pct{font-size:13px;font-weight:800;min-width:42px;text-align:right;}
+.reto-fila .prog-bar{margin:6px 0 0;}
+.reto-ej{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:12.5px;padding:7px 0;border-top:1px solid var(--border);}
+.reto-ej.logrado{color:var(--green);font-weight:700;}
 /* Los clientes son un mosaico como las semanas y las sesiones: dos por fila en
    el móvil y tres en cuanto hay sitio (auto-fill, no dos fijas). Se reutiliza
    .mos-card entera para que las tres pantallas se lean igual.
@@ -323,7 +346,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -1111,6 +1134,10 @@ textarea{resize:vertical;min-height:60px;}
     </div>
   </div>
 
+  <!-- Reto del entrenador: invitación mientras no se ha contestado, y marcador
+       cuando ya se participa. Lo pinta pintarAvisoReto(). -->
+  <div id="home-reto" class="hidden"></div>
+
   <div class="home-sec">Tu resumen de hoy</div>
   <div class="resumen">
     <button class="rt" onclick="irAProximaSesion()">
@@ -1420,6 +1447,17 @@ textarea{resize:vertical;min-height:60px;}
   </div>
 </div>
 
+<!-- Ranking de un reto. Lo ven igual el cliente (desde el aviso de Inicio) y el
+     entrenador (desde su lista de retos): es la misma pantalla y los mismos
+     datos, que salen de /retos/{id}/participantes. -->
+<div id="reto-panel" class="routine-panel hidden">
+  <div class="routine-panel-header">
+    <h2 id="reto-panel-titulo">RETO</h2>
+    <button class="btn-sm" onclick="cerrarPanelReto()">✕ Cerrar</button>
+  </div>
+  <div style="padding:12px;flex:1;overflow-y:auto;" id="reto-panel-cuerpo"></div>
+</div>
+
 <!-- Celebración al registrar una sesión. Se rellena entera desde
      celebrarSesion(); aquí solo está el esqueleto. -->
 <div id="celebracion" class="hidden" role="dialog" aria-live="polite" onclick="cerrarCelebracion()">
@@ -1479,6 +1517,38 @@ textarea{resize:vertical;min-height:60px;}
     <button class="btn btn-primary" id="invitar-btn" onclick="crearInvitacion()">+ Crear enlace de invitación</button>
     <div id="invitar-msg"></div>
     <div id="invitaciones-lista" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
+  </div>
+
+  <!-- Retos. Van ANTES de la lista de clientes: es lo que mueve al grupo, y
+       lo que se viene a mirar cada semana. Lo pinta pintarMisRetos(). -->
+  <div class="card">
+    <div class="section-title">Retos</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
+      Propón una mejora y compite el grupo entero. Se mide sobre la marca previa
+      de cada uno, así que empuja igual al que empieza que al veterano.
+    </p>
+    <div id="retos-lista" style="margin-top:8px;">Cargando...</div>
+    <details id="reto-nuevo" style="margin-top:10px;">
+      <summary style="font-size:12px;color:var(--accent);font-weight:700;cursor:pointer;">+ Crear un reto</summary>
+      <div style="margin-top:10px;">
+        <label style="font-size:11px;color:var(--muted);">Cuánto hay que subir</label>
+        <div class="fila-reto">
+          <input type="text" inputmode="numeric" id="reto-pct" value="15" style="max-width:90px;">
+          <span style="font-size:13px;color:var(--muted);">% en cada ejercicio</span>
+        </div>
+        <div style="height:8px;"></div>
+        <label style="font-size:11px;color:var(--muted);">Cuántos días dura</label>
+        <div class="fila-reto">
+          <input type="text" inputmode="numeric" id="reto-dias" value="7" style="max-width:90px;">
+          <span style="font-size:13px;color:var(--muted);">días desde hoy</span>
+        </div>
+        <div style="height:8px;"></div>
+        <label style="font-size:11px;color:var(--muted);">Nombre (opcional)</label>
+        <input type="text" id="reto-titulo" placeholder="Reto de la semana">
+        <div id="reto-msg"></div>
+        <button class="btn btn-primary" id="reto-crear" onclick="crearReto()">Proponer el reto</button>
+      </div>
+    </details>
   </div>
 
   <div class="card">
@@ -2126,7 +2196,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 17:35';
+const APP_VERSION='2026-09-06 17:40';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3421,6 +3491,10 @@ feeling:curFeeling||null,
   borrarBorrador(curSession);
   ocultarAvisoBorrador();
   save();
+  /* El marcador del reto se recalcula con la sesión ya dentro. Vive en el
+     módulo (necesita Firestore): si no hay sesión iniciada, no existe y no
+     pasa nada. */
+  if(window.publicarProgresoReto) window.publicarProgresoReto();
   closeForm();
   /* Corregir una sesión ya registrada no se celebra: el aviso de siempre. */
   if(yaEstaba){ aviso('Sesión guardada ✓','bien'); return; }
@@ -8040,9 +8114,321 @@ async function volverALocal(){
   pintarEstadoSync();
 }
 
+/* ═══════════════════ Retos del entrenador ═══════════════════
+   El entrenador propone una mejora ("sube un 15%") y sus clientes la aceptan.
+   Quien acepta publica SU marcador en /retos/{id}/participantes/{uid}, y ahí
+   —y solo ahí— se ven unos a otros. Los datos de entrenamiento de cada uno
+   siguen siendo privados: lo que se comparte es un porcentaje, y solo si se
+   acepta.
+
+   El progreso lo calcula progresoReto() con lo que hay en el dispositivo, y se
+   publica al aceptar y al registrar cada sesión. */
+
+let retosUnsub = null;        // cliente: los retos de mi entrenador
+let miFilaUnsub = null;       // cliente: mi propio marcador
+let misRetosUnsub = null;     // entrenador: los retos que he puesto
+let participantesUnsub = null;// el marcador del reto que se está mirando
+
+let retoVigente = null;       // el reto en marcha de mi entrenador
+let miFilaReto = null;        // mi participación en él (null = no he aceptado)
+let misRetos = [];            // entrenador
+let retoEnPantalla = null;
+let participantes = [];
+
+const CLAVE_RETO_NO = 'jhon_reto_no_v1';   // "ahora no", por reto y dispositivo
+
+function retosOcultos(){
+  try{ return JSON.parse(localStorage.getItem(CLAVE_RETO_NO) || '[]'); }catch(e){ return []; }
+}
+function diasQueQuedan(reto){
+  return Math.max(0, Math.ceil(((reto.termina||0) - Date.now()) / 864e5));
+}
+function tituloReto(reto){
+  return reto.titulo || ('Sube un ' + reto.porcentaje + '% en cada ejercicio');
+}
+
+function cerrarVigilanciaRetos(){
+  [retosUnsub, miFilaUnsub, misRetosUnsub].forEach(u => { if(u) u(); });
+  retosUnsub = miFilaUnsub = misRetosUnsub = null;
+  retoVigente = null; miFilaReto = null; misRetos = [];
+  pintarAvisoReto();
+  pintarMisRetos();
+}
+
+/* ── Cliente ── */
+function vigilarRetos(){
+  if(retosUnsub){ retosUnsub(); retosUnsub = null; }
+  if(!meUid || !meData || !meData.trainerId){ retoVigente = null; pintarAvisoReto(); return; }
+  const q = query(collection(fdb,'retos'), where('trainerId','==', meData.trainerId));
+  retosUnsub = onSnapshot(q, qs => {
+    /* Solo el más reciente que siga vivo: dos retos a la vez en la pantalla de
+       Inicio serían ruido, y el entrenador siempre puede cerrar el anterior. */
+    const ahora = Date.now();
+    const vivos = qs.docs.map(d => ({id:d.id, ...d.data()}))
+      .filter(r => (r.termina||0) >= ahora)
+      .sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
+    retoVigente = vivos[0] || null;
+    vigilarMiFila();
+  }, err => {
+    // Sin reglas publicadas esto falla: no debe tumbar el resto de la app.
+    console.error('[retos] no se pudieron leer', err);
+    retoVigente = null; pintarAvisoReto();
+  });
+}
+
+function vigilarMiFila(){
+  if(miFilaUnsub){ miFilaUnsub(); miFilaUnsub = null; }
+  if(!retoVigente || !meUid){ miFilaReto = null; pintarAvisoReto(); return; }
+  miFilaUnsub = onSnapshot(doc(fdb,'retos',retoVigente.id,'participantes',meUid), snap => {
+    miFilaReto = snap.exists() ? snap.data() : null;
+    pintarAvisoReto();
+    if(miFilaReto) publicarProgresoReto();
+  }, err => {
+    console.error('[retos] no se pudo leer mi marcador', err);
+    miFilaReto = null; pintarAvisoReto();
+  });
+}
+
+/* Recalcula con lo que hay en el dispositivo y publica SOLO si cambia algo.
+   La guarda no es un ahorro: mi propia escritura vuelve por el onSnapshot de
+   arriba, y sin ella serían escrituras infinitas. */
+window.publicarProgresoReto = async function(){
+  if(!retoVigente || !miFilaReto || !meUid) return;
+  const p = progresoReto(getActive(), retoVigente);
+  if(miFilaReto.pct === p.pct && miFilaReto.hechos === p.hechos
+     && miFilaReto.total === p.total) return;
+  try{
+    await setDoc(doc(fdb,'retos',retoVigente.id,'participantes',meUid), {
+      nombre: (meData && meData.name) || DB.profileName || 'Alguien',
+      pct: p.pct, hechos: p.hechos, total: p.total,
+      completado: p.total > 0 && p.hechos === p.total,
+      actualizado: Date.now()
+    }, {merge:true});
+  }catch(e){ console.error('[retos] no se pudo publicar el progreso', e); }
+};
+
+window.aceptarReto = async function(){
+  if(!retoVigente || !meUid) return;
+  const p = progresoReto(getActive(), retoVigente);
+  try{
+    await setDoc(doc(fdb,'retos',retoVigente.id,'participantes',meUid), {
+      nombre: (meData && meData.name) || DB.profileName || 'Alguien',
+      pct: p.pct, hechos: p.hechos, total: p.total,
+      completado: p.total > 0 && p.hechos === p.total,
+      aceptadoEn: Date.now(), actualizado: Date.now()
+    });
+    aviso('Estás dentro del reto','bien');
+  }catch(e){
+    console.error('[retos] no se pudo aceptar', e);
+    aviso('No se pudo entrar en el reto','mal');
+  }
+};
+
+/* "Ahora no" se recuerda por reto y por dispositivo: no se escribe en la nube
+   porque no es una decisión que deba viajar ni que el entrenador tenga que ver
+   —no aceptar no es lo mismo que rechazar en público—. */
+window.ahoraNoReto = function(){
+  if(!retoVigente) return;
+  const lista = retosOcultos();
+  if(!lista.includes(retoVigente.id)) lista.push(retoVigente.id);
+  try{ localStorage.setItem(CLAVE_RETO_NO, JSON.stringify(lista)); }catch(e){}
+  pintarAvisoReto();
+};
+
+function pintarAvisoReto(){
+  const c = document.getElementById('home-reto');
+  if(!c) return;
+  const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId);
+  if(!retoVigente || !soyCliente){ c.classList.add('hidden'); c.innerHTML = ''; return; }
+  const dias = diasQueQuedan(retoVigente);
+  const quedan = dias === 0 ? 'último día' : dias === 1 ? 'queda 1 día' : 'quedan ' + dias + ' días';
+  const Quedan = quedan.charAt(0).toUpperCase() + quedan.slice(1);   // al empezar frase
+
+  if(!miFilaReto){
+    if(retosOcultos().includes(retoVigente.id)){ c.classList.add('hidden'); c.innerHTML=''; return; }
+    c.innerHTML = `<div class="reto-aviso">
+      <span class="reto-tag">Tu entrenador te propone un reto</span>
+      <div class="reto-tit">${escaparHTML(tituloReto(retoVigente))}</div>
+      <div class="reto-sub">Se mide sobre <b>tu propia marca anterior</b>, así que no compites
+        contra los kilos de nadie. ${Quedan}.<br>
+        Si aceptas, los demás participantes verán tu nombre y tu progreso.</div>
+      <div class="acciones-fila" style="margin-left:0;margin-top:10px;">
+        <button class="btn-sm" onclick="aceptarReto()">Acepto el reto</button>
+        <button class="btn-sm" onclick="ahoraNoReto()">Ahora no</button>
+      </div>
+    </div>`;
+  }else{
+    const pct = miFilaReto.pct || 0;
+    const detalle = (miFilaReto.total || 0) === 0
+      ? 'Aún no tienes marcas anteriores en los ejercicios de tu plan: en cuanto registres una sesión, empieza a contar.'
+      : `${miFilaReto.hechos} de ${miFilaReto.total} ejercicios · ${quedan}`;
+    c.innerHTML = `<div class="reto-aviso aceptado">
+      <span class="reto-tag">Reto en marcha</span>
+      <div class="reto-tit">${escaparHTML(tituloReto(retoVigente))}</div>
+      <div class="reto-sub">${detalle}</div>
+      <div class="prog-bar" style="margin-top:8px;"><div class="prog-fill" style="width:${pct}%"></div></div>
+      <div class="acciones-fila" style="margin-left:0;margin-top:10px;">
+        <button class="btn-sm" onclick="abrirPanelReto()">Ver a los demás →</button>
+      </div>
+    </div>`;
+  }
+  c.classList.remove('hidden');
+}
+
+/* ── El ranking, igual para los dos ── */
+window.abrirPanelReto = function(id){
+  const reto = id ? misRetos.find(r => r.id === id) : retoVigente;
+  if(!reto) return;
+  retoEnPantalla = reto;
+  document.getElementById('reto-panel-titulo').textContent = tituloReto(reto).toUpperCase();
+  document.getElementById('reto-panel-cuerpo').innerHTML =
+    '<div class="card"><p style="font-size:13px;color:var(--muted);">Cargando...</p></div>';
+  document.getElementById('reto-panel').classList.remove('hidden');
+  if(participantesUnsub){ participantesUnsub(); participantesUnsub = null; }
+  participantesUnsub = onSnapshot(collection(fdb,'retos',reto.id,'participantes'), qs => {
+    participantes = qs.docs.map(d => ({uid:d.id, ...d.data()}))
+      .sort((a,b) => (b.pct||0) - (a.pct||0) || (a.aceptadoEn||0) - (b.aceptadoEn||0));
+    pintarPanelReto();
+  }, err => {
+    document.getElementById('reto-panel-cuerpo').innerHTML =
+      '<div class="msg msg-err">No se pudo leer el ranking: ' + escaparHTML(err.message) + '</div>';
+  });
+};
+
+window.cerrarPanelReto = function(){
+  if(participantesUnsub){ participantesUnsub(); participantesUnsub = null; }
+  retoEnPantalla = null;
+  document.getElementById('reto-panel').classList.add('hidden');
+};
+
+function pintarPanelReto(){
+  const c = document.getElementById('reto-panel-cuerpo');
+  if(!c || !retoEnPantalla) return;
+  const dias = diasQueQuedan(retoEnPantalla);
+  const partes = [`<div class="card">
+    <div class="reto-sub" style="margin:0;">
+      Cada uno compite contra su propia marca anterior al reto.
+      ${dias === 0 ? 'Último día.' : 'Quedan ' + dias + ' día' + (dias===1?'':'s') + '.'}
+    </div></div>`];
+
+  if(!participantes.length){
+    partes.push(`<div class="card"><p style="font-size:13px;color:var(--muted);">
+      Todavía no ha aceptado nadie.</p></div>`);
+  }else{
+    partes.push('<div class="card">' + participantes.map((p,i) => {
+      const pct = p.pct || 0;
+      /* El puesto solo cuenta cuando hay algo que ordenar: con todos a cero, un
+         "1º" repartido al azar sería mentira. */
+      const puesto = pct > 0 ? (i+1) + 'º' : '·';
+      return `<div class="reto-fila${p.uid === meUid ? ' yo' : ''}" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="reto-puesto">${puesto}</span>
+          <span class="reto-nombre">${escaparHTML(p.nombre || 'Alguien')}${p.uid === meUid ? ' (tú)' : ''}</span>
+          <span class="reto-pct">${pct}%</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">
+          ${(p.total||0) ? p.hechos + ' de ' + p.total + ' ejercicios' : 'sin marcas previas todavía'}
+          ${p.completado ? ' · <b style="color:var(--green);">reto completado</b>' : ''}
+        </div>
+      </div>`;
+    }).join('') + '</div>');
+  }
+
+  /* Al cliente se le enseña además SU desglose: el ranking dice por dónde vas,
+     pero no qué te falta, que es lo accionable. */
+  const mio = progresoReto(getActive(), retoEnPantalla);
+  if(miFilaReto && mio.total){
+    partes.push('<div class="card"><div class="section-title">Lo tuyo, ejercicio a ejercicio</div>' +
+      mio.ejercicios.map(e => `<div class="reto-ej${e.logrado?' logrado':''}">
+        <span>${escaparHTML(e.nombre)}</span>
+        <span>${e.logrado ? '✓ ' + num(e.ahora) + ' kg'
+                          : num(e.antes) + ' → <b>' + num(e.objetivo) + '</b> kg'}</span>
+      </div>`).join('') + '</div>');
+  }
+  c.innerHTML = partes.join('');
+}
+
+/* ── Entrenador ── */
+function vigilarMisRetos(){
+  if(misRetosUnsub){ misRetosUnsub(); misRetosUnsub = null; }
+  if(!meUid || !meData || meData.role !== 'trainer'){ misRetos = []; pintarMisRetos(); return; }
+  const q = query(collection(fdb,'retos'), where('trainerId','==', meUid));
+  misRetosUnsub = onSnapshot(q, qs => {
+    misRetos = qs.docs.map(d => ({id:d.id, ...d.data()}))
+      .sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
+    pintarMisRetos();
+  }, err => {
+    console.error('[retos] no se pudieron leer los míos', err);
+    const c = document.getElementById('retos-lista');
+    if(c) c.innerHTML = '<div class="msg msg-err">No se pudieron leer los retos. ¿Están publicadas las reglas nuevas?</div>';
+  });
+}
+
+function pintarMisRetos(){
+  const c = document.getElementById('retos-lista');
+  if(!c) return;
+  if(!misRetos.length){ c.innerHTML = '<div style="font-size:12px;color:var(--muted);">Todavía no has propuesto ninguno.</div>'; return; }
+  const ahora = Date.now();
+  c.innerHTML = misRetos.map(r => {
+    const vivo = (r.termina||0) >= ahora;
+    const dias = diasQueQuedan(r);
+    return `<div class="week-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <span style="font-size:13px;font-weight:700;">${escaparHTML(tituloReto(r))}</span>
+        <span class="badge ${vivo?'badge-accent':''}">${vivo ? (dias===0?'último día':dias+'d') : 'cerrado'}</span>
+      </div>
+      <div class="acciones-fila" style="margin-left:0;">
+        <button class="btn-sm" data-id="${escaparHTML(r.id)}" onclick="abrirPanelReto(this.dataset.id)">Ver participantes</button>
+        ${vivo ? `<button class="btn-sm" data-id="${escaparHTML(r.id)}" onclick="cerrarRetoAhora(this.dataset.id)">Cerrar</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.crearReto = async function(){
+  const btn = document.getElementById('reto-crear');
+  const msg = document.getElementById('reto-msg');
+  const pct = parseInt(document.getElementById('reto-pct').value, 10);
+  const dias = parseInt(document.getElementById('reto-dias').value, 10);
+  msg.innerHTML = '';
+  if(!(pct > 0 && pct <= 100)){ msg.innerHTML = '<div class="msg msg-err">El porcentaje tiene que estar entre 1 y 100.</div>'; return; }
+  if(!(dias > 0 && dias <= 90)){ msg.innerHTML = '<div class="msg msg-err">Los días tienen que estar entre 1 y 90.</div>'; return; }
+  btn.disabled = true;
+  try{
+    const ahora = Date.now();
+    await addDoc(collection(fdb,'retos'), {
+      trainerId: meUid,
+      tipo: 'porcentaje',
+      porcentaje: pct,
+      titulo: (document.getElementById('reto-titulo').value || '').trim(),
+      /* Empieza AHORA y no a medianoche: lo levantado antes de proponerlo es la
+         marca a batir, no parte del reto. */
+      empieza: ahora,
+      termina: ahora + dias * 864e5,
+      creadoEn: ahora
+    });
+    document.getElementById('reto-titulo').value = '';
+    document.getElementById('reto-nuevo').open = false;
+    aviso('Reto propuesto','bien');
+  }catch(e){
+    console.error('[retos] no se pudo crear', e);
+    msg.innerHTML = '<div class="msg msg-err">No se pudo crear: ' + escaparHTML(e.code || e.message) +
+      '. Si pone permission-denied, faltan las reglas nuevas por publicar.</div>';
+  }finally{ btn.disabled = false; }
+};
+
+/* Cerrar en vez de borrar: el reto y su clasificación se quedan para poder
+   mirarlos después, y deja de salirle a nadie en Inicio. */
+window.cerrarRetoAhora = async function(id){
+  try{ await updateDoc(doc(fdb,'retos',id), { termina: Date.now() - 1 }); }
+  catch(e){ console.error('[retos] no se pudo cerrar', e); aviso('No se pudo cerrar el reto','mal'); }
+};
+
 onAuthStateChanged(auth, async (user) => {
   if(!user){
     meUid = null; meData = null;
+    cerrarVigilanciaRetos();
     pintarSesion(null);
     // Al cerrar sesión, volver a los datos de este dispositivo.
     if(STORAGE.backend.name !== 'local') await volverALocal();
@@ -8061,6 +8447,11 @@ onAuthStateChanged(auth, async (user) => {
     meData = null;
   }
   pintarSesion(user);
+  /* Los retos, tanto los que propongo como los que me proponen. Va antes de
+     cambiarANube() a propósito: no depende de la sincronización y así el aviso
+     de Inicio aparece sin esperar a que bajen las rutinas. */
+  vigilarRetos();
+  vigilarMisRetos();
   // Sin perfil todavía no se sincroniza: primero hay que completarlo.
   if(meData) await cambiarANube();
 });
