@@ -205,7 +205,35 @@ body.modo-clientes #pane-clientes{display:block;}
 .reto-aviso{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:14px;margin-bottom:12px;}
 .reto-aviso.pendiente{background:var(--accent);border:none;border-radius:18px;padding:18px;
-  color:#fff;box-shadow:0 8px 24px rgba(var(--accent-rgb),.30);}
+  color:#fff;box-shadow:none;}
+/* ── El reto sin contestar, ardiendo ──
+   Marco de llama: un degradado rojo-ámbar-amarillo que se desplaza sin parar,
+   más un resplandor cálido que respira. El truco es `background-size:300%` y
+   mover `background-position`: un solo elemento, sin canvas ni imágenes, y el
+   navegador lo anima en la GPU.
+
+   El INTERIOR se queda violeta a propósito. El naranja sobre negro es
+   exactamente la identidad de Basic-Fit —por eso esta app dejó ese color—; de
+   marco en una tarjeta que caduca funciona, de fondo volveríamos a parecernos
+   a ellos. Y por eso arde SOLO mientras hay que contestar: aceptado, se apaga. */
+.reto-llama{position:relative;border-radius:21px;padding:3px;margin-bottom:14px;
+  background:linear-gradient(100deg,#f59e0b,#ef4444,#fbbf24,#ff7a18,#ef4444,#f59e0b);
+  background-size:300% 100%;
+  animation:llamear 3.5s linear infinite, brasa 2.4s ease-in-out infinite;}
+.reto-llama .reto-aviso.pendiente{margin-bottom:0;border-radius:18px;}
+@keyframes llamear{ to{ background-position:300% 0; } }
+/* El resplandor va en la sombra y no en un ::before con blur: un pseudoelemento
+   detrás se pierde en cuanto un ancestro crea contexto de apilamiento, y .pane
+   crea uno mientras dura su animación de entrada. */
+@keyframes brasa{
+  0%,100%{ box-shadow:0 0 18px rgba(239,68,68,.30), 0 6px 26px rgba(245,158,11,.20); }
+  50%    { box-shadow:0 0 30px rgba(239,68,68,.48), 0 6px 34px rgba(245,158,11,.32); }
+}
+/* Quien pide menos movimiento se queda con el marco de fuego quieto: la tarjeta
+   sigue destacando, pero no se mueve nada. Misma regla que el confeti. */
+@media (prefers-reduced-motion:reduce){
+  .reto-llama{animation:none;box-shadow:0 0 18px rgba(239,68,68,.28);}
+}
 .reto-tag{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);font-weight:700;}
 .reto-tit{font-size:16px;font-weight:800;margin-top:4px;}
 .reto-sub{font-size:12px;color:var(--muted);line-height:1.45;margin-top:4px;}
@@ -2179,7 +2207,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 18:05';
+const APP_VERSION='2026-09-06 18:15';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -8213,7 +8241,7 @@ function pintarAvisoReto(){
 
   if(!miFilaReto){
     if(retosOcultos().includes(retoVigente.id)){ c.classList.add('hidden'); c.innerHTML=''; return; }
-    c.innerHTML = `<div class="reto-aviso pendiente">
+    c.innerHTML = `<div class="reto-llama"><div class="reto-aviso pendiente">
       <span class="reto-tag">Tu entrenador te propone un reto</span>
       <div class="reto-tit">${escaparHTML(tituloReto(retoVigente))}</div>
       <div class="reto-sub">No tienes que conseguirlos todos: gana quien más
@@ -8224,7 +8252,7 @@ function pintarAvisoReto(){
         <button class="btn-sm" onclick="aceptarReto()">Acepto el reto</button>
         <button class="btn-sm secundario" onclick="ahoraNoReto()">Ahora no</button>
       </div>
-    </div>`;
+    </div></div>`;
   }else{
     const pct = miFilaReto.pct || 0;
     const detalle = (miFilaReto.total || 0) === 0
