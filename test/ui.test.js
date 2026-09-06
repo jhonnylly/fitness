@@ -413,36 +413,42 @@ async function appLista(page, url){
     ok(visor.pieVuelve, 'pero al abrir la tuya el botón de cambiarla vuelve');
     ok(visor.inicialesNoPulsables, 'quien no tiene foto no tiene nada que ampliar');
 
-    /* En la LISTA la foto no se amplía: ahí toda la tarjeta abre la ficha del
-       cliente, y dos destinos en el mismo sitio se pelean. El guardia del toque
-       tiene que dejar pasar la tarjeta e ignorar los botones de dentro. */
+    /* En el MOSAICO la foto no se amplía: ahí la celda entera abre la ficha, y
+       dos destinos en el mismo sitio se pelean. La celda es un <button> sin
+       botones dentro, así que un toque en cualquier parte vale. */
     const tarjeta = await page.evaluate(()=>{
       const px='data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
       const enLista = avatarPersona(px,'Ana Pérez',{ampliable:false});
       const host=document.createElement('div');
-      host.innerHTML=`<div class="client-item" data-uid="u1" data-nombre="Ana Pérez" data-activa="r1"
-          onclick="toqueTarjetaCliente(this,event)">
-          <div class="fila-cliente">${enLista}<div class="client-name">Ana Pérez</div></div>
-          <button class="btn-sm" id="prueba-asignar">+ Asignar rutina</button>
-        </div>`;
+      host.innerHTML=`<div class="mos-grid clientes"><button type="button" class="mos-card cliente-card"
+          data-uid="u1" data-nombre="Ana Pérez" data-activa="r1"
+          onclick="verDetalleCliente(this.dataset.uid,this.dataset.nombre,this.dataset.activa)">
+          ${enLista}
+          <div class="cliente-card-nombre">Ana Pérez</div>
+          <div class="cliente-card-meta" id="cliente-prog-u1">Definición</div>
+        </button></div>`;
       document.body.appendChild(host);
       const llamadas=[];
       const original=window.verDetalleCliente;
       window.verDetalleCliente=(...a)=>llamadas.push(a);
-      host.querySelector('.fila-cliente').click();      // tocar la fila: abre
-      const trasFila=llamadas.length;
-      host.querySelector('#prueba-asignar').click();    // un botón: no abre
-      const trasBoton=llamadas.length;
+      host.querySelector('.cliente-card-nombre').click();   // tocar donde sea: abre
+      const trasNombre=llamadas.length;
       window.verDetalleCliente=original;
+      const celda=host.querySelector('.cliente-card');
+      const r={sinBoton: !/<button/.test(enLista), trasNombre, args: llamadas[0]||[],
+               sinBotonesDentro: celda.querySelectorAll('button').length === 0,
+               columnas: getComputedStyle(host.querySelector('.mos-grid'))
+                           .gridTemplateColumns.split(' ').length};
       host.remove();
-      return {sinBoton: !/<button/.test(enLista), trasFila, trasBoton,
-              args: llamadas[0]||[]};
+      return r;
     });
-    ok(tarjeta.sinBoton, 'en la lista la miniatura ya no es un botón que amplía');
-    ok(tarjeta.trasFila === 1, 'tocar la tarjeta abre la ficha del cliente');
+    ok(tarjeta.sinBoton, 'en el mosaico la miniatura ya no es un botón que amplía');
+    ok(tarjeta.trasNombre === 1, 'tocar la celda abre la ficha del cliente');
     ok(tarjeta.args[0] === 'u1' && tarjeta.args[1] === 'Ana Pérez' && tarjeta.args[2] === 'r1',
        'con su uid, su nombre y su rutina activa');
-    ok(tarjeta.trasBoton === 1, 'y pulsar un botón de dentro NO la abre');
+    ok(tarjeta.sinBotonesDentro,
+       'y no lleva botones dentro: asignar y desvincular se fueron a la ficha');
+    ok(tarjeta.columnas >= 2, 'el mosaico entra a dos por fila en 390 px: '+tarjeta.columnas);
 
     console.log('\n11. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });
