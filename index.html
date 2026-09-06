@@ -2207,7 +2207,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 18:30';
+const APP_VERSION='2026-09-06 18:45';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4165,6 +4165,11 @@ function ejerciciosDeRutina(r){
   return vistos;
 }
 
+/* Los bordes del día de una fecha cualquiera. Los retos comparan contra fechas
+   de sesión, que no llevan hora. */
+function inicioDelDia(ms){ const d=new Date(ms); d.setHours(0,0,0,0); return d.getTime(); }
+function finDelDia(ms){ const d=new Date(ms); d.setHours(23,59,59,999); return d.getTime(); }
+
 /* ═══════════ Retos del entrenador ═══════════
    Un reto de "sube un X %" NO se mide en kilos absolutos: se mide contra la
    marca anterior de cada uno. Así el ranking compara mejoras y no fuerza bruta,
@@ -4182,8 +4187,15 @@ function progresoReto(r, reto){
   const vacio = {total:0, hechos:0, pct:0, ejercicios:[]};
   if(!r || !reto || !reto.porcentaje) return vacio;
   const factor = 1 + (+reto.porcentaje)/100;
-  const desde = +reto.empieza || 0;
-  const hasta = +reto.termina || Infinity;
+  /* La ventana se mide en DÍAS COMPLETOS, no en instantes. Las sesiones guardan
+     solo el día ("6/9/2026"), sin hora, así que fechaAMs las coloca a
+     medianoche; el reto, en cambio, empieza a la hora exacta en que se creó.
+     Comparando a pelo, TODO lo registrado el día que nace el reto caía en
+     "antes": no sumaba y encima subía la marca a batir, así que cuanto más peso
+     metías, más lejos quedaba el objetivo. Lo encontró Jhon usándolo, con un
+     0 de 23 que no bajaba. */
+  const desde = inicioDelDia(+reto.empieza || 0);
+  const hasta = reto.termina ? finDelDia(+reto.termina) : Infinity;
 
   /* Un solo recorrido de las sesiones para sacar las dos marcas de cada
      ejercicio: hacerlo ejercicio por ejercicio serían, con 48 sesiones y 12

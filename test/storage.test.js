@@ -544,6 +544,30 @@ const ok = (cond, msg) => {
   ok(app.progresoReto(null, RETO).pct === 0 && app.progresoReto(conReto, null).pct === 0,
      'sin rutina o sin reto devuelve cero, no un error');
 
+  /* EL FALLO QUE ENCONTRÓ JHON USÁNDOLO: el reto se crea a una hora concreta
+     (17:35) y las sesiones solo guardan el día, o sea medianoche. Comparando a
+     pelo, lo registrado ESE mismo día caía en "antes": no sumaba y encima subía
+     la marca a batir, así que cuanto más peso metía, más lejos quedaba. La
+     ventana va por días completos. */
+  const hoy = new Date(), ayer = new Date(Date.now() - 864e5);
+  const dia = d => d.toLocaleDateString('es-ES');
+  const creadoATarde = new Date(hoy); creadoATarde.setHours(17,35,0,0);
+  const retoDeHoy = { porcentaje:10, empieza: creadoATarde.getTime(),
+                      termina: creadoATarde.getTime() + 7*864e5 };
+  const mismoDia = {
+    plan: [{num:1, days:[{s:1, ex:[['Press banca','4×10']]}]}],
+    sessions: {
+      1: {date: dia(ayer), exercises:[{name:'Press banca', sets:[{kg:'60'}]}]},
+      2: {date: dia(hoy),  exercises:[{name:'Press banca', sets:[{kg:'66'}]}]},
+    },
+  };
+  const ph = app.progresoReto(mismoDia, retoDeHoy);
+  ok(ph.total === 1, 'la sesión de ayer sigue siendo la marca previa');
+  ok(ph.ejercicios[0].antes === 60,
+     'y la de HOY no la infla: la marca a batir siguen siendo 60, no 66');
+  ok(ph.hechos === 1 && ph.pct === 100,
+     'lo registrado el día en que nació el reto SÍ cuenta (66 sobre 60 pedidos)');
+
   console.log('\n15c. los kilos que se precargan al abrir una sesión');
   /* El nombre lo escribe una persona cada vez: la precarga tiene que casar los
      mismos ejercicios escritos distinto, igual que hace la gráfica. */
