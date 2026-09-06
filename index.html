@@ -2126,7 +2126,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 15:35';
+const APP_VERSION='2026-09-06 17:35';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4025,6 +4025,79 @@ function serieDeCargas(r, nombreEjercicio){
     puntos.push({ s, kg: max, rir: isNaN(rir) ? null : rir, fecha: ses.date || '' });
   }
   return puntos;
+}
+
+/* Los ejercicios distintos que tiene un plan, en orden de aparición. Vivía en
+   el módulo (la usa el selector de la ficha del cliente); baja al script
+   clásico porque la necesita también el cálculo de los retos, y aquí se puede
+   probar. El módulo la sigue alcanzando como global. */
+function ejerciciosDeRutina(r){
+  const vistos = [];
+  for(const sem of ((r && r.plan) || [])){
+    for(const dia of (sem.days || [])){
+      for(const ex of (dia.ex || [])){
+        const nombre = Array.isArray(ex) ? ex[0] : (ex && ex.name);
+        if(nombre && !vistos.includes(nombre)) vistos.push(nombre);
+      }
+    }
+  }
+  return vistos;
+}
+
+/* ═══════════ Retos del entrenador ═══════════
+   Un reto de "sube un X %" NO se mide en kilos absolutos: se mide contra la
+   marca anterior de cada uno. Así el ranking compara mejoras y no fuerza bruta,
+   y quien empieza compite de tú a tú con quien lleva años. Es justo lo que hace
+   que el reto enganche a todos y no solo al más fuerte de la lista.
+
+   Por cada ejercicio del plan con marca ANTERIOR al reto se mira el mejor peso
+   levantado DURANTE el reto. Los ejercicios sin marca previa no cuentan: no se
+   puede mejorar lo que no existe. (Y hay que decirlo en pantalla, o un cliente
+   nuevo creería que el reto está roto.)
+
+   Pura: no toca DB, ni la red, ni el DOM. Es la pieza que decide el marcador de
+   todos, así que tiene que poder probarse de verdad. */
+function progresoReto(r, reto){
+  const vacio = {total:0, hechos:0, pct:0, ejercicios:[]};
+  if(!r || !reto || !reto.porcentaje) return vacio;
+  const factor = 1 + (+reto.porcentaje)/100;
+  const desde = +reto.empieza || 0;
+  const hasta = +reto.termina || Infinity;
+
+  /* Un solo recorrido de las sesiones para sacar las dos marcas de cada
+     ejercicio: hacerlo ejercicio por ejercicio serían, con 48 sesiones y 12
+     ejercicios, 576 pasadas para lo mismo. */
+  const antes = {}, durante = {};
+  for(const ses of Object.values((r.sessions) || {})){
+    const ms = fechaAMs(ses.date);
+    if(ms == null) continue;
+    const bloque = ms < desde ? antes : (ms <= hasta ? durante : null);
+    if(!bloque) continue;                       // posterior al reto: no cuenta
+    for(const ex of (ses.exercises || [])){
+      const clave = claveEjercicioLaxa(ex.name);
+      if(!clave) continue;
+      for(const set of (ex.sets || [])){
+        const kg = parseFloat(set.kg);
+        if(isNaN(kg)) continue;
+        if(bloque[clave] == null || kg > bloque[clave]) bloque[clave] = kg;
+      }
+    }
+  }
+
+  const ejercicios = [];
+  for(const nombre of ejerciciosDeRutina(r)){
+    const clave = claveEjercicioLaxa(nombre);
+    const marca = clave ? antes[clave] : null;
+    if(marca == null) continue;                 // sin marca previa, fuera
+    const objetivo = Math.round(marca * factor * 100) / 100;
+    const mejor = (clave && durante[clave] != null) ? durante[clave] : null;
+    // El margen de 0,001 es por la coma flotante: 60 * 1.15 = 68.99999...
+    ejercicios.push({nombre, antes: marca, objetivo, ahora: mejor,
+                     logrado: mejor != null && mejor >= objetivo - 0.001});
+  }
+  const hechos = ejercicios.filter(e => e.logrado).length;
+  return {total: ejercicios.length, hechos, ejercicios,
+          pct: ejercicios.length ? Math.round(hechos/ejercicios.length*100) : 0};
 }
 
 /* Las imágenes son ficheros sueltos en img/ejercicios/ y la lista de las que
@@ -7331,19 +7404,6 @@ window.verEjercicioDetalle = function(nombre){ detalle.ejercicio = nombre || nul
 
 /* Todos los ejercicios que aparecen en el plan, en orden y sin repetir: son
    los que pueden tener gráfica de cargas. */
-function ejerciciosDeRutina(r){
-  const vistos = [];
-  for(const sem of (r.plan || [])){
-    for(const dia of (sem.days || [])){
-      for(const ex of (dia.ex || [])){
-        const nombre = Array.isArray(ex) ? ex[0] : (ex && ex.name);
-        if(nombre && !vistos.includes(nombre)) vistos.push(nombre);
-      }
-    }
-  }
-  return vistos;
-}
-
 /* Serie de carga máxima por sesión para un ejercicio. Se toma el kg más alto
    de la sesión, no el promedio: es lo que enseña la progresión. */
 function pintarDetalle(){

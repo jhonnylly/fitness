@@ -78,6 +78,7 @@ const puente = `
   migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
   repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
   claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas, getPrevKgs,
+  ejerciciosDeRutina, progresoReto,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -500,6 +501,48 @@ const ok = (cond, msg) => {
   ok(sr[2].rir === 1, 'y se lee aunque el formulario lo guarde como texto');
   ok(app.serieDeCargas(conCargas, 'Curl bíceps con barra').every(p => p.rir === null),
      'sin casilla de RIR, los puntos siguen saliendo igual que antes');
+
+  console.log('\n15d. el progreso en un reto de "sube un %"');
+  /* La regla: cada ejercicio contra SU marca anterior al reto. Con 15%, quien
+     movía 20 kg necesita 23 y quien movía 100 necesita 115: los dos avanzan
+     igual en el marcador. */
+  const RETO = { porcentaje: 15,
+                 empieza: new Date(2026,8,1).getTime(),      // 1/9/2026
+                 termina: new Date(2026,8,7,23,59).getTime() };
+  const conReto = {
+    plan: [{num:1, days:[{s:1, ex:[['Press banca','4×10'], ['Sentadilla','4×8'],
+                                   ['Curl bíceps con barra','3×12'], ['Dominadas','3×8']]}]}],
+    sessions: {
+      // Antes del reto: las marcas de referencia.
+      1: {date:'25/8/2026', exercises:[
+            {name:'Press banca', sets:[{kg:'60'},{kg:'62.5'}]},          // marca 62,5 -> pide 71,88
+            {name:'Sentadilla',  sets:[{kg:'100'}]},                     // pide 115
+            {name:'Curl bíceps barra', sets:[{kg:'20'}]}]},              // escrito distinto: cuenta igual
+      // Durante el reto.
+      2: {date:'2/9/2026', exercises:[
+            {name:'Press banca', sets:[{kg:'72.5'}]},                    // ✔ pasa de 71,88
+            {name:'Sentadilla',  sets:[{kg:'110'}]}]},                   // ✘ le faltan 5
+      3: {date:'5/9/2026', exercises:[
+            {name:'Curl bíceps con barra', sets:[{kg:'23'}]}]},          // ✔ justo el 15%
+      // Después del reto: no puede contar, o el marcador nunca cerraría.
+      4: {date:'20/9/2026', exercises:[{name:'Sentadilla', sets:[{kg:'130'}]}]},
+    },
+  };
+  const pr = app.progresoReto(conReto, RETO);
+  ok(pr.total === 3, 'solo entran los ejercicios con marca previa: las dominadas no (total '+pr.total+')');
+  ok(pr.hechos === 2 && pr.pct === 67, '2 de 3 conseguidos = 67% ('+pr.hechos+'/'+pr.total+' = '+pr.pct+'%)');
+  const porNombre = Object.fromEntries(pr.ejercicios.map(e => [e.nombre, e]));
+  ok(porNombre['Press banca'].logrado, 'el press banca sube de 62,5 a 72,5 y pasa del 15%');
+  ok(!porNombre['Sentadilla'].logrado, 'la sentadilla se queda en 110 con 115 pedidos');
+  ok(porNombre['Sentadilla'].objetivo === 115, 'y el objetivo se dice en kilos, no en porcentaje: '+porNombre['Sentadilla'].objetivo);
+  ok(porNombre['Curl bíceps con barra'].logrado,
+     'el curl cuenta aunque se escribiera distinto antes y durante (23 sobre 20)');
+  ok(porNombre['Sentadilla'].ahora === 110,
+     'lo levantado DESPUÉS del reto no cuenta: sigue marcando 110, no 130');
+  ok(app.progresoReto(conReto, {porcentaje:15, empieza:0, termina:0}).total === 0,
+     'un reto sin nada por delante no da ejercicios (y no revienta)');
+  ok(app.progresoReto(null, RETO).pct === 0 && app.progresoReto(conReto, null).pct === 0,
+     'sin rutina o sin reto devuelve cero, no un error');
 
   console.log('\n15c. los kilos que se precargan al abrir una sesión');
   /* El nombre lo escribe una persona cada vez: la precarga tiene que casar los

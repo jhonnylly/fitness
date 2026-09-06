@@ -50,6 +50,41 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.trainerId == request.auth.uid;
     }
 
+    // ═══════════ Retos del entrenador ═══════════
+    // Un reto lo crea un entrenador y lo ven él y SUS clientes. El marcador de
+    // cada participante vive en una subcolección propia: así el ranking se
+    // comparte SIN abrir los datos de entrenamiento de nadie. Un cliente sigue
+    // sin poder leer las rutinas, las medidas ni las fotos de otro; lo único
+    // que se publica es el número del reto, y solo si acepta participar.
+    function miEntrenador() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.trainerId;
+    }
+    function coachDelReto(retoId) {
+      return get(/databases/$(database)/documents/retos/$(retoId)).data.trainerId;
+    }
+
+    match /retos/{retoId} {
+      // El cliente los pide con where('trainerId','==', su entrenador), así que
+      // cada documento que llega cumple la condición. Pedirlos todos falla.
+      allow read: if isSignedIn()
+                  && (resource.data.trainerId == request.auth.uid
+                      || resource.data.trainerId == miEntrenador());
+      allow create: if isSignedIn()
+                    && request.resource.data.trainerId == request.auth.uid;
+      // Cerrar o borrar un reto es cosa de quien lo puso.
+      allow update, delete: if isSignedIn() && resource.data.trainerId == request.auth.uid;
+
+      match /participantes/{uid} {
+        allow read: if isSignedIn()
+                    && (coachDelReto(retoId) == request.auth.uid
+                        || coachDelReto(retoId) == miEntrenador());
+        // Cada uno escribe SOLO su propia fila, y solo en retos de su
+        // entrenador: nadie puede apuntarse al reto de otro gimnasio ni
+        // tocarle el marcador a un compañero.
+        allow write: if isOwner(uid) && coachDelReto(retoId) == miEntrenador();
+      }
+    }
+
     match /users/{uid} {
       // isTrainerProfile: cualquier usuario autenticado puede leer un perfil
       // si su rol es "trainer" (necesario para que el invitado vea quién le
