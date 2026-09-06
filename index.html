@@ -70,7 +70,7 @@
 /* Dónde se usan: las cifras que se leen como cifra, no cualquier número suelto
    dentro de una frase. Siempre con la del sistema detrás, que es la que pinta
    las letras que las acompañan. */
-.stat-val,.duo-val,.rt-val,.hp-centro b,.timer-secs,.timer-label,.mos-num,.racha-num{
+.stat-val,.duo-val,.hp-centro b,.timer-secs,.timer-label,.mos-num,.racha-num{
   font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -195,15 +195,31 @@ body.modo-clientes #pane-clientes{display:block;}
    cliente, que ahora es un mosaico. */
 .client-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;}
 /* ═══ Retos ═══
-   El aviso de Inicio es lo único de la pantalla con borde de acento: es una
-   propuesta que caduca y hay que contestarla, no una tarjeta más. Cuando ya se
-   participa se apaga y se queda como marcador. */
-.reto-aviso{background:var(--card);border:1px solid var(--accent);border-radius:var(--radius-sm);
+   Dos estados y a propósito muy distintos:
+   - SIN CONTESTAR manda en la pantalla: violeta lleno y texto en blanco. Es lo
+     único de toda la app pintado así, porque es una propuesta que caduca y que
+     hay que contestar. Ocupa el sitio que dejó "Tu resumen de hoy".
+   - ACEPTADO se calma y vuelve a ser una tarjeta normal con su marcador: ya no
+     hay nada que decidir, y así no le pelea el sitio a "Entrenamiento de hoy",
+     que es la protagonista fija de Inicio. Una por pantalla, como en el resto. */
+.reto-aviso{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:14px;margin-bottom:12px;}
-.reto-aviso.aceptado{border-color:var(--border);}
+.reto-aviso.pendiente{background:var(--accent);border:none;border-radius:18px;padding:18px;
+  color:#fff;box-shadow:0 8px 24px rgba(var(--accent-rgb),.30);}
 .reto-tag{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);font-weight:700;}
 .reto-tit{font-size:16px;font-weight:800;margin-top:4px;}
 .reto-sub{font-size:12px;color:var(--muted);line-height:1.45;margin-top:4px;}
+/* Sobre violeta, el acento no se ve: todo pasa a blanco con distinta fuerza. */
+.reto-aviso.pendiente .reto-tag{color:rgba(255,255,255,.78);}
+.reto-aviso.pendiente .reto-tit{font-size:21px;line-height:1.2;margin-top:6px;}
+.reto-aviso.pendiente .reto-sub{color:rgba(255,255,255,.88);font-size:12.5px;}
+/* Aceptar es blanco lleno; "ahora no", solo contorno: la decisión que se espera
+   se ve a un metro, la otra está pero no compite. */
+.reto-aviso.pendiente .btn-sm{background:#fff;border-color:#fff;color:var(--accent);font-weight:800;}
+.reto-aviso.pendiente .btn-sm.secundario{background:transparent;border-color:rgba(255,255,255,.55);color:#fff;}
+/* La cifra del marcador, en la fuente de las cifras como el resto de la app. */
+.reto-marcador{font-size:26px;font-weight:800;color:var(--accent);line-height:1;
+  font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 .fila-reto{display:flex;align-items:center;gap:8px;}
 .fila-reto input{margin:0;}
 /* Una fila por participante. El puesto delante para que se lea como una
@@ -473,23 +489,10 @@ textarea{resize:vertical;min-height:60px;}
   font-weight:700;margin:0 0 8px 2px;}
 /* 4 en fila: son de un vistazo, no tarjetas para leer. Si no caben, scroll
    horizontal antes que apretarlas hasta que no se lean. */
-.resumen{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;}
-.rt{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 6px;
-  text-align:center;cursor:pointer;font-family:inherit;transition:transform .15s ease;}
-.rt:active{transform:scale(.95);}
-.rt-ico{width:34px;height:34px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;
-  justify-content:center;font-size:16px;background:rgba(var(--accent-rgb),.15);color:var(--accent);}
-.rt-ico.cardio{background:rgba(45,122,79,.15);color:var(--green);}
-.rt-ico.medidas{background:rgba(59,130,246,.15);color:#3b82f6;}
-.rt-nom{font-size:10px;color:var(--muted);font-weight:600;}
-.rt-val{font-size:11px;font-weight:800;margin-top:2px;line-height:1.3;overflow-wrap:anywhere;}
-/* Apagado mientras no hay dato. Recién estrenada la app, "Tu resumen de hoy"
-   eran cuatro círculos de color diciendo Pendiente / Sin racha / Sin cardio /
-   Sin datos: el acento gastado en la nada. Apagados, el color pasa a significar
-   logro y la fila cuenta el progreso sola. El icono y la cifra se apagan
-   JUNTOS, por eso la clase va en la tarjeta y no en cada trozo. */
-.rt.vacio .rt-ico{background:rgba(127,127,127,.12);color:var(--muted);}
-.rt.vacio .rt-val{color:var(--muted);font-weight:600;}
+/* Aquí estaba el CSS de "Tu resumen de hoy" (.resumen y .rt*): cuatro tarjetas
+   que repetían lo de al lado. Se retiró la fila entera el 06/09 para dejarle el
+   sitio al reto del entrenador; la regla de apagar lo que no tiene dato sigue
+   viva en .stat-val.vacio y en la tarjeta de la racha. */
 
 .hoy{position:relative;overflow:hidden;border-radius:18px;padding:16px;margin-bottom:14px;width:100%;
   border:none;text-align:left;font-family:inherit;color:#fff;cursor:pointer;display:block;
@@ -536,7 +539,7 @@ textarea{resize:vertical;min-height:60px;}
 .racha-dias{font-size:13px;color:rgba(255,255,255,.72);align-self:flex-end;padding-bottom:5px;}
 /* Con la racha a cero se apaga ENTERA —etiqueta incluida—, igual que las
    cifras del resumen: el violeta solo cuando hay algo que celebrar (ver
-   .rt.vacio y .stat-val.vacio). */
+   .stat-val.vacio, que es la misma idea). */
 .hoy-racha.vacio .racha-num{color:rgba(255,255,255,.42);}
 .hoy-racha.vacio .racha-llama{color:rgba(255,255,255,.30);}
 .hoy-racha.vacio .hoy-tag{color:rgba(255,255,255,.45);}
@@ -1138,31 +1141,11 @@ textarea{resize:vertical;min-height:60px;}
        cuando ya se participa. Lo pinta pintarAvisoReto(). -->
   <div id="home-reto" class="hidden"></div>
 
-  <div class="home-sec">Tu resumen de hoy</div>
-  <div class="resumen">
-    <button class="rt" onclick="irAProximaSesion()">
-      <div class="rt-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg></div>
-      <div class="rt-nom">Entreno</div>
-      <div class="rt-val" id="rt-entreno">—</div>
-    </button>
-    <!-- Llevaba al Historial, que se retiró. La racha se explica en Resumen,
-         que es donde vive esa cifra junto a la mejor racha. -->
-    <button class="rt" onclick="goTo('resumen')">
-      <div class="rt-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2c.5 3.5 2.3 5 3.8 6.6C17.2 10.2 18 11.9 18 14a6 6 0 0 1-12 0c0-1.9.6-3.2 1.6-4.4.2 1.3.8 2.2 1.7 2.7C10 9 9.4 5.7 12 2z"/></svg></div>
-      <div class="rt-nom">Racha</div>
-      <div class="rt-val" id="rt-racha">—</div>
-    </button>
-    <button class="rt" onclick="goTo('resumen')">
-      <div class="rt-ico cardio"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3 4.7 13a4.5 4.5 0 0 1 6.4-6.3l.9.9.9-.9A4.5 4.5 0 0 1 19.3 13z"/></svg></div>
-      <div class="rt-nom">Cardio</div>
-      <div class="rt-val" id="rt-cardio">—</div>
-    </button>
-    <button class="rt" onclick="goTo('medidas')">
-      <div class="rt-ico medidas"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="18" height="7" rx="1.5"/><path d="M7 9v3M11 9v2.3M15 9v3M19 9v2.3"/></svg></div>
-      <div class="rt-nom">Medidas</div>
-      <div class="rt-val" id="rt-medidas">—</div>
-    </button>
-  </div>
+  <!-- Aquí vivía "Tu resumen de hoy": cuatro tarjetas (Entreno, Racha, Cardio,
+       Medidas) que repetían lo que tienen al lado. "Entreno" decía lo mismo que
+       la tarjeta de abajo; la racha y el cardio tienen su sitio en Resumen —la
+       racha con tarjeta propia desde 2cf25cf— y el peso está en "Peso actual",
+       dos dedos más abajo. Se fue para dejarle el hueco al reto. -->
 
   <button class="hoy" id="home-hoy" onclick="irAProximaSesion()">
     <span class="hoy-tag" id="hoy-tag">Entrenamiento de hoy</span>
@@ -2196,7 +2179,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 17:40';
+const APP_VERSION='2026-09-06 18:05';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4552,22 +4535,6 @@ function updateHome(){
       anillo.setAttribute('stroke-dashoffset',(C*(1-pct/100)).toFixed(1));
     }));
   }
-
-  /* Escribe la cifra y enciende o apaga la tarjeta entera. La clase va en el
-     botón, no en la cifra, para que el icono se apague con ella (ver .rt.vacio
-     en el CSS). "Pendiente" no cuenta como dato: es justo lo que NO has hecho. */
-  const enc=(id,txt,hay)=>{
-    const e=document.getElementById(id); if(!e) return;
-    e.textContent=txt;
-    const tarjeta=e.closest('.rt'); if(tarjeta) tarjeta.classList.toggle('vacio',!hay);
-  };
-  enc('rt-entreno',prox?'Pendiente':(total?'Completado':'—'),!prox&&total>0);
-  const streak=calcStreak();
-  enc('rt-racha',streak?streak+(streak===1?' día':' días'):'Sin racha',streak>0);
-  const totalKcal=Object.values(ses||{}).reduce((s,x)=>s+(x.cardio&&x.cardio.kcal?x.cardio.kcal:0),0);
-  enc('rt-cardio',totalKcal?totalKcal.toLocaleString('es-ES')+' kcal':'Sin cardio',totalKcal>0);
-  const lastM=medidas.length?medidas[medidas.length-1]:null;
-  enc('rt-medidas',lastM&&lastM.peso?num(lastM.peso)+' kg':'Sin datos',!!(lastM&&lastM.peso));
 
   // Entrenamiento de hoy
   const tag=document.getElementById('hoy-tag');
@@ -8246,15 +8213,16 @@ function pintarAvisoReto(){
 
   if(!miFilaReto){
     if(retosOcultos().includes(retoVigente.id)){ c.classList.add('hidden'); c.innerHTML=''; return; }
-    c.innerHTML = `<div class="reto-aviso">
+    c.innerHTML = `<div class="reto-aviso pendiente">
       <span class="reto-tag">Tu entrenador te propone un reto</span>
       <div class="reto-tit">${escaparHTML(tituloReto(retoVigente))}</div>
-      <div class="reto-sub">Se mide sobre <b>tu propia marca anterior</b>, así que no compites
-        contra los kilos de nadie. ${Quedan}.<br>
+      <div class="reto-sub">No tienes que conseguirlos todos: gana quien más
+        ejercicios suba. Y se mide sobre <b>tu propia marca anterior</b>, así que
+        no compites contra los kilos de nadie. ${Quedan}.<br>
         Si aceptas, los demás participantes verán tu nombre y tu progreso.</div>
-      <div class="acciones-fila" style="margin-left:0;margin-top:10px;">
+      <div class="acciones-fila" style="margin-left:0;margin-top:12px;">
         <button class="btn-sm" onclick="aceptarReto()">Acepto el reto</button>
-        <button class="btn-sm" onclick="ahoraNoReto()">Ahora no</button>
+        <button class="btn-sm secundario" onclick="ahoraNoReto()">Ahora no</button>
       </div>
     </div>`;
   }else{
@@ -8262,9 +8230,14 @@ function pintarAvisoReto(){
     const detalle = (miFilaReto.total || 0) === 0
       ? 'Aún no tienes marcas anteriores en los ejercicios de tu plan: en cuanto registres una sesión, empieza a contar.'
       : `${miFilaReto.hechos} de ${miFilaReto.total} ejercicios · ${quedan}`;
-    c.innerHTML = `<div class="reto-aviso aceptado">
-      <span class="reto-tag">Reto en marcha</span>
-      <div class="reto-tit">${escaparHTML(tituloReto(retoVigente))}</div>
+    c.innerHTML = `<div class="reto-aviso">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <span class="reto-tag">Reto en marcha</span>
+          <div class="reto-tit">${escaparHTML(tituloReto(retoVigente))}</div>
+        </div>
+        <div class="reto-marcador">${pct}%</div>
+      </div>
       <div class="reto-sub">${detalle}</div>
       <div class="prog-bar" style="margin-top:8px;"><div class="prog-fill" style="width:${pct}%"></div></div>
       <div class="acciones-fila" style="margin-left:0;margin-top:10px;">
@@ -8305,9 +8278,15 @@ function pintarPanelReto(){
   const c = document.getElementById('reto-panel-cuerpo');
   if(!c || !retoEnPantalla) return;
   const dias = diasQueQuedan(retoEnPantalla);
+  /* La regla, escrita donde se viene a entenderla. Sin esto hay que adivinar si
+     va por semanas, por sesiones o contra los demás — que es justo lo que
+     preguntó Jhon al probarlo. */
   const partes = [`<div class="card">
     <div class="reto-sub" style="margin:0;">
-      Cada uno compite contra su propia marca anterior al reto.
+      <b>Cómo se gana:</b> en cualquier sesión de estos días, supera por un
+      ${retoEnPantalla.porcentaje}% tu mejor marca <b>anterior al reto</b> en cada ejercicio.
+      No hay que conseguirlos todos: el marcador es cuántos llevas, y cada uno
+      compite contra sus propios kilos.
       ${dias === 0 ? 'Último día.' : 'Quedan ' + dias + ' día' + (dias===1?'':'s') + '.'}
     </div></div>`];
 
