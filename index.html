@@ -330,6 +330,12 @@ textarea{resize:vertical;min-height:60px;}
    pantalla completa que se oculta con class="hidden" (declarada abajo con las
    demás) y que entra en SELECTOR_CAPAS para que el fondo no haga scroll. */
 #selector-ejercicio{position:fixed;inset:0;z-index:340;background:var(--bg);display:flex;flex-direction:column;}
+/* Asignar rutina: misma capa y mismo z-index que el selector de ejercicios, por
+   encima de la ficha del cliente (300). Antes era una tarjeta al final de la
+   pantalla de clientes: abrirla desde la ficha obligaba a cerrar la ficha, y lo
+   primero que aparecía era el mosaico entero de clientes. */
+#asignar-panel{position:fixed;inset:0;z-index:340;background:var(--bg);display:flex;flex-direction:column;}
+#asignar-cuerpo{flex:1;min-height:0;overflow-y:auto;padding:12px;}
 /* Cuadrícula de músculos: la foto manda, el nombre debajo. Tres por fila entran
    en 390 px con la foto lo bastante grande para reconocerla de un vistazo. */
 .mus-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
@@ -1328,6 +1334,46 @@ textarea{resize:vertical;min-height:60px;}
   <div id="comp-cuerpo"></div>
 </div>
 
+<!-- Asignar rutina a un cliente. Era una tarjeta desplegada BAJO la lista de
+     clientes: al abrirla desde la ficha había que cerrar la ficha y bajar
+     hasta ella, y lo primero que veías era el mosaico entero de clientes.
+     Ahora es una capa a pantalla completa por encima de la ficha (z-index 340
+     contra 300), igual que el selector de ejercicios sobre el panel de nueva
+     rutina: se asigna y al cerrar sigues donde estabas. -->
+<div id="asignar-panel" class="hidden">
+  <div class="comp-barra">
+    <div style="font-size:14px;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+      Asignar rutina a <span id="asignar-nombre"></span></div>
+    <button class="btn-sm" onclick="cerrarAsignar()">✕ Cerrar</button>
+  </div>
+  <div id="asignar-cuerpo">
+
+    <label style="font-size:11px;color:var(--muted);">Elige una rutina</label>
+    <div id="asignar-presets"></div>
+
+    <div style="height:10px;"></div>
+    <label style="font-size:11px;color:var(--muted);">Nombre con el que la verá tu cliente</label>
+    <input type="text" id="asignar-nombre-rutina" placeholder="Ej: Rutina de agosto" oninput="avisarNombreRepetido()">
+    <div id="asignar-aviso-repe"></div>
+
+    <label class="fila-check">
+      <input type="checkbox" id="asignar-activar">
+      <span>Activársela ahora <span id="asignar-activar-nota" style="color:var(--muted);"></span></span>
+    </label>
+
+    <!-- Pegar el plan a mano sigue disponible, pero deja de ser lo primero que
+         se ve: era la única opción y ahora es la excepción. -->
+    <details id="asignar-avanzado" style="margin-top:10px;">
+      <summary style="font-size:11px;color:var(--muted);cursor:pointer;">Pegar un plan a mano (avanzado)</summary>
+      <textarea id="asignar-json" rows="4" placeholder="JSON del plan" style="margin-top:6px;"></textarea>
+    </details>
+
+    <div id="asignar-msg"></div>
+    <button class="btn btn-primary" id="asignar-submit" onclick="asignarRutina()">Asignar</button>
+    <button class="btn btn-secondary" onclick="cerrarAsignar()">Cancelar</button>
+  </div>
+</div>
+
 <!-- Elegir ejercicios por músculo, para el constructor de rutinas. Va en capa
      propia y por encima del panel de nueva rutina (z-index 340 contra 300):
      así se elige sin perder de vista lo que llevas montado. -->
@@ -1426,33 +1472,6 @@ textarea{resize:vertical;min-height:60px;}
     <div id="clientes-lista" style="font-size:13px;color:var(--muted);">Cargando...</div>
   </div>
 
-  <div class="card hidden" id="asignar-panel">
-    <div class="section-title">Asignar rutina a <span id="asignar-nombre"></span></div>
-
-    <label style="font-size:11px;color:var(--muted);">Elige una rutina</label>
-    <div id="asignar-presets"></div>
-
-    <div style="height:10px;"></div>
-    <label style="font-size:11px;color:var(--muted);">Nombre con el que la verá tu cliente</label>
-    <input type="text" id="asignar-nombre-rutina" placeholder="Ej: Rutina de agosto" oninput="avisarNombreRepetido()">
-    <div id="asignar-aviso-repe"></div>
-
-    <label class="fila-check">
-      <input type="checkbox" id="asignar-activar">
-      <span>Activársela ahora <span id="asignar-activar-nota" style="color:var(--muted);"></span></span>
-    </label>
-
-    <!-- Pegar el plan a mano sigue disponible, pero deja de ser lo primero que
-         se ve: era la única opción y ahora es la excepción. -->
-    <details id="asignar-avanzado" style="margin-top:10px;">
-      <summary style="font-size:11px;color:var(--muted);cursor:pointer;">Pegar un plan a mano (avanzado)</summary>
-      <textarea id="asignar-json" rows="4" placeholder="JSON del plan" style="margin-top:6px;"></textarea>
-    </details>
-
-    <div id="asignar-msg"></div>
-    <button class="btn btn-primary" id="asignar-submit" onclick="asignarRutina()">Asignar</button>
-    <button class="btn btn-secondary" onclick="cerrarAsignar()">Cancelar</button>
-  </div>
 </div>
 
 <!-- ═══════════ Detalle de un cliente (solo consulta) ═══════════
@@ -2093,7 +2112,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 14:40';
+const APP_VERSION='2026-09-06 14:55';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5364,7 +5383,7 @@ function renderProfileName(){
    class="hidden", pero de tres maneras distintas (display:none el onboarding y
    el comparador, transform los paneles), así que lo único fiable para saber si
    una está abierta es la propia clase. */
-const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#selector-ejercicio,#celebracion';
+const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#selector-ejercicio,#asignar-panel,#celebracion';
 
 /* Sustituye a aviso(). Tres motivos: no bloquea, no obliga a pulsar nada y se
    ve como la app y no como el navegador.
@@ -7316,7 +7335,7 @@ function accionesCliente(){
     <div class="section-title">Acciones</div>
     <div class="acciones-fila" style="margin-left:0;flex-wrap:wrap;">
       <button class="btn-sm" data-uid="${escaparHTML(uid)}" data-nombre="${escaparHTML(detalle.nombre||'')}"
-        onclick="asignarDesdeFicha(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>
+        onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>
       <button class="btn-sm btn-danger sep-peligro" data-uid="${escaparHTML(uid)}"
         onclick="pedirDesvincular(this.dataset.uid)">Desvincular</button>
     </div>
@@ -7324,13 +7343,7 @@ function accionesCliente(){
   </div>`;
 }
 
-/* El asignador es una tarjeta de la pantalla de clientes, no una capa: desde la
-   ficha (que está por encima, z-index 300) quedaría detrás y parecería que el
-   botón no hace nada. Así que se cierra la ficha y se abre allí. */
-window.asignarDesdeFicha = function(uid, nombre){
-  cerrarDetalleCliente();
-  abrirAsignar(uid, nombre);
-};
+
 
 /* Lo que el cliente TIENE que hacer en una sesión que aún no ha registrado.
    Sin esto, una sesión pendiente salía vacía y el plan no se veía en ningún
@@ -7642,7 +7655,9 @@ window.abrirAsignar = function(uid, nombre){
 
   pintarPresetsAsignar();
   document.getElementById('asignar-panel').classList.remove('hidden');
-  document.getElementById('asignar-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
+  // La capa se abre entera: lo que hay que asegurar es que no herede el scroll
+  // de la vez anterior.
+  document.getElementById('asignar-cuerpo').scrollTop = 0;
 };
 
 window.cerrarAsignar = function(){
@@ -7701,7 +7716,7 @@ window.asignarRutina = async function(){
     msg.innerHTML = '<div class="msg msg-ok">'+
       (activar
         ? 'Rutina asignada y activada ✓ Es la que verá al abrir la app.'
-        : 'Rutina asignada ✓ No es la que está entrenando: puedes activársela en «Otras rutinas asignadas».')+
+        : 'Rutina asignada ✓ No es la que está entrenando: para cambiársela, ábrela en su ficha y pulsa «Activar esta rutina».')+
       '</div>';
     document.getElementById('asignar-nombre-rutina').value = '';
     document.getElementById('asignar-json').value = '';

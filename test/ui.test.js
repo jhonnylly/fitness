@@ -450,6 +450,31 @@ async function appLista(page, url){
        'y no lleva botones dentro: asignar y desvincular se fueron a la ficha');
     ok(tarjeta.columnas >= 2, 'el mosaico entra a dos por fila en 390 px: '+tarjeta.columnas);
 
+    /* Asignar rutina se abre COMO CAPA por encima de la ficha, no como una
+       tarjeta al final de la pantalla de clientes: si no, abrirlo desde la
+       ficha obliga a cerrarla y lo primero que ves es el mosaico entero. */
+    const capa = await page.evaluate(async ()=>{
+      abrirAsignar('u1','Ana Pérez');
+      await new Promise(r=>setTimeout(r,60));      // el MutationObserver del fondo
+      const p = document.getElementById('asignar-panel');
+      const est = getComputedStyle(p);
+      const r = {pos: est.position, z: +est.zIndex,
+                 zFicha: +getComputedStyle(document.getElementById('cliente-detalle')).zIndex,
+                 abierta: !p.classList.contains('hidden'),
+                 fondoQuieto: document.body.classList.contains('capa-abierta'),
+                 presets: document.querySelectorAll('#asignar-presets .preset-op').length};
+      cerrarAsignar();
+      await new Promise(r=>setTimeout(r,60));
+      r.cerrada = p.classList.contains('hidden');
+      r.fondoSuelto = !document.body.classList.contains('capa-abierta');
+      return r;
+    });
+    ok(capa.abierta && capa.pos === 'fixed', 'asignar rutina se abre a pantalla completa');
+    ok(capa.z > capa.zFicha, `por encima de la ficha del cliente (${capa.z} > ${capa.zFicha})`);
+    ok(capa.presets > 0, 'con las rutinas para elegir: '+capa.presets);
+    ok(capa.fondoQuieto, 'y el fondo no hace scroll mientras está abierta');
+    ok(capa.cerrada && capa.fondoSuelto, 'al cerrarla, el fondo vuelve a moverse');
+
     console.log('\n11. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });
     await esperar(2500);                                  // que termine de precargar
