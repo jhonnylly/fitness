@@ -568,6 +568,18 @@ const ok = (cond, msg) => {
   ok(ph.hechos === 1 && ph.pct === 100,
      'lo registrado el día en que nació el reto SÍ cuenta (66 sobre 60 pedidos)');
 
+  /* La META: con 23 ejercicios en el plan, "todos" no lo consigue nadie y la
+     celebración no saltaría jamás. El entrenador dice con cuántos basta. */
+  const conMeta = app.progresoReto(conReto, {...RETO, meta: 2});
+  ok(conMeta.meta === 2 && conMeta.hechos === 2 && conMeta.logrado,
+     'con meta 2 y 2 conseguidos, el reto está completo');
+  ok(conMeta.pct === 100, 'y el marcador va sobre la META, no sobre el total: '+conMeta.pct+'%');
+  const metaGrande = app.progresoReto(conReto, {...RETO, meta: 99});
+  ok(metaGrande.meta === 3 && !metaGrande.logrado,
+     'una meta mayor que tus ejercicios se recorta a los tuyos: nadie queda fuera de juego');
+  ok(app.progresoReto(conReto, RETO).meta === 3,
+     'sin meta, la meta son todos los ejercicios que cuentan');
+
   console.log('\n15c. los kilos que se precargan al abrir una sesión');
   /* El nombre lo escribe una persona cada vez: la precarga tiene que casar los
      mismos ejercicios escritos distinto, igual que hace la gráfica. */

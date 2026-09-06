@@ -1554,6 +1554,18 @@ textarea{resize:vertical;min-height:60px;}
           <span style="font-size:13px;color:var(--muted);">días desde hoy</span>
         </div>
         <div style="height:8px;"></div>
+        <label style="font-size:11px;color:var(--muted);">Se completa al conseguir</label>
+        <div class="fila-reto">
+          <input type="text" inputmode="numeric" id="reto-meta" placeholder="todos" style="max-width:90px;">
+          <span style="font-size:13px;color:var(--muted);">ejercicios</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.45;margin-top:4px;">
+          En blanco, hay que subirlos todos. Con un plan de 20 ejercicios eso no
+          lo consigue nadie: pon un número alcanzable y la celebración saltará
+          de verdad. A quien tenga menos ejercicios que la meta se le ajusta a
+          los suyos.
+        </div>
+        <div style="height:8px;"></div>
         <label style="font-size:11px;color:var(--muted);">Nombre (opcional)</label>
         <input type="text" id="reto-titulo" placeholder="Reto de la semana">
         <div id="reto-msg"></div>
@@ -2207,7 +2219,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 18:45';
+const APP_VERSION='2026-09-06 18:50';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3525,8 +3537,10 @@ function celebrarReto({titulo,porcentaje,total,pctAntes}){
   document.getElementById('cel-tit').textContent='¡Reto completado!';
   document.getElementById('cel-sub').textContent=titulo||('Sube un '+porcentaje+'%');
   document.getElementById('cel-lineas').innerHTML=[
-    celLinea('hito','trofeo','Has subido un <b>'+porcentaje+'%</b> en <b>todos</b> tus ejercicios',
-             total+'/'+total),
+    /* "N ejercicios" y no "todos": con meta puesta se completa sin subirlos
+       todos, y decir "todos" sería mentira justo en la pantalla del premio. */
+    celLinea('hito','trofeo','Has subido un <b>'+porcentaje+'%</b> en <b>'+total+
+             '</b> ejercicio'+(total===1?'':'s'), total+'/'+total),
     celLinea('','rayo','Sobre tus propias marcas, no sobre las de nadie')
   ].join('');
 
@@ -4229,8 +4243,15 @@ function progresoReto(r, reto){
                      logrado: mejor != null && mejor >= objetivo - 0.001});
   }
   const hechos = ejercicios.filter(e => e.logrado).length;
-  return {total: ejercicios.length, hechos, ejercicios,
-          pct: ejercicios.length ? Math.round(hechos/ejercicios.length*100) : 0};
+  const total = ejercicios.length;
+  /* La meta que pone el entrenador es la misma para todos, pero cada cliente
+     tiene los ejercicios que tiene: se recorta a los suyos. Sin recortar, quien
+     tuviera menos ejercicios que la meta no podría completarlo nunca. Sin meta,
+     la meta son todos. */
+  const meta = Math.max(1, Math.min(+reto.meta || total, total));
+  return {total, hechos, meta, ejercicios,
+          logrado: total > 0 && hechos >= meta,
+          pct: total ? Math.min(100, Math.round(hechos/meta*100)) : 0};
 }
 
 /* Las imágenes son ficheros sueltos en img/ejercicios/ y la lista de las que
@@ -8197,7 +8218,10 @@ function diasQueQuedan(reto){
   return Math.max(0, Math.ceil(((reto.termina||0) - Date.now()) / 864e5));
 }
 function tituloReto(reto){
-  return reto.titulo || ('Sube un ' + reto.porcentaje + '% en cada ejercicio');
+  if(reto.titulo) return reto.titulo;
+  return reto.meta
+    ? 'Sube un ' + reto.porcentaje + '% en ' + reto.meta + ' ejercicios'
+    : 'Sube un ' + reto.porcentaje + '% en cada ejercicio';
 }
 
 function cerrarVigilanciaRetos(){
@@ -8253,10 +8277,10 @@ window.publicarProgresoReto = async function(){
      en true para siempre en la nube, así que sin esta marca la celebración
      saltaría en cada arranque. Mismo criterio que la sesión, que solo se
      celebra la primera vez que se registra. */
-  if(p.total > 0 && p.hechos === p.total && !retosCelebrados().includes(retoVigente.id)){
+  if(p.logrado && !retosCelebrados().includes(retoVigente.id)){
     marcarRetoCelebrado(retoVigente.id);
     celebrarReto({titulo: tituloReto(retoVigente), porcentaje: retoVigente.porcentaje,
-                  total: p.total, pctAntes: miFilaReto.pct || 0});
+                  total: p.meta, pctAntes: miFilaReto.pct || 0});
   }
 
   if(miFilaReto.pct === p.pct && miFilaReto.hechos === p.hechos
@@ -8264,8 +8288,8 @@ window.publicarProgresoReto = async function(){
   try{
     await setDoc(doc(fdb,'retos',retoVigente.id,'participantes',meUid), {
       nombre: (meData && meData.name) || DB.profileName || 'Alguien',
-      pct: p.pct, hechos: p.hechos, total: p.total,
-      completado: p.total > 0 && p.hechos === p.total,
+      pct: p.pct, hechos: p.hechos, total: p.total, meta: p.meta,
+      completado: p.logrado,
       actualizado: Date.now()
     }, {merge:true});
   }catch(e){ console.error('[retos] no se pudo publicar el progreso', e); }
@@ -8277,8 +8301,8 @@ window.aceptarReto = async function(){
   try{
     await setDoc(doc(fdb,'retos',retoVigente.id,'participantes',meUid), {
       nombre: (meData && meData.name) || DB.profileName || 'Alguien',
-      pct: p.pct, hechos: p.hechos, total: p.total,
-      completado: p.total > 0 && p.hechos === p.total,
+      pct: p.pct, hechos: p.hechos, total: p.total, meta: p.meta,
+      completado: p.logrado,
       aceptadoEn: Date.now(), actualizado: Date.now()
     });
     aviso('Estás dentro del reto','bien');
@@ -8313,8 +8337,10 @@ function pintarAvisoReto(){
     c.innerHTML = `<div class="reto-llama"><div class="reto-aviso pendiente">
       <span class="reto-tag">Tu entrenador te propone un reto</span>
       <div class="reto-tit">${escaparHTML(tituloReto(retoVigente))}</div>
-      <div class="reto-sub">No tienes que conseguirlos todos: gana quien más
-        ejercicios suba. Y se mide sobre <b>tu propia marca anterior</b>, así que
+      <div class="reto-sub">${retoVigente.meta
+          ? 'Se completa con <b>' + retoVigente.meta + ' ejercicios</b>, no con todos.'
+          : 'No tienes que conseguirlos todos: gana quien más ejercicios suba.'}
+        Se mide sobre <b>tu propia marca anterior</b>, así que
         no compites contra los kilos de nadie. ${Quedan}.<br>
         Si aceptas, los demás participantes verán tu nombre y tu progreso.</div>
       <div class="acciones-fila" style="margin-left:0;margin-top:12px;">
@@ -8324,9 +8350,10 @@ function pintarAvisoReto(){
     </div></div>`;
   }else{
     const pct = miFilaReto.pct || 0;
+    const meta = miFilaReto.meta || miFilaReto.total || 0;
     const detalle = (miFilaReto.total || 0) === 0
       ? 'Aún no tienes marcas anteriores en los ejercicios de tu plan: en cuanto registres una sesión, empieza a contar.'
-      : `${miFilaReto.hechos} de ${miFilaReto.total} ejercicios · ${quedan}`;
+      : `${miFilaReto.hechos} de ${meta} ejercicios · ${quedan}`;
     c.innerHTML = `<div class="reto-aviso">
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="flex:1;min-width:0;">
@@ -8356,8 +8383,12 @@ window.abrirPanelReto = function(id){
   document.getElementById('reto-panel').classList.remove('hidden');
   if(participantesUnsub){ participantesUnsub(); participantesUnsub = null; }
   participantesUnsub = onSnapshot(collection(fdb,'retos',reto.id,'participantes'), qs => {
+    /* Por marcador, y a igualdad quien llegó antes: con meta puesta varios
+       terminan al 100% y el orden no puede quedar al azar. */
     participantes = qs.docs.map(d => ({uid:d.id, ...d.data()}))
-      .sort((a,b) => (b.pct||0) - (a.pct||0) || (a.aceptadoEn||0) - (b.aceptadoEn||0));
+      .sort((a,b) => (b.pct||0) - (a.pct||0)
+                  || (a.actualizado||0) - (b.actualizado||0)
+                  || (a.aceptadoEn||0) - (b.aceptadoEn||0));
     pintarPanelReto();
   }, err => {
     document.getElementById('reto-panel-cuerpo').innerHTML =
@@ -8381,9 +8412,11 @@ function pintarPanelReto(){
   const partes = [`<div class="card">
     <div class="reto-sub" style="margin:0;">
       <b>Cómo se gana:</b> en cualquier sesión de estos días, supera por un
-      ${retoEnPantalla.porcentaje}% tu mejor marca <b>anterior al reto</b> en cada ejercicio.
-      No hay que conseguirlos todos: el marcador es cuántos llevas, y cada uno
-      compite contra sus propios kilos.
+      ${retoEnPantalla.porcentaje}% tu mejor marca <b>anterior al reto</b> en un ejercicio.
+      ${retoEnPantalla.meta
+        ? 'Se completa al conseguir <b>' + retoEnPantalla.meta + '</b> (o todos los tuyos, si tienes menos).'
+        : 'Se completa al subirlos todos, pero el marcador es cuántos llevas.'}
+      Cada uno compite contra sus propios kilos.
       ${dias === 0 ? 'Último día.' : 'Quedan ' + dias + ' día' + (dias===1?'':'s') + '.'}
     </div></div>`];
 
@@ -8404,7 +8437,7 @@ function pintarPanelReto(){
         </div>
         <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
         <div style="font-size:11px;color:var(--muted);margin-top:4px;">
-          ${(p.total||0) ? p.hechos + ' de ' + p.total + ' ejercicios' : 'sin marcas previas todavía'}
+          ${(p.total||0) ? p.hechos + ' de ' + (p.meta || p.total) + ' ejercicios' : 'sin marcas previas todavía'}
           ${p.completado ? ' · <b style="color:var(--green);">reto completado</b>' : ''}
         </div>
       </div>`;
@@ -8470,6 +8503,9 @@ window.crearReto = async function(){
   msg.innerHTML = '';
   if(!(pct > 0 && pct <= 100)){ msg.innerHTML = '<div class="msg msg-err">El porcentaje tiene que estar entre 1 y 100.</div>'; return; }
   if(!(dias > 0 && dias <= 90)){ msg.innerHTML = '<div class="msg msg-err">Los días tienen que estar entre 1 y 90.</div>'; return; }
+  const metaTxt = (document.getElementById('reto-meta').value || '').trim();
+  const meta = metaTxt ? parseInt(metaTxt, 10) : 0;      // 0 = todos
+  if(metaTxt && !(meta > 0 && meta <= 99)){ msg.innerHTML = '<div class="msg msg-err">La meta tiene que ser un número entre 1 y 99, o dejarla en blanco.</div>'; return; }
   btn.disabled = true;
   try{
     const ahora = Date.now();
@@ -8477,6 +8513,7 @@ window.crearReto = async function(){
       trainerId: meUid,
       tipo: 'porcentaje',
       porcentaje: pct,
+      meta: meta,                        // 0 = hay que subirlos todos
       titulo: (document.getElementById('reto-titulo').value || '').trim(),
       /* Empieza AHORA y no a medianoche: lo levantado antes de proponerlo es la
          marca a batir, no parte del reto. */
@@ -8485,6 +8522,7 @@ window.crearReto = async function(){
       creadoEn: ahora
     });
     document.getElementById('reto-titulo').value = '';
+    document.getElementById('reto-meta').value = '';
     document.getElementById('reto-nuevo').open = false;
     aviso('Reto propuesto','bien');
   }catch(e){

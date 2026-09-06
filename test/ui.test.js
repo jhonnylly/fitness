@@ -226,7 +226,7 @@ async function appLista(page, url){
     ok(celReto.abierta && /Reto completado/.test(celReto.titulo),
        'completar un reto se celebra: '+celReto.titulo);
     ok(/15%/.test(celReto.sub), 'con el reto que era: '+celReto.sub);
-    ok(/todos/.test(celReto.lineas) && /5\/5/.test(celReto.lineas),
+    ok(/5 ejercicios/.test(celReto.lineas) && /5\/5/.test(celReto.lineas),
        'y lo que se ha conseguido: '+celReto.lineas);
     ok(celReto.aro === '0', 'el aro se cierra entero (el reto está al 100%)');
     ok(celReto.fondoQuieto, 'el fondo no hace scroll mientras está abierta');
