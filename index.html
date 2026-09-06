@@ -143,7 +143,11 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 .cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:10.5px;
   color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;}
 .cab-ico{background:rgba(255,255,255,0.08);border:none;border-radius:10px;width:36px;height:36px;
-  font-size:15px;cursor:pointer;flex-shrink:0;line-height:1;}
+  font-size:15px;cursor:pointer;flex-shrink:0;line-height:1;
+  /* inherit y no var(--text): la cabecera es oscura en los DOS temas (fija su
+     propio color), así que con --text el icono saldría negro sobre negro en
+     tema claro. Con el emoji no se notaba porque tenía color propio. */
+  color:inherit;display:flex;align-items:center;justify-content:center;}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#888;flex-shrink:0;}
 .tabs{display:flex;background:var(--dark);padding:8px;gap:6px;overflow-x:auto;scrollbar-width:none;}
 .tabs::-webkit-scrollbar{display:none;}
@@ -158,6 +162,16 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
    escala de sensación (😴 😐 💪 🔥) y los títulos de las rutinas de ejemplo. */
 .ico{width:18px;height:18px;flex-shrink:0;display:block;}
 .ico-txt{width:1em;height:1em;display:inline-block;vertical-align:-.14em;}
+/* Los iconos que sustituyen a un emoji dentro de un botón. 1.35em y no 1em: a
+   la altura exacta de la letra, un icono de trazo se lee como una mancha —el
+   mismo problema que hizo dejar la llama fuera de las etiquetas del resumen—,
+   y en un botón de 12 px eso son 12 px de icono. Así son 16.
+   El trazo se pinta desde AQUÍ y no con atributos en cada <svg>: son dieciséis
+   sitios y el marcado se iría de las manos. */
+.ico-btn{width:1.35em;height:1.35em;display:inline-block;vertical-align:-.28em;
+  fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+/* En los dos botones cuadrados de la cabecera manda la caja, no el texto. */
+.cab-ico .ico-btn{width:19px;height:19px;vertical-align:middle;}
 .tab.active{color:var(--accent);border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
 .tab:active{transform:scale(0.95);}
 .pane{display:none;padding:12px;} .pane.active{display:block;animation:entrar .24s ease both;}
@@ -710,8 +724,8 @@ textarea{resize:vertical;min-height:60px;}
 
     <!-- Iconos sin etiqueta: en 390 px no caben tres botones con texto y la
          cabecera es lo que estaba de más. El title es para el escritorio. -->
-    <button id="account-btn" class="cab-ico" onclick="toggleAuthPanel()" title="Cuenta">☁️</button>
-    <button id="config-btn" class="cab-ico" onclick="toggleConfigPanel()" title="Ajustes">⚙️</button>
+    <button id="account-btn" class="cab-ico" onclick="toggleAuthPanel()" title="Cuenta"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></button>
+    <button id="config-btn" class="cab-ico" onclick="toggleConfigPanel()" title="Ajustes"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></button>
   </div>
 </header>
 
@@ -897,12 +911,12 @@ textarea{resize:vertical;min-height:60px;}
         te deja a salvo pase lo que pase con el móvil o con la nube.
       </div>
       <div class="action-row">
-        <button class="btn-sm" onclick="exportJSON()">💾 Exportar JSON</button>
+        <button class="btn-sm" onclick="exportJSON()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Exportar JSON</button>
         <!-- text-transform:none porque es un <label>, y la regla de las etiquetas
              de formulario lo pondría en mayúsculas al lado de dos botones que no
              lo están. -->
-        <label class="btn-sm" style="cursor:pointer;text-align:center;text-transform:none;">📂 Importar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
-        <button class="btn-sm" onclick="copyForChat()">📋 Copiar para chat</button>
+        <label class="btn-sm" style="cursor:pointer;text-align:center;text-transform:none;"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> Importar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
+        <button class="btn-sm" onclick="copyForChat()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar para chat</button>
       </div>
       <!-- Solo aparece si la app guardó algo antes de sobrescribir. -->
       <div id="copia-previa" style="margin-top:10px;"></div>
@@ -920,7 +934,7 @@ textarea{resize:vertical;min-height:60px;}
         La app guarda una copia para poder abrirse sin cobertura. Si alguna vez
         se queda pillada en una versión vieja, vacíala:
       </div>
-      <button class="btn-sm" style="margin-top:6px;" onclick="limpiarCache()">🧹 Vaciar caché y recargar</button>
+      <button class="btn-sm" style="margin-top:6px;" onclick="limpiarCache()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2.1-9.4L1 10"/></svg> Vaciar caché y recargar</button>
     </div>
 
     <div class="card">
@@ -1131,8 +1145,8 @@ textarea{resize:vertical;min-height:60px;}
            además este es el sitio donde de verdad decides sobre ESTA semana:
            estás dentro, viendo lo que tiene. -->
       <div class="acciones-fila" style="margin-left:0;margin-top:10px;">
-        <button class="btn-sm" onclick="duplicateWeek(curWeekNum)">⧉ Duplicar semana</button>
-        <button class="btn-sm btn-danger sep-peligro" onclick="deleteWeek(curWeekNum)">🗑 Borrar semana</button>
+        <button class="btn-sm" onclick="duplicateWeek(curWeekNum)"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Duplicar semana</button>
+        <button class="btn-sm btn-danger sep-peligro" onclick="deleteWeek(curWeekNum)"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Borrar semana</button>
       </div>
     </div>
   </div>
@@ -1154,7 +1168,7 @@ textarea{resize:vertical;min-height:60px;}
            display:none explícito, no class="hidden": aquí no hay regla que la
            cubra (ver el bloque de CSS de arriba). -->
       <button type="button" class="chip-descanso" onclick="toggleDescanso()">
-        ⏱ Descanso entre series: <b id="rest-txt">90</b> s <span class="chip-lapiz">✎</span>
+        <svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 6.5V12l3.5 2"/></svg> Descanso entre series: <b id="rest-txt">90</b> s <span class="chip-lapiz"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></span>
       </button>
       <div id="rest-editor" style="display:none;margin-top:8px;">
         <input type="text" inputmode="numeric" id="rest" value="90"
@@ -1174,8 +1188,8 @@ textarea{resize:vertical;min-height:60px;}
       <div id="ex-buttons-container"></div>
       <button class="btn btn-secondary" onclick="addExerciseAndOpen()">+ Añadir ejercicio</button>
       <div style="margin-top:8px;display:flex;gap:8px;">
-        <button class="btn btn-secondary" style="flex:1;" onclick="openCardioPanel()">🏃 Cardio</button>
-        <button class="btn btn-secondary" style="flex:1;" onclick="openNotaPanel()">📝 Nota</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="openCardioPanel()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3 4.7 13a4.5 4.5 0 0 1 6.4-6.3l.9.9.9-.9A4.5 4.5 0 0 1 19.3 13z"/></svg> Cardio</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="openNotaPanel()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg> Nota</button>
       </div>
       <div class="card" style="margin-top:8px;">
         <div class="section-title">¿Cómo te has sentido?</div>
@@ -1186,7 +1200,7 @@ textarea{resize:vertical;min-height:60px;}
           <button class="feeling-btn" onclick="selectFeeling('🔥')" id="feel-3">🔥<span>En racha</span></button>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="saveSession()">💾 Guardar sesión</button>
+      <button class="btn btn-primary" onclick="saveSession()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Guardar sesión</button>
       <!-- Solo sale si esta sesión ya tiene registro. Deshacer lo apuntado sin
            sacar la sesión del plan: el gesto que hacía la "×" del historial. -->
       <div id="borrar-registro" style="margin-top:10px;text-align:center;"></div>
@@ -1196,8 +1210,8 @@ textarea{resize:vertical;min-height:60px;}
            "lo registrado" (arriba) deja la sesión en el plan; "quitar del plan"
            se lleva la sesión entera. -->
       <div class="acciones-fila" style="margin-left:0;margin-top:12px;">
-        <button class="btn-sm" onclick="duplicateSession(curWeekNum,curSession)">⧉ Duplicar sesión</button>
-        <button class="btn-sm btn-danger sep-peligro" onclick="deleteSession(curWeekNum,curSession)">🗑 Quitar del plan</button>
+        <button class="btn-sm" onclick="duplicateSession(curWeekNum,curSession)"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Duplicar sesión</button>
+        <button class="btn-sm btn-danger sep-peligro" onclick="deleteSession(curWeekNum,curSession)"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Quitar del plan</button>
       </div>
     </div>
 
@@ -1272,7 +1286,7 @@ textarea{resize:vertical;min-height:60px;}
     <!-- Borrar ya no vive aquí suelto: cada foto lleva el suyo, así no hay
          forma de borrar una creyendo que borras otra. -->
     <button class="btn btn-secondary" id="btn-comparar" style="margin-top:8px;display:none;"
-            onclick="abrirComparador()">🔍 Comparar las dos marcadas</button>
+            onclick="abrirComparador()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg> Comparar las dos marcadas</button>
     </div>
 </div>
 
@@ -1317,7 +1331,7 @@ textarea{resize:vertical;min-height:60px;}
   </div>
   <div class="visor-cuerpo" id="visor-foto-cuerpo"></div>
   <div class="visor-pie">
-    <button class="btn-sm" onclick="document.getElementById('profile-input').click()">📷 Cambiar foto</button>
+    <button class="btn-sm" onclick="document.getElementById('profile-input').click()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Cambiar foto</button>
   </div>
 </div>
 
@@ -1477,6 +1491,14 @@ const ICO={
   rayo:'<path d="M13 2 4.5 13.5H11l-1 8.5L19 10.5h-6.5z"/>',
   llama:'<path d="M12 2c.5 3.5 2.3 5 3.8 6.6C17.2 10.2 18 11.9 18 14a6 6 0 0 1-12 0c0-1.9.6-3.2 1.6-4.4.2 1.3.8 2.2 1.7 2.7C10 9 9.4 5.7 12 2z"/>',
   trofeo:'<path d="M7 4h10v5.5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a3 3 0 0 0 2.9 3M17 6h2.5a3 3 0 0 1-2.9 3"/><path d="M12 14.5V18M8.5 21h7l-.8-3H9.3z"/>',
+  /* Los que sustituyeron a un emoji en un botón. `papelera` y `copiar` están
+     además escritos a mano en el HTML, donde no se puede llamar a ico(): si se
+     tocan aquí, tocarlos allí (es la misma convención que ya tenía `llama`). */
+  papelera:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  lista:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  lapiz:'<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+  rejilla:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+  copiar:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
 };
 const ico=(n,cls)=>`<svg class="${cls||'ico-txt'}" viewBox="0 0 24 24" fill="none" `+
   `stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" `+
@@ -2046,7 +2068,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 12:30';
+const APP_VERSION='2026-09-06 12:55';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3452,7 +3474,7 @@ function confeti(n){
 }
 
 /* Borrar el REGISTRO de una sesión, dejándola en el plan como pendiente. No es
-   lo mismo que el "🗑 Borrar" de la lista de semanas, que quita la sesión del
+   lo mismo que el "Borrar semana" de la lista de semanas, que quita la sesión del
    plan entero. Vivía en la pestaña Historial, que se retiró (04/09/2026)
    porque la lista de semanas ya enseña lo mismo mejor; el gesto sí hacía
    falta, así que ahora está dentro de la propia sesión, que es donde te das
@@ -3481,7 +3503,7 @@ function pintarBorrarRegistro(){
   const act=getActive();
   const hay=act&&curSession!=null&&act.sessions[curSession];
   c.innerHTML=hay
-    ? `<button class="btn-sm btn-danger" onclick="borrarRegistroSesion(${curSession})">🗑 Borrar lo registrado en esta sesión</button>`
+    ? `<button class="btn-sm btn-danger" onclick="borrarRegistroSesion(${curSession})">${ico('papelera','ico-btn')} Borrar lo registrado en esta sesión</button>`
     : '';
 }
 
@@ -3584,7 +3606,7 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
     ${completedWeeks.length?`
       <div style="margin-top:4px;">
         <button class="btn btn-secondary" style="font-size:12px;padding:8px;" onclick="toggleCompletedWeeks()">
-          📋 Ver semanas completadas (${completedWeeks.length})
+          ${ico('lista','ico-btn')} Ver semanas completadas (${completedWeeks.length})
         </button>
         <div id="completed-weeks-list" style="display:none;margin-top:8px;">
           ${completedWeeks.map(w=>weekCard(w,false)).join('')}
@@ -4650,8 +4672,8 @@ function renderRoutineList(){
       </button>
       <div class="acciones-fila">
         <button class="btn-sm" onclick="entrenarRutina('${r.id}')">▶ ${isActive?'Ir a registrar':'Entrenar esta'}</button>
-        <button class="btn-sm" onclick="renombrarRutina('${r.id}')">✎ Renombrar</button>
-        <button class="btn-sm btn-danger sep-peligro" onclick="deleteRoutine('${r.id}')">🗑 Borrar</button>
+        <button class="btn-sm" onclick="renombrarRutina('${r.id}')">${ico('lapiz','ico-btn')} Renombrar</button>
+        <button class="btn-sm btn-danger sep-peligro" onclick="deleteRoutine('${r.id}')">${ico('papelera','ico-btn')} Borrar</button>
       </div>
     </div>`;
   }).join('');
@@ -4663,7 +4685,7 @@ function renderRoutineList(){
     <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Añadir rutina</div>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-secondary" style="flex:1;" onclick="openPresetPanel()">📚 Explorar rutinas</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="openPresetPanel()">${ico('rejilla','ico-btn')} Explorar rutinas</button>
         <button class="btn btn-secondary" style="flex:1;" onclick="openNewRoutinePanel()">+ Crear la mía</button>
       </div>
     </div>
@@ -4933,7 +4955,7 @@ function renderPhotos(){
         <span class="foto-fecha">${escaparHTML(f.fecha||'—')}</span>
       </button>
       <button type="button" class="foto-borrar" onclick="deletePhoto('${f.id}')"
-              aria-label="Borrar la foto del ${escaparHTML(f.fecha||'sin fecha')}">🗑</button>
+              aria-label="Borrar la foto del ${escaparHTML(f.fecha||'sin fecha')}">${ico('papelera','ico-btn')}</button>
     </div>`;
   }).join('')+'</div>';
 
@@ -5194,7 +5216,7 @@ function editProfileName(){
 
 function renderProfileName(){
   const el=document.getElementById('profile-name');
-  if(el)el.textContent=(DB.profileName||'JHON')+' ✎';
+  if(el)el.innerHTML=escaparHTML(DB.profileName||'JHON')+' '+ico('lapiz','ico-btn');
 }
 
 /* Capas a pantalla completa que tapan la app. Las tres se ocultan con
@@ -5510,7 +5532,7 @@ function nrPintarPaso(){
           : '<div style="font-size:12.5px;color:var(--muted);padding:12px 0;">Todavía no has añadido ejercicios a este día.</div>'}
         <button class="btn btn-secondary" onclick="nrAbrirSelector(${i})">+ Añadir ejercicio</button>
         ${nrDias.some((o,k)=>k!==i&&o.ex.length)
-          ? `<button class="btn btn-secondary" style="margin-top:6px;" onclick="nrMenuCopiar(${i})">⧉ Copiar de otro día</button>
+          ? `<button class="btn btn-secondary" style="margin-top:6px;" onclick="nrMenuCopiar(${i})">${ico('copiar','ico-btn')} Copiar de otro día</button>
              <div id="nr-copiar-${i}"></div>` : ''}
       </div>`;
     return;
@@ -7274,7 +7296,7 @@ function pintarSesionCliente(dia, ses){
 
   const c = ses.cardio;
   const cardio = (c && c.tiempo)
-    ? `<div class="ses-extra">🏃 ${escaparHTML(c.tipo||'Cardio')} · ${escaparHTML(String(c.tiempo))} min${c.kcal?' · '+escaparHTML(String(c.kcal))+' kcal':''}${c.fc?' · '+escaparHTML(String(c.fc))+' bpm':''}</div>`
+    ? `<div class="ses-extra">${escaparHTML(c.tipo||'Cardio')} · ${escaparHTML(String(c.tiempo))} min${c.kcal?' · '+escaparHTML(String(c.kcal))+' kcal':''}${c.fc?' · '+escaparHTML(String(c.fc))+' bpm':''}</div>`
     : '';
   const nota = ses.note
     ? `<div class="ses-extra" style="font-style:italic;">“${escaparHTML(ses.note)}”</div>`

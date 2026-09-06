@@ -305,6 +305,21 @@ async function appLista(page, url){
     ok(etiquetas.obIcono && etiquetas.obTexto === '',
        'y el avatar del onboarding es un icono de trazo, no la silueta 👤');
 
+    /* Ningún botón de la interfaz lleva ya un emoji de color: los pinta cada
+       sistema a su manera y en Android rompen la paleta. La escala de sensación
+       (😴 😐 💪 🔥) se queda a propósito —es contenido, no un control— y por eso
+       no está en la lista. */
+    const conEmoji = await page.evaluate(()=>{
+      const prohibidos = /[\u{1F4BE}\u{1F4C2}\u{1F4CB}\u{1F9F9}\u{1F5D1}\u{23F1}\u{1F3C3}\u{1F4DD}\u{1F50D}\u{1F4F7}\u{1F4DA}\u{2601}\u{2699}\u{270E}\u{29C9}\u{1F464}]/u;
+      return [...document.querySelectorAll('button, label.btn-sm')]
+        .map(b=>b.textContent.replace(/\s+/g,' ').trim())
+        .filter(t=>prohibidos.test(t));
+    });
+    ok(conEmoji.length === 0, conEmoji.length
+        ? 'quedan botones con emoji: '+conEmoji.join(' | ')
+        : 'ningún botón de la interfaz lleva ya un emoji de color');
+
+
     console.log('\n8. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });
     await esperar(2500);                                  // que termine de precargar
