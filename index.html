@@ -2121,7 +2121,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 15:05';
+const APP_VERSION='2026-09-06 15:15';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4330,12 +4330,18 @@ function pintarInstalar(){
          <button class="btn-sm" onclick="instalarApp()">Instalar la app</button>
          <button class="btn-sm" onclick="ocultarInstalar()">Ahora no</button>
        </div>`
+    /* En iOS no hay forma de saber si YA está en la pantalla de inicio: Safari
+       solo lo cuenta (`navigator.standalone`) cuando la app se abre desde el
+       icono, no cuando se navega con el navegador. Así que a quien ya la tenga
+       puede salirle esto en Safari. Por eso el botón dice "ya la tengo" y no
+       "entendido": con un toque se calla para siempre en ese móvil, y mientras
+       tanto el texto no da por hecho que le falte nada. */
     : `<div class="section-title">Tenla a mano</div>
        <div style="font-size:12.5px;color:var(--muted);line-height:1.5;">
-         En el iPhone se instala desde Safari: toca <b>Compartir</b> (el cuadrado
+         En el iPhone se añade desde Safari: toca <b>Compartir</b> (el cuadrado
          con la flecha) y luego <b>Añadir a pantalla de inicio</b>.</div>
        <div class="acciones-fila" style="margin-left:0;margin-top:10px;">
-         <button class="btn-sm" onclick="ocultarInstalar()">Entendido</button>
+         <button class="btn-sm" onclick="ocultarInstalar()">Ya la tengo</button>
        </div>`);
 
   /* En Inicio se puede decir "ahora no" y no vuelve a salir; en Ajustes sigue
