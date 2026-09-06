@@ -350,7 +350,29 @@ async function appLista(page, url){
        'quien no apunta RIR ve la gráfica de siempre, sin segundo eje');
     await page.evaluate(()=>{ alternarRIR(false); closeExDetail(); closeForm(); closeWeekDetail(); });
 
-    console.log('\n9. Sin cobertura: la app sigue abriendo');
+    console.log('\n9. Al abrir una sesión se precargan los kilos de la última vez');
+    const precarga = await page.evaluate(async ()=>{
+      const r = getActive();
+      /* La sesión de la sección 5 quedó registrada con 60 kg. Le cambiamos el
+         nombre al ejercicio, que es lo que pasa de verdad: se escribe a mano
+         cada vez y sale "con mancuernas" donde antes ponía "mancuernas". */
+      const ses = r.sessions[r.plan[0].days[0].s];
+      const original = ses.exercises[0].name;
+      ses.exercises[0].name = 'Press banca con mancuernas';
+      await save();
+      const dia = r.plan[1].days[0];               // la siguiente del mismo tipo
+      openWeekDetail(2); openSession(dia.s);
+      return {original, plan: dia.ex[0][0], tipo: dia.type,
+              kg: curEx[0].sets[0].kg, reps: curEx[0].sets[0].reps};
+    });
+    ok(precarga.tipo === 'Upper', 'la siguiente sesión del mismo tipo es una Upper');
+    ok(precarga.kg === '60',
+       `precarga los 60 kg pese a llamarse "${precarga.plan}" en el plan y `+
+       `"Press banca con mancuernas" en lo registrado`);
+    ok(precarga.reps === '', 'las repeticiones NO se precargan: eso es lo que vas a hacer hoy');
+    await page.evaluate(()=>{ closeForm(); closeWeekDetail(); });
+
+    console.log('\n10. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });
     await esperar(2500);                                  // que termine de precargar
     await page.setOfflineMode(true);
@@ -384,7 +406,7 @@ async function appLista(page, url){
     ok(fuenteOffline, 'y las cifras siguen en su fuente, no en la del sistema');
     await page.setOfflineMode(false);
 
-    console.log('\n10. Nada ha reventado por el camino');
+    console.log('\n11. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
 

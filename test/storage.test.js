@@ -73,7 +73,7 @@ const puente = `
   totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana, semanaEnCurso,
   migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
   repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
-  claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas,
+  claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas, getPrevKgs,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -496,6 +496,35 @@ const ok = (cond, msg) => {
   ok(sr[2].rir === 1, 'y se lee aunque el formulario lo guarde como texto');
   ok(app.serieDeCargas(conCargas, 'Curl bíceps con barra').every(p => p.rir === null),
      'sin casilla de RIR, los puntos siguen saliendo igual que antes');
+
+  console.log('\n15c. los kilos que se precargan al abrir una sesión');
+  /* El nombre lo escribe una persona cada vez: la precarga tiene que casar los
+     mismos ejercicios escritos distinto, igual que hace la gráfica. */
+  app.DB = { activeRoutine:'r', profileName:'J', routines:[{ id:'r', name:'R', medidas:[],
+    plan:[{num:1,days:[
+      {s:1,name:'S1 · Upper',type:'Upper',ex:[]},
+      {s:2,name:'S2 · Lower',type:'Lower',ex:[]},
+      {s:3,name:'S3 · Upper',type:'Upper',ex:[]},
+      {s:4,name:'S4 · Upper',type:'Upper',ex:[]}]}],
+    sessions:{
+      1:{date:'1/9/2026',exercises:[
+          {name:'Curl bíceps barra',      sets:[{kg:'20',reps:'10'},{kg:'22',reps:'8'}]},
+          {name:'Press hombros mancuerna',sets:[{kg:'14',reps:'10'}]}]},
+      2:{date:'2/9/2026',exercises:[{name:'Sentadilla',sets:[{kg:'80',reps:'8'}]}]},
+      // En la Upper siguiente se saltó el press de hombros.
+      3:{date:'3/9/2026',exercises:[
+          {name:'Curl bíceps con barra',  sets:[{kg:'24',reps:'10'}]}]},
+    } }] };
+  const prev = app.getPrevKgs({ s:4, type:'Upper' });
+  const laxa = app.claveEjercicioLaxa;
+  ok(prev[laxa('Curl bíceps con barra')] === '24',
+     'precarga el peso aunque el ejercicio se escribiera distinto cada día');
+  ok(prev[laxa('Press hombros mancuernas')] === '14',
+     'y lo rescata de una sesión anterior si en la última no lo hiciste');
+  ok(prev[laxa('Sentadilla')] === undefined,
+     'pero solo del MISMO tipo de sesión: la Lower no cuenta para una Upper');
+  ok(Object.keys(app.getPrevKgs({ s:1, type:'Upper' })).length === 0,
+     'la primera sesión del tipo no tiene de dónde precargar');
 
   // Que la laxa no junte ejercicios que de verdad son distintos.
   ok(app.serieDeCargas(conCargas, 'Sentadilla').length === 1, 'la sentadilla va por su cuenta');

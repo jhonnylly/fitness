@@ -2068,7 +2068,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 13:50';
+const APP_VERSION='2026-09-06 14:05';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2988,15 +2988,34 @@ function closeWeekDetail(){
   window.scrollTo(0,0);
 }
 
+/* Los kilos con los que se precarga una sesión nueva: lo que moviste la última
+   vez en el día equivalente (mismo tipo). Dos cosas que estaban mal:
+
+   1. **Buscaba por nombre EXACTO.** El nombre lo escribe una persona a mano
+      cada vez, así que "Curl bíceps barra" y "Curl bíceps con barra" eran dos
+      ejercicios distintos y el campo salía vacío — mientras la gráfica de ese
+      mismo ejercicio SÍ enseñaba el histórico, porque ella usa la clave laxa.
+      En los datos reales de Jhon había 118 nombres para 112 movimientos.
+   2. **Solo miraba la última sesión del tipo.** Si ese día te saltaste el
+      ejercicio o lo cambiaste por otro, perdías el peso aunque estuviera en la
+      anterior. Ahora se recorre hacia atrás y gana la más reciente que lo
+      tenga.
+
+   Lo que NO cambia: solo sesiones del MISMO tipo. Una sentadilla de "Full Body"
+   no pesa lo mismo que la de "Lower", y mezclarlas propondría un peso falso. */
 function getPrevKgs(day){
-  const sameType=getActivePlan().flatMap(w=>w.days).filter(d=>d.type===day.type&&d.s<day.s&&getActiveSessions()[d.s]);
-  if(!sameType.length)return{};
-  const last=getActiveSessions()[sameType[sameType.length-1].s];
+  const sessions=getActiveSessions();
+  const mismoTipo=getActivePlan().flatMap(w=>w.days)
+    .filter(d=>d.type===day.type&&d.s<day.s&&sessions[d.s]);
   const map={};
-  last.exercises.forEach(ex=>{
-    const sets=ex.sets.filter(s=>s.kg!==''&&s.kg!==0);
-    if(sets.length)map[ex.name]=sets[sets.length-1].kg;
-  });
+  for(let i=mismoTipo.length-1;i>=0;i--){
+    for(const ex of (sessions[mismoTipo[i].s].exercises||[])){
+      const clave=claveEjercicioLaxa(ex.name);
+      if(!clave||map[clave]!==undefined)continue;   // la más reciente manda
+      const sets=(ex.sets||[]).filter(s=>s.kg!==''&&s.kg!=null&&s.kg!==0);
+      if(sets.length)map[clave]=sets[sets.length-1].kg;
+    }
+  }
   return map;
 }
 
@@ -3134,7 +3153,7 @@ if(curFeeling){const map={'😴':'feel-0','😐':'feel-1','💪':'feel-2','🔥'
     const prevKgs=getPrevKgs(day);
     curEx=day.ex.map(([name,scheme])=>{
       const n=parseInt(scheme.split('×')[0])||3;
-      const kg=prevKgs[name]||'';
+      const kg=prevKgs[claveEjercicioLaxa(name)]||'';
       return{name,sets:Array.from({length:n},()=>({kg,reps:''}))};
     });
   }
