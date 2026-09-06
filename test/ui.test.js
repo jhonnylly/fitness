@@ -320,7 +320,37 @@ async function appLista(page, url){
         : 'ningún botón de la interfaz lleva ya un emoji de color');
 
 
-    console.log('\n8. Sin cobertura: la app sigue abriendo');
+    console.log('\n8. El RIR: casilla en la serie y segunda línea en la gráfica');
+    const rir = await page.evaluate(()=>{
+      alternarRIR(true);
+      const r = getActive();
+      showTab('log', document.getElementById('tab-log'));
+      openWeekDetail(1); openSession(r.plan[0].days[0].s); openExDetail(0);
+      const casilla = document.querySelector('#sets-container input[placeholder="RIR"]');
+      // La gráfica se arma aparte: hacen falta dos sesiones y aquí solo hay una.
+      const puntos = [{s:1,kg:60,rir:2,fecha:'1/9/2026'},
+                      {s:2,kg:60,rir:null,fecha:'3/9/2026'},
+                      {s:3,kg:60,rir:4,fecha:'5/9/2026'}];
+      const con = graficaCargas(puntos, 'kg máx. por sesión');
+      const sin = graficaCargas(puntos.map(p=>({...p, rir:null})), 'kg máx. por sesión');
+      return {casilla: !!casilla,
+              hayRir: con.hayRir, series: con.data.datasets.length,
+              ejeDerecho: !!con.options.scales.y2,
+              leyenda: con.options.plugins.legend.display,
+              huecos: con.data.datasets[1].spanGaps,
+              sinRir: sin.hayRir, seriesSinRir: sin.data.datasets.length,
+              ejeSinRir: !!sin.options.scales.y2};
+    });
+    ok(rir.casilla, 'con la casilla activada, cada serie pide su RIR');
+    ok(rir.hayRir && rir.series === 2 && rir.ejeDerecho,
+       'la gráfica añade la línea de RIR con su eje a la derecha');
+    ok(rir.leyenda === true, 'y enciende la leyenda, que con dos líneas hace falta');
+    ok(rir.huecos === true, 'una sesión sin RIR no parte la línea');
+    ok(!rir.sinRir && rir.seriesSinRir === 1 && !rir.ejeSinRir,
+       'quien no apunta RIR ve la gráfica de siempre, sin segundo eje');
+    await page.evaluate(()=>{ alternarRIR(false); closeExDetail(); closeForm(); closeWeekDetail(); });
+
+    console.log('\n9. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });
     await esperar(2500);                                  // que termine de precargar
     await page.setOfflineMode(true);
@@ -354,7 +384,7 @@ async function appLista(page, url){
     ok(fuenteOffline, 'y las cifras siguen en su fuente, no en la del sistema');
     await page.setOfflineMode(false);
 
-    console.log('\n9. Nada ha reventado por el camino');
+    console.log('\n10. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
 

@@ -477,6 +477,26 @@ const ok = (cond, msg) => {
   ok(!serie.some(p => p.s === 4), 'la sesión con el kg en blanco no pinta punto: no dice nada');
   ok(serie.every(p => p.fecha), 'cada punto lleva su fecha para el eje X');
 
+  /* El RIR viaja con el punto: es lo que deja ver "mismo peso, más margen".
+     Se coge el de la primera serie con el peso máximo — las de después llevan
+     encima el cansancio de la sesión y no se comparan con las de otro día. */
+  const conRir = {
+    plan: [{ num: 1, days: [{ s: 1 }, { s: 2 }, { s: 3 }] }],
+    sessions: {
+      1: { date: '5/8/2026',  exercises: [{ name: 'Press banca', sets: [
+             { kg: 60, reps: 10, rir: '2' }, { kg: 60, reps: 8, rir: '0' }, { kg: 50, reps: 12, rir: '4' }] }] },
+      2: { date: '12/8/2026', exercises: [{ name: 'Press banca', sets: [{ kg: 60, reps: 10 }] }] },
+      3: { date: '19/8/2026', exercises: [{ name: 'Press banca', sets: [{ kg: 62, reps: 10, rir: '1' }] }] },
+    },
+  };
+  const sr = app.serieDeCargas(conRir, 'Press banca');
+  ok(sr[0].rir === 2, 'el RIR es el de la PRIMERA serie con el peso máximo, no el de la última');
+  ok(sr[0].kg === 60, 'y el peso del punto sigue siendo el máximo');
+  ok(sr[1].rir === null, 'una sesión sin RIR apuntado no se inventa uno');
+  ok(sr[2].rir === 1, 'y se lee aunque el formulario lo guarde como texto');
+  ok(app.serieDeCargas(conCargas, 'Curl bíceps con barra').every(p => p.rir === null),
+     'sin casilla de RIR, los puntos siguen saliendo igual que antes');
+
   // Que la laxa no junte ejercicios que de verdad son distintos.
   ok(app.serieDeCargas(conCargas, 'Sentadilla').length === 1, 'la sentadilla va por su cuenta');
   ok(app.serieDeCargas(conCargas, 'Press banca').length === 0, 'un ejercicio nunca hecho no da puntos');

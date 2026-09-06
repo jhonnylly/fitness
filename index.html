@@ -2068,7 +2068,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 12:55';
+const APP_VERSION='2026-09-06 13:50';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3897,7 +3897,13 @@ function serieDeCargas(r, nombreEjercicio){
     if(!ex) continue;
     const kgs = (ex.sets || []).map(v => parseFloat(v.kg)).filter(v => !isNaN(v));
     if(!kgs.length) continue;
-    puntos.push({ s, kg: Math.max(...kgs), fecha: ses.date || '' });
+    const max = Math.max(...kgs);
+    /* El RIR que acompaña al punto es el de la PRIMERA serie con ese peso. Si
+       ese peso se repite en varias series, las de después llevan encima el
+       cansancio de la sesión y no se pueden comparar con las de otro día. */
+    const top = (ex.sets || []).find(v => parseFloat(v.kg) === max);
+    const rir = top ? parseFloat(top.rir) : NaN;
+    puntos.push({ s, kg: max, rir: isNaN(rir) ? null : rir, fecha: ses.date || '' });
   }
   return puntos;
 }
@@ -4050,37 +4056,86 @@ function pintarGraficaCargasEjercicio(){
     return;
   }
 
+  const cfg=graficaCargas(puntos,'kg máx. por sesión',
+    {etiqueta:p=>p.fecha?etiquetaFecha(p.fecha):('S'+p.s)});
+
+  /* Lo que cuenta el RIR y el peso solo no puede: mismo peso con más margen es
+     mejorar. Se dice con las dos cifras delante en vez de interpretarlo. */
+  const conRir=puntos.filter(p=>p.rir!=null);
+  const linea2=cfg.hayRir
+    ? ` · RIR ${num(conRir[0].rir)} → ${num(conRir[conRir.length-1].rir)}`
+    : '';
+
   wrap.innerHTML='<div class="section-title">Progresión</div>'+
     `<p style="font-size:12px;color:var(--muted);margin-bottom:6px;">`+
-    `${puntos.length} sesiones · ${escaparHTML(resumen)}</p>`+
+    `${puntos.length} sesiones · ${escaparHTML(resumen)}${escaparHTML(linea2)}</p>`+
     '<canvas id="ex-chart" height="170"></canvas>';
 
-  const oscuro=window.matchMedia('(prefers-color-scheme:dark)').matches;
-  const colorTexto=oscuro?'#888':'#7a7060';
-  const colorRejilla=oscuro?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.08)';
-  window._exChart=new Chart(document.getElementById('ex-chart').getContext('2d'),{
+  window._exChart=new Chart(document.getElementById('ex-chart').getContext('2d'),cfg);
+}
+
+/* La gráfica de progresión se pinta en DOS sitios que cuentan lo mismo: el
+   ejercicio abierto y el detalle del cliente que ve el entrenador. Los datos y
+   las escalas se arman aquí una vez; cada sitio pone su tamaño.
+
+   El RIR va en su propia línea, gris y a rayas, contra un eje a la derecha. En
+   gris y no en violeta a propósito: el acento es de los kilos, que es lo que se
+   viene a mirar. Leerlo: si el peso se queda plano pero el RIR SUBE, estás
+   moviendo lo mismo con más margen —has mejorado aunque la línea violeta no se
+   mueva—; si el peso sube y el RIR baja, estás apretando más para subirlo. */
+function graficaCargas(puntos, etiquetaKg, cfg){
+  cfg = cfg || {};
+  const oscuro = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const colorTexto = oscuro ? '#888' : '#7a7060';
+  const colorRejilla = oscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const fuente = cfg.fuente || 10, punto = cfg.punto || 4;
+  const etiqueta = cfg.etiqueta || (p => p.fecha || ('S' + p.s));
+  /* Con menos de dos sesiones con RIR no hay línea que dibujar: un punto suelto
+     no cuenta nada y el segundo eje solo estorbaría. Quien no usa la casilla de
+     RIR no llega a enterarse de que esto existe. */
+  const hayRir = puntos.filter(p => p.rir != null).length >= 2;
+
+  const datasets = [{
+    label: etiquetaKg,
+    data: puntos.map(p => p.kg),
+    borderColor: acentoCSS(), backgroundColor: acentoCSS(0.08),
+    tension: 0.3, pointRadius: punto, pointBackgroundColor: acentoCSS()
+  }];
+  if(hayRir) datasets.push({
+    label: 'RIR de la serie más pesada',
+    data: puntos.map(p => p.rir),
+    yAxisID: 'y2',
+    borderColor: colorTexto, backgroundColor: 'transparent',
+    borderDash: [5, 4], borderWidth: 2, tension: 0.3,
+    pointRadius: Math.max(3, punto - 1), pointBackgroundColor: colorTexto,
+    spanGaps: true          // una sesión suelta sin RIR no parte la línea
+  });
+
+  const scales = {
+    x:{ticks:{color:colorTexto,font:{size:fuente}},grid:{color:colorRejilla}},
+    y:{ticks:{color:colorTexto,font:{size:fuente}},grid:{color:colorRejilla},
+       title:{display:true,text:'kg',color:colorTexto,font:{size:10}}}
+  };
+  if(hayRir) scales.y2 = {
+    position:'right', min:0, suggestedMax:5,
+    ticks:{color:colorTexto,font:{size:fuente},stepSize:1,precision:0},
+    grid:{drawOnChartArea:false},        // dos rejillas superpuestas no se leen
+    title:{display:true,text:'RIR',color:colorTexto,font:{size:10}}
+  };
+
+  return {
+    hayRir,
     type:'line',
-    data:{
-      labels:puntos.map(p=>p.fecha?etiquetaFecha(p.fecha):('S'+p.s)),
-      datasets:[{
-        label:'kg máx. por sesión',
-        data:puntos.map(p=>p.kg),
-        borderColor:acentoCSS(), backgroundColor:acentoCSS(0.08),
-        tension:0.3, pointRadius:4, pointBackgroundColor:acentoCSS()
-      }]
-    },
+    data:{labels: puntos.map(etiqueta), datasets},
     options:{
       responsive:true,
-      // Una sola serie: la leyenda solo ocupa sitio y el texto de arriba ya dice
-      // qué se está viendo.
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{ticks:{color:colorTexto,font:{size:10}},grid:{color:colorRejilla}},
-        y:{ticks:{color:colorTexto,font:{size:10}},grid:{color:colorRejilla},
-           title:{display:true,text:'kg',color:colorTexto,font:{size:10}}}
-      }
+      /* Con una sola línea la leyenda solo ocupa sitio —el texto de arriba ya
+         dice qué se ve—; con dos hace falta para saber cuál es cuál. */
+      plugins:{legend:{display: hayRir || !!cfg.leyendaSiempre,
+                       labels:{color:colorTexto,font:{size:11},boxWidth:14}}},
+      scales
     }
-  });
+  };
 }
 
 /* Chart.js pinta sobre canvas: no entiende var(--accent), necesita un color
@@ -7316,31 +7371,13 @@ function pintarGraficaCargas(r, nombreEjercicio){
     return;
   }
   wrap.innerHTML = '<canvas id="detalle-chart" height="200"></canvas>';
-  const oscuro = window.matchMedia('(prefers-color-scheme:dark)').matches;
-  const colorTexto = oscuro ? '#888' : '#7a7060';
-  const colorRejilla = oscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
   if(window._detalleChart) window._detalleChart.destroy();
   if(typeof Chart==='undefined'){ wrap.innerHTML='<p style="font-size:12px;color:var(--muted);">La gráfica necesita conexión.</p>'; return; }
-  window._detalleChart = new Chart(document.getElementById('detalle-chart').getContext('2d'), {
-    type:'line',
-    data:{
-      labels: puntos.map(p => p.fecha || ('S'+p.s)),
-      datasets:[{
-        label: nombreEjercicio + ' (kg máx.)',
-        data: puntos.map(p => p.kg),
-        borderColor:acentoCSS(), backgroundColor:acentoCSS(0.08),
-        tension:0.3, pointRadius:5, pointBackgroundColor:acentoCSS()
-      }]
-    },
-    options:{
-      responsive:true,
-      plugins:{legend:{labels:{color:colorTexto,font:{size:11}}}},
-      scales:{
-        x:{ticks:{color:colorTexto,font:{size:11}},grid:{color:colorRejilla}},
-        y:{ticks:{color:colorTexto,font:{size:11}},grid:{color:colorRejilla},title:{display:true,text:'kg',color:colorTexto,font:{size:10}}}
-      }
-    }
-  });
+  /* La leyenda se queda siempre: aquí es lo único que dice de qué ejercicio es
+     la gráfica (en el detalle del ejercicio el nombre está arriba). */
+  window._detalleChart = new Chart(document.getElementById('detalle-chart').getContext('2d'),
+    graficaCargas(puntos, nombreEjercicio + ' (kg máx.)',
+      {fuente:11, punto:5, leyendaSiempre:true}));
 }
 
 /* Desvincular es irreversible desde aquí (para volver a vincularlo hace falta
