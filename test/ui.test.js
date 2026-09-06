@@ -274,7 +274,38 @@ async function appLista(page, url){
        'la racha ya no es una cifra más de la rejilla: '+resumen.cifras.join(', '));
     ok(resumen.cifras.length === 4, 'que se queda en cuatro');
 
-    console.log('\n7. Sin cobertura: la app sigue abriendo');
+    console.log('\n7. Solo se etiqueta lo que ha pasado, y el avatar es tuyo');
+    const etiquetas = await page.evaluate(()=>{
+      showTab('log', document.getElementById('tab-log'));
+      const semanas = [...document.querySelectorAll('#week-buttons-container .mos-badge')]
+                        .map(e=>e.textContent.trim());
+      openWeekDetail(getCurrentWeekNum());
+      const sesiones = [...document.querySelectorAll('#session-list .mos-badge')]
+                         .map(e=>e.textContent.trim());
+      const av = document.getElementById('profile-pic');
+      return {semanas, sesiones,
+              hechas: document.querySelectorAll('#session-list .mos-card.lista').length,
+              avatar: av.textContent.trim(), sinFoto: av.classList.contains('sin-foto'),
+              nombre: DB.profileName,
+              /* El otro sitio donde vivía la silueta: el avatar del onboarding,
+                 donde todavía no hay nombre que inicialar. Ahora es un icono de
+                 trazo. Se mira el elemento y no el código fuente: en el fuente
+                 el emoji sigue estando, en los comentarios que explican esto. */
+              obIcono: !!document.querySelector('#ob-avatar svg'),
+              obTexto: document.getElementById('ob-avatar').textContent.trim()};
+    });
+    ok(!etiquetas.semanas.some(t=>/Pendiente/.test(t)),
+       'el mosaico de semanas ya no repite "Pendiente": '+(etiquetas.semanas.join(', ')||'(sin etiquetas)'));
+    ok(!etiquetas.sesiones.some(t=>/Pendiente/.test(t)),
+       'ni el de sesiones: '+(etiquetas.sesiones.join(', ')||'(sin etiquetas)'));
+    ok(etiquetas.sesiones.length === etiquetas.hechas && etiquetas.hechas > 0,
+       'una etiqueta por sesión hecha y ninguna más ('+etiquetas.hechas+')');
+    ok(etiquetas.sinFoto && etiquetas.avatar === etiquetas.nombre[0],
+       'sin foto, el avatar son las iniciales del nombre: '+etiquetas.avatar);
+    ok(etiquetas.obIcono && etiquetas.obTexto === '',
+       'y el avatar del onboarding es un icono de trazo, no la silueta 👤');
+
+    console.log('\n8. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });
     await esperar(2500);                                  // que termine de precargar
     await page.setOfflineMode(true);
@@ -308,7 +339,7 @@ async function appLista(page, url){
     ok(fuenteOffline, 'y las cifras siguen en su fuente, no en la del sistema');
     await page.setOfflineMode(false);
 
-    console.log('\n8. Nada ha reventado por el camino');
+    console.log('\n9. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
 

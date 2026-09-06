@@ -121,6 +121,10 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 .cab-avatar{width:56px;height:56px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);
   overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:26px;}
 .cab-avatar img{width:100%;height:100%;object-fit:cover;}
+/* Sin foto: iniciales sobre violeta. El borde de acento sobraría —sería violeta
+   sobre violeta— así que en este estado se quita. */
+.cab-avatar.sin-foto{background:var(--accent);border-color:transparent;color:#fff;
+  font-size:20px;font-weight:800;letter-spacing:.5px;}
 .cab-centro{flex:1;min-width:0;}
 /* El nombre de la app, discreto. Desapareció al compactar la cabecera y se
    echaba en falta: la idea era que encogiera, no que se fuera. Cabe gratis
@@ -680,9 +684,9 @@ textarea{resize:vertical;min-height:60px;}
 
 <header>
   <div class="cab">
-    <div id="profile-pic" class="cab-avatar" onclick="abrirVisorFoto()">
-      <span>👤</span>
-    </div>
+    <!-- Vacío a propósito: lo rellena renderProfilePic() con la foto o con las
+         iniciales, y un 👤 aquí se vería en el parpadeo de la carga. -->
+    <div id="profile-pic" class="cab-avatar sin-foto" onclick="abrirVisorFoto()"></div>
     <input type="file" id="profile-input" accept="image/*" onchange="saveProfilePic(this)" style="display:none;">
 
     <div class="cab-centro">
@@ -2042,7 +2046,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-05 21:40';
+const APP_VERSION='2026-09-06 12:30';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2649,14 +2653,17 @@ function cerrarVisorFoto(){
   document.getElementById('visor-foto-cuerpo').innerHTML='';
 }
 
+/* Sin foto van las INICIALES sobre violeta, no la silueta 👤: ese emoji lo pinta
+   cada sistema a su manera y en Android sale azul, el único azul de una app
+   violeta. Además las iniciales son tuyas y la silueta no es de nadie. */
 function renderProfilePic(){
   const el=document.getElementById('profile-pic');
   if(!el)return;
-  if(DB.profilePic){
-    el.innerHTML=`<img src="${DB.profilePic}" style="width:100%;height:100%;object-fit:cover;">`;
-  }else{
-    el.innerHTML='<span style="font-size:22px;">👤</span>';
-  }
+  const hayFoto=!!DB.profilePic;
+  el.classList.toggle('sin-foto',!hayFoto);
+  el.innerHTML=hayFoto
+    ? `<img src="${DB.profilePic}" style="width:100%;height:100%;object-fit:cover;">`
+    : escaparHTML(iniciales(DB.profileName||'JHON'));   // el mismo por defecto que renderProfileName
 }
 
 async function load(){
@@ -2818,17 +2825,18 @@ if(!plan.length){
     const total=w.days.length;
     const isComplete=total>0&&done===total;
     const pct=total?Math.round(done/total*100):0;
-    const color=isComplete?'var(--green)':'var(--muted)';
-    const fondo=isComplete?'rgba(45,122,79,0.14)':'rgba(127,127,127,0.12)';
     // El título solo si aporta algo: etiquetaSemana ya evita "Semana 3 — Semana 3".
     const etiqueta=etiquetaSemana(w);
     const soloTitulo=etiqueta.includes(' — ')?etiqueta.split(' — ').slice(1).join(' — '):'';
+    /* "Pendiente" salía en gris en cada semana sin terminar —siete veces
+       seguidas— para decir lo que ya dicen el 0/6 y la barra vacía. Solo se
+       etiqueta lo que SÍ ha pasado, como en el mosaico de ejercicios. */
     return`<button class="mos-card${isComplete?' lista':''}" style="--i:${Math.min(wi,8)}" onclick="openWeekDetail(${w.num})">
       <div class="mos-num">Semana ${w.num}</div>
       ${soloTitulo?`<div class="mos-tit">${escaparHTML(soloTitulo)}</div>`:''}
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${done}/${total}</span>
-        <span class="mos-badge" style="color:${color};background:${fondo};">${isComplete?'✓ Lista':'Pendiente'}</span>
+        ${isComplete?'<span class="mos-badge" style="color:var(--green);background:rgba(45,122,79,0.14);">✓ Lista</span>':''}
       </div>
       <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     </button>`;
@@ -2925,7 +2933,7 @@ function openWeekDetail(weekNum){
       <div class="mos-tit">${nEjercicios(nEj)}</div>
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${hecha&&reg.date?escaparHTML(reg.date):''}</span>
-        <span class="mos-badge" style="color:${hecha?'var(--green)':'var(--muted)'};background:${hecha?'rgba(45,122,79,0.14)':'rgba(127,127,127,0.12)'};">${hecha?'✓ Hecha':'Pendiente'}</span>
+        ${hecha?'<span class="mos-badge" style="color:var(--green);background:rgba(45,122,79,0.14);">✓ Hecha</span>':''}
       </div>
     </button>`;
   }).join('')+'</div>';
@@ -3774,6 +3782,15 @@ function num(v){
 /* "Semana 1 — Semana 1". Varias rutinas preconstruidas titulan sus semanas
    justo "Semana N", y el listado antepone "Semana N — " al título, así que
    salía repetido. Si el título no añade nada, se enseña solo el número. */
+/* Las dos primeras iniciales de un nombre, para cuando no hay foto. La usan el
+   avatar de la cabecera y la lista de clientes; era el mismo trozo en los dos
+   sitios. Sin nombre devuelve "?" y no una cadena vacía: un círculo vacío se
+   lee como que algo ha fallado. */
+function iniciales(nombre){
+  return (nombre||'?').trim().split(/\s+/).slice(0,2)
+    .map(p=>p[0]||'').join('').toUpperCase() || '?';
+}
+
 function etiquetaSemana(w,prefijo){
   const p=(prefijo||'Semana')+' '+w.num;
   const t=(w.title||'').trim();
@@ -5171,6 +5188,7 @@ function editProfileName(){
     DB.profileName=nuevo.trim().toUpperCase();
     save();
     renderProfileName();
+    renderProfilePic();   // sin foto, el avatar son las iniciales de ESTE nombre
   }
 }
 
@@ -5961,7 +5979,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <div class="ob-title">Bienvenido a<br><span>My Fitness Tracker</span></div>
     <div class="ob-sub">Tu app personal de entrenamiento. Empieza configurando tu perfil.</div>
     <div class="ob-avatar" id="ob-avatar" onclick="document.getElementById('ob-photo-input').click()">
-      <span style="font-size:40px;">👤</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+           style="width:44px;height:44px;color:var(--accent);">
+        <circle cx="12" cy="8.5" r="3.5"/><path d="M4.5 20c0-3.7 3.4-5.9 7.5-5.9s7.5 2.2 7.5 5.9"/>
+      </svg>
     </div>
     <input type="file" id="ob-photo-input" accept="image/*" style="display:none;" onchange="obSetPhoto(this)">
     <p style="font-size:11px;color:var(--muted);margin-bottom:16px;">Toca para añadir foto de perfil</p>
@@ -6633,9 +6655,7 @@ function miniaturaCliente(cl){
   if(cl.profilePic){
     return `<img class="cliente-avatar" src="${escaparHTML(cl.profilePic)}" alt="">`;
   }
-  const iniciales = (cl.name || '?').trim().split(/\s+/).slice(0,2)
-    .map(p => p[0] || '').join('').toUpperCase() || '?';
-  return `<div class="cliente-avatar sin-foto">${escaparHTML(iniciales)}</div>`;
+  return `<div class="cliente-avatar sin-foto">${escaparHTML(iniciales(cl.name))}</div>`;
 }
 
 /* De dónde salió una rutina. Dos rutinas con el mismo nombre y el mismo
