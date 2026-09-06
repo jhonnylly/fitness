@@ -413,6 +413,37 @@ async function appLista(page, url){
     ok(visor.pieVuelve, 'pero al abrir la tuya el botón de cambiarla vuelve');
     ok(visor.inicialesNoPulsables, 'quien no tiene foto no tiene nada que ampliar');
 
+    /* En la LISTA la foto no se amplía: ahí toda la tarjeta abre la ficha del
+       cliente, y dos destinos en el mismo sitio se pelean. El guardia del toque
+       tiene que dejar pasar la tarjeta e ignorar los botones de dentro. */
+    const tarjeta = await page.evaluate(()=>{
+      const px='data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+      const enLista = avatarPersona(px,'Ana Pérez',{ampliable:false});
+      const host=document.createElement('div');
+      host.innerHTML=`<div class="client-item" data-uid="u1" data-nombre="Ana Pérez" data-activa="r1"
+          onclick="toqueTarjetaCliente(this,event)">
+          <div class="fila-cliente">${enLista}<div class="client-name">Ana Pérez</div></div>
+          <button class="btn-sm" id="prueba-asignar">+ Asignar rutina</button>
+        </div>`;
+      document.body.appendChild(host);
+      const llamadas=[];
+      const original=window.verDetalleCliente;
+      window.verDetalleCliente=(...a)=>llamadas.push(a);
+      host.querySelector('.fila-cliente').click();      // tocar la fila: abre
+      const trasFila=llamadas.length;
+      host.querySelector('#prueba-asignar').click();    // un botón: no abre
+      const trasBoton=llamadas.length;
+      window.verDetalleCliente=original;
+      host.remove();
+      return {sinBoton: !/<button/.test(enLista), trasFila, trasBoton,
+              args: llamadas[0]||[]};
+    });
+    ok(tarjeta.sinBoton, 'en la lista la miniatura ya no es un botón que amplía');
+    ok(tarjeta.trasFila === 1, 'tocar la tarjeta abre la ficha del cliente');
+    ok(tarjeta.args[0] === 'u1' && tarjeta.args[1] === 'Ana Pérez' && tarjeta.args[2] === 'r1',
+       'con su uid, su nombre y su rutina activa');
+    ok(tarjeta.trasBoton === 1, 'y pulsar un botón de dentro NO la abre');
+
     console.log('\n11. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });
     await esperar(2500);                                  // que termine de precargar

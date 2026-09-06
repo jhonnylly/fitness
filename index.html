@@ -191,7 +191,14 @@ body.es-entrenador .modo-sel{display:flex;}
 body.modo-clientes .tabs,body.modo-clientes .pane{display:none;}
 #pane-clientes{display:none;padding:12px;}
 body.modo-clientes #pane-clientes{display:block;}
-.client-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;}
+/* La tarjeta entera abre la ficha del cliente: se comporta como los botones
+   del mosaico —encoge al pulsar— para que se note que es pulsable. El chevron
+   de la esquina es la otra pista, porque aquí dentro hay más botones y sin
+   señal la tarjeta parece un simple recuadro. */
+.client-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:12px;margin-bottom:8px;position:relative;cursor:pointer;transition:transform .12s ease;}
+.client-item:active{transform:scale(.985);}
+.client-chevron{position:absolute;top:14px;right:12px;color:var(--muted);font-size:18px;line-height:1;}
 .preset-op{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-top:6px;cursor:pointer;font-family:inherit;color:var(--text);}
 .preset-op.elegida{border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
 .preset-op-name{font-size:13px;font-weight:700;}
@@ -221,6 +228,8 @@ body.modo-clientes #pane-clientes{display:block;}
 .fila-cliente{display:flex;gap:10px;align-items:center;}
 .cliente-avatar{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);background:var(--card);}
 .cliente-avatar.sin-foto{display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--muted);}
+/* En la ficha del cliente la foto es lo que se viene a mirar, así que manda. */
+.cliente-avatar.grande{width:72px;height:72px;border-radius:14px;font-size:24px;}
 /* La miniatura con foto va dentro de un botón que la abre en grande. Sin caja
    propia —el borde y el radio los pone .cliente-avatar de dentro— para que se
    vea igual que antes; solo se añade el encogido al pulsar, como el resto. */
@@ -2074,7 +2083,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 14:20';
+const APP_VERSION='2026-09-06 14:30';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2693,17 +2702,23 @@ function verFotoGrande(boton){
 }
 
 /* La cara de una persona en una fila: su foto si la tiene y, si no, sus
-   iniciales. Con foto es un BOTÓN que la abre en grande — a 44 px no se
-   distingue a nadie, que es justo lo que se viene a mirar. Sin foto no hay nada
-   que ampliar, así que las iniciales no son pulsables.
-   Lo comparten la lista de clientes y la tarjeta del entrenador. */
-function avatarPersona(foto,nombre){
+   iniciales. Con `ampliable` la foto es un BOTÓN que la abre a pantalla
+   completa; sin él es una imagen y ya.
+   Dónde se amplía y dónde no: en la LISTA de clientes no, porque ahí toda la
+   tarjeta abre la ficha y dos destinos en el mismo sitio se pelean; en la FICHA
+   del cliente sí, que es donde se va a mirar quién es. Sin foto nunca: unas
+   iniciales no tienen nada que ampliar. */
+function avatarPersona(foto,nombre,opciones){
+  const o=opciones||{};
+  const clase='cliente-avatar'+(o.clase?' '+o.clase:'');
   const quien=(nombre||'').trim();
-  if(!foto)return `<div class="cliente-avatar sin-foto">${escaparHTML(iniciales(quien))}</div>`;
+  if(!foto)return `<div class="${clase} sin-foto">${escaparHTML(iniciales(quien))}</div>`;
   const alt=quien?'Foto de '+quien:'Foto de perfil';
+  const img=`<img class="${clase}" src="${escaparHTML(foto)}" alt="${escaparHTML(alt)}">`;
+  if(o.ampliable===false)return img;
   return `<button type="button" class="cliente-avatar-btn" onclick="verFotoGrande(this)"
       title="Ver la foto en grande" aria-label="${escaparHTML(alt)}, tocar para verla en grande">
-      <img class="cliente-avatar" src="${escaparHTML(foto)}" alt="${escaparHTML(alt)}">
+      ${img}
     </button>`;
 }
 
@@ -6787,7 +6802,30 @@ function cerrarVigilancias(){
    mismo que se lee para pintar la lista: no cuesta ni una lectura extra.
    Sin foto, las iniciales del nombre — un hueco vacío se lee como que falla. */
 function miniaturaCliente(cl){
-  return avatarPersona(cl.profilePic, cl.name);
+  return avatarPersona(cl.profilePic, cl.name, {ampliable:false});
+}
+
+/* Lo que hace falta del cliente para pintar su ficha, guardado al pintar la
+   lista: la foto y el correo ya vienen en ese mismo snapshot, así que la ficha
+   no cuesta ni una lectura extra (igual que la miniatura). */
+const perfilesCliente = {};
+
+/* La cabecera de la ficha: quién es, en grande. La foto SÍ se amplía aquí.
+   Se pinta también cuando el cliente no tiene ninguna rutina: saber a quién
+   estás mirando no depende de que haya plan. */
+function fichaCliente(uid, nombreSuelto){
+  const p = perfilesCliente[uid] || {};
+  const nombre = p.name || nombreSuelto || 'Cliente';
+  return `<div class="card">
+    <div class="fila-cliente">
+      ${avatarPersona(p.profilePic, nombre, {clase:'grande'})}
+      <div style="min-width:0;">
+        <div style="font-size:16px;font-weight:800;">${escaparHTML(nombre)}</div>
+        ${p.email?`<div class="client-meta">${escaparHTML(p.email)}</div>`:''}
+        ${p.profilePic?'<div class="client-meta">Toca la foto para verla en grande</div>':''}
+      </div>
+    </div>
+  </div>`;
 }
 
 /* De dónde salió una rutina. Dos rutinas con el mismo nombre y el mismo
@@ -6917,8 +6955,16 @@ function vigilarClientes(){
     c.innerHTML = '';
     qs.forEach(d => {
       const cl = d.data();
+      // Para la ficha, que se abre desde aquí: nombre, correo y foto ya vienen.
+      perfilesCliente[d.id] = {name: cl.name||'', email: cl.email||'', profilePic: cl.profilePic||null};
       c.insertAdjacentHTML('beforeend', `
-        <div class="client-item">
+        <div class="client-item" role="button" tabindex="0"
+             data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
+             data-activa="${escaparHTML(cl.activeRoutine||'')}"
+             aria-label="Ver la ficha de ${escaparHTML(cl.name||'este cliente')}"
+             onclick="toqueTarjetaCliente(this,event)"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toqueTarjetaCliente(this,event);}">
+          <span class="client-chevron" aria-hidden="true">›</span>
           <div class="fila-cliente">
             ${miniaturaCliente(cl)}
             <div style="min-width:0;">
@@ -6929,9 +6975,6 @@ function vigilarClientes(){
           <div class="client-meta" id="cliente-prog-${d.id}" style="margin-top:6px;">Cargando sus rutinas...</div>
           <div id="cliente-rutinas-${d.id}"></div>
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-            <button class="btn-sm" data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
-              data-activa="${escaparHTML(cl.activeRoutine||'')}"
-              onclick="verDetalleCliente(this.dataset.uid,this.dataset.nombre,this.dataset.activa)">Ver detalle</button>
             <button class="btn-sm" data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
               onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>
             <button class="btn-sm btn-danger" data-uid="${d.id}"
@@ -7056,6 +7099,16 @@ function vigilarInvitaciones(){
 
 let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, semana:null, editando:null, unsub:null, activa:null };
 
+/* Toda la tarjeta abre la ficha, pero dentro hay botones —asignar, desvincular
+   y los dos del confirmar de desvincular, que aparecen después—. Se ignora
+   cualquier toque que salga de un control en vez de ir poniendo
+   stopPropagation() uno a uno: así el botón que se añada mañana tampoco abrirá
+   la ficha sin querer. */
+window.toqueTarjetaCliente = function(el, ev){
+  if(ev && ev.target && ev.target.closest('button,select,input,label,a')) return;
+  verDetalleCliente(el.dataset.uid, el.dataset.nombre, el.dataset.activa);
+};
+
 window.verDetalleCliente = function(uid, nombre, activeRoutine){
   detalle = { uid, nombre: nombre || 'Cliente', rutinas:[], viendo:null, ejercicio:null,
               semana:null, editando:null, unsub:null, unsubFotos:null, fotos:[],
@@ -7148,14 +7201,15 @@ function ejerciciosDeRutina(r){
    de la sesión, no el promedio: es lo que enseña la progresión. */
 function pintarDetalle(){
   const cuerpo = document.getElementById('detalle-cuerpo');
+  const ficha = fichaCliente(detalle.uid, detalle.nombre);
   if(!detalle.rutinas.length){
-    cuerpo.innerHTML = '<div class="card"><p style="font-size:13px;color:var(--muted);">'+
+    cuerpo.innerHTML = ficha + '<div class="card"><p style="font-size:13px;color:var(--muted);">'+
       'Este cliente todavía no tiene ninguna rutina.</p></div>';
     return;
   }
   const r = detalle.rutinas.find(x => x.id === detalle.viendo) || detalle.rutinas[0];
   const prog = resumenProgreso(r);
-  const partes = [];
+  const partes = [ficha];
 
   // Selector de rutina, solo si tiene más de una
   if(detalle.rutinas.length > 1){
