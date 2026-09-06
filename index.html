@@ -221,6 +221,12 @@ body.modo-clientes #pane-clientes{display:block;}
 .fila-cliente{display:flex;gap:10px;align-items:center;}
 .cliente-avatar{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);background:var(--card);}
 .cliente-avatar.sin-foto{display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--muted);}
+/* La miniatura con foto va dentro de un botón que la abre en grande. Sin caja
+   propia —el borde y el radio los pone .cliente-avatar de dentro— para que se
+   vea igual que antes; solo se añade el encogido al pulsar, como el resto. */
+.cliente-avatar-btn{padding:0;border:none;background:none;line-height:0;flex-shrink:0;
+  cursor:pointer;transition:transform .12s ease;}
+.cliente-avatar-btn:active{transform:scale(.94);}
 .client-meta{font-size:11px;color:var(--muted);margin-top:2px;}
 .codigo-box{display:flex;gap:6px;align-items:center;margin-top:8px;}
 .codigo-val{flex:1;font-family:ui-monospace,monospace;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;word-break:break-all;color:var(--muted);}
@@ -2068,7 +2074,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 14:05';
+const APP_VERSION='2026-09-06 14:20';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -2658,21 +2664,57 @@ function saveProfilePic(input){
   });
 }
 
+/* El visor enseña DOS cosas distintas: tu foto (con "Cambiar foto" en el pie) y
+   la de otra persona —un cliente, tu entrenador—, que no es tuya y no se toca.
+   De ahí el pie que aparece y desaparece. */
+function mostrarEnVisor(url,alt,propia){
+  const cuerpo=document.getElementById('visor-foto-cuerpo');
+  cuerpo.innerHTML=`<img src="${escaparHTML(url)}" alt="${escaparHTML(alt||'')}">`;
+  const pie=document.querySelector('#visor-foto .visor-pie');
+  if(pie)pie.style.display=propia?'':'none';
+  document.getElementById('visor-foto').classList.remove('hidden');
+}
+
 /* Tocar la foto de la cabecera la enseña en grande; cambiarla es un botón
    dentro del visor. Antes el toque abría el selector de archivos directamente y
    no existía forma de ver la foto que tenías puesta.
    Sin foto todavía no hay nada que enseñar, así que va derecho a elegirla. */
 function abrirVisorFoto(){
   if(!DB.profilePic){ document.getElementById('profile-input').click(); return; }
-  const cuerpo=document.getElementById('visor-foto-cuerpo');
-  cuerpo.innerHTML=`<img src="${DB.profilePic}" alt="Tu foto de perfil">`;
-  document.getElementById('visor-foto').classList.remove('hidden');
+  mostrarEnVisor(DB.profilePic,'Tu foto de perfil',true);
+}
+
+/* La foto se lee del <img> que ya está en la página en vez de viajar en el
+   onclick: es base64 y pesa cientos de KB. Así el botón no lleva ningún dato
+   encima y sirve para cualquier miniatura. */
+function verFotoGrande(boton){
+  const img=boton.querySelector('img');
+  if(img&&img.src)mostrarEnVisor(img.src,img.alt||'Foto de perfil',false);
+}
+
+/* La cara de una persona en una fila: su foto si la tiene y, si no, sus
+   iniciales. Con foto es un BOTÓN que la abre en grande — a 44 px no se
+   distingue a nadie, que es justo lo que se viene a mirar. Sin foto no hay nada
+   que ampliar, así que las iniciales no son pulsables.
+   Lo comparten la lista de clientes y la tarjeta del entrenador. */
+function avatarPersona(foto,nombre){
+  const quien=(nombre||'').trim();
+  if(!foto)return `<div class="cliente-avatar sin-foto">${escaparHTML(iniciales(quien))}</div>`;
+  const alt=quien?'Foto de '+quien:'Foto de perfil';
+  return `<button type="button" class="cliente-avatar-btn" onclick="verFotoGrande(this)"
+      title="Ver la foto en grande" aria-label="${escaparHTML(alt)}, tocar para verla en grande">
+      <img class="cliente-avatar" src="${escaparHTML(foto)}" alt="${escaparHTML(alt)}">
+    </button>`;
 }
 
 function cerrarVisorFoto(){
   document.getElementById('visor-foto').classList.add('hidden');
   // La foto puede pesar bastante: no tiene por qué quedarse en memoria.
   document.getElementById('visor-foto-cuerpo').innerHTML='';
+  /* Y el pie vuelve: si la última que se miró era de un cliente estaba
+     escondido, y la próxima puede ser la tuya. */
+  const pie=document.querySelector('#visor-foto .visor-pie');
+  if(pie)pie.style.display='';
 }
 
 /* Sin foto van las INICIALES sobre violeta, no la silueta 👤: ese emoji lo pinta
@@ -6368,11 +6410,8 @@ async function pintarEntrenador(){
     console.error('[cuenta] no se pudo leer el perfil del entrenador', e);
   }
 
-  const iniciales = (nombre || '?').trim().split(/\s+/).slice(0,2)
-    .map(p => p[0] || '').join('').toUpperCase() || '?';
-  const avatar = foto
-    ? `<img class="cliente-avatar" src="${escaparHTML(foto)}" alt="">`
-    : `<div class="cliente-avatar sin-foto">${escaparHTML(iniciales)}</div>`;
+  // Mismo avatar que la lista de clientes: se toca y se ve en grande.
+  const avatar = avatarPersona(foto, nombre);
 
   if(enCuenta){
     enCuenta.classList.remove('hidden');
@@ -6748,10 +6787,7 @@ function cerrarVigilancias(){
    mismo que se lee para pintar la lista: no cuesta ni una lectura extra.
    Sin foto, las iniciales del nombre — un hueco vacío se lee como que falla. */
 function miniaturaCliente(cl){
-  if(cl.profilePic){
-    return `<img class="cliente-avatar" src="${escaparHTML(cl.profilePic)}" alt="">`;
-  }
-  return `<div class="cliente-avatar sin-foto">${escaparHTML(iniciales(cl.name))}</div>`;
+  return avatarPersona(cl.profilePic, cl.name);
 }
 
 /* De dónde salió una rutina. Dos rutinas con el mismo nombre y el mismo
