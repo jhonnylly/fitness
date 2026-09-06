@@ -2207,7 +2207,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 18:15';
+const APP_VERSION='2026-09-06 18:30';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3512,6 +3512,39 @@ feeling:curFeeling||null,
   celebrarSesion({records,hechasAntes,sesion:nSesion});
 }
 
+/* Celebrar un reto terminado. Reutiliza la MISMA capa que la sesión —mismo aro,
+   mismo confeti, mismo gesto para cerrar— porque es la misma emoción y montar
+   otra sería mantener dos que se parecen. Lo único que cambia es qué se cuenta
+   y de dónde arranca el aro.
+
+   Vive en el script clásico, con el resto de la celebración; el módulo (que es
+   quien sabe cuándo se ha completado) la llama como global. */
+function celebrarReto({titulo,porcentaje,total,pctAntes}){
+  const capa=document.getElementById('celebracion');
+  if(!capa)return;
+  document.getElementById('cel-tit').textContent='¡Reto completado!';
+  document.getElementById('cel-sub').textContent=titulo||('Sube un '+porcentaje+'%');
+  document.getElementById('cel-lineas').innerHTML=[
+    celLinea('hito','trofeo','Has subido un <b>'+porcentaje+'%</b> en <b>todos</b> tus ejercicios',
+             total+'/'+total),
+    celLinea('','rayo','Sobre tus propias marcas, no sobre las de nadie')
+  ].join('');
+
+  capa.classList.remove('hidden');
+  sincronizarBloqueoFondo();
+
+  const aro=document.getElementById('cel-aro');
+  const C=2*Math.PI*44;
+  aro.setAttribute('stroke-dasharray',C.toFixed(1));
+  aro.setAttribute('stroke-dashoffset',(C*(1-(pctAntes||0)/100)).toFixed(1));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    aro.setAttribute('stroke-dashoffset','0');       // el reto entero
+  }));
+  contarHasta(document.getElementById('cel-pct'),pctAntes||0,100);
+  confeti(120);
+  if(navigator.vibrate)navigator.vibrate([18,60,18,60,18]);
+}
+
 /* Pesos que superan tu mejor marca en ese ejercicio. Se llama ANTES de guardar,
    así que serieDeCargas() todavía no ve la sesión de hoy.
    Un ejercicio que haces por primera vez NO cuenta como récord: si contara,
@@ -3542,6 +3575,12 @@ function semanaDeSesion(rutina,n){
   return null;
 }
 
+/* Una línea de la caja de celebración. La comparten la de sesión y la de reto. */
+function celLinea(clase,icono,texto,cifra){
+  return '<div class="cel-linea '+clase+'">'+ico(icono)+'<span>'+texto+'</span>'+
+    (cifra?'<span class="cel-cifra">'+cifra+'</span>':'')+'</div>';
+}
+
 function celebrarSesion({records,hechasAntes,sesion}){
   const capa=document.getElementById('celebracion');
   if(!capa)return;                       // sin la capa, la app sigue igual
@@ -3559,25 +3598,22 @@ function celebrarSesion({records,hechasAntes,sesion}){
   document.getElementById('cel-sub').textContent=
     ((dia&&dia.name)||'Sesión')+' · '+hechas+' de '+total+' sesiones';
 
-  const linea=(clase,icono,texto,cifra)=>
-    '<div class="cel-linea '+clase+'">'+ico(icono)+'<span>'+texto+'</span>'+
-    (cifra?'<span class="cel-cifra">'+cifra+'</span>':'')+'</div>';
   const filas=[];
   /* Como mucho tres marcas, y las de mayor salto primero. En las primeras
      semanas se superan casi todos los ejercicios a la vez: sin tope, la caja
      se convertía en una lista de la compra y no se leía ninguna. */
   const TOPE=3;
   const ordenados=records.slice().sort((a,b)=>b.mas-a.mas);
-  ordenados.slice(0,TOPE).forEach(r=>filas.push(linea('record','trofeo',
+  ordenados.slice(0,TOPE).forEach(r=>filas.push(celLinea('record','trofeo',
     'Marca personal en <b>'+escaparHTML(r.nombre)+'</b>', num(r.kg)+' kg')));
   if(ordenados.length>TOPE){
     const resto=ordenados.length-TOPE;
-    filas.push(linea('record','trofeo',
+    filas.push(celLinea('record','trofeo',
       'Y <b>'+resto+'</b> marca'+(resto===1?'':'s')+' personal'+(resto===1?'':'es')+' más'));
   }
-  if(racha>1)filas.push(linea('','llama',
+  if(racha>1)filas.push(celLinea('','llama',
     'Llevas <b>'+racha+' días</b> seguidos entrenando'));
-  if(semana&&semana.hechas===semana.total)filas.push(linea('hito','trofeo',
+  if(semana&&semana.hechas===semana.total)filas.push(celLinea('hito','trofeo',
     'Semana <b>'+semana.num+'</b> completa'+(semana.titulo?' — '+escaparHTML(semana.titulo):''),
     semana.total+'/'+semana.total));
   document.getElementById('cel-lineas').innerHTML=filas.join('');
@@ -8130,10 +8166,20 @@ let misRetos = [];            // entrenador
 let retoEnPantalla = null;
 let participantes = [];
 
-const CLAVE_RETO_NO = 'jhon_reto_no_v1';   // "ahora no", por reto y dispositivo
+const CLAVE_RETO_NO = 'jhon_reto_no_v1';       // "ahora no", por reto y dispositivo
+const CLAVE_RETO_HECHO = 'jhon_reto_hecho_v1'; // retos ya celebrados aquí
 
 function retosOcultos(){
   try{ return JSON.parse(localStorage.getItem(CLAVE_RETO_NO) || '[]'); }catch(e){ return []; }
+}
+function retosCelebrados(){
+  try{ return JSON.parse(localStorage.getItem(CLAVE_RETO_HECHO) || '[]'); }catch(e){ return []; }
+}
+function marcarRetoCelebrado(id){
+  const lista = retosCelebrados();
+  if(lista.includes(id)) return;
+  lista.push(id);
+  try{ localStorage.setItem(CLAVE_RETO_HECHO, JSON.stringify(lista)); }catch(e){}
 }
 function diasQueQuedan(reto){
   return Math.max(0, Math.ceil(((reto.termina||0) - Date.now()) / 864e5));
@@ -8190,6 +8236,17 @@ function vigilarMiFila(){
 window.publicarProgresoReto = async function(){
   if(!retoVigente || !miFilaReto || !meUid) return;
   const p = progresoReto(getActive(), retoVigente);
+
+  /* Completarlo se celebra UNA vez y en este dispositivo: `completado` se queda
+     en true para siempre en la nube, así que sin esta marca la celebración
+     saltaría en cada arranque. Mismo criterio que la sesión, que solo se
+     celebra la primera vez que se registra. */
+  if(p.total > 0 && p.hechos === p.total && !retosCelebrados().includes(retoVigente.id)){
+    marcarRetoCelebrado(retoVigente.id);
+    celebrarReto({titulo: tituloReto(retoVigente), porcentaje: retoVigente.porcentaje,
+                  total: p.total, pctAntes: miFilaReto.pct || 0});
+  }
+
   if(miFilaReto.pct === p.pct && miFilaReto.hechos === p.hechos
      && miFilaReto.total === p.total) return;
   try{

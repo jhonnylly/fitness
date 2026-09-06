@@ -208,6 +208,29 @@ async function appLista(page, url){
     ok(corregida.visible && /guardada/i.test(corregida.texto),
        'y avisa con el mensaje propio de la app');
 
+    /* Completar un reto usa la MISMA capa que la sesión. Se llama a mano porque
+       el disparo real vive en el módulo y necesita sesión de Firebase. */
+    const celReto = await page.evaluate(async ()=>{
+      celebrarReto({titulo:'Sube un 15% en cada ejercicio', porcentaje:15, total:5, pctAntes:60});
+      await new Promise(r=>setTimeout(r,300));
+      const capa = document.getElementById('celebracion');
+      const r = {abierta: !capa.classList.contains('hidden'),
+                 titulo: document.getElementById('cel-tit').textContent,
+                 sub: document.getElementById('cel-sub').textContent,
+                 lineas: document.getElementById('cel-lineas').innerText.replace(/\s+/g,' ').trim(),
+                 fondoQuieto: document.body.classList.contains('capa-abierta'),
+                 aro: document.getElementById('cel-aro').getAttribute('stroke-dashoffset')};
+      cerrarCelebracion();
+      return r;
+    });
+    ok(celReto.abierta && /Reto completado/.test(celReto.titulo),
+       'completar un reto se celebra: '+celReto.titulo);
+    ok(/15%/.test(celReto.sub), 'con el reto que era: '+celReto.sub);
+    ok(/todos/.test(celReto.lineas) && /5\/5/.test(celReto.lineas),
+       'y lo que se ha conseguido: '+celReto.lineas);
+    ok(celReto.aro === '0', 'el aro se cierra entero (el reto está al 100%)');
+    ok(celReto.fondoQuieto, 'el fondo no hace scroll mientras está abierta');
+
     console.log('\n6. Una protagonista por pantalla');
     /* Registrar: la semana en curso, fuera del mosaico y con el trato de
        "Entrenamiento de hoy". Se vuelve a la lista de semanas primero: la
