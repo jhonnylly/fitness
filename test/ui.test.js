@@ -551,7 +551,35 @@ async function appLista(page, url){
     ok(fuenteOffline, 'y las cifras siguen en su fuente, no en la del sistema');
     await page.setOfflineMode(false);
 
-    console.log('\n13. Nada ha reventado por el camino');
+    console.log('\n13. "Ya tengo cuenta" desde el onboarding');
+    /* Va al final a propósito: vacía el almacenamiento para simular un móvil
+       recién estrenado, que es donde aparece el problema. */
+    await page.evaluate(()=>localStorage.clear());
+    await page.reload({waitUntil:'networkidle2'});
+    await esperar(1600);
+    const entrar = await page.evaluate(()=>{
+      const ob = document.getElementById('onboarding');
+      const panel = document.getElementById('auth-panel');
+      const r = {onboardingAlArrancar: !ob.classList.contains('hidden'),
+                 hayEnlace: !!document.querySelector('.ob-enlace')};
+      if(!r.hayEnlace) return r;
+      document.querySelector('.ob-enlace').click();
+      r.onboardingApartado = ob.classList.contains('hidden');
+      r.panelAbierto = !panel.classList.contains('hidden');
+      r.pestanaLogin = document.getElementById('tab-login').classList.contains('active');
+      toggleAuthPanel();                    // cerrar sin haber iniciado sesión
+      r.onboardingVuelve = !ob.classList.contains('hidden');
+      return r;
+    });
+    ok(entrar.onboardingAlArrancar, 'un dispositivo sin datos arranca en el onboarding');
+    ok(entrar.hayEnlace, 'que ofrece entrar con una cuenta ya existente');
+    ok(entrar.onboardingApartado && entrar.panelAbierto,
+       'al pulsarlo se aparta y se abre el panel de cuenta');
+    ok(entrar.pestanaLogin, 'en la pestaña de iniciar sesión, no en la de registro');
+    ok(entrar.onboardingVuelve,
+       'y si se cierra sin entrar, vuelve el onboarding: si no, la app quedaría vacía y sin salida');
+
+    console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
 
