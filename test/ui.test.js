@@ -475,7 +475,49 @@ async function appLista(page, url){
     ok(capa.fondoQuieto, 'y el fondo no hace scroll mientras está abierta');
     ok(capa.cerrada && capa.fondoSuelto, 'al cerrarla, el fondo vuelve a moverse');
 
-    console.log('\n11. Sin cobertura: la app sigue abriendo');
+    console.log('\n11. El botón de instalar la app');
+    /* Un cliente abrió el enlace desde el navegador de WhatsApp y no encontró
+       cómo instalarla. Chrome avisa con `beforeinstallprompt` cuando se puede;
+       aquí se falsifica ese aviso para comprobar la cadena entera. */
+    const instalar = await page.evaluate(async ()=>{
+      const aviso = document.getElementById('instalar-aviso');
+      let lanzado = false;
+      const ev = new Event('beforeinstallprompt');
+      ev.prompt = () => { lanzado = true; return Promise.resolve(); };
+      ev.userChoice = Promise.resolve({outcome:'accepted'});
+      window.dispatchEvent(ev);
+      const visible = !aviso.classList.contains('hidden');
+      const texto = aviso.innerText.replace(/\s+/g,' ').trim();
+      aviso.querySelector('button').click();          // "Instalar la app"
+      await new Promise(r=>setTimeout(r,60));
+      const trasInstalar = !aviso.classList.contains('hidden');
+      // Y "ahora no" lo calla en Inicio, pero en Ajustes sigue disponible.
+      window.dispatchEvent(Object.assign(new Event('beforeinstallprompt'),
+        {prompt(){}, userChoice: Promise.resolve({})}));
+      ocultarInstalar();
+      const r = {visible, texto, lanzado, trasInstalar,
+                 descartadoEnInicio: aviso.classList.contains('hidden'),
+                 sigueEnAjustes: !document.getElementById('instalar-ajustes').classList.contains('hidden'),
+                 guardado: localStorage.getItem('jhon_instalar_v1')};
+      /* Una vez instalada no hay nada que ofrecer: el aviso desaparece de los
+         dos sitios y se olvida el "ahora no", que ya no significa nada. */
+      window.dispatchEvent(new Event('appinstalled'));
+      r.trasInstalada = aviso.classList.contains('hidden')
+        && document.getElementById('instalar-ajustes').classList.contains('hidden');
+      r.olvidado = localStorage.getItem('jhon_instalar_v1') === null;
+      return r;
+    });
+    ok(instalar.visible, 'cuando el navegador dice que se puede, sale el aviso');
+    ok(/Instalar la app/.test(instalar.texto), 'con su botón: '+instalar.texto.slice(0,60)+'...');
+    ok(instalar.lanzado, 'y pulsarlo abre el diálogo del sistema');
+    ok(!instalar.trasInstalar, 'el aviso se retira: el evento solo vale una vez');
+    ok(instalar.descartadoEnInicio && instalar.guardado === 'no',
+       '"Ahora no" lo calla en Inicio y se recuerda en el dispositivo');
+    ok(instalar.sigueEnAjustes, 'pero en Ajustes sigue estando, que es donde se busca luego');
+    ok(instalar.trasInstalada, 'y una vez instalada no se ofrece en ningún sitio');
+    ok(instalar.olvidado, 'olvidando el "ahora no", que ya no significa nada');
+
+    console.log('\n12. Sin cobertura: la app sigue abriendo');
     await page.evaluate(async ()=>{ await navigator.serviceWorker.ready; });
     await esperar(2500);                                  // que termine de precargar
     await page.setOfflineMode(true);
@@ -509,7 +551,7 @@ async function appLista(page, url){
     ok(fuenteOffline, 'y las cifras siguen en su fuente, no en la del sistema');
     await page.setOfflineMode(false);
 
-    console.log('\n12. Nada ha reventado por el camino');
+    console.log('\n13. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
 

@@ -323,7 +323,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -957,6 +957,10 @@ textarea{resize:vertical;min-height:60px;}
          APP, no de la cuenta (lo decía el propio comentario que tenía al lado).
          Aquí acompaña a la copia de seguridad, que es el mismo tipo de cosa:
          mantenimiento. En Cuenta se queda lo de identidad y sincronización. -->
+    <!-- Se pinta sola si se puede instalar; si ya está instalada o el navegador
+         no lo permite, ni aparece. -->
+    <div id="instalar-ajustes" class="card hidden"></div>
+
     <div class="card">
       <div class="section-title">Versión</div>
       <div style="font-size:13px;" id="version-txt">—</div>
@@ -1152,6 +1156,11 @@ textarea{resize:vertical;min-height:60px;}
   <!-- Solo para clientes: quién les entrena. Lo rellena pintarEntrenador(),
        que aprovecha el hueco que quedaba bajo las tarjetas. -->
   <div id="home-entrenador" class="card hidden" style="margin-top:10px;"></div>
+
+  <!-- Instalar en la pantalla de inicio. Va al FINAL y solo aparece cuando el
+       móvil de verdad puede instalarla: no le quita el sitio a la tarjeta de
+       hoy, que es la protagonista de esta pantalla. Lo rellena pintarInstalar(). -->
+  <div id="instalar-aviso" class="card hidden" style="margin-top:10px;"></div>
 </div>
 
 <!-- REGISTRAR -->
@@ -2112,7 +2121,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 14:55';
+const APP_VERSION='2026-09-06 15:05';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4253,6 +4262,94 @@ function acentoCSS(alpha){
   return alpha==null?'rgb('+rgb+')':'rgba('+rgb+','+alpha+')';
 }
 
+/* ═══════════ Instalar en la pantalla de inicio ═══════════
+   Un cliente de Jhon abrió el enlace desde el navegador de WhatsApp y no
+   encontró cómo instalarla: ahí el menú de Chrome no existe. Este botón lanza
+   el diálogo de Android directamente, sin buscar nada en ningún menú.
+
+   Cómo funciona: Chrome avisa con `beforeinstallprompt` cuando la app cumple
+   los requisitos (https, manifest con iconos y un service worker con fetch).
+   Se guarda el evento —solo se puede usar UNA vez y hay que hacerlo desde un
+   gesto del usuario— y el botón lo dispara.
+
+   iOS no tiene ese evento: Safari solo instala desde su menú Compartir, así que
+   ahí se explica en vez de ofrecer un botón que no existiría.
+
+   Nada de esto se ve si la app ya está instalada (`display-mode: standalone`),
+   ni si el navegador no lo permite. */
+let promptInstalar = null;
+const CLAVE_INSTALAR = 'jhon_instalar_v1';   // "no" = ya dijo que ahora no
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();          // sin esto, Chrome enseña su propia barra
+  promptInstalar = e;
+  pintarInstalar();
+});
+window.addEventListener('appinstalled', () => {
+  promptInstalar = null;
+  try{ localStorage.removeItem(CLAVE_INSTALAR); }catch(err){}
+  pintarInstalar();
+});
+
+function yaInstalada(){
+  return window.matchMedia('(display-mode: standalone)').matches
+      || navigator.standalone === true;      // el de iOS
+}
+function esIOS(){
+  return /iP(hone|od|ad)/.test(navigator.userAgent) && !window.MSStream;
+}
+
+function instalarApp(){
+  if(!promptInstalar) return;
+  promptInstalar.prompt();
+  /* El evento se consume tanto si acepta como si no: Chrome no lo vuelve a
+     mandar hasta que se recargue. Se limpia siempre. */
+  const fin = () => { promptInstalar = null; pintarInstalar(); };
+  if(promptInstalar.userChoice) promptInstalar.userChoice.then(fin, fin);
+  else fin();
+}
+
+function ocultarInstalar(){
+  try{ localStorage.setItem(CLAVE_INSTALAR, 'no'); }catch(e){}
+  pintarInstalar();
+}
+
+function pintarInstalar(){
+  const enInicio = document.getElementById('instalar-aviso');
+  const enAjustes = document.getElementById('instalar-ajustes');
+  let descartado = false;
+  try{ descartado = localStorage.getItem(CLAVE_INSTALAR) === 'no'; }catch(e){}
+
+  const puede = !yaInstalada() && (!!promptInstalar || esIOS());
+  const cuerpo = !puede ? '' : (promptInstalar
+    ? `<div class="section-title">Tenla a mano</div>
+       <div style="font-size:12.5px;color:var(--muted);line-height:1.5;">
+         Instálala en la pantalla de inicio: se abre como cualquier otra app,
+         a pantalla completa y también sin cobertura.</div>
+       <div class="acciones-fila" style="margin-left:0;margin-top:10px;">
+         <button class="btn-sm" onclick="instalarApp()">Instalar la app</button>
+         <button class="btn-sm" onclick="ocultarInstalar()">Ahora no</button>
+       </div>`
+    : `<div class="section-title">Tenla a mano</div>
+       <div style="font-size:12.5px;color:var(--muted);line-height:1.5;">
+         En el iPhone se instala desde Safari: toca <b>Compartir</b> (el cuadrado
+         con la flecha) y luego <b>Añadir a pantalla de inicio</b>.</div>
+       <div class="acciones-fila" style="margin-left:0;margin-top:10px;">
+         <button class="btn-sm" onclick="ocultarInstalar()">Entendido</button>
+       </div>`);
+
+  /* En Inicio se puede decir "ahora no" y no vuelve a salir; en Ajustes sigue
+     estando siempre, que es donde se busca después de haberlo descartado. */
+  if(enInicio){
+    enInicio.innerHTML = cuerpo;
+    enInicio.classList.toggle('hidden', !puede || descartado);
+  }
+  if(enAjustes){
+    enAjustes.innerHTML = cuerpo;
+    enAjustes.classList.toggle('hidden', !puede);
+  }
+}
+
 function pintarSaludo(){
   const h=new Date().getHours();
   const saludo=h<6?'Buenas noches':h<13?'¡Buenos días':h<21?'¡Buenas tardes':'¡Buenas noches';
@@ -4424,7 +4521,7 @@ function toggleConfigPanel(){
   p.classList.toggle('hidden');
   /* La versión se consulta al ABRIR, no al arrancar: comprobar si hay una más
      nueva descarga el HTML entero y no merece la pena en cada visita. */
-  if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); pintarCopiaPrevia(); comprobarVersionNueva(); }
+  if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); pintarCopiaPrevia(); comprobarVersionNueva(); pintarInstalar(); }
 }
 
 function irAMedidas(){
@@ -6128,6 +6225,9 @@ async function limpiarCache(){
 
 document.addEventListener('DOMContentLoaded', ()=>{
   vigilarCapas();
+  /* En Android lo dispara `beforeinstallprompt`, pero en iOS ese evento no
+     existe: sin esta llamada, un iPhone no vería nunca las instrucciones. */
+  pintarInstalar();
   registrarServiceWorker();
   load()
     .catch(e=>console.error('[init] fallo al arrancar',e))

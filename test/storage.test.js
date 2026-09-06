@@ -55,7 +55,11 @@ const disparar = ev => (listeners[ev] || []).forEach(fn => fn());
 
 const ctx = {
   localStorage, document, console, MutationObserver, requestAnimationFrame,
-  window: { scrollTo(){} },
+  /* addEventListener: el aviso de "instalar la app" se engancha a
+     `beforeinstallprompt` y a `appinstalled` nada más cargar el script.
+     matchMedia: pintarInstalar() pregunta si la app ya está en modo aplicación.
+     Aquí no hay ni navegador que instale ni pantalla, así que ambos son mudos. */
+  window: { scrollTo(){}, addEventListener(){}, matchMedia: () => ({matches:false}) },
   setTimeout, clearTimeout, setInterval, clearInterval,
   navigator: { vibrate(){} },
   fetch: () => Promise.reject(new Error('sin red')),
