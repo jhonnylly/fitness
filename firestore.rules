@@ -242,9 +242,15 @@ service cloud.firestore {
                     || (isMyClientDoc()
                         && request.resource.data.diff(resource.data)
                              .affectedKeys().hasOnly(['avisoCoach','sesionCoach'])
-                        && (request.resource.data.avisoCoach == null
+                        /* `.get(campo, null)` otra vez: si se escribe solo uno
+                           de los dos campos, el otro NO EXISTE en el documento
+                           entrante y leerlo a pelo es un error que deniega. Hoy
+                           la app siempre los manda juntos, así que no saltaba;
+                           lo encontraron las pruebas del emulador antes de que
+                           un cambio inocente lo destapara en producción. */
+                        && (request.resource.data.get('avisoCoach', null) == null
                             || request.resource.data.avisoCoach.de == request.auth.uid)
-                        && (request.resource.data.sesionCoach == null
+                        && (request.resource.data.get('sesionCoach', null) == null
                             || request.resource.data.sesionCoach.de == request.auth.uid));
       allow delete: if false;
 

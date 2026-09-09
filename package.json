@@ -5,11 +5,15 @@
   "scripts": {
     "test": "node test/storage.test.js",
     "test:ui": "node test/ui.test.js",
-    "test:todo": "node test/storage.test.js && node test/ui.test.js",
-    "imagenes": "node tools/generar-imagenes.js"
+    "test:todo": "node test/storage.test.js && node test/ui.test.js && bash tools/probar-reglas.sh",
+    "imagenes": "node tools/generar-imagenes.js",
+    "test:rules": "bash tools/probar-reglas.sh"
   },
-  "comentario": "Sin dependencias en tiempo de ejecución: la app es un index.html que se abre y ya. puppeteer-core solo hace falta para test:ui, y se instala suelto (npm install --no-save puppeteer-core) para no arrastrar 300 MB en el repo.",
+  "comentario": "Sin dependencias en tiempo de ejecución: la app es un index.html que se abre y ya. Las herramientas de prueba se instalan sueltas para no arrastrarlas en el repo: npm install --no-save puppeteer-core firebase-tools@13 @firebase/rules-unit-testing firebase. Ojo: firebase-tools@13 trae universal-analytics, que pide uuid ^14 (solo ESM) y luego lo carga con require; si el CLI falla con ERR_REQUIRE_ESM, borrar node_modules/universal-analytics/node_modules/uuid y usa el de la raíz.",
   "devDependencies": {
-    "puppeteer-core": "*"
+    "puppeteer-core": "*",
+    "firebase-tools": "^13",
+    "@firebase/rules-unit-testing": "*",
+    "firebase": "*"
   }
 }

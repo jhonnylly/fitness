@@ -32,3 +32,9 @@ projects/**
 # Las pruebas de interfaz usan puppeteer-core, que se instala aparte:
 #   npm install --no-save puppeteer-core
 node_modules/
+
+# Emulador de Firestore
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
