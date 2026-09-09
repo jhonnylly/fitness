@@ -204,6 +204,23 @@ body.modo-clientes #pane-clientes{display:block;}
      que es la protagonista fija de Inicio. Una por pantalla, como en el resto. */
 .reto-aviso{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:14px;margin-bottom:12px;}
+
+/* ═══ El aviso del entrenador ═══
+   Deliberadamente en calma: tarjeta normal, sin violeta lleno y sin llama. El
+   sitio de protagonista de Inicio ya lo tienen el reto sin contestar (cuando
+   lo hay) y "Entrenamiento de hoy"; un tercer elemento gritando dejaría la
+   pantalla sin jerarquía, que es justo lo que se arregló en el repaso del
+   05/09. Lo único encendido es la etiqueta de arriba: basta para saber de
+   quién viene, porque el texto ya lo cuenta. */
+.aviso-coach{background:var(--card);border:1px solid var(--border);
+  border-left:3px solid var(--accent);border-radius:var(--radius-sm);
+  padding:14px;margin-bottom:12px;}
+.aviso-coach-tag{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:5px;}
+/* pre-wrap: el entrenador escribe "10 con 40 / 6 con 32 / 4 con 25" en varias
+   líneas y tienen que llegar como las escribió. */
+.aviso-coach-txt{font-size:13.5px;line-height:1.5;color:var(--text);white-space:pre-wrap;}
+.aviso-coach-ses{font-size:11.5px;color:var(--muted);margin-top:7px;}
 .reto-aviso.pendiente{background:var(--accent);border:none;border-radius:18px;padding:18px;
   color:#fff;box-shadow:none;}
 /* ── El reto sin contestar, ardiendo ──
@@ -296,12 +313,43 @@ body.modo-clientes #pane-clientes{display:block;}
 .chip-serie{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;font-size:11.5px;color:var(--muted);white-space:nowrap;}
 .chip-serie.tope{border-color:var(--accent);color:var(--accent);font-weight:700;}
 .ses-extra{font-size:11.5px;color:var(--muted);margin-top:8px;}
-.fila-ej{display:flex;gap:5px;align-items:center;margin-bottom:6px;}
+.fila-ej{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:10px;}
 .fila-ej input{margin:0;padding:7px 8px;font-size:12px;}
 .fila-ej .ej-in-nombre{flex:3;min-width:0;}
 .fila-ej .ej-in-esquema{flex:1;min-width:56px;}
+/* La nota del entrenador ocupa toda la línea de abajo. Apretada como tercer
+   campo de la fila no cabía nada: aquí se escribe una indicación de verdad
+   ("multiserie: 10 con 40, 6 con 32, 4 con 25"), no una palabra. */
+.fila-ej .ej-in-nota{flex-basis:100%;font-size:11.5px;}
 .plan-linea{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);padding:3px 0;}
 .plan-esquema{color:var(--text);opacity:.75;white-space:nowrap;}
+/* La indicación del entrenador. Va colgada del ejercicio, con una barrita
+   violeta a la izquierda: se lee como "esto lo dice tu coach" sin necesidad de
+   escribirlo cada vez. Sin `white-space:nowrap` a propósito, al revés que el
+   esquema: aquí sí queremos que una frase larga baje de línea. */
+.plan-nota{font-size:11.5px;line-height:1.45;color:var(--muted);
+  border-left:2px solid var(--accent);padding:1px 0 1px 8px;margin:2px 0 6px 0;}
+/* La misma indicación, pero en la pantalla donde el cliente está a punto de
+   hacer la serie. Aquí sí lleva fondo: compite con los campos de kg y reps,
+   que son lo más llamativo de esa pantalla, y una barrita sola se perdería. */
+.ex-nota-coach{background:var(--surface);border-left:3px solid var(--accent);
+  border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 12px;margin-bottom:10px;
+  font-size:12.5px;line-height:1.5;color:var(--text);}
+.ex-nota-tag{display:block;font-size:10px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:3px;}
+/* Un punto y no un texto: en el mosaico solo hace falta saber QUE hay
+   indicación; el qué se lee al abrir el ejercicio. */
+.mos-nota-punto{width:6px;height:6px;border-radius:50%;background:var(--accent);
+  display:inline-block;flex:none;}
+/* El aviso que el entrenador tiene puesto ahora mismo, en su propia ficha del
+   cliente. Recuadro y no texto suelto: hay que distinguir de un vistazo "esto
+   ya se lo has dicho" del campo vacío donde se escribe lo siguiente. */
+.aviso-vigente{background:var(--surface);border:1px solid var(--border);
+  border-left:3px solid var(--accent);border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  padding:10px 12px;margin-bottom:10px;font-size:12.5px;line-height:1.5;}
+.aviso-vigente-tag{display:block;font-size:10px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:4px;}
+.aviso-vigente-ses{font-size:11.5px;color:var(--muted);margin-top:5px;}
 .fila-cliente{display:flex;gap:10px;align-items:center;}
 .cliente-avatar{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);background:var(--card);}
 .cliente-avatar.sin-foto{display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--muted);}
@@ -390,7 +438,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -1174,6 +1222,12 @@ textarea{resize:vertical;min-height:60px;}
        la tarjeta de abajo; la racha y el cardio tienen su sitio en Resumen —la
        racha con tarjeta propia desde 2cf25cf— y el peso está en "Peso actual",
        dos dedos más abajo. Se fue para dejarle el hueco al reto. -->
+
+  <!-- Lo que le dice su entrenador. Va PEGADO a "Entrenamiento de hoy" y no
+       arriba del todo porque muchas veces habla justo de eso: "hoy hazme
+       upper". Y se pinta en calma, sin llama: el reto sin contestar es la
+       protagonista cuando existe, y aquí no se le pelea el sitio. -->
+  <div id="home-aviso" class="hidden"></div>
 
   <button class="hoy" id="home-hoy" onclick="irAProximaSesion()">
     <span class="hoy-tag" id="hoy-tag">Entrenamiento de hoy</span>
@@ -2189,6 +2243,10 @@ const INITIAL={sessions:{},medidas:[]};
 let DB={routines:[],activeRoutine:null};
 let curSession=null;
 let curEx=[];
+/* Indicaciones del entrenador para los ejercicios de la sesión abierta,
+   indexadas por nombre laxo (el mismo criterio que la precarga de kilos, para
+   que "Press banca" y "press de banca" sean el mismo ejercicio). */
+let curNotas=Object.create(null);
 let curWeekNum=null;
 
 function sync(st){
@@ -2622,6 +2680,13 @@ async function restaurarCopiaPrevia(){
    ex:[["Press banca","4×10"], ...] , que es exactamente eso, así que hay que
    convertirlo a ex:[{name,scheme}, ...] al escribir y deshacerlo al leer.
 
+   El TERCER hueco es la nota del entrenador ("multiserie: 10 con 40, 6 con 32,
+   4 con 25"). Solo viaja cuando existe, y esa condición no es cosmética: sin
+   ella un plan sin notas volvería como ["Press banca","4×10",""] en vez de
+   ["Press banca","4×10"], y la ida y vuelta dejaría de dar el plan idéntico.
+   Hay pruebas en storage.test.js que comparan el JSON entero de los siete
+   presets, así que se caerían todas a la vez.
+
    Vive aquí y no en el módulo de Firebase a propósito: es lógica pura, sin
    dependencias, y así queda cubierta por test/storage.test.js.               */
 
@@ -2630,9 +2695,12 @@ function planParaFirestore(plan){
     ...semana,
     days:(semana.days||[]).map(dia=>({
       ...dia,
-      ex:(dia.ex||[]).map(e=>Array.isArray(e)
-        ? {name:e[0]!=null?e[0]:'', scheme:e[1]!=null?e[1]:''}
-        : e)   // ya convertido: se deja igual (idempotente)
+      ex:(dia.ex||[]).map(e=>{
+        if(!Array.isArray(e)) return e;   // ya convertido: igual (idempotente)
+        const base={name:e[0]!=null?e[0]:'', scheme:e[1]!=null?e[1]:''};
+        if(e[2]) base.nota=e[2];
+        return base;
+      })
     }))
   }));
 }
@@ -2642,11 +2710,23 @@ function planDesdeFirestore(plan){
     ...semana,
     days:(semana.days||[]).map(dia=>({
       ...dia,
-      ex:(dia.ex||[]).map(e=>Array.isArray(e)
-        ? e
-        : [e&&e.name!=null?e.name:'', e&&e.scheme!=null?e.scheme:''])
+      ex:(dia.ex||[]).map(e=>{
+        if(Array.isArray(e)) return e;
+        const par=[e&&e.name!=null?e.name:'', e&&e.scheme!=null?e.scheme:''];
+        if(e&&e.nota) par.push(e.nota);
+        return par;
+      })
     }))
   }));
+}
+
+/* La nota del entrenador de un ejercicio del plan, venga en la forma que
+   venga (par, terna u objeto). Un solo sitio que lo sepa: los ejercicios se
+   leen desde media docena de pantallas y cada una tenía su propio
+   `Array.isArray(ex) ? ex[1] : ex.scheme`. */
+function notaDeEjercicio(ex){
+  if(Array.isArray(ex)) return ex[2] || '';
+  return (ex && ex.nota) || '';
 }
 
 /* Firestore falla con un error poco claro ("Nested arrays are not supported")
@@ -3319,6 +3399,18 @@ function openSession(n){
   curSession=n;
   setTimeout(pintarBorrarRegistro,0);   // tras fijar curSession
   const day=findDay(n);
+  /* Las indicaciones del entrenador se guardan aparte, en curNotas, y NO
+     dentro de curEx. Es a propósito: curEx es lo que se ESCRIBE en la sesión
+     registrada, y al reabrir una sesión guardada se reconstruye con
+     {name,sets} solamente (más abajo). Metiendo la nota ahí, se perdería en
+     cuanto el cliente registrara la sesión, que es justo cuando más falta le
+     hace poder releerla. Viven en el plan, que es de donde vienen. */
+  curNotas=Object.create(null);
+  for(const ex of (day.ex||[])){
+    const nombre=Array.isArray(ex)?ex[0]:(ex&&ex.name)||'';
+    const nota=notaDeEjercicio(ex);
+    if(nombre&&nota) curNotas[claveEjercicioLaxa(nombre)]=nota;
+  }
   const saved=getActiveSessions()[n];
   // El borrador gana sobre lo guardado: es la edición más reciente.
   const borrador=leerBorradores()[(getActive()?getActive().id:'sin-rutina')+'|'+n];
@@ -3452,7 +3544,11 @@ function renderEx(){
   const ex=curEx[curExIndex];
   document.getElementById('ex-detail-title').value=ex.name||'';
   const c=document.getElementById('exercises-container');
+  /* La indicación del entrenador va ANTES de las series, no debajo: se lee
+     para saber cómo hacerlo, y debajo de los campos llegaría tarde. */
+  const nota=curNotas[claveEjercicioLaxa(ex.name||'')]||'';
   c.innerHTML=`
+    ${nota?`<div class="ex-nota-coach"><span class="ex-nota-tag">Tu entrenador</span>${escaparHTML(nota)}</div>`:''}
     <div class="ex-card">
       <div id="sets-container">
         ${ex.sets.map((set,si)=>`
@@ -4598,10 +4694,26 @@ function pintarSaludo(){
 
 window.irAProximaSesion=function(){
   const act=getActive();
+  /* Si el entrenador ha cambiado el día, manda él. La app sigue calculando la
+     que tocaría, pero un aviso puesto a mano es más reciente y más informado
+     que cualquier cálculo: sabe que hoy el gimnasio tiene la sala de piernas
+     cerrada, y el cálculo no. */
+  const impuesta = window.sesionDelAviso && window.sesionDelAviso();
   const p=act?proximaSesion(act):null;
   goTo('log');
-  if(p)openSession(p.dia.s);   // sin plan que abrir, la lista de sesiones ya lo explica
+  if(impuesta!=null) openSession(impuesta);
+  else if(p)openSession(p.dia.s);   // sin plan que abrir, la lista de sesiones ya lo explica
 };
+
+/* Un día del plan por su número, con la semana a la que pertenece. Misma forma
+   que devuelve proximaSesion() ({dia, semana}) para que Inicio pueda pintar
+   cualquiera de los dos sin distinguir cuál le ha llegado. */
+function buscarDiaEnPlan(rutina, s){
+  for(const w of ((rutina&&rutina.plan)||[])){
+    for(const d of (w.days||[])) if(d.s===+s) return {dia:d, semana:w.num};
+  }
+  return null;
+}
 
 function updateHome(){
   const act=getActive();
@@ -4636,7 +4748,19 @@ function updateHome(){
   // Entrenamiento de hoy
   const tag=document.getElementById('hoy-tag');
   const cta=document.getElementById('hoy-cta');
-  if(prox){
+  /* El entrenador puede haber cambiado el día. Entonces la tarjeta enseña SU
+     sesión y lo dice en la etiqueta: si pusiera "Entrenamiento de hoy" a secas,
+     el cliente vería una sesión que no le cuadra con la que le tocaba y
+     pensaría que la app se ha equivocado. */
+  const impuestaS = (window.sesionDelAviso && window.sesionDelAviso());
+  const impuesta = impuestaS!=null ? buscarDiaEnPlan(act, impuestaS) : null;
+  if(impuesta){
+    if(tag)tag.textContent='Te lo cambia tu entrenador';
+    set('hoy-tit',impuesta.dia.name);
+    set('hoy-meta',(impuesta.dia.ex||[]).length+' ejercicio'+((impuesta.dia.ex||[]).length===1?'':'s')+
+      (impuesta.dia.type?' · '+impuesta.dia.type:'')+' · Semana '+impuesta.semana);
+    if(cta)cta.textContent='Comenzar entrenamiento →';
+  }else if(prox){
     if(tag)tag.textContent='Entrenamiento de hoy';
     set('hoy-tit',prox.dia.name);
     set('hoy-meta',(prox.dia.ex||[]).length+' ejercicio'+((prox.dia.ex||[]).length===1?'':'s')+
@@ -5480,6 +5604,7 @@ function renderExButtons(){
       <div class="mos-num" style="font-size:13.5px;">${escaparHTML(ex.name||'Ejercicio sin nombre')}</div>
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${ex.sets.length} series</span>
+        ${curNotas[claveEjercicioLaxa(ex.name||'')]?'<span class="mos-nota-punto" title="Tu entrenador te dice cómo hacerlo"></span>':''}
         ${done?'<span class="mos-badge" style="color:var(--green);background:rgba(45,122,79,0.14);">✓ Hecho</span>':''}
       </div>
     </button>`;
@@ -7339,7 +7464,8 @@ function vigilarClientes(){
     qs.forEach(d => {
       const cl = d.data();
       // Para la ficha, que se abre desde aquí: nombre, correo y foto ya vienen.
-      perfilesCliente[d.id] = {name: cl.name||'', email: cl.email||'', profilePic: cl.profilePic||null};
+      perfilesCliente[d.id] = {name: cl.name||'', email: cl.email||'', profilePic: cl.profilePic||null,
+                               avisoCoach: cl.avisoCoach || null};
       mosaico.insertAdjacentHTML('beforeend', `
         <button type="button" class="mos-card cliente-card"
              data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
@@ -7470,7 +7596,9 @@ let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, se
 window.verDetalleCliente = function(uid, nombre, activeRoutine){
   detalle = { uid, nombre: nombre || 'Cliente', rutinas:[], viendo:null, ejercicio:null,
               semana:null, editando:null, unsub:null, unsubFotos:null, fotos:[],
-              activa: activeRoutine || null };
+              activa: activeRoutine || null,
+              // El aviso vigente ya vino con la lista de clientes: no hay que releerlo.
+              aviso: (perfilesCliente[uid] || {}).avisoCoach || null };
 
   /* Las fotos del cliente ya no viajan dentro de sus rutinas: tienen colección
      propia, así que hay que escucharla aparte. En vivo como las rutinas, para
@@ -7551,12 +7679,15 @@ function pintarDetalle(){
     /* Sin rutinas, "Asignar" es justo lo único que hay que hacer aquí: las
        acciones no pueden faltar en este camino. */
     cuerpo.innerHTML = ficha + '<div class="card"><p style="font-size:13px;color:var(--muted);">'+
-      'Este cliente todavía no tiene ninguna rutina.</p></div>' + accionesCliente();
+      'Este cliente todavía no tiene ninguna rutina.</p></div>' + panelAvisoCoach() + accionesCliente();
     return;
   }
   const r = detalle.rutinas.find(x => x.id === detalle.viendo) || detalle.rutinas[0];
   const prog = resumenProgreso(r);
-  const partes = [ficha];
+  /* Justo debajo de quién es: decirle algo es lo más inmediato que se viene a
+     hacer a esta ficha, y lo que menos cuesta. Asignar y desvincular siguen al
+     final, que es donde vive lo que cambia el plan de verdad. */
+  const partes = [ficha, panelAvisoCoach()];
 
   // Selector de rutina, solo si tiene más de una
   if(detalle.rutinas.length > 1){
@@ -7678,6 +7809,124 @@ function pintarDetalle(){
    "duplicar" y "borrar semana" en su día.
    Van al FINAL: lo que se viene a hacer aquí es mirar, y desvincular es lo más
    destructivo de la pantalla. */
+/* ═══════════ El canal del entrenador ═══════════
+   Un solo sitio para las dos cosas que un entrenador quiere decirle a su
+   cliente fuera del plan: un recado ("esta semana descansa el jueves") y un
+   cambio de día ("hoy no toca glúteo, hazme upper"). Son el mismo gesto —
+   decir algo— y por eso comparten campo, tarjeta y aviso.
+
+   Vive en users/{uid}.avisoCoach y NO en una colección de mensajes. Un buzón
+   de verdad necesita avisos push, y en iPhone eso exige la app instalada y
+   iOS 16.4+: a parte de los clientes no le llegaría nada y el mensaje se
+   quedaría sin leer. Un único aviso vigente, pintado en Inicio —donde el
+   cliente entra igualmente a entrenar— se ve SIEMPRE, sin depender de nada.
+   Cuando haga falta conversación, esto no estorba: se convierte en el último
+   mensaje del hilo.                                                          */
+
+function panelAvisoCoach(){
+  /* `av` y no `aviso`: aviso() es la función de los mensajes emergentes y una
+     variable local con ese nombre la deja inalcanzable dentro de la función. */
+  const av = detalle.aviso;
+  const r = detalle.rutinas.find(x => x.id === detalle.viendo) || detalle.rutinas[0];
+  /* Solo se pueden redirigir sesiones de la rutina ACTIVA: mandar al cliente a
+     una sesión de un plan que no está usando lo dejaría en una pantalla que no
+     le corresponde. */
+  const activa = (detalle.rutinas || []).find(x => esRutinaActiva(x));
+  const dias = [];
+  for(const sem of ((activa && activa.plan) || [])){
+    for(const d of (sem.days || [])) dias.push({s:d.s, name:d.name || ('S'+d.s), sem:sem.num});
+  }
+
+  const vigente = av && av.texto ? `
+    <div class="aviso-vigente">
+      <span class="aviso-vigente-tag">Aviso puesto${av.ts ? ' · ' + fechaCorta(av.ts) : ''}</span>
+      <div>${escaparHTML(av.texto)}</div>
+      ${av.sesion ? `<div class="aviso-vigente-ses">Le has cambiado el día a: <b>${escaparHTML(nombreSesion(activa, av.sesion))}</b></div>` : ''}
+      <button class="btn-sm secundario" style="margin-top:8px;" onclick="retirarAvisoCoach()">Retirar aviso</button>
+    </div>` : '';
+
+  return `<div class="card">
+    <div class="section-title">Decirle algo</div>
+    ${vigente}
+    <textarea id="aviso-texto" rows="2" placeholder="${av&&av.texto?'Cambiar el aviso por otro...':'Hoy cambiamos: hazme upper en vez de glúteo.'}"></textarea>
+    ${dias.length ? `
+      <label style="margin-top:8px;">Y mándale a esta sesión (opcional)</label>
+      <select id="aviso-sesion">
+        <option value="">Que siga con la que le toca</option>
+        ${dias.map(d => `<option value="${d.s}">Semana ${d.sem} · ${escaparHTML(d.name)}</option>`).join('')}
+      </select>` : ''}
+    <div id="aviso-msg"></div>
+    <button class="btn btn-primary" style="margin-top:8px;" id="aviso-enviar" onclick="enviarAvisoCoach()">Enviar aviso</button>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">
+      Lo verá en su pantalla de Inicio la próxima vez que abra la app. Solo hay
+      un aviso a la vez: enviar otro sustituye al anterior.
+    </div>
+  </div>`;
+}
+
+/* El nombre legible de una sesión del plan, para poder decir "le has cambiado
+   el día a S3 · Push" en vez de soltar un número suelto. */
+function nombreSesion(rutina, s){
+  for(const sem of ((rutina && rutina.plan) || [])){
+    for(const d of (sem.days || [])) if(d.s === +s) return d.name || ('S'+d.s);
+  }
+  return 'S' + s;
+}
+
+function fechaCorta(ts){
+  try{ return new Date(+ts).toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
+  catch(e){ return ''; }
+}
+
+window.enviarAvisoCoach = async function(){
+  const ta = document.getElementById('aviso-texto');
+  const sel = document.getElementById('aviso-sesion');
+  const msg = document.getElementById('aviso-msg');
+  const btn = document.getElementById('aviso-enviar');
+  const texto = (ta.value || '').trim();
+  const sesion = sel && sel.value ? parseInt(sel.value) : null;
+
+  if(!texto){
+    msg.innerHTML = '<div class="msg msg-err">Escribe el aviso, aunque sea una línea.</div>';
+    return;
+  }
+  if(texto.length > 400){
+    msg.innerHTML = '<div class="msg msg-err">Demasiado largo: recórtalo a 400 caracteres o menos.</div>';
+    return;
+  }
+
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = 'Enviando...';
+  const av = { texto, sesion, ts: Date.now(), de: meUid };
+  try{
+    /* merge para no pisarle el resto del perfil. Las reglas solo dejan al
+       entrenador tocar este campo, así que un update con más campos sería
+       rechazado entero. */
+    await setDoc(doc(fdb,'users',detalle.uid), { avisoCoach: av }, { merge:true });
+    detalle.aviso = av;
+    if(perfilesCliente[detalle.uid]) perfilesCliente[detalle.uid].avisoCoach = av;
+    pintarDetalle();
+  }catch(e){
+    console.error('[entrenador] no se pudo enviar el aviso', e);
+    msg.innerHTML = '<div class="msg msg-err">No se pudo enviar: '+escaparHTML(e.code||e.message)+'</div>';
+    btn.disabled = false;
+    btn.textContent = txt;
+  }
+};
+
+window.retirarAvisoCoach = async function(){
+  try{
+    await setDoc(doc(fdb,'users',detalle.uid), { avisoCoach: null }, { merge:true });
+    detalle.aviso = null;
+    if(perfilesCliente[detalle.uid]) perfilesCliente[detalle.uid].avisoCoach = null;
+    pintarDetalle();
+  }catch(e){
+    console.error('[entrenador] no se pudo retirar el aviso', e);
+    aviso('No se pudo retirar el aviso','mal');
+  }
+};
+
 function accionesCliente(){
   const uid = detalle.uid;
   return `<div class="card">
@@ -7701,8 +7950,10 @@ function pintarPlanSesion(dia){
   const ejercicios = (dia.ex || []).map(ex => {
     const nombre = Array.isArray(ex) ? ex[0] : (ex && ex.name) || '';
     const esquema = Array.isArray(ex) ? ex[1] : (ex && ex.scheme) || '';
+    const nota = notaDeEjercicio(ex);
     if(!nombre) return '';
-    return `<div class="plan-linea"><span>${escaparHTML(nombre)}</span><span class="plan-esquema">${escaparHTML(esquema)}</span></div>`;
+    return `<div class="plan-linea"><span>${escaparHTML(nombre)}</span><span class="plan-esquema">${escaparHTML(esquema)}</span></div>`
+      + (nota ? `<div class="plan-nota">${escaparHTML(nota)}</div>` : '');
   }).join('');
   if(!ejercicios) return '';
   return `<div style="border-top:1px solid var(--border);padding-top:8px;">${ejercicios}</div>`;
@@ -7718,7 +7969,7 @@ window.cancelarEdicionCliente = function(){ detalle.editando = null; pintarDetal
 window.anadirEjercicioCliente = function(){
   const cont = document.getElementById('editor-ejercicios');
   if(!cont) return;
-  cont.insertAdjacentHTML('beforeend', filaEditorEjercicio('', ''));
+  cont.insertAdjacentHTML('beforeend', filaEditorEjercicio('', '', ''));
 };
 
 window.quitarEjercicioCliente = function(btn){
@@ -7726,11 +7977,13 @@ window.quitarEjercicioCliente = function(btn){
   if(fila) fila.remove();
 };
 
-function filaEditorEjercicio(nombre, esquema){
+function filaEditorEjercicio(nombre, esquema, nota){
   return `<div class="fila-ej">
     <input type="text" class="ej-in-nombre" value="${escaparHTML(nombre)}" placeholder="Nombre del ejercicio">
     <input type="text" class="ej-in-esquema" value="${escaparHTML(esquema)}" placeholder="4×10">
     <button class="btn-sm btn-danger" onclick="quitarEjercicioCliente(this)">✕</button>
+    <input type="text" class="ej-in-nota" value="${escaparHTML(nota || '')}"
+           placeholder="Cómo hacerlo (opcional): multiserie, tempo, descanso...">
   </div>`;
 }
 
@@ -7738,7 +7991,7 @@ function pintarEditorEjercicios(dia){
   const filas = (dia.ex || []).map(ex => {
     const nombre = Array.isArray(ex) ? ex[0] : (ex && ex.name) || '';
     const esquema = Array.isArray(ex) ? ex[1] : (ex && ex.scheme) || '';
-    return filaEditorEjercicio(nombre, esquema);
+    return filaEditorEjercicio(nombre, esquema, notaDeEjercicio(ex));
   }).join('');
   return `<div style="border-top:1px solid var(--border);padding-top:8px;">
     <div id="editor-ejercicios">${filas}</div>
@@ -7760,10 +8013,18 @@ window.guardarEjerciciosCliente = async function(s){
   const msg = document.getElementById('editor-msg');
   const btn = document.getElementById('editor-guardar');
   const filas = [...document.querySelectorAll('#editor-ejercicios .fila-ej')];
-  const nuevos = filas.map(f => [
-    f.querySelector('.ej-in-nombre').value.trim(),
-    f.querySelector('.ej-in-esquema').value.trim()
-  ]).filter(par => par[0]);           // sin nombre no es un ejercicio
+  /* Terna solo si hay nota, par si no: un ejercicio sin indicaciones tiene que
+     seguir guardándose EXACTAMENTE como antes, o cada vez que el entrenador
+     abriera y cerrara el editor el plan cambiaría de forma sin motivo. */
+  const nuevos = filas.map(f => {
+    const ej = [
+      f.querySelector('.ej-in-nombre').value.trim(),
+      f.querySelector('.ej-in-esquema').value.trim()
+    ];
+    const nota = (f.querySelector('.ej-in-nota').value || '').trim();
+    if(nota) ej.push(nota);
+    return ej;
+  }).filter(par => par[0]);           // sin nombre no es un ejercicio
 
   if(!nuevos.length){
     msg.innerHTML = '<div class="msg msg-err">Deja al menos un ejercicio, o cancela.</div>';
@@ -8539,10 +8800,87 @@ window.cerrarRetoAhora = async function(id){
   catch(e){ console.error('[retos] no se pudo cerrar', e); aviso('No se pudo cerrar el reto','mal'); }
 };
 
+/* ─────────── El aviso del entrenador, en vivo ───────────
+   meData se lee una sola vez con getDoc al entrar, así que un aviso enviado
+   con la app abierta no aparecería hasta cerrarla y volver. Este listener
+   escucha el propio documento y repinta. Es barato: un solo documento, y el
+   manejador solo toca una tarjeta. */
+let miAviso = null, avisoUnsub = null;
+
+function vigilarAvisoCoach(){
+  cerrarVigilanciaAviso();
+  if(!meUid) return;
+  avisoUnsub = onSnapshot(doc(fdb,'users',meUid), snap => {
+    const d = snap.exists() ? snap.data() : null;
+    miAviso = (d && d.avisoCoach) || null;
+    /* meData se refresca con lo que llegue: si no, el resto de la app seguiría
+       viendo el perfil que se leyó al entrar. */
+    if(d) meData = d;
+    pintarAvisoCoach();
+    updateHome();
+  }, err => {
+    console.error('[aviso] no se pudo escuchar el perfil', err);
+  });
+}
+
+function cerrarVigilanciaAviso(){
+  if(avisoUnsub){ avisoUnsub(); avisoUnsub = null; }
+  miAviso = null;
+}
+
+/* La sesión a la que el entrenador manda hoy, si es que manda a alguna y sigue
+   existiendo en el plan activo. Devuelve null en cualquier otro caso: un aviso
+   que apunta a una sesión borrada no puede dejar Inicio sin botón.
+
+   Cuelga de window a propósito: Inicio y irAProximaSesion() viven en el script
+   CLÁSICO, y lo declarado dentro de <script type="module"> no llega allí. Es la
+   misma vía que ya usan planParaFirestore y planDesdeFirestore en sentido
+   contrario. Quien la llama desde fuera comprueba antes que exista: el módulo
+   carga después, y hasta entonces no hay aviso que valga. */
+window.sesionDelAviso = function(){
+  if(!miAviso || !miAviso.sesion) return null;
+  const act = getActive();
+  if(!act) return null;
+  const existe = (act.plan||[]).some(w => (w.days||[]).some(d => d.s === +miAviso.sesion));
+  return existe ? +miAviso.sesion : null;
+}
+
+function pintarAvisoCoach(){
+  const c = document.getElementById('home-aviso');
+  if(!c) return;
+  const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId);
+  if(!miAviso || !miAviso.texto || !soyCliente){
+    c.classList.add('hidden'); c.innerHTML = ''; return;
+  }
+  const s = window.sesionDelAviso();
+  const act = getActive();
+  c.innerHTML = `<div class="aviso-coach">
+    <span class="aviso-coach-tag">Tu entrenador te dice</span>
+    <div class="aviso-coach-txt">${escaparHTML(miAviso.texto)}</div>
+    ${s ? `<div class="aviso-coach-ses">Hoy te manda a <b>${escaparHTML(nombreSesion(act, s))}</b>, y es la que se abre abajo.</div>` : ''}
+    <button class="btn-sm secundario" style="margin-top:10px;" onclick="marcarAvisoVisto()">Entendido</button>
+  </div>`;
+  c.classList.remove('hidden');
+}
+
+/* Lo borra el CLIENTE de su propio documento: es suyo y las reglas ya se lo
+   permiten sin tocar nada. El entrenador ve que ha desaparecido la próxima vez
+   que abra su ficha. */
+window.marcarAvisoVisto = async function(){
+  try{
+    await setDoc(doc(fdb,'users',meUid), { avisoCoach: null }, { merge:true });
+  }catch(e){
+    console.error('[aviso] no se pudo marcar como visto', e);
+    aviso('No se pudo quitar el aviso','mal');
+  }
+};
+
 onAuthStateChanged(auth, async (user) => {
   if(!user){
     meUid = null; meData = null;
     cerrarVigilanciaRetos();
+    cerrarVigilanciaAviso();
+    pintarAvisoCoach();
     pintarSesion(null);
     // Al cerrar sesión, volver a los datos de este dispositivo.
     if(STORAGE.backend.name !== 'local') await volverALocal();
@@ -8566,6 +8904,7 @@ onAuthStateChanged(auth, async (user) => {
      de Inicio aparece sin esperar a que bajen las rutinas. */
   vigilarRetos();
   vigilarMisRetos();
+  vigilarAvisoCoach();
   // Sin perfil todavía no se sincroniza: primero hay que completarlo.
   if(meData) await cambiarANube();
 });
