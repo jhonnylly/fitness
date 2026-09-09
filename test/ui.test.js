@@ -646,6 +646,48 @@ async function appLista(page, url){
        `en el mosaico se marca solo el ejercicio que la tiene (${ind.puntos} de ${ind.tarjetas})`);
     ok(ind.sinNota, 'el ejercicio de al lado NO hereda la indicación del anterior');
 
+    console.log('\n13c. Llegar con un código de alta de entrenador');
+    /* El alta de entrenadores es la puerta para vender la app a otros coaches:
+       si el enlace no abre el formulario correcto, no hay negocio. Esto no
+       necesita Firebase, solo que la página reaccione al ?alta= de la URL. */
+    await page.evaluate(()=>localStorage.clear());
+    await page.goto(url + '?alta=codigodeprueba', {waitUntil:'networkidle2'});
+    await esperar(1800);
+    const alta = await page.evaluate(()=>({
+      panelAbierto: !document.getElementById('auth-panel').classList.contains('hidden'),
+      pestanaRegistro: document.getElementById('tab-register').classList.contains('active'),
+      rol: document.getElementById('auth-role').value,
+      rolOculto: document.getElementById('fila-rol').classList.contains('hidden'),
+      extraVisible: !document.getElementById('alta-extra').classList.contains('hidden'),
+      hayGimnasio: !!document.getElementById('alta-gimnasio'),
+      hayTelefono: !!document.getElementById('alta-telefono'),
+      hayFoto: !!document.getElementById('alta-photo-input'),
+      aviso: (document.getElementById('aviso-invitacion').textContent||'').trim(),
+      onboardingOculto: document.getElementById('onboarding').classList.contains('hidden'),
+    }));
+    ok(alta.panelAbierto, 'el enlace abre solo el panel de cuenta');
+    /* El onboarding tiene z-index 500 y el panel 300: si se pinta, tapa el
+       formulario y el entrenador ve "Bienvenido a My Fitness Tracker" en vez
+       de su alta. Pasó de verdad, y las clases no lo delataban: hizo falta una
+       captura para verlo. */
+    ok(alta.onboardingOculto, '🔴 y el onboarding NO lo tapa (z-index 500 contra 300)');
+    ok(alta.pestanaRegistro, 'en la pestaña de registro, no en la de iniciar sesión');
+    ok(alta.rol === 'trainer' && alta.rolOculto,
+       'el rol queda fijado a entrenador y no se puede cambiar');
+    ok(alta.extraVisible && alta.hayGimnasio && alta.hayTelefono && alta.hayFoto,
+       'pide gimnasio, teléfono y foto');
+    ok(/entrenador/i.test(alta.aviso), 'y explica a qué ha llegado: '+JSON.stringify(alta.aviso));
+
+    // Sin código, el alta de entrenador no se ofrece por ningún lado.
+    await page.goto(url, {waitUntil:'networkidle2'});
+    await esperar(1600);
+    const sinCodigo = await page.evaluate(()=>({
+      extraVisible: !document.getElementById('alta-extra').classList.contains('hidden'),
+      panelAltas: !document.getElementById('pane-altas').classList.contains('hidden'),
+    }));
+    ok(!sinCodigo.extraVisible, 'sin código no aparecen los campos de entrenador');
+    ok(!sinCodigo.panelAltas, 'y sin ser admin no se ve el panel para generar códigos');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

@@ -249,6 +249,14 @@ body.modo-clientes #pane-clientes{display:block;}
   box-shadow:0 0 0 2px rgba(255,255,255,.9);flex:none;object-fit:cover;
   display:flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,.22);color:#fff;font-weight:800;font-size:14px;}
+/* Selector de foto del alta de entrenador. Mismo gesto que el avatar del
+   onboarding: un círculo que se toca. */
+.alta-foto-fila{display:flex;align-items:center;gap:12px;}
+.alta-avatar{width:56px;height:56px;border-radius:50%;flex:none;display:flex;
+  align-items:center;justify-content:center;background:var(--surface);
+  border:2px dashed var(--border);color:var(--muted);font-size:22px;overflow:hidden;}
+.alta-avatar img{width:100%;height:100%;object-fit:cover;}
+
 .aviso-coach-quien{font-size:15px;font-weight:800;color:#fff;line-height:1.2;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .aviso-coach-rol{font-size:11px;font-weight:700;letter-spacing:.06em;
@@ -486,7 +494,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#pane-altas.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -962,6 +970,34 @@ textarea{resize:vertical;min-height:60px;}
               <option value="trainer">Entrenador · quiero gestionar clientes</option>
             </select>
           </div>
+
+          <!-- Solo al llegar con un código de alta. Son los datos que ven sus
+               clientes (la foto y el nombre salen en el aviso del coach y en
+               Inicio), más el contacto para la beta. -->
+          <div id="alta-extra" class="hidden">
+            <div style="height:12px;"></div>
+            <label>Tu foto</label>
+            <div class="alta-foto-fila">
+              <div class="alta-avatar" id="alta-avatar">+</div>
+              <div style="min-width:0;">
+                <button type="button" class="btn-sm" onclick="document.getElementById('alta-photo-input').click()">Elegir foto</button>
+                <div style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4;">
+                  Tus clientes la ven cada vez que les escribes. Puedes ponerla luego.
+                </div>
+              </div>
+            </div>
+            <input type="file" id="alta-photo-input" accept="image/*" style="display:none;" onchange="altaSetFoto(this)">
+            <div style="height:10px;"></div>
+            <label>Gimnasio o marca</label>
+            <input type="text" id="alta-gimnasio" placeholder="Ej. Gimnasio Vitalia">
+            <div style="height:8px;"></div>
+            <label>Teléfono de contacto</label>
+            <input type="tel" id="alta-telefono" placeholder="Ej. 600 00 00 00">
+            <div style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4;">
+              El teléfono es solo para que podamos avisarte de cambios y echarte
+              una mano. Tus clientes no lo ven.
+            </div>
+          </div>
         </div>
 
         <button class="btn btn-primary" id="auth-submit" onclick="submitAuth()">Iniciar sesión</button>
@@ -989,10 +1025,23 @@ textarea{resize:vertical;min-height:60px;}
         <input type="text" id="perfil-name" placeholder="Tu nombre">
         <div style="height:8px;"></div>
         <label>Soy...</label>
-        <select id="perfil-role">
+        <select id="perfil-role" onchange="pintarFilaAltaPerfil()">
           <option value="trainer">Entrenador · quiero gestionar clientes</option>
           <option value="client">Cliente · quiero que un entrenador me asigne rutinas</option>
         </select>
+        <!-- Un perfil de entrenador exige código de alta desde que existe el
+             alta de entrenadores: las reglas lo rechazan sin él. Esta pantalla
+             es el camino de las cuentas creadas a mano en la consola, y sin
+             este campo se quedaría sin salida. -->
+        <div id="perfil-fila-alta">
+          <div style="height:8px;"></div>
+          <label>Código de alta</label>
+          <input type="text" id="perfil-alta" placeholder="El que te pasaron">
+          <div style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4;">
+            Las cuentas de entrenador se crean con un código. Si no lo tienes,
+            pídeselo a quien te dio de alta.
+          </div>
+        </div>
         <button class="btn btn-primary" id="perfil-submit" onclick="guardarPerfil()">Guardar perfil</button>
         <button class="btn btn-secondary" onclick="doLogout()">Cerrar sesión</button>
       </div>
@@ -1632,6 +1681,24 @@ textarea{resize:vertical;min-height:60px;}
      No lleva class="pane" a propósito: los .pane los gobierna showTab(), y
      esta vista vive fuera de ese ciclo (la enseña body.modo-clientes). -->
 <div id="pane-clientes">
+  <!-- Dar de alta a OTROS ENTRENADORES. Solo lo ve Jhon (users/{uid}.admin
+       == true, puesto a mano en la consola una vez). Va lo primero porque es
+       la puerta del negocio: vender la app a otros coaches. Lo pinta
+       vigilarCodigosAlta(), que ni siquiera se engancha si no eres admin. -->
+  <div class="card hidden" id="pane-altas">
+    <div class="section-title">Dar de alta a un entrenador</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
+      Genera un código y pásaselo a quien vayas a dar de alta. Con él podrá
+      crearse su cuenta de entrenador y tener sus propios clientes, separados
+      de los tuyos. Cada código sirve para una sola persona.
+    </p>
+    <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Para quién es (solo lo ves tú)</label>
+    <input type="text" id="alta-nota" placeholder="Ej. Laura, gimnasio Vitalia">
+    <button class="btn btn-primary" id="alta-btn" onclick="crearCodigoAlta()">+ Crear código de alta</button>
+    <div id="alta-msg"></div>
+    <div id="altas-lista" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
+  </div>
+
   <div class="card">
     <div class="section-title">Invitar a un cliente</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.45;">
@@ -2337,7 +2404,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-09 22:45';
+const APP_VERSION='2026-09-09 23:30';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -6008,9 +6075,17 @@ let obPhotoData=null;
 
 /* El script clásico corre antes que el módulo, así que no puede preguntarle a
    éste si hay invitación: lo mira por su cuenta. */
+/* Llegar por un enlace —de cliente (?inv=) o de entrenador (?alta=)— significa
+   que la persona viene a CREARSE UNA CUENTA, no a montarse una rutina en este
+   dispositivo. El onboarding tiene z-index 500 y el panel de cuenta 300, así
+   que si se pinta, tapa el formulario al que acaban de llegar. Se comprobó con
+   una captura: el entrenador invitado veía "Bienvenido a My Fitness Tracker"
+   en vez de su alta. */
 function hayInvitacionEnURL(){
-  try{ return !!new URLSearchParams(location.search).get('inv'); }
-  catch(e){ return false; }
+  try{
+    const q = new URLSearchParams(location.search);
+    return !!(q.get('inv') || q.get('alta'));
+  }catch(e){ return false; }
 }
 
 function showOnboarding(){
@@ -6895,6 +6970,15 @@ window.submitAuth = async function(){
       const name = $('auth-name').value.trim();
       const role = $('auth-role').value;
       if(!name){ showMsg('Escribe tu nombre'); return; }
+      /* Se comprueba ANTES de createUserWithEmailAndPassword: si se dejara para
+         después, un campo vacío dejaría una cuenta de Auth creada y sin perfil,
+         que es el limbo del que hay que sacar a la gente a mano. */
+      if(codigoAlta && !($('alta-gimnasio').value || '').trim()){
+        showMsg('Escribe el nombre de tu gimnasio o marca'); return;
+      }
+      if(codigoAlta && !($('alta-telefono').value || '').trim()){
+        showMsg('Escribe un teléfono de contacto'); return;
+      }
 
       let resolveProfile;
       pendingProfileWrite = new Promise(res => { resolveProfile = res; });
@@ -6903,6 +6987,12 @@ window.submitAuth = async function(){
         await updateProfile(cred.user, { displayName: name });
         if(codigoInvitacion){
           await altaPorInvitacion(cred.user, name);
+        }else if(codigoAlta){
+          await altaPorCodigo(cred.user, name, {
+            gimnasio: ($('alta-gimnasio').value || '').trim(),
+            telefono: ($('alta-telefono').value || '').trim(),
+            foto: altaFotoData
+          });
         }else{
           await setDoc(doc(fdb, 'users', cred.user.uid), {
             name, email, role, trainerId: null, createdAt: Date.now()
@@ -6920,6 +7010,13 @@ window.submitAuth = async function(){
           showMsg('Tu invitación es válida, pero la app todavía no admite cuentas '
             + 'nuevas. Avisa a tu entrenador: tiene que activar el registro en '
             + 'Firebase Authentication.');
+        }else if(err.code === 'auth/admin-restricted-operation' && codigoAlta){
+          showMsg('Tu código es válido, pero la app todavía no admite cuentas '
+            + 'nuevas. Avisa a quien te dio de alta: tiene que activar el '
+            + 'registro en Firebase Authentication.');
+        }else if(err.message === 'ALTA_NO_VALIDA'){
+          showMsg('Ese código de alta ya se ha usado o ha sido revocado. Pide uno nuevo.');
+          await signOut(auth).catch(()=>{});
         }else if(err.message === 'INVITACION_NO_VALIDA'){
           showMsg('Esa invitación ya se ha usado o ha sido revocada. Pídele a tu entrenador un enlace nuevo.');
           await signOut(auth).catch(()=>{});
@@ -6955,6 +7052,7 @@ function pintarSesion(user){
   const faltaPerfil = dentro && !meData;
   $('auth-logged-out').classList.toggle('hidden', dentro);
   $('auth-need-profile').classList.toggle('hidden', !faltaPerfil);
+  if(faltaPerfil) pintarFilaAltaPerfil();
   $('auth-logged-in').classList.toggle('hidden', !dentro || faltaPerfil);
   // Con la cabecera compacta el botón es solo el icono: el estado de sesión se
   // dice en el title, no reescribiendo el contenido (borraría el icono).
@@ -7049,11 +7147,22 @@ async function pintarEntrenador(){
   }
 }
 
+/* El código de alta solo pinta si el rol elegido es entrenador. */
+window.pintarFilaAltaPerfil = function(){
+  const fila = $('perfil-fila-alta');
+  if(fila) fila.classList.toggle('hidden', $('perfil-role').value !== 'trainer');
+};
+
 window.guardarPerfil = async function(){
   const name = $('perfil-name').value.trim();
   const role = $('perfil-role').value;
   if(!name){
     $('perfil-msg').innerHTML = '<div class="msg msg-err">Escribe tu nombre</div>';
+    return;
+  }
+  const codigo = (($('perfil-alta') || {}).value || '').trim();
+  if(role === 'trainer' && !codigo){
+    $('perfil-msg').innerHTML = '<div class="msg msg-err">Hace falta un código de alta para crear una cuenta de entrenador.</div>';
     return;
   }
   const user = auth.currentUser;
@@ -7063,17 +7172,42 @@ window.guardarPerfil = async function(){
   const textoOriginal = btn.textContent;
   btn.textContent = 'Guardando...';
   try{
-    await setDoc(doc(fdb, 'users', user.uid), {
-      name, email: user.email, role, trainerId: null, createdAt: Date.now()
-    });
+    if(role === 'trainer'){
+      /* Perfil y código gastado en el mismo lote, igual que en el alta por
+         enlace: si fueran dos escrituras, un fallo en la segunda dejaría el
+         código sirviendo para otra persona. */
+      const alta = await getDoc(doc(fdb, 'altas', codigo));
+      if(!alta.exists() || alta.data().usado) throw new Error('ALTA_NO_VALIDA');
+      const lote = writeBatch(fdb);
+      lote.set(doc(fdb, 'users', user.uid), {
+        name, email: user.email, role, trainerId: null,
+        altaId: codigo, createdAt: Date.now()
+      });
+      lote.update(doc(fdb, 'altas', codigo), {
+        usado: true, usadoPor: user.uid, usadoEn: Date.now()
+      });
+      await lote.commit();
+    }else{
+      await setDoc(doc(fdb, 'users', user.uid), {
+        name, email: user.email, role, trainerId: null, createdAt: Date.now()
+      });
+    }
     if(!user.displayName) await updateProfile(user, { displayName: name });
     meData = { name, email: user.email, role, trainerId: null };
+    // Si es entrenador, el panel de códigos depende de ser admin: se repinta.
+    vigilarCodigosAlta();
     pintarSesion(user);
     await cambiarANube();   // ya hay perfil: se puede sincronizar
   }catch(e){
     console.error('[auth] no se pudo crear el perfil', e);
-    $('perfil-msg').innerHTML =
-      '<div class="msg msg-err">No se pudo guardar el perfil: '+(e.code||e.message)+'</div>';
+    /* Un código gastado es lo más probable aquí, y decirlo con su nombre evita
+       que el entrenador se quede mirando un "permission-denied". */
+    const texto = e.message === 'ALTA_NO_VALIDA'
+      ? 'Ese código de alta ya se ha usado o no existe. Pide uno nuevo.'
+      : e.code === 'permission-denied'
+        ? 'Ese código de alta no es válido. Pide uno nuevo a quien te dio de alta.'
+        : 'No se pudo guardar el perfil: ' + escaparHTML(e.code || e.message);
+    $('perfil-msg').innerHTML = '<div class="msg msg-err">'+texto+'</div>';
   }finally{
     btn.disabled = false;
     btn.textContent = textoOriginal;
@@ -7567,6 +7701,116 @@ function vigilarClientes(){
   }, err => {
     document.getElementById('clientes-lista').textContent = 'Error leyendo tus clientes: ' + err.message;
   });
+}
+
+/* ═══════════ Alta de ENTRENADORES ═══════════
+   Hasta ahora las cuentas de entrenador se creaban a mano en la consola de
+   Firebase. Esto es la puerta para vender la app a otros coaches, y por eso el
+   alta NO es abierta: Jhon genera un código, se lo pasa a quien quiera, y sin
+   código válido las reglas rechazan la creación del perfil. Así puede cobrar
+   antes de dar el código y cerrar el grifo cuando quiera.
+
+   Mismo mecanismo que las invitaciones de cliente —código aleatorio, un solo
+   uso, marcado como gastado en la MISMA escritura por lotes— porque ya está
+   probado y porque quien lo lea después solo tiene que entender un patrón.
+
+   Quién puede generarlos: users/{uid}.admin == true. Se pone a mano en la
+   consola una vez, sobre la cuenta de Jhon; no hay pantalla para darse admin a
+   uno mismo a propósito. */
+
+let altasUnsub = null;
+
+function soyAdmin(){ return !!(meData && meData.admin === true); }
+
+function enlaceDeAlta(codigo){
+  return location.origin + location.pathname + '?alta=' + codigo;
+}
+
+window.crearCodigoAlta = async function(){
+  const btn = document.getElementById('alta-btn');
+  const msg = document.getElementById('alta-msg');
+  const nota = (document.getElementById('alta-nota').value || '').trim();
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = 'Creando...';
+  try{
+    const codigo = nuevoCodigo();
+    await setDoc(doc(fdb, 'altas', codigo), {
+      creadoPor: meUid, creadoEn: Date.now(),
+      usado: false, usadoPor: null, nota: nota || null
+    });
+    document.getElementById('alta-nota').value = '';
+    msg.innerHTML = '<div class="msg msg-ok">Código creado. Pásaselo al entrenador.</div>';
+  }catch(e){
+    console.error('[altas] no se pudo crear', e);
+    msg.innerHTML = '<div class="msg msg-err">No se pudo crear el código: '+escaparHTML(e.code||e.message)+'</div>';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = txt;
+  }
+};
+
+window.copiarEnlaceAlta = async function(codigo){
+  const url = enlaceDeAlta(codigo);
+  const msg = document.getElementById('alta-msg');
+  if(navigator.share){
+    try{ await navigator.share({ title:'Te doy de alta como entrenador', url }); return; }
+    catch(e){ if(e.name === 'AbortError') return; }
+  }
+  try{
+    await navigator.clipboard.writeText(url);
+    msg.innerHTML = '<div class="msg msg-ok">Enlace copiado.</div>';
+  }catch(e){
+    msg.innerHTML = '<div class="msg msg-info" style="word-break:break-all;">'+escaparHTML(url)+'</div>';
+  }
+};
+
+window.revocarCodigoAlta = async function(codigo){
+  try{ await deleteDoc(doc(fdb, 'altas', codigo)); }
+  catch(e){
+    console.error('[altas] no se pudo revocar', e);
+    aviso('No se pudo revocar el código','mal');
+  }
+};
+
+function vigilarCodigosAlta(){
+  cerrarVigilanciaAltas();
+  const panel = document.getElementById('pane-altas');
+  if(!panel) return;
+  // Sin admin ni se pinta ni se escucha: las reglas rechazarían el list.
+  if(!soyAdmin()){ panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+
+  const q = query(collection(fdb,'altas'), where('creadoPor','==',meUid));
+  altasUnsub = onSnapshot(q, qs => {
+    const c = document.getElementById('altas-lista');
+    if(!c) return;
+    if(qs.empty){ c.textContent = 'Todavía no has generado ningún código.'; return; }
+    const filas = qs.docs
+      .map(d => ({ id:d.id, ...d.data() }))
+      .sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0))
+      .map(a => {
+        const quien = a.nota ? escaparHTML(a.nota) : 'Sin anotar';
+        if(a.usado){
+          return `<div class="week-row"><span style="font-size:12.5px;">${quien}</span>
+            <span class="badge badge-green">Usado</span></div>`;
+        }
+        return `<div class="week-row"><span style="font-size:12.5px;min-width:0;">${quien}</span>
+          <span style="display:flex;gap:6px;">
+            <button class="btn-sm" data-c="${escaparHTML(a.id)}" onclick="copiarEnlaceAlta(this.dataset.c)">Copiar enlace</button>
+            <button class="btn-sm btn-danger" data-c="${escaparHTML(a.id)}" onclick="revocarCodigoAlta(this.dataset.c)">✕</button>
+          </span></div>`;
+      }).join('');
+    c.innerHTML = filas;
+  }, err => {
+    console.error('[altas] no se pudieron leer', err);
+    const c = document.getElementById('altas-lista');
+    if(c) c.textContent = 'No se pudieron leer tus códigos: ' + err.message;
+  });
+}
+
+function cerrarVigilanciaAltas(){
+  if(altasUnsub){ altasUnsub(); altasUnsub = null; }
 }
 
 /* ─────────── Invitaciones ───────────
@@ -9056,6 +9300,7 @@ onAuthStateChanged(auth, async (user) => {
     meUid = null; meData = null;
     cerrarVigilanciaRetos();
     cerrarVigilanciaAviso();
+    cerrarVigilanciaAltas();
     pintarAvisoCoach();
     pintarSesion(null);
     // Al cerrar sesión, volver a los datos de este dispositivo.
@@ -9081,9 +9326,73 @@ onAuthStateChanged(auth, async (user) => {
   vigilarRetos();
   vigilarMisRetos();
   vigilarAvisoCoach();
+  vigilarCodigosAlta();
   // Sin perfil todavía no se sincroniza: primero hay que completarlo.
   if(meData) await cambiarANube();
 });
+
+/* ─────────── Llegar con un código de alta (?alta=CODIGO) ───────────
+   El equivalente de ?inv= pero para entrenadores: abre el registro y fija el
+   rol a 'trainer'. Sin código, la app no ofrece darse de alta de entrenador en
+   ningún sitio, y aunque alguien forzara el formulario las reglas rechazarían
+   el perfil. */
+const codigoAlta = new URLSearchParams(location.search).get('alta');
+let altaFotoData = null;
+
+window.altaSetFoto = function(input){
+  const file = input.files[0];
+  if(!file) return;
+  // Mismo tratamiento que la foto del onboarding: se comprime antes de nada.
+  leerYComprimir(file, FOTO_PERFIL).then(dataUrl => {
+    altaFotoData = dataUrl;
+    const av = document.getElementById('alta-avatar');
+    if(av) av.innerHTML = `<img src="${dataUrl}" alt="">`;
+  }).catch(e => {
+    console.error('[altas] no se pudo procesar la foto', e);
+    aviso('No se pudo procesar esa imagen. Prueba con otra.','mal');
+  });
+};
+
+function prepararRegistroPorAlta(){
+  if(!codigoAlta) return;
+  const aviso = $('aviso-invitacion');
+  aviso.textContent = 'Te han dado de alta como entrenador. Crea tu cuenta para empezar.';
+  aviso.classList.remove('hidden');
+  // Con código de alta el rol viene dado, igual que con invitación.
+  $('fila-rol').classList.add('hidden');
+  $('auth-role').value = 'trainer';
+  $('alta-extra').classList.remove('hidden');
+  $('registro-cerrado-aviso').classList.add('hidden');
+  document.querySelector('#auth-panel .auth-tabs').classList.remove('hidden');
+  setAuthTab('register');
+  if($('auth-panel').classList.contains('hidden')) toggleAuthPanel();
+}
+
+/* Crea el perfil de entrenador y gasta el código en la MISMA escritura por
+   lotes: por separado, un fallo en la segunda dejaría el código sirviendo para
+   que entrara otro. Calcado de altaPorInvitacion() a propósito. */
+async function altaPorCodigo(user, name, extra){
+  const alta = await getDoc(doc(fdb, 'altas', codigoAlta));
+  if(!alta.exists() || alta.data().usado){
+    throw new Error('ALTA_NO_VALIDA');
+  }
+  const lote = writeBatch(fdb);
+  lote.set(doc(fdb, 'users', user.uid), {
+    name, email: user.email, role: 'trainer',
+    trainerId: null,
+    altaId: codigoAlta,
+    gimnasio: extra.gimnasio || null,
+    telefono: extra.telefono || null,
+    profilePic: extra.foto || null,
+    createdAt: Date.now()
+  });
+  lote.update(doc(fdb, 'altas', codigoAlta), {
+    usado: true, usadoPor: user.uid, usadoEn: Date.now()
+  });
+  await lote.commit();
+  // Código gastado: fuera de la URL, del historial y de los marcadores.
+  history.replaceState({}, '', location.pathname);
+}
 
 /* ─────────── Llegar con una invitación (?inv=CODIGO) ───────────
    El registro está cerrado por defecto. Un enlace de invitación es la única
@@ -9134,7 +9443,7 @@ async function altaPorInvitacion(user, name){
 
 /* Estado inicial del panel: con el registro cerrado sobra la fila de pestañas
    (una sola pestaña no es una elección). */
-if(!REGISTRO_ABIERTO && !codigoInvitacion){
+if(!REGISTRO_ABIERTO && !codigoInvitacion && !codigoAlta){
   document.querySelector('#auth-panel .auth-tabs').classList.add('hidden');
   $('register-extra').classList.add('hidden');
   $('auth-submit').textContent = 'Iniciar sesión';
@@ -9143,6 +9452,7 @@ if(!REGISTRO_ABIERTO && !codigoInvitacion){
   $('registro-cerrado-aviso').classList.add('hidden');
 }
 prepararRegistroPorInvitacion();
+prepararRegistroPorAlta();
 pintarEstadoSync();
 
 /* Marca de que el módulo llegó a ejecutarse: toggleAuthPanel() la consulta

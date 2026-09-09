@@ -29,6 +29,44 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/invites/$(inviteId)).data.usado == false;
     }
 
+    /* ═══════════ Códigos de alta de ENTRENADOR ═══════════
+       Hasta ahora las cuentas de entrenador se creaban a mano en la consola de
+       Firebase, y estas reglas dejaban a cualquiera crearse un perfil con
+       role:'trainer' (el comentario de más abajo lo admitía: "un desconocido
+       podría crearse un perfil de entrenador suelto"). Eso valía mientras el
+       candado real fuera tener la creación de cuentas desactivada en
+       Authentication. En cuanto se abre para que los entrenadores se den de
+       alta solos, ese agujero pasa a ser la puerta de casa: sin esto,
+       cualquiera tendría gratis lo que se va a cobrar.
+
+       Un código de alta lo genera SOLO Jhon (admin), sirve una vez y es lo
+       único que permite crear un perfil de entrenador. */
+    function soyAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.admin == true;
+    }
+
+    function altaValida(altaId) {
+      return altaId is string
+        && exists(/databases/$(database)/documents/altas/$(altaId))
+        && get(/databases/$(database)/documents/altas/$(altaId)).data.usado == false;
+    }
+
+    match /altas/{codigo} {
+      // get sí, list no: el candidato necesita leer el suyo para el alta, pero
+      // enumerarlos daría la lista de códigos sin gastar de todo el mundo.
+      allow get: if isSignedIn();
+      allow list: if soyAdmin();
+      allow create, delete: if soyAdmin();
+      // Solo se puede tocar para gastarlo, y solo quien lo gasta. No se puede
+      // reabrir un código ya usado.
+      allow update: if isSignedIn()
+                    && resource.data.usado == false
+                    && request.resource.data.usado == true
+                    && request.resource.data.usadoPor == request.auth.uid;
+    }
+
     match /invites/{codigo} {
       // get sí, list no para quien no es el dueño: los códigos son aleatorios,
       // pero poder enumerarlos daría la lista de invitaciones abiertas de
@@ -101,13 +139,14 @@ service cloud.firestore {
       // perfil aquí, esa cuenta no tiene datos, ni entrenador, ni acceso a
       // nada de nadie.
       //
-      // Los perfiles de entrenador se siguen permitiendo porque las cuentas de
-      // entrenador se dan de alta a mano en la consola de Firebase y necesitan
-      // completar su perfil al entrar la primera vez. Un desconocido podría
-      // crearse un perfil de entrenador suelto: no le da acceso a datos
-      // ajenos (se quedaría sin clientes), solo a una cuenta personal.
+      // Un perfil de ENTRENADOR exige ahora un código de alta válido, igual
+      // que uno de cliente exige invitación. Antes se permitía sin más porque
+      // esas cuentas se creaban a mano en la consola; desde que los
+      // entrenadores se dan de alta solos, es lo que separa a un cliente de
+      // pago de cualquiera que pase por la web.
       allow create: if isOwner(uid) && (
-                      request.resource.data.role == 'trainer'
+                      (request.resource.data.role == 'trainer'
+                       && altaValida(request.resource.data.altaId))
                       || (request.resource.data.role == 'client'
                           && invitacionValida(request.resource.data.inviteId,
                                               request.resource.data.trainerId))
