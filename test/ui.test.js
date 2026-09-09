@@ -681,12 +681,52 @@ async function appLista(page, url){
     // Sin código, el alta de entrenador no se ofrece por ningún lado.
     await page.goto(url, {waitUntil:'networkidle2'});
     await esperar(1600);
-    const sinCodigo = await page.evaluate(()=>({
-      extraVisible: !document.getElementById('alta-extra').classList.contains('hidden'),
-      panelAltas: !document.getElementById('pane-altas').classList.contains('hidden'),
-    }));
+    /* Visibilidad REAL (offsetParent), no clases: el fallo del onboarding tapando
+       el formulario pasó porque las clases estaban bien y aun así no se veía. */
+    const visible = el => !!(el && el.offsetParent !== null);
+    const sinCodigo = await page.evaluate(()=>{
+      const v = el => !!(el && el.offsetParent !== null);
+      return {
+        extraVisible: v(document.getElementById('alta-extra')),
+        panelCoaches: v(document.getElementById('pane-coaches')),
+        botonCoaches: v(document.getElementById('modo-btn-coaches')),
+      };
+    });
     ok(!sinCodigo.extraVisible, 'sin código no aparecen los campos de entrenador');
-    ok(!sinCodigo.panelAltas, 'y sin ser admin no se ve el panel para generar códigos');
+    ok(!sinCodigo.panelCoaches, 'y sin ser admin no se ve el panel de entrenadores');
+    ok(!sinCodigo.botonCoaches, 'ni el botón que lleva a él');
+
+    console.log('\n13d. Los tres paneles del entrenador');
+    /* Jhon (09/09): "quizás sea un poco amontonado, pudiéramos poner las altas
+       de entrenadores en otro panel". Llevar a tus clientes y dar de alta a
+       otros entrenadores son dos trabajos distintos. */
+    const modos = await page.evaluate(()=>{
+      const v = el => !!(el && el.offsetParent !== null);
+      document.body.classList.add('es-entrenador','es-admin');
+      const r = { botones: v(document.getElementById('modo-btn-coaches')) };
+      setModo('clientes');
+      r.clientes = { clientes: v(document.getElementById('pane-clientes')),
+                     coaches: v(document.getElementById('pane-coaches')) };
+      setModo('coaches');
+      r.coaches = { clientes: v(document.getElementById('pane-clientes')),
+                    coaches: v(document.getElementById('pane-coaches')),
+                    hayLista: !!document.getElementById('coaches-lista'),
+                    hayAltas: v(document.getElementById('pane-altas')) };
+      setModo('entreno');
+      r.entreno = { clientes: v(document.getElementById('pane-clientes')),
+                    coaches: v(document.getElementById('pane-coaches')),
+                    inicio: v(document.getElementById('pane-inicio')) };
+      return r;
+    });
+    ok(modos.botones, 'siendo admin aparece el tercer botón');
+    ok(modos.clientes.clientes && !modos.clientes.coaches,
+       '"Mis clientes" enseña solo el panel de clientes');
+    ok(modos.coaches.coaches && !modos.coaches.clientes,
+       '"Entrenadores" enseña solo el suyo, y ya no van amontonados');
+    ok(modos.coaches.hayLista && modos.coaches.hayAltas,
+       'con la lista de entrenadores y el generador de códigos dentro');
+    ok(modos.entreno.inicio && !modos.entreno.clientes && !modos.entreno.coaches,
+       'y "Mi entrenamiento" vuelve a la app de siempre');
 
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')

@@ -188,9 +188,18 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 body.es-entrenador .modo-sel{display:flex;}
 .modo-sel button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
 .modo-sel button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
-body.modo-clientes .tabs,body.modo-clientes .pane{display:none;}
-#pane-clientes{display:none;padding:12px;}
+body.modo-clientes .tabs,body.modo-clientes .pane,
+body.modo-coaches .tabs,body.modo-coaches .pane{display:none;}
+#pane-clientes,#pane-coaches{display:none;padding:12px;}
 body.modo-clientes #pane-clientes{display:block;}
+body.modo-coaches #pane-coaches{display:block;}
+/* El tercer botón solo para quien da de alta entrenadores (admin). Para el
+   resto de entrenadores el selector sigue teniendo dos, exactamente como
+   antes. */
+body:not(.es-admin) #modo-btn-coaches{display:none;}
+/* Con tres botones y "Mi entrenamiento" dentro, el texto no cabe a 12 px en
+   una pantalla de 360. Se encoge un punto y se permite partir. */
+body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 /* Caja de la lista de invitaciones pendientes. La usaba también la ficha de
    cliente, que ahora es un mosaico. */
 .client-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;}
@@ -494,7 +503,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#pane-altas.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -1268,6 +1277,7 @@ textarea{resize:vertical;min-height:60px;}
 <div class="modo-sel" id="modo-sel">
   <button id="modo-btn-entreno" class="active" onclick="setModo('entreno')">Mi entrenamiento</button>
   <button id="modo-btn-clientes" onclick="setModo('clientes')">Mis clientes</button>
+  <button id="modo-btn-coaches" onclick="setModo('coaches')">Entrenadores</button>
 </div>
 
 <div class="tabs">
@@ -1681,24 +1691,6 @@ textarea{resize:vertical;min-height:60px;}
      No lleva class="pane" a propósito: los .pane los gobierna showTab(), y
      esta vista vive fuera de ese ciclo (la enseña body.modo-clientes). -->
 <div id="pane-clientes">
-  <!-- Dar de alta a OTROS ENTRENADORES. Solo lo ve Jhon (users/{uid}.admin
-       == true, puesto a mano en la consola una vez). Va lo primero porque es
-       la puerta del negocio: vender la app a otros coaches. Lo pinta
-       vigilarCodigosAlta(), que ni siquiera se engancha si no eres admin. -->
-  <div class="card hidden" id="pane-altas">
-    <div class="section-title">Dar de alta a un entrenador</div>
-    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
-      Genera un código y pásaselo a quien vayas a dar de alta. Con él podrá
-      crearse su cuenta de entrenador y tener sus propios clientes, separados
-      de los tuyos. Cada código sirve para una sola persona.
-    </p>
-    <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Para quién es (solo lo ves tú)</label>
-    <input type="text" id="alta-nota" placeholder="Ej. Laura, gimnasio Vitalia">
-    <button class="btn btn-primary" id="alta-btn" onclick="crearCodigoAlta()">+ Crear código de alta</button>
-    <div id="alta-msg"></div>
-    <div id="altas-lista" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
-  </div>
-
   <div class="card">
     <div class="section-title">Invitar a un cliente</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.45;">
@@ -1760,6 +1752,41 @@ textarea{resize:vertical;min-height:60px;}
     <div id="clientes-lista" style="font-size:13px;color:var(--muted);">Cargando...</div>
   </div>
 
+</div>
+
+<!-- ═══════════ Entrenadores (solo admin) ═══════════
+     Panel propio y no una tarjeta más dentro de "Mis clientes": son dos
+     trabajos distintos —llevar a TUS clientes y dar de alta a OTROS
+     entrenadores— y amontonarlos dejaba la pantalla de clientes con cuatro
+     tarjetas que no se hablan entre sí. Lo pidió Jhon el 09/09 tras probarlo.
+     Igual que #pane-clientes, no lleva class="pane": lo gobierna
+     body.modo-coaches, no showTab(). -->
+<div id="pane-coaches">
+  <div class="card">
+    <div class="section-title">Entrenadores dados de alta</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
+      Los que ya han usado un código y tienen su cuenta en marcha. Cada uno ve
+      solo a sus propios clientes.
+    </p>
+    <div id="coaches-lista" style="font-size:13px;color:var(--muted);margin-top:8px;">Cargando...</div>
+  </div>
+
+  <!-- Generar códigos. Va DEBAJO de la lista: lo que se viene a mirar aquí es
+       cómo van los entrenadores que ya están dentro; dar de alta a uno nuevo es
+       más puntual. -->
+  <div class="card" id="pane-altas">
+    <div class="section-title">Dar de alta a un entrenador</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
+      Genera un código y pásaselo a quien vayas a dar de alta. Con él podrá
+      crearse su cuenta de entrenador y tener sus propios clientes, separados
+      de los tuyos. Cada código sirve para una sola persona.
+    </p>
+    <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Para quién es (solo lo ves tú)</label>
+    <input type="text" id="alta-nota" placeholder="Ej. Laura, gimnasio Vitalia">
+    <button class="btn btn-primary" id="alta-btn" onclick="crearCodigoAlta()">+ Crear código de alta</button>
+    <div id="alta-msg"></div>
+    <div id="altas-lista" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
+  </div>
 </div>
 
 <!-- ═══════════ Detalle de un cliente (solo consulta) ═══════════
@@ -2404,7 +2431,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-09 23:30';
+const APP_VERSION='2026-09-10 00:15';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7775,38 +7802,91 @@ window.revocarCodigoAlta = async function(codigo){
 
 function vigilarCodigosAlta(){
   cerrarVigilanciaAltas();
-  const panel = document.getElementById('pane-altas');
-  if(!panel) return;
-  // Sin admin ni se pinta ni se escucha: las reglas rechazarían el list.
-  if(!soyAdmin()){ panel.classList.add('hidden'); return; }
-  panel.classList.remove('hidden');
+  // Sin admin ni se escucha: las reglas rechazarían el list de /altas.
+  if(!soyAdmin()) return;
 
   const q = query(collection(fdb,'altas'), where('creadoPor','==',meUid));
   altasUnsub = onSnapshot(q, qs => {
-    const c = document.getElementById('altas-lista');
-    if(!c) return;
-    if(qs.empty){ c.textContent = 'Todavía no has generado ningún código.'; return; }
-    const filas = qs.docs
-      .map(d => ({ id:d.id, ...d.data() }))
-      .sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0))
-      .map(a => {
-        const quien = a.nota ? escaparHTML(a.nota) : 'Sin anotar';
-        if(a.usado){
-          return `<div class="week-row"><span style="font-size:12.5px;">${quien}</span>
-            <span class="badge badge-green">Usado</span></div>`;
-        }
-        return `<div class="week-row"><span style="font-size:12.5px;min-width:0;">${quien}</span>
-          <span style="display:flex;gap:6px;">
-            <button class="btn-sm" data-c="${escaparHTML(a.id)}" onclick="copiarEnlaceAlta(this.dataset.c)">Copiar enlace</button>
-            <button class="btn-sm btn-danger" data-c="${escaparHTML(a.id)}" onclick="revocarCodigoAlta(this.dataset.c)">✕</button>
-          </span></div>`;
-      }).join('');
-    c.innerHTML = filas;
+    const todas = qs.docs.map(d => ({ id:d.id, ...d.data() }))
+                         .sort((a,b) => (b.creadoEn||0) - (a.creadoEn||0));
+    pintarCodigosPendientes(todas.filter(a => !a.usado));
+    pintarEntrenadoresDeAlta(todas.filter(a => a.usado && a.usadoPor));
   }, err => {
     console.error('[altas] no se pudieron leer', err);
     const c = document.getElementById('altas-lista');
     if(c) c.textContent = 'No se pudieron leer tus códigos: ' + err.message;
   });
+}
+
+/* Los códigos que aún no ha gastado nadie. Los usados NO se listan aquí: su
+   sitio es la lista de entrenadores de arriba, donde se ve la persona y no el
+   código. Un código gastado ya no es una tarea pendiente. */
+function pintarCodigosPendientes(pendientes){
+  const c = document.getElementById('altas-lista');
+  if(!c) return;
+  if(!pendientes.length){
+    c.textContent = 'No tienes códigos sin usar.';
+    return;
+  }
+  c.innerHTML = pendientes.map(a => {
+    const quien = a.nota ? escaparHTML(a.nota) : 'Sin anotar';
+    return `<div class="week-row"><span style="font-size:12.5px;min-width:0;">${quien}</span>
+      <span style="display:flex;gap:6px;">
+        <button class="btn-sm" data-c="${escaparHTML(a.id)}" onclick="copiarEnlaceAlta(this.dataset.c)">Copiar enlace</button>
+        <button class="btn-sm btn-danger" data-c="${escaparHTML(a.id)}" onclick="revocarCodigoAlta(this.dataset.c)">✕</button>
+      </span></div>`;
+  }).join('');
+}
+
+/* Quiénes son los entrenadores que ya han entrado. Faltaba: al probarlo, Jhon
+   dio de alta a uno y no lo vio en ninguna parte —solo su código marcado como
+   "Usado"—, que es como no tener la lista.
+
+   El perfil se lee de /users/{usadoPor}. Las reglas ya lo permiten: cualquier
+   usuario autenticado puede leer un perfil con role 'trainer' (hace falta para
+   que un invitado vea quién le invita). No se guarda copia del nombre en el
+   documento de alta a propósito: se quedaría vieja en cuanto el entrenador se
+   cambiara la foto o el nombre. */
+async function pintarEntrenadoresDeAlta(usadas){
+  const c = document.getElementById('coaches-lista');
+  if(!c) return;
+  if(!usadas.length){
+    c.textContent = 'Todavía no ha entrado ningún entrenador. Crea un código aquí abajo y pásaselo.';
+    return;
+  }
+  const perfiles = await Promise.all(usadas.map(async a => {
+    try{
+      const snap = await getDoc(doc(fdb,'users',a.usadoPor));
+      return { alta:a, perfil: snap.exists() ? snap.data() : null };
+    }catch(e){
+      // Un perfil ilegible no puede tumbar la lista entera.
+      console.error('[altas] no se pudo leer el perfil de', a.usadoPor, e);
+      return { alta:a, perfil:null };
+    }
+  }));
+
+  c.innerHTML = perfiles.map(({alta, perfil}) => {
+    if(!perfil){
+      return `<div class="client-item"><div style="font-size:12.5px;">
+        ${alta.nota ? escaparHTML(alta.nota) : 'Entrenador'}
+        <div style="font-size:11.5px;color:var(--muted);margin-top:3px;">
+          Su cuenta existe pero no se pudo leer su perfil.</div>
+      </div></div>`;
+    }
+    const nombre = (perfil.name || '').trim() || 'Sin nombre';
+    const desde = alta.usadoEn ? fechaCorta(alta.usadoEn) : '';
+    return `<div class="client-item" style="display:flex;gap:12px;align-items:center;">
+      ${avatarPersona(perfil.profilePic, nombre, {ampliable:false})}
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:14px;font-weight:800;">${escaparHTML(nombre)}</div>
+        ${perfil.gimnasio ? `<div style="font-size:12px;color:var(--muted);">${escaparHTML(perfil.gimnasio)}</div>` : ''}
+        <div style="font-size:11.5px;color:var(--muted);margin-top:3px;word-break:break-all;">
+          ${escaparHTML(perfil.email||'')}${perfil.telefono ? ' · '+escaparHTML(perfil.telefono) : ''}
+        </div>
+        ${desde ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">Entró el ${escaparHTML(desde)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function cerrarVigilanciaAltas(){
@@ -8509,16 +8589,24 @@ window.desvincularCliente = async function(uid){
 
 window.setModo = function(modo){
   const esClientes = modo === 'clientes';
+  const esCoaches  = modo === 'coaches';
   document.body.classList.toggle('modo-clientes', esClientes);
-  document.getElementById('modo-btn-entreno').classList.toggle('active', !esClientes);
+  document.body.classList.toggle('modo-coaches', esCoaches);
+  document.getElementById('modo-btn-entreno').classList.toggle('active', !esClientes && !esCoaches);
   document.getElementById('modo-btn-clientes').classList.toggle('active', esClientes);
+  document.getElementById('modo-btn-coaches').classList.toggle('active', esCoaches);
+
   if(esClientes){
     if(!clientesUnsub) vigilarClientes();
     if(!invitacionesUnsub) vigilarInvitaciones();
   }else{
+    /* Las escuchas de clientes se cierran también al ir a "Entrenadores": son
+       dos vistas distintas y mantener vivos los listeners de la otra solo
+       gasta lecturas. La de códigos va por su cuenta (vigilarCodigosAlta). */
     cerrarVigilancias();
     cerrarAsignar();
   }
+  if(esCoaches) vigilarCodigosAlta();
   window.scrollTo(0,0);
 };
 
@@ -8528,6 +8616,15 @@ window.setModo = function(modo){
 function pintarModoEntrenador(){
   const esEntrenador = !!(meData && meData.role === 'trainer');
   document.body.classList.toggle('es-entrenador', esEntrenador);
+  // El tercer botón solo para quien puede dar de alta a otros entrenadores.
+  document.body.classList.toggle('es-admin', esEntrenador && soyAdmin());
+  if(!esEntrenador || !soyAdmin()){
+    /* Salir del modo entrenadores si se deja de tener derecho a verlo: si no,
+       la app se quedaría enseñando un panel sin botón para volver. */
+    document.body.classList.remove('modo-coaches');
+    document.getElementById('modo-btn-coaches').classList.remove('active');
+    cerrarVigilanciaAltas();
+  }
   if(!esEntrenador){
     cerrarVigilancias();
     document.body.classList.remove('modo-clientes');
