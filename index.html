@@ -212,15 +212,39 @@ body.modo-clientes #pane-clientes{display:block;}
    pantalla sin jerarquía, que es justo lo que se arregló en el repaso del
    05/09. Lo único encendido es la etiqueta de arriba: basta para saber de
    quién viene, porque el texto ya lo cuenta. */
-.aviso-coach{background:var(--card);border:1px solid var(--border);
-  border-left:3px solid var(--accent);border-radius:var(--radius-sm);
-  padding:14px;margin-bottom:12px;}
-.aviso-coach-tag{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--accent);margin-bottom:5px;}
+/* VIOLETA LLENO. La primera versión (09/09) era una tarjeta en calma, igual
+   que las demás de Inicio, y Jhon la probó en el móvil: "es casi
+   imperceptible, podría fácilmente pasarlo por alto". Un recado del
+   entrenador SIN LEER es lo más importante de esta pantalla, así que se pinta
+   como lo único que se pinta así aquí. Solo existe mientras está sin leer:
+   en cuanto se pulsa "Entendido" desaparece, y por eso puede permitirse
+   gritar sin cansar.
+
+   Lo que NO lleva es la llama: ese marco es exclusivo del reto sin contestar.
+   La jerarquía de Inicio queda en tres escalones —llama > violeta lleno >
+   tarjeta normal— y así, aunque coincidan un reto sin contestar y un recado
+   sin leer, se sigue sabiendo cuál manda. */
+.aviso-coach{background:var(--accent);border:none;border-radius:18px;
+  padding:18px;margin-bottom:14px;color:#fff;
+  box-shadow:0 6px 24px rgba(139,92,246,.28);}
+.aviso-coach-tag{display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:rgba(255,255,255,.78);margin-bottom:6px;}
 /* pre-wrap: el entrenador escribe "10 con 40 / 6 con 32 / 4 con 25" en varias
    líneas y tienen que llegar como las escribió. */
-.aviso-coach-txt{font-size:13.5px;line-height:1.5;color:var(--text);white-space:pre-wrap;}
-.aviso-coach-ses{font-size:11.5px;color:var(--muted);margin-top:7px;}
+.aviso-coach-txt{font-size:16px;line-height:1.45;font-weight:600;color:#fff;white-space:pre-wrap;}
+.aviso-coach-ses{font-size:12.5px;color:rgba(255,255,255,.88);margin-top:9px;}
+/* Blanco sobre violeta, igual que "Acepto el reto": es la misma clase de
+   gesto, cerrar algo que te han mandado. */
+.aviso-coach-btn{background:#fff;border-color:#fff;color:var(--accent);
+  font-weight:800;margin-top:12px;}
+
+/* El punto de la pestaña de Inicio. Dentro de los límites del botón a
+   propósito: .tab lleva overflow:hidden y cualquier cosa que se salga se
+   recorta sin avisar. */
+.tab{position:relative;}
+.tab.con-aviso::after{content:'';position:absolute;top:6px;right:8px;
+  width:7px;height:7px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 2px rgba(0,0,0,.35);}
 .reto-aviso.pendiente{background:var(--accent);border:none;border-radius:18px;padding:18px;
   color:#fff;box-shadow:none;}
 /* ── El reto sin contestar, ardiendo ──
@@ -1197,6 +1221,16 @@ textarea{resize:vertical;min-height:60px;}
     </div>
   </div>
 
+  <!-- Lo que le dice su entrenador. ARRIBA DEL TODO y sin leer va en violeta
+       lleno: Jhon lo probó el 09/09 pegado a "Entrenamiento de hoy", en calma,
+       y su reacción fue "es casi imperceptible, podría pasarlo por alto". Un
+       recado de tu entrenador que aún no has leído es lo más importante de
+       esta pantalla, por encima del anillo de progreso.
+       Leído baja a tarjeta normal y se va: ya no hay nada que atender.
+       La llama sigue siendo EXCLUSIVA del reto sin contestar, así que la
+       jerarquía queda: llama > violeta lleno > tarjeta en calma. -->
+  <div id="home-aviso" class="hidden"></div>
+
   <div class="hp">
     <div style="min-width:0;">
       <div class="hp-label">Programa actual</div>
@@ -1222,12 +1256,6 @@ textarea{resize:vertical;min-height:60px;}
        la tarjeta de abajo; la racha y el cardio tienen su sitio en Resumen —la
        racha con tarjeta propia desde 2cf25cf— y el peso está en "Peso actual",
        dos dedos más abajo. Se fue para dejarle el hueco al reto. -->
-
-  <!-- Lo que le dice su entrenador. Va PEGADO a "Entrenamiento de hoy" y no
-       arriba del todo porque muchas veces habla justo de eso: "hoy hazme
-       upper". Y se pinta en calma, sin llama: el reto sin contestar es la
-       protagonista cuando existe, y aquí no se le pelea el sitio. -->
-  <div id="home-aviso" class="hidden"></div>
 
   <button class="hoy" id="home-hoy" onclick="irAProximaSesion()">
     <span class="hoy-tag" id="hoy-tag">Entrenamiento de hoy</span>
@@ -4704,6 +4732,22 @@ window.irAProximaSesion=function(){
   if(impuesta!=null) openSession(impuesta);
   else if(p)openSession(p.dia.s);   // sin plan que abrir, la lista de sesiones ya lo explica
 };
+
+/* Qué sesión impone un aviso del entrenador. PURA: se le pasan el aviso, la
+   rutina y las sesiones registradas, y no toca ni Firebase ni el DOM. Está
+   separada de sesionDelAviso() —que es la que lee el estado vivo— justo para
+   poder probarla, porque es la lógica que falló el 09/09.
+
+   Deliberadamente NO mira `visto`: marcar el recado como leído cierra el
+   texto, no el encargo. Ese fue el fallo. */
+function sesionImpuesta(av, rutina, sesiones){
+  if(!av || !av.sesion || !rutina) return null;
+  const s = +av.sesion;
+  const existe = ((rutina.plan)||[]).some(w => (w.days||[]).some(d => d.s === s));
+  if(!existe) return null;              // apunta a una sesión que ya no está
+  if((sesiones||{})[s]) return null;    // ya la hizo: encargo cumplido
+  return s;
+}
 
 /* Un día del plan por su número, con la semana a la que pertenece. Misma forma
    que devuelve proximaSesion() ({dia, semana}) para que Inicio pueda pintar
@@ -8838,37 +8882,54 @@ function cerrarVigilanciaAviso(){
    contrario. Quien la llama desde fuera comprueba antes que exista: el módulo
    carga después, y hasta entonces no hay aviso que valga. */
 window.sesionDelAviso = function(){
-  if(!miAviso || !miAviso.sesion) return null;
-  const act = getActive();
-  if(!act) return null;
-  const existe = (act.plan||[]).some(w => (w.days||[]).some(d => d.s === +miAviso.sesion));
-  return existe ? +miAviso.sesion : null;
-}
+  return sesionImpuesta(miAviso, getActive(), getActiveSessions());
+};
 
 function pintarAvisoCoach(){
   const c = document.getElementById('home-aviso');
   if(!c) return;
   const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId);
-  if(!miAviso || !miAviso.texto || !soyCliente){
-    c.classList.add('hidden'); c.innerHTML = ''; return;
+  /* Leído se va de Inicio, pero el aviso NO se borra: si traía cambio de día,
+     ese encargo sigue vivo (lo mantiene sesionDelAviso) y la tarjeta de
+     "Entrenamiento de hoy" lo sigue diciendo en su etiqueta. */
+  if(!miAviso || !miAviso.texto || miAviso.visto || !soyCliente){
+    c.classList.add('hidden'); c.innerHTML = ''; pintarPuntoInicio(); return;
   }
   const s = window.sesionDelAviso();
   const act = getActive();
   c.innerHTML = `<div class="aviso-coach">
     <span class="aviso-coach-tag">Tu entrenador te dice</span>
     <div class="aviso-coach-txt">${escaparHTML(miAviso.texto)}</div>
-    ${s ? `<div class="aviso-coach-ses">Hoy te manda a <b>${escaparHTML(nombreSesion(act, s))}</b>, y es la que se abre abajo.</div>` : ''}
-    <button class="btn-sm secundario" style="margin-top:10px;" onclick="marcarAvisoVisto()">Entendido</button>
+    ${s ? `<div class="aviso-coach-ses">Te manda a <b>${escaparHTML(nombreSesion(act, s))}</b>. Sigue ahí aunque cierres este aviso.</div>` : ''}
+    <button class="btn-sm aviso-coach-btn" onclick="marcarAvisoVisto()">Entendido</button>
   </div>`;
   c.classList.remove('hidden');
+  pintarPuntoInicio();
 }
 
-/* Lo borra el CLIENTE de su propio documento: es suyo y las reglas ya se lo
-   permiten sin tocar nada. El entrenador ve que ha desaparecido la próxima vez
-   que abra su ficha. */
+/* Un punto en la pestaña de Inicio mientras haya recado sin leer: desde
+   Registrar o Resumen no se ve nada de Inicio, y el aviso podría quedarse ahí
+   días sin que el cliente sepa que existe. */
+function pintarPuntoInicio(){
+  const tab = document.getElementById('tab-inicio');
+  if(!tab) return;
+  const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId);
+  const sinLeer = !!(miAviso && miAviso.texto && !miAviso.visto && soyCliente);
+  tab.classList.toggle('con-aviso', sinLeer);
+}
+
+/* MARCAR, no borrar. Lo primero que se probó (09/09) borraba el aviso entero,
+   y con él se iba el cambio de día: el cliente pulsaba "Entendido" y
+   "Comenzar entrenamiento" volvía a abrirle la sesión que tocaba por
+   calendario. Lo encontró Jhon en el móvil el mismo día.
+   El texto es la EXPLICACIÓN y la sesión es la INSTRUCCIÓN: descartar la una
+   no puede cancelar la otra. Escribe el cliente en su propio documento, que
+   las reglas ya se lo permiten por isOwner. */
 window.marcarAvisoVisto = async function(){
+  if(!miAviso) return;
   try{
-    await setDoc(doc(fdb,'users',meUid), { avisoCoach: null }, { merge:true });
+    await setDoc(doc(fdb,'users',meUid),
+                 { avisoCoach: { ...miAviso, visto:true } }, { merge:true });
   }catch(e){
     console.error('[aviso] no se pudo marcar como visto', e);
     aviso('No se pudo quitar el aviso','mal');

@@ -72,6 +72,7 @@ const puente = `
 ;globalThis.__app = {
   STORAGE, StorageLocal, save, saveEstricto, load, storageAvailable,
   planParaFirestore, planDesdeFirestore, buscarArraysAnidados, notaDeEjercicio,
+  sesionImpuesta,
   resumenDB, textoResumen, firmaDB, mismosDatos, diagnosticarSubida,
   fotosARecomprimir, LIMITE_FOTO,
   totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana, semanaEnCurso,
@@ -216,6 +217,28 @@ const ok = (cond, msg) => {
      los presets dejarían de sobrevivir a la ida y vuelta. */
   ok(app.planDesdeFirestore(app.planParaFirestore(plan))[0].days[0].ex[0].length === 2,
      'sin nota, el ejercicio vuelve como par y no como terna');
+
+  console.log('\n8bis. El cambio de día que manda el entrenador');
+  /* El fallo del 09/09, encontrado por Jhon en el móvil: pulsar "Entendido"
+     borraba el aviso entero y con él se iba el cambio de día, así que
+     "Comenzar entrenamiento" volvía a abrir la sesión del calendario. El
+     texto es la explicación y la sesión es la instrucción: cerrar la una no
+     puede cancelar la otra. */
+  const rutAviso = { plan: [{ num:1, days:[{s:1,name:'S1'},{s:2,name:'S2'},{s:3,name:'S3'}] }] };
+  ok(app.sesionImpuesta({texto:'hazme upper', sesion:3}, rutAviso, {}) === 3,
+     'un aviso con sesión manda a esa sesión');
+  ok(app.sesionImpuesta({texto:'hazme upper', sesion:3, visto:true}, rutAviso, {}) === 3,
+     '🔴 marcarlo como LEÍDO no cancela el cambio de día (el fallo del 09/09)');
+  ok(app.sesionImpuesta({texto:'ánimo, sigue así'}, rutAviso, {}) === null,
+     'un aviso sin sesión no cambia nada');
+  ok(app.sesionImpuesta({texto:'x', sesion:3}, rutAviso, {3:{date:'9/9/2026'}}) === null,
+     'cuando ya ha hecho esa sesión, el encargo se acaba y vuelve a mandar la app');
+  ok(app.sesionImpuesta({texto:'x', sesion:3}, rutAviso, {1:{date:'9/9/2026'}}) === 3,
+     'haber hecho OTRA sesión no lo cancela');
+  ok(app.sesionImpuesta({texto:'x', sesion:99}, rutAviso, {}) === null,
+     'si apunta a una sesión que ya no existe, no deja Inicio sin botón');
+  ok(app.sesionImpuesta(null, rutAviso, {}) === null, 'sin aviso, null');
+  ok(app.sesionImpuesta({texto:'x', sesion:1}, null, {}) === null, 'sin rutina activa, null');
 
   console.log('\n8c. notaDeEjercicio lee las tres formas');
   ok(app.notaDeEjercicio(['Press', '4×10', 'tempo 3-1-1']) === 'tempo 3-1-1', 'terna');
