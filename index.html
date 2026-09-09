@@ -1336,8 +1336,9 @@ textarea{resize:vertical;min-height:60px;}
     </p>
     <p style="font-size:12px;color:var(--muted);line-height:1.5;">
       <b>No has perdido nada.</b> Tu historial, tus medidas y tus fotos siguen
-      donde estaban, y puedes seguir entrenando por tu cuenta con tus propias
-      rutinas. Cuando se reanude, recuperas el plan tal y como lo tenías.
+      donde estaban, y puedes seguir entrenando con las rutinas que ya tenías
+      tuyas. Lo que no puedes hacer mientras tanto es añadir rutinas nuevas.
+      Cuando se reanude, recuperas el plan tal y como lo tenías.
     </p>
   </div>
 
@@ -2471,7 +2472,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-09 23:19';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-09 23:22';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5513,7 +5514,23 @@ function renderRoutineList(){
   /* Los dos botones de añadir eran tarjetas grandes con degradado, y una verde
      —color que en el resto de la app significa "hecho"—: pesaban más que la
      lista de rutinas, que es a lo que se viene aquí. */
-  c.innerHTML+=`
+  /* Con el seguimiento en pausa no se añaden rutinas: ni prehechas ni propias.
+     Sin esto la pausa no aprieta nada —bastaba con elegir un preset y seguir
+     entrenando gratis— y era un agujero del primer diseño, que dejaba al
+     cliente "entrenar por su cuenta". Lo que ya tiene registrado sigue ahí y
+     puede seguir entrenando sus rutinas propias: no se le quita nada suyo, se
+     le deja de dar servicio nuevo. */
+  c.innerHTML += seguimientoPausado ? `
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <div style="font-size:12.5px;line-height:1.55;">
+        <b>No puedes añadir rutinas mientras el seguimiento esté en pausa.</b>
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px;">
+        Habla con tu entrenador para retomarlo. Todo lo que tienes registrado
+        sigue guardado y no se pierde nada.
+      </div>
+    </div>
+  ` : `
     <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Añadir rutina</div>
       <div style="display:flex;gap:8px;">
@@ -5522,6 +5539,15 @@ function renderRoutineList(){
       </div>
     </div>
   `;
+}
+
+/* Cierre en las propias funciones y no solo en los botones: es lo que sostiene
+   la regla si algún día se abre otra puerta a estas pantallas (un enlace, el
+   onboarding, un atajo). Esconder el botón deja la puerta abierta detrás. */
+function bloqueadoPorPausa(){
+  if(!seguimientoPausado) return false;
+  aviso('Tu entrenador ha pausado el seguimiento: no puedes añadir rutinas','mal');
+  return true;
 }
 
 /* Renombrar sin tener que activarla ni recrearla: antes el nombre solo se podía
@@ -6091,6 +6117,7 @@ function vigilarCapas(){
 }
 
 function openPresetPanel(){
+  if(bloqueadoPorPausa()) return;
   document.getElementById('preset-panel').classList.remove('hidden');
   renderPresetList();
 }
@@ -6286,6 +6313,7 @@ function obFinish(){
 }
 
 function openNewRoutinePanel(){
+  if(bloqueadoPorPausa()) return;
   document.getElementById('new-routine-panel').classList.remove('hidden');
   // Se empieza en limpio cada vez: media rutina de la vez anterior confundiría.
   nrDias=[]; nrNombre=''; nrSemanas=8; nrPaso=1; nrDiaEditando=0;

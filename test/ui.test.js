@@ -813,6 +813,31 @@ async function appLista(page, url){
     ok(pausa.despues.activa && pausa.despues.sesiones === pausa.antes.sesiones,
        'y al reanudar lo recupera todo, tal y como estaba');
 
+    /* Sin esto la pausa no aprieta: el cliente elegía una rutina prehecha y
+       seguía entrenando gratis. Se comprueba en las FUNCIONES y no solo en los
+       botones, que es donde tiene que estar el cierre. */
+    const anadir = await page.evaluate(()=>{
+      seguimientoPausado = true;
+      renderRoutineList();
+      const lista = document.getElementById('routine-list').textContent;
+      const abiertos = { preset:false, nueva:false };
+      openPresetPanel();
+      abiertos.preset = !document.getElementById('preset-panel').classList.contains('hidden');
+      openNewRoutinePanel();
+      abiertos.nueva = !document.getElementById('routine-panel').classList.contains('hidden');
+      seguimientoPausado = false;
+      renderRoutineList();
+      const listaOk = document.getElementById('routine-list').textContent;
+      return { lista, abiertos, listaOk };
+    });
+    ok(!/Explorar rutinas/.test(anadir.lista) && !/Crear la mía/.test(anadir.lista),
+       'en pausa no se ofrece explorar ni crear rutinas');
+    ok(/No puedes añadir rutinas/.test(anadir.lista), 'y se explica por qué');
+    ok(!anadir.abiertos.preset && !anadir.abiertos.nueva,
+       '🔴 y las pantallas no se abren ni llamándolas directamente');
+    ok(/Explorar rutinas/.test(anadir.listaOk),
+       'al reanudar vuelven a estar disponibles');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
