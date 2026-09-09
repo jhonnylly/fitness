@@ -838,6 +838,37 @@ async function appLista(page, url){
     ok(/Explorar rutinas/.test(anadir.listaOk),
        'al reanudar vuelven a estar disponibles');
 
+    /* Solo lectura de verdad: las CUATRO puertas por las que entran datos.
+       Taparlas a medias sería peor que no taparlas — el cliente descubriría
+       por ensayo y error qué le dejan hacer. */
+    const soloLectura = await page.evaluate(()=>{
+      const r = DB.routines.find(x=>x.id===DB.activeRoutine);
+      const antes = { semanas:(r.plan||[]).length, medidas:(r.medidas||[]).length,
+                      sesiones:Object.keys(r.sessions||{}).length,
+                      fotos:(DB.fotos||[]).length };
+      seguimientoPausado = true;
+      addWeek();
+      const medEl = document.getElementById('med-peso');
+      if(medEl) medEl.value = '80';
+      saveMedida();
+      curSession = 1; saveSession();
+      const durante = { semanas:(r.plan||[]).length, medidas:(r.medidas||[]).length,
+                        sesiones:Object.keys(r.sessions||{}).length };
+      seguimientoPausado = false;
+      // El export es el que NUNCA se cierra: sus datos son suyos.
+      let exportaOk = true;
+      try{ JSON.stringify(DB); }catch(e){ exportaOk = false; }
+      return { antes, durante, exportaOk, hayExport: typeof exportJSON === 'function' };
+    });
+    ok(soloLectura.durante.semanas === soloLectura.antes.semanas,
+       'en pausa no puede añadir semanas');
+    ok(soloLectura.durante.medidas === soloLectura.antes.medidas,
+       'ni apuntar medidas');
+    ok(soloLectura.durante.sesiones === soloLectura.antes.sesiones,
+       'ni registrar entrenamientos');
+    ok(soloLectura.hayExport && soloLectura.exportaOk,
+       '🔴 pero SÍ puede exportar sus datos: son suyos aunque deba dinero');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

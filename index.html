@@ -1336,9 +1336,17 @@ textarea{resize:vertical;min-height:60px;}
     </p>
     <p style="font-size:12px;color:var(--muted);line-height:1.5;">
       <b>No has perdido nada.</b> Tu historial, tus medidas y tus fotos siguen
-      donde estaban, y puedes seguir entrenando con las rutinas que ya tenías
-      tuyas. Lo que no puedes hacer mientras tanto es añadir rutinas nuevas.
-      Cuando se reanude, recuperas el plan tal y como lo tenías.
+      donde estaban y puedes consultarlos cuando quieras. Cuando se reanude,
+      recuperas el plan tal y como lo tenías.
+    </p>
+    <p style="font-size:12px;color:var(--muted);line-height:1.5;">
+      Mientras dure la pausa <b>no se guardan datos nuevos</b>: ni
+      entrenamientos, ni medidas, ni fotos. Si entrenas estos días, apúntatelo
+      aparte, porque la app no lo registrará.
+    </p>
+    <p style="font-size:12px;color:var(--muted);line-height:1.5;">
+      Tus datos siguen siendo tuyos: puedes descargarlos cuando quieras desde
+      <b>Ajustes → Exportar JSON</b>.
     </p>
   </div>
 
@@ -2472,7 +2480,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-09 23:22';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-09 23:28';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3792,6 +3800,7 @@ function addExercise(){curEx.push({name:'',sets:[{kg:'',reps:''},{kg:'',reps:''}
 function removeEx(ei){curEx.splice(ei,1);renderEx();}
 
 function saveSession(){
+  if(bloqueadoPorPausa('registrar entrenamientos')) return;
   const act=getActive();
   /* Antes de escribir nada: los récords se miden contra el historial SIN esta
      sesión, y "ya estaba" distingue registrar de corregir. Después de la
@@ -4197,6 +4206,7 @@ function buildMedSel(){
 }
 
 function saveMedida(){
+  if(bloqueadoPorPausa('apuntar medidas')) return;
   const sem=parseInt(document.getElementById('med-sem').value);
   const peso=parseFloat(document.getElementById('med-peso').value);
   const cin=parseFloat(document.getElementById('med-cin').value);
@@ -5544,9 +5554,20 @@ function renderRoutineList(){
 /* Cierre en las propias funciones y no solo en los botones: es lo que sostiene
    la regla si algún día se abre otra puerta a estas pantallas (un enlace, el
    onboarding, un atajo). Esconder el botón deja la puerta abierta detrás. */
-function bloqueadoPorPausa(){
+/* En pausa la app queda en SOLO LECTURA: se ve todo lo de siempre, pero no
+   entra nada nuevo. Se cierran las cuatro puertas por las que entran datos
+   —sesiones, medidas, semanas y fotos— además de crear y explorar rutinas.
+   Taparlas a medias sería peor que no taparlas: el cliente descubriría por
+   ensayo y error qué le dejan hacer.
+
+   Lo que NO se toca nunca: ver su historial, y EXPORTAR sus datos desde
+   Ajustes. Son suyos y tiene que poder llevárselos aunque deba dinero; además,
+   con datos de salud de por medio, negarle el acceso a lo suyo sería un
+   problema de RGPD y no solo una fealdad. Borrar tampoco se bloquea: no
+   añade nada a la deuda y son sus datos. */
+function bloqueadoPorPausa(que){
   if(!seguimientoPausado) return false;
-  aviso('Tu entrenador ha pausado el seguimiento: no puedes añadir rutinas','mal');
+  aviso('Seguimiento en pausa: no puedes ' + (que || 'añadir datos'), 'mal');
   return true;
 }
 
@@ -5682,6 +5703,7 @@ function renderMedidasChart(){
 /* Añadir una foto: se APILA, no pisa a ninguna. Antes había dos casillas
    fijas y cada foto nueva borraba la anterior en silencio. */
 function savePhoto(input){
+  if(bloqueadoPorPausa('añadir fotos')) return;
   const file=input.files[0];if(!file)return;
   input.value='';   // si no, elegir el mismo archivo dos veces no dispara change
   leerYComprimir(file,FOTO_PROGRESO).then(dataUrl=>{
@@ -6117,7 +6139,7 @@ function vigilarCapas(){
 }
 
 function openPresetPanel(){
-  if(bloqueadoPorPausa()) return;
+  if(bloqueadoPorPausa('añadir rutinas')) return;
   document.getElementById('preset-panel').classList.remove('hidden');
   renderPresetList();
 }
@@ -6313,7 +6335,7 @@ function obFinish(){
 }
 
 function openNewRoutinePanel(){
-  if(bloqueadoPorPausa()) return;
+  if(bloqueadoPorPausa('añadir rutinas')) return;
   document.getElementById('new-routine-panel').classList.remove('hidden');
   // Se empieza en limpio cada vez: media rutina de la vez anterior confundiría.
   nrDias=[]; nrNombre=''; nrSemanas=8; nrPaso=1; nrDiaEditando=0;
@@ -6684,6 +6706,7 @@ function createNewRoutine(){
 }
 
 function addWeek(){
+  if(bloqueadoPorPausa('añadir semanas')) return;
   const act=getActive();
   if(!act)return;
   if(!act.plan)act.plan=[];
