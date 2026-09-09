@@ -241,9 +241,18 @@ body.modo-clientes #pane-clientes{display:block;}
 @media (prefers-reduced-motion:reduce){ .aviso-coach{animation:none;} }
 /* Dice QUÉ es antes de decir qué pone: "el anuncio" que pedía Jhon. Con un
    sobre de trazo, como el resto de iconos de la app — aquí nunca emoji. */
-.aviso-coach-cab{display:flex;align-items:center;gap:8px;margin-bottom:10px;
-  font-size:12.5px;font-weight:800;letter-spacing:.02em;color:rgba(255,255,255,.95);}
-.aviso-coach-cab .ico{width:20px;height:20px;}
+.aviso-coach-cab{display:flex;align-items:center;gap:11px;margin-bottom:13px;}
+/* La cara de quien lo manda. Es lo que convierte la tarjeta en "un mensaje de
+   Montse" en vez de "un cartel de la app", que era la pega de Jhon: le sobraba
+   color y le faltaba PERSONA. El aro blanco la separa del degradado. */
+.aviso-coach .aviso-coach-cara{width:38px;height:38px;border-radius:50%;
+  box-shadow:0 0 0 2px rgba(255,255,255,.9);flex:none;object-fit:cover;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.22);color:#fff;font-weight:800;font-size:14px;}
+.aviso-coach-quien{font-size:15px;font-weight:800;color:#fff;line-height:1.2;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.aviso-coach-rol{font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:rgba(255,255,255,.8);margin-top:2px;}
 /* pre-wrap: el entrenador escribe "10 con 40 / 6 con 32 / 4 con 25" en varias
    líneas y tienen que llegar como las escribió. */
 .aviso-coach-txt{font-size:19px;line-height:1.4;font-weight:700;color:#fff;white-space:pre-wrap;}
@@ -1111,6 +1120,10 @@ textarea{resize:vertical;min-height:60px;}
       <div class="section-title">Versión</div>
       <div style="font-size:13px;" id="version-txt">—</div>
       <div id="version-aviso"></div>
+      <!-- Estado del canal del entrenador. Puesto aquí porque el aviso y el
+           cambio de día son invisibles cuando fallan: sin esto, la única forma
+           de saber qué pasa es abrir la consola en el móvil. -->
+      <div id="diag-coach" style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:10px;"></div>
       <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;">
         La app guarda una copia para poder abrirse sin cobertura. Si alguna vez
         se queda pillada en una versión vieja, vacíala:
@@ -2320,7 +2333,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-09 21:05';
+const APP_VERSION='2026-09-09 22:10';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4748,16 +4761,18 @@ window.irAProximaSesion=function(){
   else if(p)openSession(p.dia.s);   // sin plan que abrir, la lista de sesiones ya lo explica
 };
 
-/* Qué sesión impone un aviso del entrenador. PURA: se le pasan el aviso, la
-   rutina y las sesiones registradas, y no toca ni Firebase ni el DOM. Está
-   separada de sesionDelAviso() —que es la que lee el estado vivo— justo para
-   poder probarla, porque es la lógica que falló el 09/09.
+/* Qué sesión impone el entrenador. PURA: se le pasan el encargo, la rutina y
+   las sesiones registradas, y no toca ni Firebase ni el DOM.
 
-   Deliberadamente NO mira `visto`: marcar el recado como leído cierra el
-   texto, no el encargo. Ese fue el fallo. */
-function sesionImpuesta(av, rutina, sesiones){
-  if(!av || !av.sesion || !rutina) return null;
-  const s = +av.sesion;
+   🔴 Recibe `sesionCoach`, que es un campo DISTINTO de `avisoCoach`. Los dos
+   primeros intentos (09/09) guardaban la sesión dentro del propio aviso, y el
+   botón "Entendido" —que reescribe ese objeto— se llevaba el cambio de día por
+   delante dos veces seguidas. Separados, el gesto de cerrar el mensaje NO PUEDE
+   tocar la instrucción, por descuidada que sea la escritura. El texto es la
+   explicación y la sesión es la orden: no comparten campo. */
+function sesionImpuesta(sc, rutina, sesiones){
+  if(!sc || !sc.sesion || !rutina) return null;
+  const s = +sc.sesion;
   const existe = ((rutina.plan)||[]).some(w => (w.days||[]).some(d => d.s === s));
   if(!existe) return null;              // apunta a una sesión que ya no está
   if((sesiones||{})[s]) return null;    // ya la hizo: encargo cumplido
@@ -4926,7 +4941,8 @@ function toggleConfigPanel(){
   p.classList.toggle('hidden');
   /* La versión se consulta al ABRIR, no al arrancar: comprobar si hay una más
      nueva descarga el HTML entero y no merece la pena en cada visita. */
-  if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); pintarCopiaPrevia(); comprobarVersionNueva(); pintarInstalar(); }
+  if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); pintarCopiaPrevia(); comprobarVersionNueva(); pintarInstalar();
+    if(window.pintarDiagCoach) window.pintarDiagCoach(); }
 }
 
 function irAMedidas(){
@@ -7000,6 +7016,13 @@ async function pintarEntrenador(){
     console.error('[cuenta] no se pudo leer el perfil del entrenador', e);
   }
 
+  /* Se guarda para el aviso de Inicio: un recado con la cara y el nombre de
+     quien lo manda se lee como un mensaje de una persona, y sin ellos parece
+     "algo de la app" — que fue exactamente lo que dijo Jhon al probarlo. Se
+     aprovecha esta lectura en vez de hacer otra. */
+  coachDelCliente = { nombre, foto };
+  pintarAvisoCoach();
+
   // Mismo avatar que la lista de clientes: se toca y se ve en grande.
   const avatar = avatarPersona(foto, nombre);
 
@@ -7524,7 +7547,7 @@ function vigilarClientes(){
       const cl = d.data();
       // Para la ficha, que se abre desde aquí: nombre, correo y foto ya vienen.
       perfilesCliente[d.id] = {name: cl.name||'', email: cl.email||'', profilePic: cl.profilePic||null,
-                               avisoCoach: cl.avisoCoach || null};
+                               avisoCoach: cl.avisoCoach || null, sesionCoach: cl.sesionCoach || null};
       mosaico.insertAdjacentHTML('beforeend', `
         <button type="button" class="mos-card cliente-card"
              data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
@@ -7657,7 +7680,8 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
               semana:null, editando:null, unsub:null, unsubFotos:null, fotos:[],
               activa: activeRoutine || null,
               // El aviso vigente ya vino con la lista de clientes: no hay que releerlo.
-              aviso: (perfilesCliente[uid] || {}).avisoCoach || null };
+              aviso: (perfilesCliente[uid] || {}).avisoCoach || null,
+              sesionCoach: (perfilesCliente[uid] || {}).sesionCoach || null };
 
   /* Las fotos del cliente ya no viajan dentro de sus rutinas: tienen colección
      propia, así que hay que escucharla aparte. En vivo como las rutinas, para
@@ -7886,6 +7910,7 @@ function panelAvisoCoach(){
   /* `av` y no `aviso`: aviso() es la función de los mensajes emergentes y una
      variable local con ese nombre la deja inalcanzable dentro de la función. */
   const av = detalle.aviso;
+  const sc = detalle.sesionCoach;
   const r = detalle.rutinas.find(x => x.id === detalle.viendo) || detalle.rutinas[0];
   /* Solo se pueden redirigir sesiones de la rutina ACTIVA: mandar al cliente a
      una sesión de un plan que no está usando lo dejaría en una pantalla que no
@@ -7900,7 +7925,7 @@ function panelAvisoCoach(){
     <div class="aviso-vigente">
       <span class="aviso-vigente-tag">Aviso puesto${av.ts ? ' · ' + fechaCorta(av.ts) : ''}</span>
       <div>${escaparHTML(av.texto)}</div>
-      ${av.sesion ? `<div class="aviso-vigente-ses">Le has cambiado el día a: <b>${escaparHTML(nombreSesion(activa, av.sesion))}</b></div>` : ''}
+      ${sc && sc.sesion ? `<div class="aviso-vigente-ses">Le has cambiado el día a: <b>${escaparHTML(nombreSesion(activa, sc.sesion))}</b></div>` : ''}
       <button class="btn-sm secundario" style="margin-top:8px;" onclick="retirarAvisoCoach()">Retirar aviso</button>
     </div>` : '';
 
@@ -7957,14 +7982,22 @@ window.enviarAvisoCoach = async function(){
   btn.disabled = true;
   const txt = btn.textContent;
   btn.textContent = 'Enviando...';
-  const av = { texto, sesion, ts: Date.now(), de: meUid };
+  const ahora = Date.now();
+  const av = { texto, ts: ahora, de: meUid };
+  // Campo aparte a propósito: ver el comentario de sesionImpuesta().
+  const sc = sesion ? { sesion, ts: ahora, de: meUid } : null;
   try{
     /* merge para no pisarle el resto del perfil. Las reglas solo dejan al
        entrenador tocar este campo, así que un update con más campos sería
        rechazado entero. */
-    await setDoc(doc(fdb,'users',detalle.uid), { avisoCoach: av }, { merge:true });
+    await setDoc(doc(fdb,'users',detalle.uid),
+                 { avisoCoach: av, sesionCoach: sc }, { merge:true });
     detalle.aviso = av;
-    if(perfilesCliente[detalle.uid]) perfilesCliente[detalle.uid].avisoCoach = av;
+    detalle.sesionCoach = sc;
+    if(perfilesCliente[detalle.uid]){
+      perfilesCliente[detalle.uid].avisoCoach = av;
+      perfilesCliente[detalle.uid].sesionCoach = sc;
+    }
     pintarDetalle();
   }catch(e){
     console.error('[entrenador] no se pudo enviar el aviso', e);
@@ -7976,9 +8009,14 @@ window.enviarAvisoCoach = async function(){
 
 window.retirarAvisoCoach = async function(){
   try{
-    await setDoc(doc(fdb,'users',detalle.uid), { avisoCoach: null }, { merge:true });
+    await setDoc(doc(fdb,'users',detalle.uid),
+                 { avisoCoach: null, sesionCoach: null }, { merge:true });
     detalle.aviso = null;
-    if(perfilesCliente[detalle.uid]) perfilesCliente[detalle.uid].avisoCoach = null;
+    detalle.sesionCoach = null;
+    if(perfilesCliente[detalle.uid]){
+      perfilesCliente[detalle.uid].avisoCoach = null;
+      perfilesCliente[detalle.uid].sesionCoach = null;
+    }
     pintarDetalle();
   }catch(e){
     console.error('[entrenador] no se pudo retirar el aviso', e);
@@ -8864,7 +8902,9 @@ window.cerrarRetoAhora = async function(id){
    con la app abierta no aparecería hasta cerrarla y volver. Este listener
    escucha el propio documento y repinta. Es barato: un solo documento, y el
    manejador solo toca una tarjeta. */
-let miAviso = null, avisoUnsub = null;
+let miAviso = null, miSesionCoach = null, avisoUnsub = null;
+/* Nombre y foto del entrenador, que rellena pintarEntrenador(). */
+let coachDelCliente = { nombre:'', foto:null };
 
 function vigilarAvisoCoach(){
   cerrarVigilanciaAviso();
@@ -8872,6 +8912,7 @@ function vigilarAvisoCoach(){
   avisoUnsub = onSnapshot(doc(fdb,'users',meUid), snap => {
     const d = snap.exists() ? snap.data() : null;
     miAviso = (d && d.avisoCoach) || null;
+    miSesionCoach = (d && d.sesionCoach) || null;
     /* meData se refresca con lo que llegue: si no, el resto de la app seguiría
        viendo el perfil que se leyó al entrar. */
     if(d) meData = d;
@@ -8885,6 +8926,7 @@ function vigilarAvisoCoach(){
 function cerrarVigilanciaAviso(){
   if(avisoUnsub){ avisoUnsub(); avisoUnsub = null; }
   miAviso = null;
+  miSesionCoach = null;
 }
 
 /* La sesión a la que el entrenador manda hoy, si es que manda a alguna y sigue
@@ -8897,7 +8939,7 @@ function cerrarVigilanciaAviso(){
    contrario. Quien la llama desde fuera comprueba antes que exista: el módulo
    carga después, y hasta entonces no hay aviso que valga. */
 window.sesionDelAviso = function(){
-  return sesionImpuesta(miAviso, getActive(), getActiveSessions());
+  return sesionImpuesta(miSesionCoach, getActive(), getActiveSessions());
 };
 
 function pintarAvisoCoach(){
@@ -8912,13 +8954,14 @@ function pintarAvisoCoach(){
   }
   const s = window.sesionDelAviso();
   const act = getActive();
+  const quien = (coachDelCliente.nombre || '').trim();
   c.innerHTML = `<div class="aviso-coach">
     <div class="aviso-coach-cab">
-      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M3 7l9 6 9-6"/>
-      </svg>
-      <span>Tienes un mensaje de tu coach</span>
+      ${avatarPersona(coachDelCliente.foto, quien, {clase:'aviso-coach-cara', ampliable:false})}
+      <div style="min-width:0;">
+        <div class="aviso-coach-quien">${escaparHTML(quien || 'Tu entrenador')}</div>
+        <div class="aviso-coach-rol">Mensaje de tu entrenador</div>
+      </div>
     </div>
     <div class="aviso-coach-txt">${escaparHTML(miAviso.texto)}</div>
     ${s ? `<div class="aviso-coach-ses">Te manda a <b>${escaparHTML(nombreSesion(act, s))}</b>. Sigue ahí aunque cierres este aviso.</div>` : ''}
@@ -8927,6 +8970,32 @@ function pintarAvisoCoach(){
   c.classList.remove('hidden');
   pintarPuntoInicio();
 }
+
+/* Qué hay en el canal del entrenador ahora mismo, en texto plano dentro de
+   Ajustes. El aviso y el cambio de día no dejan rastro visible cuando fallan
+   —simplemente no aparecen— y en el móvil no hay consola que mirar. Con esto,
+   una foto de esta pantalla dice exactamente qué llegó y qué se está
+   aplicando. */
+window.pintarDiagCoach = function(){
+  const el = document.getElementById('diag-coach');
+  if(!el) return;
+  const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId);
+  if(!soyCliente){ el.innerHTML = ''; return; }
+  const s = window.sesionDelAviso();
+  const lineas = [
+    'Mensaje: ' + (miAviso && miAviso.texto
+        ? '"' + escaparHTML(miAviso.texto.slice(0,40)) + (miAviso.texto.length>40?'…':'') + '"'
+          + (miAviso.visto ? ' (leído)' : ' (sin leer)')
+        : 'ninguno'),
+    'Cambio de día: ' + (miSesionCoach && miSesionCoach.sesion
+        ? 'S' + miSesionCoach.sesion : 'ninguno'),
+    'Se está aplicando: ' + (s != null ? 'S' + s
+        : (miSesionCoach && miSesionCoach.sesion
+            ? 'NO (esa sesión ya está registrada o ya no está en el plan)'
+            : 'nada'))
+  ];
+  el.innerHTML = '<b>Canal del entrenador</b><br>' + lineas.join('<br>');
+};
 
 /* Un punto en la pestaña de Inicio mientras haya recado sin leer: desde
    Registrar o Resumen no se ve nada de Inicio, y el aviso podría quedarse ahí
@@ -8949,6 +9018,8 @@ function pintarPuntoInicio(){
 window.marcarAvisoVisto = async function(){
   if(!miAviso) return;
   try{
+    /* Escribe `avisoCoach` y NADA MÁS. El cambio de día vive en `sesionCoach`,
+       otro campo, así que este gesto no puede alcanzarlo ni queriendo. */
     await setDoc(doc(fdb,'users',meUid),
                  { avisoCoach: { ...miAviso, visto:true } }, { merge:true });
   }catch(e){
