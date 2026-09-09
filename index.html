@@ -1116,14 +1116,18 @@ textarea{resize:vertical;min-height:60px;}
          no lo permite, ni aparece. -->
     <div id="instalar-ajustes" class="card hidden"></div>
 
+    <!-- Estado del canal del entrenador. Tarjeta propia y con título porque la
+         primera versión (09/09) era texto gris de 11 px colgado debajo de la
+         versión: Jhon lo estuvo buscando y no lo encontró. Lo que hay que poder
+         hacer aquí es una foto y mandarla, así que tiene que saltar a la vista.
+         El aviso y el cambio de día son invisibles cuando fallan y en el móvil
+         no hay consola: sin esto se depura a ciegas. -->
+    <div class="card" id="diag-coach"></div>
+
     <div class="card">
       <div class="section-title">Versión</div>
       <div style="font-size:13px;" id="version-txt">—</div>
       <div id="version-aviso"></div>
-      <!-- Estado del canal del entrenador. Puesto aquí porque el aviso y el
-           cambio de día son invisibles cuando fallan: sin esto, la única forma
-           de saber qué pasa es abrir la consola en el móvil. -->
-      <div id="diag-coach" style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:10px;"></div>
       <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;">
         La app guarda una copia para poder abrirse sin cobertura. Si alguna vez
         se queda pillada en una versión vieja, vacíala:
@@ -2333,7 +2337,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-09 22:10';
+const APP_VERSION='2026-09-09 22:45';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -8979,22 +8983,41 @@ function pintarAvisoCoach(){
 window.pintarDiagCoach = function(){
   const el = document.getElementById('diag-coach');
   if(!el) return;
-  const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId);
-  if(!soyCliente){ el.innerHTML = ''; return; }
+  const tit = '<div class="section-title">Canal del entrenador</div>';
+  const gris = 'font-size:12px;color:var(--muted);line-height:1.7;';
+
+  if(!meData){
+    el.innerHTML = tit + `<div style="${gris}">Sin sesión iniciada. Entra con tu cuenta para verlo.</div>`;
+    return;
+  }
+  /* La cuenta de entrenador también dice algo. Antes se quedaba en blanco y
+     parecía que el bloque no existía: Jhon lo buscó en las dos cuentas. */
+  if(meData.role === 'trainer'){
+    el.innerHTML = tit + `<div style="${gris}">Estás en la cuenta de <b>entrenador</b>.
+      Los avisos se reciben, así que esto solo tiene datos en la cuenta del
+      cliente. Lo que TÚ le has puesto se ve en su ficha, en "Decirle algo".</div>`;
+    return;
+  }
+  if(!meData.trainerId){
+    el.innerHTML = tit + `<div style="${gris}">Esta cuenta no tiene entrenador vinculado,
+      así que no puede recibir avisos.</div>`;
+    return;
+  }
+
   const s = window.sesionDelAviso();
   const lineas = [
     'Mensaje: ' + (miAviso && miAviso.texto
         ? '"' + escaparHTML(miAviso.texto.slice(0,40)) + (miAviso.texto.length>40?'…':'') + '"'
-          + (miAviso.visto ? ' (leído)' : ' (sin leer)')
+          + (miAviso.visto ? ' <b>(leído)</b>' : ' <b>(sin leer)</b>')
         : 'ninguno'),
     'Cambio de día: ' + (miSesionCoach && miSesionCoach.sesion
-        ? 'S' + miSesionCoach.sesion : 'ninguno'),
-    'Se está aplicando: ' + (s != null ? 'S' + s
+        ? '<b>S' + miSesionCoach.sesion + '</b>' : 'ninguno'),
+    'Se está aplicando: ' + (s != null ? '<b>S' + s + '</b>'
         : (miSesionCoach && miSesionCoach.sesion
-            ? 'NO (esa sesión ya está registrada o ya no está en el plan)'
+            ? '<b>NO</b> (esa sesión ya está registrada o ya no está en el plan)'
             : 'nada'))
   ];
-  el.innerHTML = '<b>Canal del entrenador</b><br>' + lineas.join('<br>');
+  el.innerHTML = tit + `<div style="${gris}">` + lineas.join('<br>') + '</div>';
 };
 
 /* Un punto en la pestaña de Inicio mientras haya recado sin leer: desde
