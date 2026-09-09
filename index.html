@@ -224,15 +224,30 @@ body.modo-clientes #pane-clientes{display:block;}
    La jerarquía de Inicio queda en tres escalones —llama > violeta lleno >
    tarjeta normal— y así, aunque coincidan un reto sin contestar y un recado
    sin leer, se sigue sabiendo cuál manda. */
-.aviso-coach{background:var(--accent);border:none;border-radius:18px;
-  padding:18px;margin-bottom:14px;color:#fff;
-  box-shadow:0 6px 24px rgba(139,92,246,.28);}
-.aviso-coach-tag{display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;
-  text-transform:uppercase;color:rgba(255,255,255,.78);margin-bottom:6px;}
+.aviso-coach{border:none;border-radius:20px;padding:20px;margin-bottom:14px;color:#fff;
+  /* Degradado y no violeta plano: Jhon probó el plano el 09/09 y seguía
+     pareciéndole flojo. El barrido hacia el fucsia le da relieve y lo separa
+     del violeta liso que usa el resto de la app, sin salirse de la familia
+     (nada de naranja: eso es Basic-Fit, ver el comentario de los retos). */
+  background:linear-gradient(135deg,#7c3aed 0%,#a855f7 45%,#d946ef 100%);
+  box-shadow:0 10px 30px rgba(168,85,247,.42);
+  animation:latido-aviso 2.6s ease-in-out infinite;}
+/* Respira despacio para captar el ojo de reojo. Solo la sombra: mover o
+   escalar la tarjeta empujaría el resto de Inicio en cada ciclo. */
+@keyframes latido-aviso{
+  0%,100%{ box-shadow:0 10px 30px rgba(168,85,247,.42); }
+  50%    { box-shadow:0 10px 42px rgba(217,70,239,.62); }
+}
+@media (prefers-reduced-motion:reduce){ .aviso-coach{animation:none;} }
+/* Dice QUÉ es antes de decir qué pone: "el anuncio" que pedía Jhon. Con un
+   sobre de trazo, como el resto de iconos de la app — aquí nunca emoji. */
+.aviso-coach-cab{display:flex;align-items:center;gap:8px;margin-bottom:10px;
+  font-size:12.5px;font-weight:800;letter-spacing:.02em;color:rgba(255,255,255,.95);}
+.aviso-coach-cab .ico{width:20px;height:20px;}
 /* pre-wrap: el entrenador escribe "10 con 40 / 6 con 32 / 4 con 25" en varias
    líneas y tienen que llegar como las escribió. */
-.aviso-coach-txt{font-size:16px;line-height:1.45;font-weight:600;color:#fff;white-space:pre-wrap;}
-.aviso-coach-ses{font-size:12.5px;color:rgba(255,255,255,.88);margin-top:9px;}
+.aviso-coach-txt{font-size:19px;line-height:1.4;font-weight:700;color:#fff;white-space:pre-wrap;}
+.aviso-coach-ses{font-size:13px;color:rgba(255,255,255,.92);margin-top:11px;}
 /* Blanco sobre violeta, igual que "Acepto el reto": es la misma clase de
    gesto, cerrar algo que te han mandado. */
 .aviso-coach-btn{background:#fff;border-color:#fff;color:var(--accent);
@@ -2305,7 +2320,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-06 18:50';
+const APP_VERSION='2026-09-09 21:05';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -8898,7 +8913,13 @@ function pintarAvisoCoach(){
   const s = window.sesionDelAviso();
   const act = getActive();
   c.innerHTML = `<div class="aviso-coach">
-    <span class="aviso-coach-tag">Tu entrenador te dice</span>
+    <div class="aviso-coach-cab">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M3 7l9 6 9-6"/>
+      </svg>
+      <span>Tienes un mensaje de tu coach</span>
+    </div>
     <div class="aviso-coach-txt">${escaparHTML(miAviso.texto)}</div>
     ${s ? `<div class="aviso-coach-ses">Te manda a <b>${escaparHTML(nombreSesion(act, s))}</b>. Sigue ahí aunque cierres este aviso.</div>` : ''}
     <button class="btn-sm aviso-coach-btn" onclick="marcarAvisoVisto()">Entendido</button>
