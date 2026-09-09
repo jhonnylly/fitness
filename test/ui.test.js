@@ -602,6 +602,50 @@ async function appLista(page, url){
     ok(entrar.onboardingVuelve,
        'y si se cierra sin entrar, vuelve el onboarding: si no, la app quedaría vacía y sin salida');
 
+    console.log('\n13b. La indicación del entrenador llega hasta el ejercicio');
+    /* Lo que se comprueba es el CAMINO entero: una nota puesta en el plan
+       (que es lo que escribe el entrenador en la ficha de su cliente) tiene
+       que salir en la pantalla donde el cliente está a punto de levantar el
+       peso. Es el sitio donde se rompería sin avisar: openSession construye
+       curEx desde cero y la nota no viaja dentro. */
+    await page.evaluate(()=>localStorage.clear());
+    await page.reload({waitUntil:'networkidle2'});
+    await esperar(1600);
+    await page.type('#ob-name','Prueba');
+    await page.evaluate(()=>{ obNext(1); obSelectRoutine(PRESET_ROUTINES[0].id); obNext(2); obFinish(); });
+    await esperar(700);
+
+    const ind = await page.evaluate(()=>{
+      const r = getActive();
+      const dia = r.plan[0].days[0];
+      const nombre = Array.isArray(dia.ex[0]) ? dia.ex[0][0] : dia.ex[0].name;
+      const segundo = Array.isArray(dia.ex[1]) ? dia.ex[1][0] : dia.ex[1].name;
+      dia.ex[0] = [nombre, '4×15', 'Multiserie: 10 con 40, 6 con 32, 4 con 25'];
+      save();
+      openSession(dia.s);
+      const res = { nombre, segundo };
+      // En el mosaico: un punto SOLO en el que lleva indicación.
+      const tarjetas = [...document.querySelectorAll('#ex-mosaico .mos-card')];
+      res.puntos = tarjetas.filter(t => t.querySelector('.mos-nota-punto')).length;
+      res.tarjetas = tarjetas.length;
+      // Al abrir el ejercicio, la indicación se lee entera.
+      exToque(0);
+      const el = document.querySelector('.ex-nota-coach');
+      res.visible = !!el;
+      res.texto = el ? el.textContent : '';
+      // Y el ejercicio de al lado, que no tiene nota, no la hereda.
+      exToque(1);
+      res.sinNota = !document.querySelector('.ex-nota-coach');
+      return res;
+    });
+    ok(ind.visible, 'la indicación aparece al abrir el ejercicio');
+    ok(/10 con 40, 6 con 32, 4 con 25/.test(ind.texto),
+       'y se lee entera, con los kilos de cada serie');
+    ok(/Tu entrenador/i.test(ind.texto), 'dice de quién viene');
+    ok(ind.puntos === 1 && ind.tarjetas > 1,
+       `en el mosaico se marca solo el ejercicio que la tiene (${ind.puntos} de ${ind.tarjetas})`);
+    ok(ind.sinNota, 'el ejercicio de al lado NO hereda la indicación del anterior');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

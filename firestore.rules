@@ -119,6 +119,11 @@ service cloud.firestore {
       //     reescribe esos flags a partir de aquí en cada guardado.
       //   - trainerId: solo para ponerlo a null (desvincular). Así un
       //     entrenador no puede endosarle el cliente a otro.
+      //   - avisoCoach: el recado que le pone en Inicio ("hoy hazme upper").
+      //     Se le exige firmarlo con su propio uid en `de`, así que no puede
+      //     dejar un aviso que parezca de otro entrenador. Ponerlo a null es
+      //     retirarlo, y eso sí se permite sin firma. El cliente lo borra por
+      //     su cuenta con isOwner, que ya está más arriba.
       allow update: if isOwner(uid)
                     || (isMyClientDoc()
                         && request.resource.data.diff(resource.data)
@@ -126,7 +131,12 @@ service cloud.firestore {
                     || (isMyClientDoc()
                         && request.resource.data.diff(resource.data)
                              .affectedKeys().hasOnly(['trainerId'])
-                        && request.resource.data.trainerId == null);
+                        && request.resource.data.trainerId == null)
+                    || (isMyClientDoc()
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['avisoCoach'])
+                        && (request.resource.data.avisoCoach == null
+                            || request.resource.data.avisoCoach.de == request.auth.uid));
       allow delete: if false;
 
       match /routines/{routineId} {

@@ -71,7 +71,7 @@ vm.createContext(ctx);
 const puente = `
 ;globalThis.__app = {
   STORAGE, StorageLocal, save, saveEstricto, load, storageAvailable,
-  planParaFirestore, planDesdeFirestore, buscarArraysAnidados,
+  planParaFirestore, planDesdeFirestore, buscarArraysAnidados, notaDeEjercicio,
   resumenDB, textoResumen, firmaDB, mismosDatos, diagnosticarSubida,
   fotosARecomprimir, LIMITE_FOTO,
   totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana, semanaEnCurso,
@@ -191,6 +191,38 @@ const ok = (cond, msg) => {
   const vuelta = app.planDesdeFirestore(enviado);
   ok(JSON.stringify(vuelta) === JSON.stringify(plan), 'ida y vuelta devuelve el plan original exacto');
   ok(JSON.stringify(app.planParaFirestore(enviado)) === JSON.stringify(enviado), 'convertir dos veces no rompe nada (idempotente)');
+
+  console.log('\n8b. La nota del entrenador viaja con el ejercicio');
+  const conNota = [{
+    num: 1, title: 'Semana 1', days: [
+      { s: 1, name: 'S1 · Upper', type: 'Upper', ex: [
+        ['Press banca', '4×10', 'Multiserie: 10 con 40, 6 con 32, 4 con 25'],
+        ['Remo barra', '4×10'],
+      ] },
+    ],
+  }];
+  const idaNota = app.planParaFirestore(conNota);
+  ok(idaNota[0].days[0].ex[0].nota === 'Multiserie: 10 con 40, 6 con 32, 4 con 25',
+     'la nota llega a Firestore como {nota}');
+  ok(!('nota' in idaNota[0].days[0].ex[1]),
+     'el ejercicio SIN nota no gana un campo vacío');
+  ok(app.buscarArraysAnidados(idaNota) === null, 'con nota sigue sin arrays anidados');
+  ok(JSON.stringify(app.planDesdeFirestore(idaNota)) === JSON.stringify(conNota),
+     'ida y vuelta con nota devuelve el plan exacto');
+  ok(JSON.stringify(app.planParaFirestore(idaNota)) === JSON.stringify(idaNota),
+     'con nota sigue siendo idempotente');
+  /* Esta es la que protege de verdad: si planDesdeFirestore devolviera SIEMPRE
+     terna, un plan sin notas volvería como ['Press banca','4×10',''] y todos
+     los presets dejarían de sobrevivir a la ida y vuelta. */
+  ok(app.planDesdeFirestore(app.planParaFirestore(plan))[0].days[0].ex[0].length === 2,
+     'sin nota, el ejercicio vuelve como par y no como terna');
+
+  console.log('\n8c. notaDeEjercicio lee las tres formas');
+  ok(app.notaDeEjercicio(['Press', '4×10', 'tempo 3-1-1']) === 'tempo 3-1-1', 'terna');
+  ok(app.notaDeEjercicio(['Press', '4×10']) === '', 'par: sin nota');
+  ok(app.notaDeEjercicio({ name: 'Press', scheme: '4×10', nota: 'x' }) === 'x', 'objeto de Firestore');
+  ok(app.notaDeEjercicio({ name: 'Press', scheme: '4×10' }) === '', 'objeto sin nota');
+  ok(app.notaDeEjercicio(null) === '', 'nada: cadena vacía, no reventar');
 
   console.log('\n9. Conversión sobre los datos reales de la app');
   for (const preset of app.PRESET_ROUTINES) {
