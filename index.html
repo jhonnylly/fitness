@@ -197,6 +197,9 @@ body.modo-coaches #pane-coaches{display:block;}
    resto de entrenadores el selector sigue teniendo dos, exactamente como
    antes. */
 body:not(.es-admin) #modo-btn-coaches{display:none;}
+/* Suspendido: en "Mis clientes" solo queda la explicación. La especificidad
+   (0,3,1) gana a la de .card sin !important. */
+body.suspendido #pane-clientes .card:not(#aviso-suspendido){display:none;}
 /* Con tres botones y "Mi entrenamiento" dentro, el texto no cabe a 12 px en
    una pantalla de 360. Se encoge un punto y se permite partir. */
 body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
@@ -503,7 +506,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -1691,6 +1694,27 @@ textarea{resize:vertical;min-height:60px;}
      No lleva class="pane" a propósito: los .pane los gobierna showTab(), y
      esta vista vive fuera de ese ciclo (la enseña body.modo-clientes). -->
 <div id="pane-clientes">
+  <!-- Suspensión por impago. Va lo primero y tapa el resto del panel: quien
+       está suspendido no puede hacer nada aquí, y dejarle los botones a la
+       vista solo sirve para que los pulse y se lleve errores de permisos que
+       no explican nada. -->
+  <div class="card hidden" id="aviso-suspendido">
+    <div class="section-title">Cuenta suspendida</div>
+    <p style="font-size:13px;line-height:1.55;">
+      Tu cuenta de entrenador está suspendida, así que ahora mismo no puedes ver
+      ni gestionar a tus clientes.
+    </p>
+    <p style="font-size:12px;color:var(--muted);line-height:1.5;">
+      <b>Tus clientes no se han visto afectados</b>: siguen entrenando con
+      normalidad y no han perdido nada. En cuanto se reactive tu cuenta, los
+      recuperas tal y como estaban.
+    </p>
+    <p style="font-size:12px;color:var(--muted);line-height:1.5;">
+      Tu entrenamiento personal sigue funcionando: lo tienes en
+      <b>Mi entrenamiento</b>.
+    </p>
+  </div>
+
   <div class="card">
     <div class="section-title">Invitar a un cliente</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.45;">
@@ -2431,7 +2455,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-10 00:15';
+const APP_VERSION='2026-09-10 01:00';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7850,6 +7874,7 @@ function pintarCodigosPendientes(pendientes){
 async function pintarEntrenadoresDeAlta(usadas){
   const c = document.getElementById('coaches-lista');
   if(!c) return;
+  ultimasAltasUsadas = usadas;
   if(!usadas.length){
     c.textContent = 'Todavía no ha entrado ningún entrenador. Crea un código aquí abajo y pásaselo.';
     return;
@@ -7884,10 +7909,52 @@ async function pintarEntrenadoresDeAlta(usadas){
           ${escaparHTML(perfil.email||'')}${perfil.telefono ? ' · '+escaparHTML(perfil.telefono) : ''}
         </div>
         ${desde ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">Entró el ${escaparHTML(desde)}</div>` : ''}
+        <div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          ${perfil.suspendido
+            ? `<span class="badge" style="color:var(--danger);background:rgba(200,60,60,.12);">Suspendido</span>
+               <button class="btn-sm" data-u="${escaparHTML(alta.usadoPor)}" onclick="reactivarEntrenador(this.dataset.u)">Reactivar</button>`
+            : `<span class="badge badge-green">Activo</span>
+               <button class="btn-sm btn-danger" data-u="${escaparHTML(alta.usadoPor)}" onclick="suspenderEntrenador(this.dataset.u)">Suspender</button>`}
+        </div>
       </div>
     </div>`;
   }).join('');
 }
+
+/* Suspender por impago. Escribe un único campo del perfil del entrenador; las
+   reglas hacen el resto: deja de ver a sus clientes, de tocarles el plan, de
+   invitar y de proponer retos. Sus clientes NO se enteran y siguen entrenando.
+
+   Sin confirmación no: es un corte de servicio a otra persona y un dedo torpe
+   en el móvil no puede provocarlo. */
+window.suspenderEntrenador = async function(uid){
+  const fila = document.getElementById('coaches-lista');
+  if(!confirm('¿Suspender a este entrenador?\n\nDejará de ver a sus clientes y de poder trabajar con ellos hasta que lo reactives. Sus clientes seguirán entrenando con normalidad.')) return;
+  try{
+    await setDoc(doc(fdb,'users',uid), { suspendido:true }, { merge:true });
+    aviso('Entrenador suspendido','bien');
+    recargarEntrenadores();
+  }catch(e){
+    console.error('[altas] no se pudo suspender', e);
+    aviso('No se pudo suspender: '+(e.code||e.message),'mal');
+  }
+};
+
+window.reactivarEntrenador = async function(uid){
+  try{
+    await setDoc(doc(fdb,'users',uid), { suspendido:false }, { merge:true });
+    aviso('Entrenador reactivado','bien');
+    recargarEntrenadores();
+  }catch(e){
+    console.error('[altas] no se pudo reactivar', e);
+    aviso('No se pudo reactivar: '+(e.code||e.message),'mal');
+  }
+};
+
+/* El listener escucha /altas, y suspender toca /users: no salta solo. Se
+   guarda la última lista para poder repintarla sin volver a consultar. */
+let ultimasAltasUsadas = [];
+function recargarEntrenadores(){ pintarEntrenadoresDeAlta(ultimasAltasUsadas); }
 
 function cerrarVigilanciaAltas(){
   if(altasUnsub){ altasUnsub(); altasUnsub = null; }
@@ -8596,7 +8663,8 @@ window.setModo = function(modo){
   document.getElementById('modo-btn-clientes').classList.toggle('active', esClientes);
   document.getElementById('modo-btn-coaches').classList.toggle('active', esCoaches);
 
-  if(esClientes){
+  const suspendido = !!(meData && meData.suspendido === true);
+  if(esClientes && !suspendido){
     if(!clientesUnsub) vigilarClientes();
     if(!invitacionesUnsub) vigilarInvitaciones();
   }else{
@@ -8615,7 +8683,12 @@ window.setModo = function(modo){
    app quedaría enseñando una vista vacía sin forma de salir. */
 function pintarModoEntrenador(){
   const esEntrenador = !!(meData && meData.role === 'trainer');
+  const suspendido = !!(esEntrenador && meData.suspendido === true);
   document.body.classList.toggle('es-entrenador', esEntrenador);
+  document.body.classList.toggle('suspendido', suspendido);
+  const av = document.getElementById('aviso-suspendido');
+  if(av) av.classList.toggle('hidden', !suspendido);
+  if(suspendido) cerrarVigilancias();   // las reglas las rechazarían igualmente
   // El tercer botón solo para quien puede dar de alta a otros entrenadores.
   document.body.classList.toggle('es-admin', esEntrenador && soyAdmin());
   if(!esEntrenador || !soyAdmin()){
@@ -9263,6 +9336,10 @@ function vigilarAvisoCoach(){
     if(d) meData = d;
     pintarAvisoCoach();
     updateHome();
+    /* Una suspensión (o su levantamiento) llega por aquí: es una escritura en
+       el propio documento. Sin esto habría que cerrar y abrir la app para que
+       la pantalla se enterara. */
+    pintarModoEntrenador();
   }, err => {
     console.error('[aviso] no se pudo escuchar el perfil', err);
   });

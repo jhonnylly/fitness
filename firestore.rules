@@ -11,12 +11,12 @@ service cloud.firestore {
     // Para leer /users/{uid}: resource.data ya ES el documento evaluado,
     // no hace falta get() (y con get() las consultas de lista fallan).
     function isMyClientDoc() {
-      return isSignedIn() && resource.data.trainerId == request.auth.uid;
+      return isSignedIn() && resource.data.trainerId == request.auth.uid && activo();
     }
     // Para las rutinas: aquí resource.data es la rutina, no el usuario padre,
     // así que sí hace falta get() al documento del cliente dueño.
     function isTrainerOfParent(uid) {
-      return isSignedIn() &&
+      return isSignedIn() && activo() &&
         get(/databases/$(database)/documents/users/$(uid)).data.trainerId == request.auth.uid;
     }
 
@@ -47,6 +47,28 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.admin == true;
     }
 
+    /* ═══ Suspensión por impago ═══
+       Un entrenador suspendido pierde TODO lo que hace de entrenador: ver a sus
+       clientes, tocarles el plan, invitar, proponer retos y mandarles avisos.
+
+       🔴 Va aquí y NO en la interfaz. Esconder botones no suspende a nadie:
+       quien no paga seguiría teniendo acceso completo con solo no usar mis
+       pantallas. Esto es lo que hace que el cobro sea real.
+
+       Lo que NO se toca: sus clientes siguen entrenando y viendo sus propios
+       datos con normalidad. El cliente no ha dejado de pagar nada, y castigarle
+       por la deuda de su entrenador sería tanto perderle a él como al coach.
+       Y el propio entrenador conserva su entrenamiento personal: lo que se
+       suspende es el servicio que se cobra, no su cuenta.
+
+       `!= true` y no `== false`: las cuentas de antes de esto no tienen el
+       campo, y sin ese matiz quedarían todas suspendidas de golpe. */
+    function activo() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.suspendido != true;
+    }
+
     function altaValida(altaId) {
       return altaId is string
         && exists(/databases/$(database)/documents/altas/$(altaId))
@@ -74,7 +96,8 @@ service cloud.firestore {
       // invita; el entrenador necesita list para ver las suyas pendientes.
       allow get: if isSignedIn();
       allow list: if isSignedIn() && resource.data.trainerId == request.auth.uid;
-      allow create: if isSignedIn()
+      // Suspendido no reparte invitaciones: sería seguir creciendo sin pagar.
+      allow create: if isSignedIn() && activo()
                     && request.resource.data.trainerId == request.auth.uid
                     && request.resource.data.usado == false;
       // Solo se puede tocar para marcarla usada, y solo quien la usa. No se
@@ -107,9 +130,11 @@ service cloud.firestore {
       allow read: if isSignedIn()
                   && (resource.data.trainerId == request.auth.uid
                       || resource.data.trainerId == miEntrenador());
-      allow create: if isSignedIn()
+      allow create: if isSignedIn() && activo()
                     && request.resource.data.trainerId == request.auth.uid;
-      // Cerrar o borrar un reto es cosa de quien lo puso.
+      /* Cerrar o borrar un reto es cosa de quien lo puso. Esto NO exige estar
+         activo a propósito: un entrenador suspendido tiene que poder cerrar un
+         reto que dejó abierto, y cerrarlo no le da nada. */
       allow update, delete: if isSignedIn() && resource.data.trainerId == request.auth.uid;
 
       match /participantes/{uid} {
@@ -144,7 +169,12 @@ service cloud.firestore {
       // esas cuentas se creaban a mano en la consola; desde que los
       // entrenadores se dan de alta solos, es lo que separa a un cliente de
       // pago de cualquiera que pase por la web.
-      allow create: if isOwner(uid) && (
+      // Nadie se crea a sí mismo con privilegios: `admin` se pone desde la
+      // consola y `suspendido` solo lo escribe el admin.
+      allow create: if isOwner(uid)
+                    && !('admin' in request.resource.data)
+                    && !('suspendido' in request.resource.data)
+                    && (
                       (request.resource.data.role == 'trainer'
                        && altaValida(request.resource.data.altaId))
                       || (request.resource.data.role == 'client'
@@ -166,7 +196,22 @@ service cloud.firestore {
       //     dejar nada que parezca de otro entrenador. Ponerlos a null es
       //     retirarlos, y eso sí se permite sin firma. El cliente los borra
       //     por su cuenta con isOwner, que ya está más arriba.
-      allow update: if isOwner(uid)
+      /* 🔴 `suspendido` y `admin` NO los puede tocar el dueño, y esto no es un
+         detalle: sin esta línea, un entrenador suspendido se quita la
+         suspensión editando su propio documento —la suspensión no valdría
+         nada— y CUALQUIERA puede ponerse admin:true y regalarse códigos de
+         alta. isOwner() da permiso sobre todo el documento, así que los dos
+         campos que otorgan privilegios hay que sacarlos a mano.
+         Los pone el admin (abajo) o la consola de Firebase, nadie más. */
+      allow update: if (isOwner(uid)
+                        && !request.resource.data.diff(resource.data)
+                              .affectedKeys().hasAny(['suspendido','admin']))
+                    /* Suspender o reactivar a un entrenador por impago. Solo el
+                       admin, y solo ese campo: no puede tocarle nada más de su
+                       perfil. Es lo que sostiene el cobro. */
+                    || (soyAdmin()
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['suspendido']))
                     || (isMyClientDoc()
                         && request.resource.data.diff(resource.data)
                              .affectedKeys().hasOnly(['activeRoutine']))

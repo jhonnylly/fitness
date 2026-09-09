@@ -728,6 +728,37 @@ async function appLista(page, url){
     ok(modos.entreno.inicio && !modos.entreno.clientes && !modos.entreno.coaches,
        'y "Mi entrenamiento" vuelve a la app de siempre');
 
+    console.log('\n13e. Suspensión de un entrenador por impago');
+    /* La suspensión de verdad la hacen las reglas de Firestore (aquí no se
+       pueden probar). Lo que sí se comprueba es que la PANTALLA no deje
+       botones que van a fallar, y que explique qué pasa en vez de soltar
+       errores de permisos. */
+    const susp = await page.evaluate(()=>{
+      const v = el => !!(el && el.offsetParent !== null);
+      document.body.classList.add('es-entrenador');
+      setModo('clientes');
+      const antes = { invitar: v(document.getElementById('invitar-btn')),
+                      aviso: v(document.getElementById('aviso-suspendido')) };
+      // Lo que hace pintarModoEntrenador() cuando el perfil llega suspendido.
+      document.body.classList.add('suspendido');
+      document.getElementById('aviso-suspendido').classList.remove('hidden');
+      const dsp = { invitar: v(document.getElementById('invitar-btn')),
+                    retos: v(document.getElementById('reto-crear')),
+                    clientes: v(document.getElementById('clientes-lista')),
+                    aviso: v(document.getElementById('aviso-suspendido')),
+                    texto: document.getElementById('aviso-suspendido').textContent };
+      document.body.classList.remove('suspendido','es-entrenador');
+      document.getElementById('aviso-suspendido').classList.add('hidden');
+      setModo('entreno');
+      return { antes, dsp };
+    });
+    ok(susp.antes.invitar && !susp.antes.aviso, 'sin suspender se trabaja con normalidad');
+    ok(susp.dsp.aviso, 'suspendido aparece la explicación');
+    ok(!susp.dsp.invitar && !susp.dsp.retos && !susp.dsp.clientes,
+       'y desaparecen invitar, retos y la lista de clientes: nada que pulsar para llevarse un error');
+    ok(/clientes no se han visto afectados/i.test(susp.dsp.texto),
+       'el texto deja claro que sus clientes no pierden nada');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
