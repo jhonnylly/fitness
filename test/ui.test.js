@@ -869,6 +869,41 @@ async function appLista(page, url){
     ok(soloLectura.hayExport && soloLectura.exportaOk,
        '🔴 pero SÍ puede exportar sus datos: son suyos aunque deba dinero');
 
+    /* Las otras tres puertas que se colaron en la primera pasada: dentro de
+       una sesión abierta se podían seguir añadiendo sesiones, ejercicios y
+       series. Lo encontró Jhon. */
+    const dentro = await page.evaluate(()=>{
+      const r = DB.routines.find(x=>x.id===DB.activeRoutine);
+      goTo('log'); openSession(r.plan[0].days[0].s);
+      const exAntes = curEx.length, setsAntes = curEx[0].sets.length;
+      const semAntes = (r.plan[0].days||[]).length;
+      seguimientoPausado = true;
+      addExercise(); addSet(0); addSessionToWeek(r.plan[0].num);
+      const res = { ejercicios: curEx.length === exAntes,
+                    series: curEx[0].sets.length === setsAntes,
+                    sesiones: (r.plan[0].days||[]).length === semAntes };
+      seguimientoPausado = false;
+      return res;
+    });
+    ok(dentro.ejercicios, 'en pausa no puede añadir ejercicios');
+    ok(dentro.series, 'ni series');
+    ok(dentro.sesiones, 'ni sesiones al plan');
+
+    /* Y la pausa tiene que aplicarse SIN recargar: si se queda dentro de la
+       sesión abierta, sigue rellenando algo que ya no podrá guardar. */
+    const enVivo = await page.evaluate(()=>{
+      const r = DB.routines.find(x=>x.id===DB.activeRoutine);
+      goTo('log'); openSession(r.plan[0].days[0].s);
+      const abiertoAntes = document.getElementById('session-form').style.display !== 'none';
+      salirDeLoAbierto();
+      return { abiertoAntes,
+               abiertoDespues: document.getElementById('session-form').style.display !== 'none',
+               enInicio: document.getElementById('pane-inicio').classList.contains('active') };
+    });
+    ok(enVivo.abiertoAntes, 'estando dentro de una sesión...');
+    ok(!enVivo.abiertoDespues && enVivo.enInicio,
+       '🔴 al pausarse se le saca de ella y se le lleva a Inicio, sin recargar');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

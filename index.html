@@ -2480,7 +2480,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-09 23:28';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-09 23:36';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3723,6 +3723,27 @@ function closeForm(){
   if(act)openWeekDetail(curWeekNum!=null?curWeekNum:getCurrentWeekNum());
 }
 
+/* Al entrar en pausa hay que SACAR al cliente de lo que tuviera abierto.
+   Repintar Inicio y las listas no basta: si está dentro de una sesión, esa
+   pantalla ya está montada y sigue ahí, así que puede seguir rellenándola
+   —para encontrarse el bloqueo al guardar, cuando ya ha hecho el trabajo—.
+   Lo encontró Jhon probándolo: "aunque aparece el aviso, si no se recarga la
+   página puede continuar usando la app". No, no era lo esperado.
+
+   closeForm() no guarda nada: solo cambia de vista. El borrador local se
+   queda donde está, así que si se reanuda la pausa no ha perdido lo escrito. */
+function salirDeLoAbierto(){
+  const form = document.getElementById('session-form');
+  if(form && form.style.display !== 'none') closeForm();
+  ['routine-panel','preset-panel','asignar-panel','selector-ejercicio',
+   'comparador','visor-foto','config-panel'].forEach(id => {
+    const e = document.getElementById(id);
+    if(e) e.classList.add('hidden');
+  });
+  // A Inicio, que es donde está la explicación de lo que acaba de pasar.
+  goTo('inicio');
+}
+
 /* Semana en curso (vive en el script CLÁSICO a propósito: la usan tanto la app
    como el módulo, y el módulo puede llamar al clásico pero no al revés).
    Es la semana que se está entrenando AHORA: la última con algo registrado y,
@@ -3794,9 +3815,9 @@ function removeSetFromCurrent(si){
   if(curEx[curExIndex].sets.length>1){curEx[curExIndex].sets.splice(si,1);renderEx();guardarBorrador();}
 }
 
-function addSet(ei){curEx[ei].sets.push({kg:'',reps:''});renderEx();guardarBorrador();}
+function addSet(ei){if(bloqueadoPorPausa('añadir series')) return; curEx[ei].sets.push({kg:'',reps:''});renderEx();guardarBorrador();}
 function removeSet(ei,si){if(curEx[ei].sets.length>1){curEx[ei].sets.splice(si,1);renderEx();guardarBorrador();}}
-function addExercise(){curEx.push({name:'',sets:[{kg:'',reps:''},{kg:'',reps:''},{kg:'',reps:''}]});renderEx();}
+function addExercise(){if(bloqueadoPorPausa('añadir ejercicios')) return; curEx.push({name:'',sets:[{kg:'',reps:''},{kg:'',reps:''},{kg:'',reps:''}]});renderEx();}
 function removeEx(ei){curEx.splice(ei,1);renderEx();}
 
 function saveSession(){
@@ -6053,7 +6074,7 @@ function addSetToCurrentEx(){
   guardarBorrador();
 }
 
-function addExerciseAndOpen(){
+function addExerciseAndOpen(){if(bloqueadoPorPausa('añadir ejercicios')) return; 
   curEx.push({name:'',sets:[{kg:'',reps:''},{kg:'',reps:''},{kg:'',reps:''}]});
   openExDetail(curEx.length-1);
 }
@@ -6722,7 +6743,7 @@ function addWeek(){
   openWeekDetail(weekNum);
 }
 
-function addSessionToWeek(weekNum){
+function addSessionToWeek(weekNum){if(bloqueadoPorPausa('añadir sesiones')) return; 
   const act=getActive();
   if(!act||!act.plan)return;
   const week=act.plan.find(w=>w.num===weekNum);
@@ -9483,6 +9504,7 @@ window.sesionDelAviso = function(){
    respuesta sin que nadie haya tocado los datos. */
 function pintarSeguimientoPausado(){
   const pausado = !!(meData && meData.role !== 'trainer' && meData.suspendidoPorCoach === true);
+  const acabaDePausarse = pausado && !seguimientoPausado;
   seguimientoPausado = pausado;
   const el = document.getElementById('home-pausado');
   if(el) el.classList.toggle('hidden', !pausado);
@@ -9490,10 +9512,13 @@ function pintarSeguimientoPausado(){
     updateHome();
     if(typeof renderRoutineList === 'function') renderRoutineList();
     if(typeof buildSessionList === 'function') buildSessionList();
+    if(acabaDePausarse) salirDeLoAbierto();
   }catch(e){
     console.error('[pausa] no se pudo repintar', e);
   }
 }
+
+
 
 function pintarAvisoCoach(){
   const c = document.getElementById('home-aviso');
