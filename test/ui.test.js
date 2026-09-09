@@ -759,6 +759,60 @@ async function appLista(page, url){
     ok(/clientes no se han visto afectados/i.test(susp.dsp.texto),
        'el texto deja claro que sus clientes no pierden nada');
 
+    console.log('\n13f. Pausar a un cliente NO le borra nada');
+    /* 🔴 La prueba que de verdad importa de esta función. El backend de
+       Firestore borra en remoto las rutinas que no ve en local, así que
+       esconder el plan quitándolo de DB no lo escondería: lo destruiría. Ya se
+       perdieron datos reales dos veces (04/08 y 04/09/2026). El filtrado tiene
+       que ocurrir al LEER y jamás sobre los datos. */
+    await page.evaluate(()=>localStorage.clear());
+    await page.reload({waitUntil:'networkidle2'});
+    await esperar(1600);
+    await page.type('#ob-name','Cliente');
+    await page.evaluate(()=>{ obNext(1); obSelectRoutine(PRESET_ROUTINES[0].id); obNext(2); obFinish(); });
+    await esperar(800);
+
+    const pausa = await page.evaluate(()=>{
+      // La rutina activa pasa a ser "asignada por el entrenador".
+      const r = DB.routines.find(x=>x.id===DB.activeRoutine);
+      r.assignedBy = 'uid-del-entrenador';
+      r.sessions['1'] = { date:'9/9/2026', exercises:[{name:'Press banca',sets:[{kg:'40',reps:'10'}]}] };
+      // Y otra que se hizo el cliente por su cuenta.
+      DB.routines.push({ id:'mia', name:'La mía', plan:[{num:1,title:'S1',days:[{s:1,name:'D1',type:'Full',ex:[]}]}], sessions:{}, medidas:[] });
+      save();
+      const antes = { activa: !!getActive(), rutinas: DB.routines.length,
+                      sesiones: Object.keys(r.sessions).length };
+
+      seguimientoPausado = true;
+      renderRoutineList(); updateHome();
+      const durante = {
+        activa: !!getActive(),
+        rutinasEnDB: DB.routines.length,
+        sesionesEnDB: Object.keys(DB.routines.find(x=>x.id===r.id).sessions).length,
+        asignadaEnDB: !!DB.routines.find(x=>x.id===r.id),
+        enLaLista: document.getElementById('routine-list').textContent,
+      };
+
+      seguimientoPausado = false;
+      renderRoutineList(); updateHome();
+      const despues = { activa: !!getActive(),
+                        sesiones: Object.keys(DB.routines.find(x=>x.id===r.id).sessions).length };
+      return { antes, durante, despues, nombre: r.name };
+    });
+
+    ok(pausa.antes.activa, 'antes de pausar, el plan asignado está activo');
+    ok(!pausa.durante.activa, 'en pausa, el plan asignado deja de verse');
+    ok(pausa.durante.asignadaEnDB && pausa.durante.rutinasEnDB === pausa.antes.rutinas,
+       '🔴 pero SIGUE en los datos: no se ha borrado nada');
+    ok(pausa.durante.sesionesEnDB === pausa.antes.sesiones,
+       '🔴 y sus sesiones registradas siguen enteras');
+    ok(!pausa.durante.enLaLista.includes(pausa.nombre),
+       'no se le ofrece en la lista de rutinas');
+    ok(pausa.durante.enLaLista.includes('La mía'),
+       'pero SÍ sigue viendo las rutinas que se hizo él: son suyas');
+    ok(pausa.despues.activa && pausa.despues.sesiones === pausa.antes.sesiones,
+       'y al reanudar lo recupera todo, tal y como estaba');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

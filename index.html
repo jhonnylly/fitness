@@ -506,7 +506,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden,#home-pausado.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -1324,6 +1324,22 @@ textarea{resize:vertical;min-height:60px;}
        La llama sigue siendo EXCLUSIVA del reto sin contestar, así que la
        jerarquía queda: llama > violeta lleno > tarjeta en calma. -->
   <div id="home-aviso" class="hidden"></div>
+
+  <!-- Seguimiento pausado por el entrenador (impago). Va donde el aviso del
+       coach y por encima de todo lo demás: si no, el cliente ve su plan
+       desaparecido y ninguna explicación, que es la peor manera de enterarse. -->
+  <div class="card hidden" id="home-pausado">
+    <div class="section-title">Seguimiento en pausa</div>
+    <p style="font-size:13px;line-height:1.55;">
+      Tu entrenador ha puesto en pausa vuestro seguimiento, así que ahora mismo
+      no tienes disponible el plan que te asignó. Habla con él para retomarlo.
+    </p>
+    <p style="font-size:12px;color:var(--muted);line-height:1.5;">
+      <b>No has perdido nada.</b> Tu historial, tus medidas y tus fotos siguen
+      donde estaban, y puedes seguir entrenando por tu cuenta con tus propias
+      rutinas. Cuando se reanude, recuperas el plan tal y como lo tenías.
+    </p>
+  </div>
 
   <div class="hp">
     <div style="min-width:0;">
@@ -2455,7 +2471,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-10 01:00';
+const APP_VERSION='2026-09-10 01:40';
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3033,9 +3049,24 @@ function vibrateEnd(){
   if(navigator.vibrate){navigator.vibrate([200,100,200,100,400]);}
 }
 
+/* Seguimiento pausado por el entrenador (impago). Lo pone el listener del
+   propio perfil, en el módulo. */
+let seguimientoPausado = false;
+
+/* Una rutina que puso el entrenador. Las que se hizo el cliente no lo son y
+   nunca se le ocultan: son suyas. */
+function esAsignada(r){ return !!(r && r.assignedBy); }
+
 function getActive(){
   if(!DB.activeRoutine||!DB.routines)return null;
-  return DB.routines.find(r=>r.id===DB.activeRoutine)||null;
+  const r = DB.routines.find(x=>x.id===DB.activeRoutine)||null;
+  /* Con el seguimiento pausado, el plan que le montó su entrenador deja de
+     verse. Se filtra AQUÍ, al leer, y jamás tocando DB: el backend de
+     Firestore borra en remoto las rutinas que no encuentra en local
+     ("Rutinas borradas en local"), así que quitarla de DB no la escondería,
+     la destruiría. Su historial, sus medidas y sus fotos siguen intactos. */
+  if(r && seguimientoPausado && esAsignada(r)) return null;
+  return r;
 }
 function getActiveSessions(){
   const r=getActive();return r?r.sessions:{};
@@ -5458,7 +5489,7 @@ function renderRoutineList(){
     'Cambiar de rutina <b>no borra nada</b>: cada una guarda su propio historial.'+
     '</div>';
 
-  c.innerHTML+=DB.routines.map(r=>{
+  c.innerHTML+=DB.routines.filter(r=>!(seguimientoPausado&&esAsignada(r))).map(r=>{
     const isActive=r.id===DB.activeRoutine;
     return`<div class="routine-item${isActive?' active-routine':''}">
       <!-- Tocar el nombre es el atajo: la pone en curso si no lo estaba y te
@@ -7736,7 +7767,8 @@ function vigilarClientes(){
       const cl = d.data();
       // Para la ficha, que se abre desde aquí: nombre, correo y foto ya vienen.
       perfilesCliente[d.id] = {name: cl.name||'', email: cl.email||'', profilePic: cl.profilePic||null,
-                               avisoCoach: cl.avisoCoach || null, sesionCoach: cl.sesionCoach || null};
+                               avisoCoach: cl.avisoCoach || null, sesionCoach: cl.sesionCoach || null,
+                               suspendidoPorCoach: cl.suspendidoPorCoach === true};
       mosaico.insertAdjacentHTML('beforeend', `
         <button type="button" class="mos-card cliente-card"
              data-uid="${d.id}" data-nombre="${escaparHTML(cl.name||'')}"
@@ -7745,6 +7777,8 @@ function vigilarClientes(){
              onclick="verDetalleCliente(this.dataset.uid,this.dataset.nombre,this.dataset.activa)">
           ${miniaturaCliente(cl)}
           <div class="cliente-card-nombre">${escaparHTML(cl.name||'(sin nombre)')}</div>
+          ${cl.suspendidoPorCoach === true
+            ? '<div style="font-size:11px;font-weight:700;color:var(--danger);margin-top:2px;">En pausa</div>' : ''}
           <div class="cliente-card-meta" id="cliente-prog-${d.id}">Cargando...</div>
         </button>`);
       vigilarRutinasCliente(d.id, cl.activeRoutine || null);
@@ -8076,7 +8110,8 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
               activa: activeRoutine || null,
               // El aviso vigente ya vino con la lista de clientes: no hay que releerlo.
               aviso: (perfilesCliente[uid] || {}).avisoCoach || null,
-              sesionCoach: (perfilesCliente[uid] || {}).sesionCoach || null };
+              sesionCoach: (perfilesCliente[uid] || {}).sesionCoach || null,
+              pausado: (perfilesCliente[uid] || {}).suspendidoPorCoach === true };
 
   /* Las fotos del cliente ya no viajan dentro de sus rutinas: tienen colección
      propia, así que hay que escucharla aparte. En vivo como las rutinas, para
@@ -8426,6 +8461,8 @@ function accionesCliente(){
     <div class="acciones-fila" style="margin-left:0;flex-wrap:wrap;">
       <button class="btn-sm" data-uid="${escaparHTML(uid)}" data-nombre="${escaparHTML(detalle.nombre||'')}"
         onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>
+      <button class="btn-sm" data-uid="${escaparHTML(uid)}" id="btn-pausa-cliente"
+        onclick="alternarPausaCliente(this.dataset.uid)">${detalle.pausado ? 'Reanudar seguimiento' : 'Pausar por impago'}</button>
       <button class="btn-sm btn-danger sep-peligro" data-uid="${escaparHTML(uid)}"
         onclick="pedirDesvincular(this.dataset.uid)">Desvincular</button>
     </div>
@@ -8651,6 +8688,30 @@ window.desvincularCliente = async function(uid){
   }catch(e){
     console.error('[entrenador] no se pudo desvincular', e);
     if(el) el.innerHTML = '<div class="msg msg-err">No se pudo desvincular: '+(e.code||e.message)+'</div>';
+  }
+};
+
+/* Pausar el seguimiento de un cliente por impago, y reanudarlo.
+
+   ⚠️ No confundir con "Desvincular": esto NO rompe la relación ni le quita
+   nada. Su plan, su historial y sus fotos se quedan donde están y vuelven
+   enteros al reanudar. Lo único que cambia es que deja de VER el plan que le
+   asignaste, y de recibir avisos y retos. */
+window.alternarPausaCliente = async function(uid){
+  const pausar = !detalle.pausado;
+  if(pausar && !confirm('¿Pausar el seguimiento de este cliente?\n\nDejará de ver el plan que le asignaste y de recibir tus avisos y retos. No pierde nada: su historial, sus medidas y sus fotos siguen ahí, y lo recupera todo al reanudar.')) return;
+  const btn = document.getElementById('btn-pausa-cliente');
+  if(btn){ btn.disabled = true; btn.textContent = pausar ? 'Pausando...' : 'Reanudando...'; }
+  try{
+    await setDoc(doc(fdb,'users',uid), { suspendidoPorCoach: pausar }, { merge:true });
+    detalle.pausado = pausar;
+    if(perfilesCliente[uid]) perfilesCliente[uid].suspendidoPorCoach = pausar;
+    aviso(pausar ? 'Seguimiento en pausa' : 'Seguimiento reanudado','bien');
+    pintarDetalle();
+  }catch(e){
+    console.error('[entrenador] no se pudo cambiar la pausa', e);
+    aviso('No se pudo cambiar: '+(e.code||e.message),'mal');
+    if(btn){ btn.disabled = false; btn.textContent = pausar ? 'Pausar por impago' : 'Reanudar seguimiento'; }
   }
 };
 
@@ -9102,7 +9163,8 @@ window.ahoraNoReto = function(){
 function pintarAvisoReto(){
   const c = document.getElementById('home-reto');
   if(!c) return;
-  const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId);
+  const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId
+                        && meData.suspendidoPorCoach !== true);
   if(!retoVigente || !soyCliente){ c.classList.add('hidden'); c.innerHTML = ''; return; }
   const dias = diasQueQuedan(retoVigente);
   const quedan = dias === 0 ? 'último día' : dias === 1 ? 'queda 1 día' : 'quedan ' + dias + ' días';
@@ -9340,6 +9402,7 @@ function vigilarAvisoCoach(){
        el propio documento. Sin esto habría que cerrar y abrir la app para que
        la pantalla se enterara. */
     pintarModoEntrenador();
+    pintarSeguimientoPausado();
   }, err => {
     console.error('[aviso] no se pudo escuchar el perfil', err);
   });
@@ -9364,10 +9427,31 @@ window.sesionDelAviso = function(){
   return sesionImpuesta(miSesionCoach, getActive(), getActiveSessions());
 };
 
+/* El cliente al que su entrenador ha pausado el seguimiento. Repinta lo que
+   depende de la rutina activa, porque getActive() acaba de cambiar de
+   respuesta sin que nadie haya tocado los datos. */
+function pintarSeguimientoPausado(){
+  const pausado = !!(meData && meData.role !== 'trainer' && meData.suspendidoPorCoach === true);
+  seguimientoPausado = pausado;
+  const el = document.getElementById('home-pausado');
+  if(el) el.classList.toggle('hidden', !pausado);
+  try{
+    updateHome();
+    if(typeof renderRoutineList === 'function') renderRoutineList();
+    if(typeof buildSessionList === 'function') buildSessionList();
+  }catch(e){
+    console.error('[pausa] no se pudo repintar', e);
+  }
+}
+
 function pintarAvisoCoach(){
   const c = document.getElementById('home-aviso');
   if(!c) return;
-  const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId);
+  /* En pausa tampoco llegan recados ni retos: el seguimiento está parado
+     entero, y recibir un reto del entrenador que acaba de pausarte sería
+     incoherente. */
+  const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId
+                        && meData.suspendidoPorCoach !== true);
   /* Leído se va de Inicio, pero el aviso NO se borra: si traía cambio de día,
      ese encargo sigue vivo (lo mantiene sesionDelAviso) y la tarjeta de
      "Entrenamiento de hoy" lo sigue diciendo en su etiqueta. */
