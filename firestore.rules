@@ -41,10 +41,16 @@ service cloud.firestore {
 
        Un código de alta lo genera SOLO Jhon (admin), sirve una vez y es lo
        único que permite crear un perfil de entrenador. */
+    /* 🔴 `.data.get('campo', porDefecto)` y NO `.data.campo`. En las reglas de
+       Firestore, leer una clave que NO EXISTE en el documento es un ERROR de
+       evaluación, y un error deniega. Como casi ningún perfil tiene `admin`
+       —ni `suspendido`—, la forma directa rompía la lectura para todo el
+       mundo. Pasó de verdad el 09/09: Jhon publicó las reglas y dejó de poder
+       leer a sus propios clientes. */
     function soyAdmin() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.admin == true;
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('admin', false) == true;
     }
 
     /* ═══ Suspensión por impago ═══
@@ -66,7 +72,7 @@ service cloud.firestore {
     function activo() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.suspendido != true;
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('suspendido', false) != true;
     }
 
     function altaValida(altaId) {
