@@ -2492,7 +2492,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-09 23:56';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-13 17:44';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3191,6 +3191,40 @@ function renderProfilePic(){
     : escaparHTML(iniciales(DB.profileName||'JHON'));   // el mismo por defecto que renderProfileName
 }
 
+/* ── No sacar el onboarding mientras Firebase decide ──
+   Al recargar con sesión, load() arranca con lo que hay en ESTE dispositivo, y
+   quien se registró directamente en la nube no tiene nada aquí: le salía el
+   onboarding aunque sus datos estuvieran bajando, y se quedaba puesto encima.
+   Lo encontró un entrenador probando con datos móviles (13/09/2026). Terminarlo
+   ahí era peligroso: obFinish() guarda en la nube una rutina nueva y borra el
+   resto.
+   Por eso el dispositivo recuerda si había sesión y, si la había, el onboarding
+   espera a que Firebase conteste. El tope es por si no contesta nunca (sin
+   cobertura el módulo de Firebase ni carga): la app no puede quedarse vacía y
+   sin salida. */
+const CLAVE_SESION='jhon_hay_sesion_v1';
+const ESPERA_MAX_SESION=15000;
+let onboardingAplazado=false;
+
+function sesionRecordada(){
+  try{ return localStorage.getItem(CLAVE_SESION)==='1'; }catch(e){ return false; }
+}
+function recordarSesion(hay){
+  try{ hay ? localStorage.setItem(CLAVE_SESION,'1') : localStorage.removeItem(CLAVE_SESION); }catch(e){}
+}
+function aplazarOnboarding(){
+  onboardingAplazado=true;
+  setTimeout(soltarOnboardingAplazado, ESPERA_MAX_SESION);
+}
+/* La llama el módulo de Firebase al terminar con la sesión. Si para entonces
+   han llegado datos, load() ya bajó la bandera y esto no hace nada. */
+function soltarOnboardingAplazado(){
+  if(!onboardingAplazado) return;
+  onboardingAplazado=false;
+  const sinDatos=!DB.activeRoutine||!DB.routines||!DB.routines.length;
+  if(sinDatos && !hayInvitacionEnURL()) showOnboarding();
+}
+
 async function load(){
   sync('load');
   if(!storageAvailable()){
@@ -3265,8 +3299,17 @@ async function load(){
        onboarding taparía el formulario de registro (es una capa por encima).
        Primero se registra; el código se limpia de la URL al conseguirlo, y a
        partir de ahí el onboarding vuelve a comportarse como siempre. */
-    if(!hayInvitacionEnURL()) showOnboarding();
+    if(!hayInvitacionEnURL()){
+      // Con sesión, sus datos pueden estar bajando de la nube: esperar a Firebase.
+      if(STORAGE.backend.name==='local' && sesionRecordada()) aplazarOnboarding();
+      else showOnboarding();
+    }
   }else{
+    /* Hay datos: si una carga anterior sacó el onboarding (la de este
+       dispositivo, antes de que bajara lo de la nube), se quita. Sin esto se
+       quedaba tapando la app ya cargada. */
+    onboardingAplazado=false;
+    document.getElementById('onboarding').classList.add('hidden');
     buildSessionList();
     buildMedSel();
     updateHome();
@@ -9678,39 +9721,49 @@ window.marcarAvisoVisto = async function(){
 };
 
 onAuthStateChanged(auth, async (user) => {
-  if(!user){
-    meUid = null; meData = null;
-    cerrarVigilanciaRetos();
-    cerrarVigilanciaAviso();
-    cerrarVigilanciaAltas();
-    pintarAvisoCoach();
-    pintarSesion(null);
-    // Al cerrar sesión, volver a los datos de este dispositivo.
-    if(STORAGE.backend.name !== 'local') await volverALocal();
-    else pintarEstadoSync();
-    return;
-  }
-  meUid = user.uid;
-  if(pendingProfileWrite) await pendingProfileWrite;
+  // Para la próxima recarga: si hay sesión, el onboarding esperará a Firebase.
+  recordarSesion(!!user);
   try{
-    const snap = await getDoc(doc(fdb, 'users', meUid));
-    // Sin documento no es un error: es una cuenta creada desde la consola que
-    // todavía no tiene perfil. pintarSesion() enseña el formulario.
-    meData = snap.exists() ? snap.data() : null;
-  }catch(e){
-    console.error('[auth] no se pudo leer el perfil', e);
-    meData = null;
+    if(!user){
+      meUid = null; meData = null;
+      cerrarVigilanciaRetos();
+      cerrarVigilanciaAviso();
+      cerrarVigilanciaAltas();
+      pintarAvisoCoach();
+      pintarSesion(null);
+      // Al cerrar sesión, volver a los datos de este dispositivo.
+      if(STORAGE.backend.name !== 'local') await volverALocal();
+      else pintarEstadoSync();
+      return;
+    }
+    meUid = user.uid;
+    if(pendingProfileWrite) await pendingProfileWrite;
+    try{
+      const snap = await getDoc(doc(fdb, 'users', meUid));
+      // Sin documento no es un error: es una cuenta creada desde la consola que
+      // todavía no tiene perfil. pintarSesion() enseña el formulario.
+      meData = snap.exists() ? snap.data() : null;
+    }catch(e){
+      console.error('[auth] no se pudo leer el perfil', e);
+      meData = null;
+    }
+    pintarSesion(user);
+    /* Los retos, tanto los que propongo como los que me proponen. Va antes de
+       cambiarANube() a propósito: no depende de la sincronización y así el aviso
+       de Inicio aparece sin esperar a que bajen las rutinas. */
+    vigilarRetos();
+    vigilarMisRetos();
+    vigilarAvisoCoach();
+    vigilarCodigosAlta();
+    // Sin perfil todavía no se sincroniza: primero hay que completarlo.
+    if(meData) await cambiarANube();
+  }finally{
+    /* Ya se sabe si había sesión y, si la había, qué trajo la nube (o que no se
+       pudo leer). Si sigue sin haber datos, ahora sí toca el onboarding. Se
+       espera a la carga inicial para que no se adelante a aplazarOnboarding(). */
+    await window.cargaInicial;
+    soltarOnboardingAplazado();
   }
-  pintarSesion(user);
-  /* Los retos, tanto los que propongo como los que me proponen. Va antes de
-     cambiarANube() a propósito: no depende de la sincronización y así el aviso
-     de Inicio aparece sin esperar a que bajen las rutinas. */
-  vigilarRetos();
-  vigilarMisRetos();
-  vigilarAvisoCoach();
-  vigilarCodigosAlta();
-  // Sin perfil todavía no se sincroniza: primero hay que completarlo.
-  if(meData) await cambiarANube();
 });
 
 /* ─────────── Llegar con un código de alta (?alta=CODIGO) ───────────

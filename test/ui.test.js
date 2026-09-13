@@ -904,6 +904,55 @@ async function appLista(page, url){
     ok(!enVivo.abiertoDespues && enVivo.enInicio,
        '🔴 al pausarse se le saca de ella y se le lleva a Inicio, sin recargar');
 
+    console.log('\n13g. Recargar con sesión y el dispositivo vacío');
+    /* Lo encontró un entrenador probando con datos móviles (13/09/2026): se
+       registró en la nube, recargó y le salió el onboarding, porque la primera
+       carga es la de este dispositivo y aquí no había nada. Y terminarlo en ese
+       estado guarda en la nube una rutina nueva y BORRA lo demás.
+       Aquí no hay Firebase, así que la nube es un backend falso con su nombre. */
+    await page.evaluate(()=>localStorage.clear());
+    await page.reload({waitUntil:'networkidle2'});
+    await esperar(1600);
+    const recarga = await page.evaluate(async ()=>{
+      const ob = document.getElementById('onboarding');
+      const visible = () => !ob.classList.contains('hidden');
+      const r = {};
+      // 1) Había sesión y el dispositivo está vacío: el onboarding espera.
+      ob.classList.add('hidden');
+      localStorage.setItem('jhon_hay_sesion_v1','1');
+      await load();
+      r.espera = !visible();
+      // 2) Firebase contesta sin datos (o sin sesión): entonces sí sale.
+      soltarOnboardingAplazado();
+      r.saleDespues = visible();
+      // 3) Llegan los datos de la nube con el onboarding ya puesto: se quita.
+      STORAGE.use({ name:'firestore', write: async ()=>{},
+        read: async ()=>({ fotos:[], activeRoutine:'r1',
+          routines:[{ id:'r1', name:'Nube', sessions:{}, medidas:[],
+                      plan:JSON.parse(JSON.stringify(PRESET_ROUTINES[0].plan)) }] }) });
+      await load();
+      r.seQuita = !visible();
+      r.rutina = DB.activeRoutine;
+      STORAGE.use(StorageLocal);
+      localStorage.removeItem('jhon_hay_sesion_v1');
+      return r;
+    });
+    ok(recarga.espera, '🔴 con sesión y el dispositivo vacío, el onboarding NO sale antes de que conteste Firebase');
+    ok(recarga.saleDespues, 'si al final no hay datos, sale como siempre');
+    ok(recarga.seQuita && recarga.rutina === 'r1',
+       '🔴 cuando llegan los datos de la nube, el onboarding se quita y se ve la app');
+
+    // De verdad, recargando: una marca vieja no puede dejar la app vacía y sin salida.
+    await page.evaluate(()=>{ localStorage.clear(); localStorage.setItem('jhon_hay_sesion_v1','1'); });
+    await page.reload({waitUntil:'networkidle2'});
+    await esperar(2500);
+    const marcaVieja = await page.evaluate(()=>({
+      ob: !document.getElementById('onboarding').classList.contains('hidden'),
+      marca: localStorage.getItem('jhon_hay_sesion_v1')
+    }));
+    ok(marcaVieja.ob && marcaVieja.marca === null,
+       'con una marca vieja y sin sesión real, Firebase la borra y sale el onboarding');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
