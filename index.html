@@ -2492,7 +2492,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-13 17:54';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-13 18:04';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7871,21 +7871,23 @@ async function aplicarRutinaActiva(uid, routineId){
 /* Versión para el botón de la lista: se traga el error y lo pinta ahí. Quien
    necesite enterarse —asignar activando, que debe poder decir "asignada pero
    NO activada"— llama a aplicarRutinaActiva() directamente. */
-window.activarRutinaCliente = async function(uid, routineId){
-  const aviso = document.getElementById('cliente-desv-'+uid);   // hueco libre bajo la tarjeta
+window.activarRutinaCliente = async function(uid, routineId, boton){
+  /* El botón se bloquea mientras tanto: un segundo toque lanzaría otra
+     escritura igual. */
+  const texto = boton ? boton.textContent : '';
+  if(boton){ boton.disabled = true; boton.textContent = 'Activando...'; }
   try{
     await aplicarRutinaActiva(uid, routineId);
-    /* Acusar recibo aunque el resultado parezca idéntico: con dos rutinas del
-       mismo nombre y el mismo progreso, la tarjeta no cambia y el botón parece
-       roto. El aviso se va solo para no ensuciar la lista. */
-    if(aviso){
-      aviso.innerHTML = '<div class="msg msg-ok" style="margin-top:8px;">Rutina activada ✓ Es la que verá tu cliente al abrir la app.</div>';
-      setTimeout(()=>{ if(aviso) aviso.innerHTML = ''; }, 4000);
-    }
+    /* Acusar recibo con el aviso FLOTANTE (13/09/2026). Antes se escribía en
+       el hueco de "Desvincular", al final de la ficha: fuera de la vista, y
+       además la ficha se repinta al activar y el botón desaparece. Jhon lo
+       describió como un botón "como si no tuviera acción". */
+    const nombre = boton && boton.dataset.nombre;
+    aviso((nombre ? '«'+nombre+'» ' : 'La rutina ') + 'ya está activa ✓ Es la que verá tu cliente al abrir la app.', 'bien');
   }catch(e){
     console.error('[entrenador] no se pudo activar la rutina', e);
-    const el = document.getElementById('cliente-prog-'+uid);
-    if(el) el.textContent = 'No se pudo activar: ' + (e.code || e.message);
+    aviso('No se pudo activar la rutina: ' + (e.code || e.message), 'mal');
+    if(boton && boton.isConnected){ boton.disabled = false; boton.textContent = texto; }
   }
 };
 
@@ -8377,9 +8379,9 @@ function pintarDetalle(){
     <div style="font-size:12px;color:var(--muted);">${escaparHTML(prog.ultima)}</div>
     <div style="font-size:11px;color:var(--muted);margin-top:4px;opacity:.7;">${escaparHTML(origenRutina(r))}</div>
     ${prog.total === 0 ? '<div class="msg msg-err" style="margin-top:8px;">Esta rutina no tiene ninguna sesión: tu cliente no puede entrenar con ella. Asígnale otra.</div>' : ''}
-    ${activa ? '' : `<button class="btn btn-secondary" style="margin-top:10px;"
-        data-uid="${escaparHTML(detalle.uid)}" data-rid="${escaparHTML(r.id)}"
-        onclick="activarRutinaCliente(this.dataset.uid,this.dataset.rid)">Activar esta rutina para ${escaparHTML(detalle.nombre)}</button>`}
+    ${activa ? '' : `<button class="btn btn-primary" style="margin-top:10px;"
+        data-uid="${escaparHTML(detalle.uid)}" data-rid="${escaparHTML(r.id)}" data-nombre="${escaparHTML(r.name||'')}"
+        onclick="activarRutinaCliente(this.dataset.uid,this.dataset.rid,this)">Activar esta rutina para ${escaparHTML(detalle.nombre)}</button>`}
   </div>`);
 
   // Gráfica de cargas — antes que el plan: es lo que se consulta a diario
