@@ -2492,7 +2492,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-13 18:04';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-13 18:11';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7866,6 +7866,15 @@ async function aplicarRutinaActiva(uid, routineId){
   });
   lote.update(doc(fdb,'users',uid), { activeRoutine: routineId });
   await lote.commit();
+  /* La ficha decide cuál es la activa con detalle.activa, que se leía UNA vez
+     al abrirla: seguía marcando la anterior hasta recargar (lo vio Jhon el
+     13/09/2026). El snapshot de rutinas sí llega, pero trae los flags, y los
+     flags no mandan. */
+  if(perfilesCliente[uid]) perfilesCliente[uid].activeRoutine = routineId;
+  if(detalle.uid === uid){
+    detalle.activa = routineId;
+    if(detalle.editando == null) pintarDetalle();
+  }
 }
 
 /* Versión para el botón de la lista: se traga el error y lo pinta ahí. Quien
@@ -8345,7 +8354,7 @@ function pintarDetalle(){
     /* Sin rutinas, "Asignar" es justo lo único que hay que hacer aquí: las
        acciones no pueden faltar en este camino. */
     cuerpo.innerHTML = ficha + '<div class="card"><p style="font-size:13px;color:var(--muted);">'+
-      'Este cliente todavía no tiene ninguna rutina.</p></div>' + panelAvisoCoach() + accionesCliente();
+      'Este cliente todavía no tiene ninguna rutina.</p></div>' + panelAvisoCoach() + accionesCliente(true);
     return;
   }
   const r = detalle.rutinas.find(x => x.id === detalle.viendo) || detalle.rutinas[0];
@@ -8355,20 +8364,28 @@ function pintarDetalle(){
      final, que es donde vive lo que cambia el plan de verdad. */
   const partes = [ficha, panelAvisoCoach()];
 
-  // Selector de rutina, solo si tiene más de una
-  if(detalle.rutinas.length > 1){
-    partes.push('<div class="card"><div class="section-title">Rutina que estás viendo</div>' +
-      detalle.rutinas.map(x => {
-        const p = resumenProgreso(x);
-        return `<button class="preset-op${x.id===r.id?' elegida':''}" data-id="${escaparHTML(x.id)}" onclick="verRutinaDetalle(this.dataset.id)">
-          <div class="preset-op-name">${escaparHTML(x.name||'(sin nombre)')}${esRutinaActiva(x)?' <span style="color:var(--green);font-size:10px;">· activa</span>':''}</div>
-          <div class="preset-op-meta">${p.hechas}/${p.total} sesiones · ${escaparHTML(origenRutina(x))}</div>
-        </button>`;
-      }).join('') + '</div>');
-  }
+  /* Sus rutinas, con lo que se hace con ellas al lado: activar la que estás
+     viendo y añadirle otra. Antes activar iba en el resumen y asignar al final
+     de la ficha, en "Acciones"; Jhon pidió subirlos aquí (13/09/2026). Por eso
+     la tarjeta sale también con UNA rutina: si no, con una sola no habría
+     dónde añadir la segunda. */
+  partes.push('<div class="card"><div class="section-title">Rutina que estás viendo</div>' +
+    detalle.rutinas.map(x => {
+      const p = resumenProgreso(x);
+      return `<button class="preset-op${x.id===r.id?' elegida':''}" data-id="${escaparHTML(x.id)}" onclick="verRutinaDetalle(this.dataset.id)">
+        <div class="preset-op-name">${escaparHTML(x.name||'(sin nombre)')}${esRutinaActiva(x)?' <span style="color:var(--green);font-size:10px;">· activa</span>':''}</div>
+        <div class="preset-op-meta">${p.hechas}/${p.total} sesiones · ${escaparHTML(origenRutina(x))}</div>
+      </button>`;
+    }).join('') +
+    (esRutinaActiva(r) ? '' : `<button class="btn btn-primary" style="margin-top:10px;"
+        data-uid="${escaparHTML(detalle.uid)}" data-rid="${escaparHTML(r.id)}" data-nombre="${escaparHTML(r.name||'')}"
+        onclick="activarRutinaCliente(this.dataset.uid,this.dataset.rid,this)">Activar esta rutina para ${escaparHTML(detalle.nombre)}</button>`) +
+    `<button class="btn btn-secondary" style="margin-top:8px;color:var(--accent);border-color:var(--accent);"
+        data-uid="${escaparHTML(detalle.uid)}" data-nombre="${escaparHTML(detalle.nombre||'')}"
+        onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Añadir rutina</button>` +
+    '</div>');
 
   // Resumen
-  const activa = esRutinaActiva(r);
   partes.push(`<div class="card">
     <div class="section-title">${escaparHTML(r.name||'(sin nombre)')}</div>
     <div class="stat-grid">
@@ -8379,9 +8396,6 @@ function pintarDetalle(){
     <div style="font-size:12px;color:var(--muted);">${escaparHTML(prog.ultima)}</div>
     <div style="font-size:11px;color:var(--muted);margin-top:4px;opacity:.7;">${escaparHTML(origenRutina(r))}</div>
     ${prog.total === 0 ? '<div class="msg msg-err" style="margin-top:8px;">Esta rutina no tiene ninguna sesión: tu cliente no puede entrenar con ella. Asígnale otra.</div>' : ''}
-    ${activa ? '' : `<button class="btn btn-primary" style="margin-top:10px;"
-        data-uid="${escaparHTML(detalle.uid)}" data-rid="${escaparHTML(r.id)}" data-nombre="${escaparHTML(r.name||'')}"
-        onclick="activarRutinaCliente(this.dataset.uid,this.dataset.rid,this)">Activar esta rutina para ${escaparHTML(detalle.nombre)}</button>`}
   </div>`);
 
   // Gráfica de cargas — antes que el plan: es lo que se consulta a diario
@@ -8637,13 +8651,15 @@ window.retirarAvisoCoach = async function(){
   }
 };
 
-function accionesCliente(){
+/* conAsignar: solo cuando el cliente no tiene rutinas. Con alguna, "+ Añadir
+   rutina" vive en "Rutina que estás viendo" y aquí sería un duplicado. */
+function accionesCliente(conAsignar){
   const uid = detalle.uid;
   return `<div class="card">
     <div class="section-title">Acciones</div>
     <div class="acciones-fila" style="margin-left:0;flex-wrap:wrap;">
-      <button class="btn-sm" data-uid="${escaparHTML(uid)}" data-nombre="${escaparHTML(detalle.nombre||'')}"
-        onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>
+      ${conAsignar ? `<button class="btn-sm" data-uid="${escaparHTML(uid)}" data-nombre="${escaparHTML(detalle.nombre||'')}"
+        onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Asignar rutina</button>` : ''}
       <button class="btn-sm" data-uid="${escaparHTML(uid)}" id="btn-pausa-cliente"
         onclick="alternarPausaCliente(this.dataset.uid)">${detalle.pausado ? 'Reanudar seguimiento' : 'Pausar por impago'}</button>
       <button class="btn-sm btn-danger sep-peligro" data-uid="${escaparHTML(uid)}"
