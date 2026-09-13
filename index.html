@@ -1613,7 +1613,7 @@ textarea{resize:vertical;min-height:60px;}
   </div>
   <div id="asignar-cuerpo">
 
-    <label style="font-size:11px;color:var(--muted);">Elige una rutina</label>
+    <label style="font-size:11px;color:var(--muted);">Elige una rutina o crea una nueva</label>
     <div id="asignar-presets"></div>
 
     <div style="height:10px;"></div>
@@ -2492,7 +2492,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-13 17:44';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-13 17:54';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -6410,8 +6410,13 @@ function obFinish(){
   goTo('inicio');
 }
 
-function openNewRoutinePanel(){
-  if(bloqueadoPorPausa('añadir rutinas')) return;
+/* paraAsignar: función que recibe {name, plan} cuando la rutina es para un
+   cliente (la pasa "Asignar rutina" del entrenador). Sin ella, la rutina es
+   tuya y va a "Mis rutinas", como siempre. */
+function openNewRoutinePanel(paraAsignar){
+  nrParaAsignar = (typeof paraAsignar === 'function') ? paraAsignar : null;
+  // La pausa protege TUS datos; montar la rutina de un cliente no los toca.
+  if(!nrParaAsignar && bloqueadoPorPausa('añadir rutinas')) return;
   document.getElementById('new-routine-panel').classList.remove('hidden');
   // Se empieza en limpio cada vez: media rutina de la vez anterior confundiría.
   nrDias=[]; nrNombre=''; nrSemanas=8; nrPaso=1; nrDiaEditando=0;
@@ -6420,6 +6425,8 @@ function openNewRoutinePanel(){
 
 function closeNewRoutinePanel(){
   document.getElementById('new-routine-panel').classList.add('hidden');
+  // Abierto desde "Asignar rutina": cerrarlo sin terminar devuelve allí.
+  if(nrParaAsignar){ const volver = nrParaAsignar; nrParaAsignar = null; volver(null); }
 }
 
 /* ═══════════ Constructor de rutinas ═══════════
@@ -6428,6 +6435,7 @@ function closeNewRoutinePanel(){
    Ahora se eligen los ejercicios por músculo, con las mismas fotos que enseña
    el detalle del ejercicio, y los días se repiten en todas las semanas. */
 let nrDias = [];          // [{nombre, ex:[{nombre, esquema}]}]
+let nrParaAsignar = null; // con función: la rutina es para un cliente (ver openNewRoutinePanel)
 let nrDiaActivo = null;   // a qué día se está añadiendo
 
 /* Solo los músculos que son PRINCIPALES en algún ejercicio: un músculo del que
@@ -6540,12 +6548,12 @@ function nrPintarPaso(){
 
   // Paso 4
   document.getElementById('nr-titulo').textContent='CASI ESTÁ';
-  siguiente.textContent='✓ Crear rutina';
+  siguiente.textContent = nrParaAsignar ? '✓ Usar esta rutina' : '✓ Crear rutina';
   const conEj = nrDias.filter(d=>d.ex.length);
   const totalSesiones = conEj.length * nrSemanas;
   cuerpo.innerHTML=`
     <div class="card">
-      <label>¿Cómo se llama tu rutina?</label>
+      <label>${nrParaAsignar ? '¿Con qué nombre la verá tu cliente?' : '¿Cómo se llama tu rutina?'}</label>
       <input type="text" id="nr-name" placeholder="Ej: Mi rutina de volumen..." value="${escaparHTML(nrNombre)}"
              onchange="nrNombre=this.value">
       <div class="msg msg-info" style="margin-top:12px;">
@@ -6772,6 +6780,16 @@ function createNewRoutine(){
         }))
       });
     }
+  }
+  /* Para un cliente: se entrega a "Asignar rutina" y NO se toca DB, que es la
+     del entrenador. Se suelta antes de cerrar, o el cierre la daría por
+     abandonada. */
+  if(nrParaAsignar){
+    const entregar = nrParaAsignar;
+    nrParaAsignar = null;
+    closeNewRoutinePanel();
+    entregar({name, plan});
+    return;
   }
   const id='r_'+Date.now();
   DB.routines.push({id,name,plan,sessions:{},medidas:[]});
@@ -8934,19 +8952,61 @@ function pintarModoEntrenador(){
    que haya en el JSON de "avanzado". */
 let presetElegido = null;
 
+/* Rutina montada con el asistente para este cliente (13/09/2026, pedido por
+   Jhon: si ninguna prehecha le vale, crearla como lo haría un cliente). Se
+   elige como una prehecha más, con presetElegido === 'creada'. */
+let rutinaCreada = null;
+
+function metaPlan(plan){
+  if(!Array.isArray(plan)) return '';
+  const sesiones = plan.reduce((s,w) => s + ((w && w.days) || []).length, 0);
+  const diasSemana = (plan[0] && plan[0].days && plan[0].days.length) || 0;
+  return `${sesiones} sesiones · ${plan.length} semanas · ${diasSemana} días/semana`;
+}
+
 function pintarPresetsAsignar(){
   const c = document.getElementById('asignar-presets');
-  c.innerHTML = PRESET_ROUTINES.map(r => {
-    const sesiones = r.plan.reduce((s,w) => s + w.days.length, 0);
-    const diasSemana = (r.plan[0] && r.plan[0].days.length) || 0;
+  const crear = `<button class="preset-op preset-crear" style="border-style:dashed;" onclick="crearRutinaParaAsignar()">
+      <div class="preset-op-name">+ Crear una rutina nueva</div>
+      <div class="preset-op-desc">Eliges tú los ejercicios de cada día, igual que en «Mis rutinas».</div>
+    </button>`;
+  const creada = rutinaCreada
+    ? `<button class="preset-op preset-creada${presetElegido === 'creada' ? ' elegida' : ''}" onclick="elegirPresetAsignar('creada')">
+        <div class="preset-op-name">${escaparHTML(rutinaCreada.name)}</div>
+        <div class="preset-op-desc">La que acabas de crear</div>
+        <div class="preset-op-meta">${metaPlan(rutinaCreada.plan)}</div>
+      </button>`
+    : '';
+  c.innerHTML = crear + creada + PRESET_ROUTINES.map(r => {
     const elegida = presetElegido === r.id;
     return `<button class="preset-op${elegida ? ' elegida' : ''}" onclick="elegirPresetAsignar('${r.id}')">
       <div class="preset-op-name">${escaparHTML(r.name)}</div>
       <div class="preset-op-desc">${escaparHTML(PRESET_DESC[r.id] || '')}</div>
-      <div class="preset-op-meta">${sesiones} sesiones · ${r.plan.length} semanas · ${diasSemana} días/semana</div>
+      <div class="preset-op-meta">${metaPlan(r.plan)}</div>
     </button>`;
   }).join('');
 }
+
+/* El asistente de "Nueva rutina" es del script clásico y esta capa tapa la
+   suya (340 contra 300), así que se aparta mientras se monta y vuelve al
+   terminar o al cerrarlo. */
+window.crearRutinaParaAsignar = function(){
+  const panel = document.getElementById('asignar-panel');
+  panel.classList.add('hidden');
+  openNewRoutinePanel(rutina => {
+    panel.classList.remove('hidden');
+    if(!rutina) return;                  // lo cerró sin terminar
+    rutinaCreada = rutina;
+    presetElegido = null;                // para que elegirla no la deseleccione
+    elegirPresetAsignar('creada');
+    // El nombre lo acaba de escribir para esto: manda sobre el que hubiera.
+    const campoNombre = document.getElementById('asignar-nombre-rutina');
+    campoNombre.value = rutina.name;
+    campoNombre.dataset.auto = '1';
+    avisarNombreRepetido();
+    document.getElementById('asignar-cuerpo').scrollTop = 0;
+  });
+};
 
 window.elegirPresetAsignar = function(id){
   // Volver a pulsar la elegida la deselecciona: es la única forma de llegar a
@@ -8954,7 +9014,9 @@ window.elegirPresetAsignar = function(id){
   presetElegido = (presetElegido === id) ? null : id;
   pintarPresetsAsignar();
   const campoNombre = document.getElementById('asignar-nombre-rutina');
-  const preset = PRESET_ROUTINES.find(r => r.id === presetElegido);
+  const preset = presetElegido === 'creada'
+    ? rutinaCreada
+    : PRESET_ROUTINES.find(r => r.id === presetElegido);
   // Solo se autorrellena si el entrenador no ha escrito ya un nombre suyo.
   if(preset && (!campoNombre.value.trim() || campoNombre.dataset.auto === '1')){
     campoNombre.value = preset.name;
@@ -8982,6 +9044,7 @@ window.avisarNombreRepetido = function(){
 window.abrirAsignar = function(uid, nombre){
   asignarDestino = uid;
   presetElegido = null;
+  rutinaCreada = null;   // la de otro cliente no se arrastra a este
   document.getElementById('asignar-nombre').textContent = nombre || 'tu cliente';
   const campoNombre = document.getElementById('asignar-nombre-rutina');
   campoNombre.value = '';
@@ -9025,7 +9088,10 @@ window.asignarRutina = async function(){
   }
   const jsonTxt = document.getElementById('asignar-json').value.trim();
   let plan = [];
-  if(presetElegido){
+  if(presetElegido === 'creada' && rutinaCreada){
+    // Copia: si se asigna dos veces, cada cliente se lleva la suya.
+    plan = JSON.parse(JSON.stringify(rutinaCreada.plan));
+  }else if(presetElegido){
     const preset = PRESET_ROUTINES.find(r => r.id === presetElegido);
     if(!preset){
       msg.innerHTML = '<div class="msg msg-err">Esa rutina ya no existe</div>';

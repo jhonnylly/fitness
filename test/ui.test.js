@@ -498,6 +498,67 @@ async function appLista(page, url){
     ok(capa.fondoQuieto, 'y el fondo no hace scroll mientras está abierta');
     ok(capa.cerrada && capa.fondoSuelto, 'al cerrarla, el fondo vuelve a moverse');
 
+    /* Crear la rutina del cliente desde "Asignar" (13/09/2026): el mismo
+       asistente que "Mis rutinas", pero lo creado va al cliente y NO a las
+       rutinas del entrenador. La escritura final en Firestore no se prueba aquí
+       (sin sesión): es la misma que con una prehecha. */
+    const crear = await page.evaluate(async ()=>{
+      const visible = id => !document.getElementById(id).classList.contains('hidden');
+      const elegida = () => (document.querySelector('#asignar-presets .preset-op.elegida .preset-op-name')||{}).textContent;
+      const misRutinas = DB.routines.length;
+      const r = {};
+      abrirAsignar('u1','Ana Pérez');
+      const boton = document.querySelector('#asignar-presets .preset-crear');
+      r.hayBoton = !!boton;
+      if(!boton) return r;
+      boton.click();
+      r.asignarApartado = !visible('asignar-panel');
+      r.asistenteAbierto = visible('new-routine-panel');
+      nrCambiarDias(1);
+      nrDias[0] = {nombre:'Torso', ex:[{nombre:'Press banca', esquema:'4×10'}]};
+      nrSemanas = 2;
+      nrPaso = 4; nrPintarPaso();
+      r.botonFinal = document.getElementById('nr-siguiente').textContent;
+      document.getElementById('nr-name').value = 'Plan de Ana';
+      nrSiguiente();
+      r.asistenteCerrado = !visible('new-routine-panel');
+      r.asignarVuelve = visible('asignar-panel');
+      r.nombre = document.getElementById('asignar-nombre-rutina').value;
+      r.elegida = elegida();
+      r.meta = (document.querySelector('#asignar-presets .preset-creada .preset-op-meta')||{}).textContent;
+      r.misRutinasIntactas = DB.routines.length === misRutinas;
+      // Abrir el asistente otra vez y cerrarlo sin terminar: vuelve a Asignar y no pierde la creada.
+      document.querySelector('#asignar-presets .preset-crear').click();
+      closeNewRoutinePanel();
+      r.cerrarDevuelve = visible('asignar-panel');
+      r.sigueElegida = elegida();
+      cerrarAsignar();
+      // Y "Mis rutinas" sigue siendo lo de siempre.
+      openNewRoutinePanel();
+      nrPaso = 4; nrPintarPaso();
+      r.botonNormal = document.getElementById('nr-siguiente').textContent;
+      closeNewRoutinePanel();
+      r.asignarSigueCerrado = !visible('asignar-panel');
+      // Otro cliente no hereda la rutina creada para Ana.
+      abrirAsignar('u2','Luis');
+      r.otroSinCreada = !document.querySelector('#asignar-presets .preset-creada');
+      cerrarAsignar();
+      return r;
+    });
+    ok(crear.hayBoton, 'asignar ofrece «+ Crear una rutina nueva»');
+    ok(crear.asignarApartado && crear.asistenteAbierto, 'que abre el mismo asistente de «Mis rutinas»');
+    ok(crear.botonFinal === '✓ Usar esta rutina', 'y al final dice «Usar esta rutina»: '+crear.botonFinal);
+    ok(crear.asistenteCerrado && crear.asignarVuelve, 'al terminar se vuelve a Asignar');
+    ok(crear.elegida === 'Plan de Ana' && crear.nombre === 'Plan de Ana',
+       'con la rutina creada ya elegida y su nombre puesto');
+    ok(/2 sesiones · 2 semanas · 1 días\/semana/.test(crear.meta||''), 'y su resumen: '+crear.meta);
+    ok(crear.misRutinasIntactas, '🔴 la rutina del cliente NO se mete en las rutinas del entrenador');
+    ok(crear.cerrarDevuelve && crear.sigueElegida === 'Plan de Ana',
+       'cerrar el asistente sin terminar devuelve a Asignar sin perder lo creado');
+    ok(crear.botonNormal === '✓ Crear rutina' && crear.asignarSigueCerrado,
+       '«Mis rutinas» sigue creando para uno mismo, sin abrir Asignar');
+    ok(crear.otroSinCreada, 'otro cliente no hereda la rutina creada para el anterior');
+
     console.log('\n11. El botón de instalar la app');
     /* Un cliente abrió el enlace desde el navegador de WhatsApp y no encontró
        cómo instalarla. Chrome avisa con `beforeinstallprompt` cuando se puede;
