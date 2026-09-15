@@ -494,6 +494,12 @@ textarea{resize:vertical;min-height:60px;}
 .aviso-coach .aviso-coach-acciones .btn-sm{margin:0;padding:8px 14px;font-size:13px;}
 .aviso-coach .aviso-coach-acciones .aviso-coach-btn{background:#fff;border:1.5px solid #fff;color:var(--accent);}
 .aviso-coach .aviso-coach-btn-sec{background:transparent;border:1.5px solid rgba(255,255,255,.85);color:#fff;font-weight:800;}
+/* Peticiones de entrenador en Ajustes: una fila por persona sobre el violeta. */
+.peticion-fila{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.14);border-radius:12px;
+  padding:10px 12px;margin-top:8px;color:#fff;font-size:13.5px;}
+.peticion-sub{font-size:11.5px;color:rgba(255,255,255,.85);word-break:break-all;}
+.aviso-coach .peticion-fila .aviso-coach-btn{margin:0;flex:none;background:#fff;border:1.5px solid #fff;
+  color:var(--accent);padding:8px 14px;font-size:13px;}
 /* "Cuentas" en Ajustes: solo para el admin. */
 body:not(.es-admin) #pane-cuentas{display:none;}
 .btn-primary{background:var(--accent);color:#fff;margin-top:10px;}
@@ -1308,10 +1314,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
          confundía con llevar clientes, y es gestión de la app, no de un
          entrenador. Se busca por CORREO EXACTO a propósito: listar todas las
          cuentas enseñaría datos de todo el mundo sin necesidad. -->
+    <!-- Quién ha pedido otro entrenador: FUERA de la tarjeta y arriba del todo,
+         en violeta. Solo tiene contenido para el admin (pintarPeticionesEntrenador). -->
+    <div id="rol-peticiones"></div>
+
     <div class="card" id="pane-cuentas">
       <div class="section-title">Cuentas <span style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0;">· solo tú</span></div>
-      <!-- Quién ha pedido otro entrenador. Lo pinta pintarPeticionesEntrenador(). -->
-      <div id="rol-peticiones"></div>
       <div id="pane-rol">
         <div style="font-size:14px;font-weight:800;">Cambiar el rol o el entrenador de una cuenta</div>
         <p style="font-size:12px;color:var(--muted);line-height:1.45;margin-top:4px;">
@@ -2738,7 +2746,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 21:55';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 22:05';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -9441,15 +9449,20 @@ function pintarPeticionesEntrenador(lista){
   const c = document.getElementById('rol-peticiones');
   if(!c) return;
   if(!n){ c.innerHTML = ''; return; }
-  c.innerHTML = `<div class="msg msg-info" style="margin-bottom:14px;">
-      <b style="color:var(--text);">${n === 1 ? '1 persona pide' : n + ' personas piden'} entrenador</b>` +
-    lista.map(p => `<div class="week-row" style="gap:8px;">
-        <span style="min-width:0;font-size:12.5px;line-height:1.4;">
-          <b style="color:var(--text);">${escaparHTML((p.name || '').trim() || 'Sin nombre')}</b><br>
-          <span style="word-break:break-all;">${escaparHTML(p.email || '')}</span>${
-            p.pideEntrenador && p.pideEntrenador.ts ? ' · lo pidió el ' + escaparHTML(fechaCorta(p.pideEntrenador.ts)) : ''}
+  /* Violeta lleno y arriba del todo de Ajustes (15/09/2026): en gris, dentro de
+     la tarjeta de Cuentas, se pasaba por alto como un ajuste más, y es alguien
+     esperando a que le busques entrenador. */
+  c.innerHTML = `<div class="aviso-coach" style="margin-bottom:16px;">
+      <div class="aviso-coach-rol">Te necesitan</div>
+      <div class="aviso-coach-txt" style="font-size:18px;margin-top:2px;">${n === 1 ? '1 persona pide' : n + ' personas piden'} entrenador</div>
+      <div class="aviso-coach-ses">No tienen entrenador y han pedido que les busques uno. Pulsa Asignar para elegírselo.</div>` +
+    lista.map(p => `<div class="peticion-fila">
+        <span style="min-width:0;flex:1;line-height:1.35;">
+          <b>${escaparHTML((p.name || '').trim() || 'Sin nombre')}</b><br>
+          <span class="peticion-sub">${escaparHTML(p.email || '')}${
+            p.pideEntrenador && p.pideEntrenador.ts ? ' · lo pidió el ' + escaparHTML(fechaCorta(p.pideEntrenador.ts)) : ''}</span>
         </span>
-        <button class="btn-sm" data-correo="${escaparHTML(p.email || '')}" onclick="atenderPeticion(this.dataset.correo)">Asignar</button>
+        <button class="btn-sm aviso-coach-btn" data-correo="${escaparHTML(p.email || '')}" onclick="atenderPeticion(this.dataset.correo)">Asignar</button>
       </div>`).join('') + '</div>';
 }
 window.__pintarPeticionesPrueba = pintarPeticionesEntrenador;

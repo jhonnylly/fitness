@@ -1665,6 +1665,8 @@ async function appLista(page, url){
       document.body.classList.add('es-entrenador','es-admin');
       __pintarPeticionesPrueba([{ name:'Laura', email:'laura@ejemplo.es', pideEntrenador:{ pendiente:true, ts: Date.now() } }]);
       r.peticion = { texto: document.getElementById('rol-peticiones').textContent.replace(/\s+/g,' '),
+                     violeta: !!document.querySelector('#rol-peticiones .aviso-coach'),
+                     fueraDeLaTarjeta: !document.getElementById('pane-cuentas').contains(document.getElementById('rol-peticiones')),
                      asignar: !!document.querySelector('#rol-peticiones button[onclick^="atenderPeticion"]'),
                      punto: document.getElementById('config-btn').classList.contains('con-punto') };
       __pintarPeticionesPrueba([]);
@@ -1686,6 +1688,8 @@ async function appLista(page, url){
     ok(/1 persona pide entrenador/.test(pedir.peticion.texto) && /laura@ejemplo.es/.test(pedir.peticion.texto)
        && pedir.peticion.asignar && pedir.peticion.punto,
        'al admin le sale en Ajustes quién pide entrenador, con "Asignar" y un punto en el botón de Ajustes');
+    ok(pedir.peticion.violeta && pedir.peticion.fueraDeLaTarjeta,
+       '🔴 y destacada en violeta, fuera de la tarjeta gris: en gris se pasaba por alto');
     ok(pedir.sinPeticiones, 'sin peticiones, ni lista ni punto');
     ok(pedir.enAjustes, '"Cambiar el rol" está en Ajustes → Cuentas y ya no en Entrenadores');
 
