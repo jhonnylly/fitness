@@ -78,6 +78,8 @@ const puente = `
   totalSesiones, proximaSesion, adherenciaSemana, etiquetaSemana, semanaEnCurso,
   migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
   repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
+  semanasSinEmpezarDe, diasPorSemanaDe, modeloParaDias, aplicarPropuestaARutina, htmlPropuesta,
+  textoInfoReparto,
   claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas, getPrevKgs,
   ejerciciosDeRutina, progresoReto,
   leerDecisionSync, guardarDecisionSync,
@@ -757,6 +759,53 @@ const ok = (cond, msg) => {
   const pend = app.fotosARecomprimir(grandes, 100);
   ok(pend.length === 1 && pend[0].tipo === 'foto' && pend[0].foto === 'f1',
      'las fotos grandes de DB.fotos siguen detectándose para recomprimir');
+
+  console.log('\n17c. cambiar los días de CUALQUIER rutina (la de un cliente)');
+  /* Un entrenador (15/09/2026): su cliente pasa de 5 días a 3. La ficha del
+     cliente usa las mismas piezas que Ajustes, pero sobre una rutina que NO
+     es la activa ni está en DB: aquí no puede colarse getActive(). */
+  const diaC = (s, nombre, tipo, ex) => ({ s, name: 'S' + s + ' · ' + nombre, type: tipo, ex });
+  const semanaC = (num, b) => ({ num, title: 'Semana ' + num, days: [
+    diaC(b + 1, 'Pecho', 'Torso', [['Press banca', '4×8', 'Codos pegados'], ['Aperturas', '3×12']]),
+    diaC(b + 2, 'Pierna', 'Pierna', [['Sentadilla', '4×8']]),
+    diaC(b + 3, 'Espalda', 'Torso', [['Remo', '4×8']]),
+    diaC(b + 4, 'Glúteo', 'Pierna', [['Hip thrust', '4×10']]),
+    diaC(b + 5, 'Hombro', 'Torso', [['Press militar', '4×8']]),
+  ] });
+  const deCliente = { id: 'rc', name: 'Del cliente',
+    plan: [semanaC(1, 0), semanaC(2, 5), semanaC(3, 10)],
+    sessions: { 1: { exercises: [], date: '01/09/2026' } } };
+  const dbAntes = JSON.stringify(app.DB);
+
+  ok(app.diasPorSemanaDe(deCliente) === 5, 'cuenta los días de una rutina cualquiera: 5');
+  ok(app.semanasSinEmpezarDe(deCliente).map(w => w.num).join() === '2,3',
+     'la semana 1, con una sesión registrada, no cuenta como sin empezar');
+  const propC = app.repartirSesiones(app.modeloParaDias(deCliente), 3);
+  ok(propC.length === 3, 'la propuesta sale a 3 días');
+  ok(/la 2, la 3/.test(app.textoInfoReparto(app.semanasSinEmpezarDe(deCliente), 3)),
+     'y la explicación dice a qué semanas se aplica');
+  const htmlC = app.htmlPropuesta(propC, 'Cliente');
+  ok(/renombrarPropuestaCliente\(/.test(htmlC) && /moverEjercicioPropuestaCliente\(/.test(htmlC)
+     && /quitarEjercicioPropuestaCliente\(/.test(htmlC),
+     'la misma propuesta editable sirve para la ficha del cliente, con sus propios botones');
+  ok(/renombrarPropuesta\(/.test(app.htmlPropuesta(propC, '')), 'y para Ajustes, con los de siempre');
+
+  const cambiadas = app.aplicarPropuestaARutina(deCliente, propC);
+  ok(cambiadas === 2, 'se reorganizan las 2 semanas sin empezar');
+  ok(deCliente.plan[0].days.length === 5 && deCliente.plan[0].days[0].s === 1,
+     '🔴 la semana ya empezada queda intacta, con sus ids: su historial sigue apuntando bien');
+  ok(deCliente.plan[1].days.length === 3 && deCliente.plan[2].days.length === 3,
+     'las otras dos pasan a 3 días');
+  const idsC = deCliente.plan.flatMap(w => w.days.map(d => d.s));
+  ok(new Set(idsC).size === idsC.length && Math.min(...deCliente.plan[1].days.map(d => d.s)) > 15,
+     'ids nuevos por encima de todos, sin reutilizar ninguno');
+  ok(app.diasPorSemanaDe(deCliente) === 3, 'y ya cuenta 3 días por semana');
+  const pressC = deCliente.plan[1].days.flatMap(d => d.ex).find(e => e[0] === 'Press banca');
+  ok(pressC && pressC[2] === 'Codos pegados',
+     '🔴 la nota del entrenador sobrevive al reparto (antes se perdía)');
+  ok(deCliente.plan[1].days.flatMap(d => d.ex).filter(e => e[0] !== 'Press banca').every(e => e.length === 2),
+     'y los ejercicios sin nota se guardan como siempre, en par');
+  ok(JSON.stringify(app.DB) === dbAntes, 'y no toca para nada los datos propios (DB)');
 
   console.log('\n18. cambiar los días no deja sesiones imposibles');
   // Reportado por Jhon usándola: al pasar de 5 días a 4, dos sesiones se

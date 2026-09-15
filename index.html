@@ -371,6 +371,9 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 .fila-check{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;cursor:pointer;}
 .fila-check input{width:auto;margin:0;flex-shrink:0;}
 .sem-selector{display:flex;gap:5px;flex-wrap:wrap;}
+/* Días por semana de la rutina del cliente, dentro de "Su plan". */
+.dias-cliente{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:12px;background:var(--surface);}
+.dias-cliente .card{background:var(--card)!important;}
 .sem-btn{min-width:34px;padding:7px 4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
 .sem-btn.completa{color:var(--green);border-color:rgba(45,122,79,0.4);}
 .sem-btn.elegida{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -2622,7 +2625,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 18:36';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 19:02';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5364,11 +5367,14 @@ function ultimoPeso(){
    semana SIN empezar, no la que estás haciendo: el cambio solo afecta a las no
    empezadas, así que si dijéramos la cadencia de la semana en curso, tras un
    cambio seguiría diciendo el número viejo y parecería que no se aplicó. */
-function diasPorSemanaActuales(){
-  const act=getActive();
+function diasPorSemanaActuales(){ return diasPorSemanaDe(getActive()); }
+
+/* De CUALQUIER rutina, no solo la activa: la ficha del cliente la usa con la
+   rutina del cliente que el entrenador está mirando (15/09/2026). */
+function diasPorSemanaDe(act){
   const plan=(act&&act.plan)||[];
   if(!plan.length)return 0;
-  const virgen=semanasSinEmpezar()[0];
+  const virgen=semanasSinEmpezarDe(act)[0];
   if(virgen)return (virgen.days||[]).length;
   const num=semanaEnCurso(act);
   const sem=plan.find(w=>w.num===num)||plan[plan.length-1];
@@ -5417,11 +5423,70 @@ function pintarConfig(){
    sesión registrada; las empezadas se quedan como están. */
 let propuestaDias=null;   // [{nombre, tipo, ex:[[nombre,esquema],...]}, ...]
 
-function semanasSinEmpezar(){
-  const act=getActive();
+function semanasSinEmpezar(){ return semanasSinEmpezarDe(getActive()); }
+
+/* Las piezas del cambio de días, separadas de "la rutina activa" para que
+   sirvan igual con la rutina de un cliente (15/09/2026: un entrenador tenía un
+   cliente que pasaba de 5 días a 3). Ajustes y la ficha del cliente usan
+   EXACTAMENTE la misma lógica: mismas reglas, mismo tope y lo entrenado
+   intacto. Devuelve referencias a las semanas del plan: aplicar las modifica. */
+function semanasSinEmpezarDe(act){
   if(!act)return [];
   return (act.plan||[]).filter(w =>
     !(w.days||[]).some(d => (act.sessions||{})[d.s]));
+}
+
+/* La semana que sirve de modelo para repartir: la que está en curso. */
+function modeloParaDias(act){
+  const plan=(act&&act.plan)||[];
+  if(!plan.length)return [];
+  const num=semanaEnCurso(act);
+  return (plan.find(w=>w.num===num)||plan[plan.length-1]).days||[];
+}
+
+/* Se cuenta lo que ha hecho el reparto. Quitar ejercicios sin decirlo es
+   justo lo que convierte un ajuste en una sorpresa desagradable. Lee
+   infoReparto, así que va justo después de repartirSesiones(). */
+function textoInfoReparto(sinEmpezar,destino){
+  const ajustes=[];
+  if(infoReparto.repetidos)
+    ajustes.push('se ha'+(infoReparto.repetidos===1?' quitado 1 ejercicio repetido':
+      'n quitado '+infoReparto.repetidos+' ejercicios repetidos'));
+  if(infoReparto.movidos)
+    ajustes.push('se ha'+(infoReparto.movidos===1?' movido 1 ejercicio a otra sesión':
+      'n movido '+infoReparto.movidos+' ejercicios a otra sesión'));
+  return 'Se aplicará a <b>'+sinEmpezar.length+' semana'+(sinEmpezar.length===1?'':'s')+'</b> sin empezar '+
+    '(la '+sinEmpezar.map(w=>w.num).join(', la ')+'). Con '+destino+' días, cada sesión se deja en '+
+    '<b>'+maxEjerciciosPorSesion(destino)+' ejercicios como mucho</b>'+
+    (ajustes.length?': '+ajustes.join(' y ')+'.':'.')+
+    (infoReparto.descartados.length
+      ? ' <b style="color:var(--danger);">No cabían '+infoReparto.descartados.length+
+        ': '+infoReparto.descartados.map(escaparHTML).join(', ')+'.</b>'
+      : '')+
+    ' Puedes renombrar cada sesión y mover ejercicios antes de aplicar.';
+}
+
+/* Aplica la propuesta a las semanas sin empezar de `act` y devuelve cuántas
+   ha cambiado. No guarda: eso depende de quién sea la rutina (save() la tuya,
+   updateDoc la de un cliente). */
+function aplicarPropuestaARutina(act,propuesta){
+  const sinEmpezar=semanasSinEmpezarDe(act);
+  // Ids nuevos por encima de todos los existentes: reutilizar uno reviviría
+  // el registro de otra sesión.
+  let siguienteId=0;
+  (act.plan||[]).forEach(w=>(w.days||[]).forEach(d=>{ if(d.s>siguienteId)siguienteId=d.s; }));
+  Object.keys(act.sessions||{}).forEach(k=>{ const n=parseInt(k); if(n>siguienteId)siguienteId=n; });
+  sinEmpezar.forEach(w=>{
+    w.days=propuesta.map((s,i)=>({
+      s:++siguienteId,
+      name:'S'+(i+1)+' · '+s.nombre,
+      type:s.tipo||'',
+      // La nota del entrenador viaja en e[3]: sin ella, repartir le borraba
+      // al cliente las indicaciones ("multiserie: 10 con 40...").
+      ex:s.ex.map(e=>e[3]?[e[0],e[1]||'',e[3]]:[e[0],e[1]||''])
+    }));
+  });
+  return sinEmpezar.length;
 }
 
 /* Propuesta de reparto: se agrupan las sesiones actuales en N bloques
@@ -5455,14 +5520,18 @@ function mismoEjercicio(a,b){
      3. lo que sobra se INTENTA COLOCAR en otra sesión del mismo tipo de
         trabajo antes de descartarlo,
      4. y lo que aun así no cabe se descarta, pero se dice cuál.
-   Cada ejercicio viaja como [nombre, esquema, tipoDeOrigen]: el tercer
+   Cada ejercicio viaja como [nombre, esquema, tipoDeOrigen, nota]: el tercer
    elemento es el que permite devolverlo a una sesión del trabajo que le
-   corresponde. aplicarCambioDias() lo ignora al guardar. */
+   corresponde, y aplicarPropuestaARutina() lo ignora al guardar. La nota es
+   la indicación del entrenador; antes se perdía al repartir. */
 function repartirSesiones(dias, destino){
   const origen=dias.map(d=>({
     nombre:(d.name||'').replace(/^S\d+\s*·\s*/,''),
     tipo:d.type||'',
-    ex:(d.ex||[]).map(e=>Array.isArray(e)?[e[0],e[1],d.type||'']:[e.name,e.scheme,d.type||''])
+    ex:(d.ex||[]).map(e=>{
+      const nota=notaDeEjercicio(e)||'';
+      return Array.isArray(e)?[e[0],e[1],d.type||'',nota]:[e.name,e.scheme,d.type||'',nota];
+    })
   }));
   infoReparto={repetidos:0,movidos:0,descartados:[]};
   if(!origen.length)return [];
@@ -5559,28 +5628,8 @@ window.proponerCambioDias=function(){
     return;
   }
 
-  const num=semanaEnCurso(act);
-  const modelo=(act.plan.find(w=>w.num===num)||act.plan[act.plan.length-1]).days||[];
-  propuestaDias=repartirSesiones(modelo,destino);
-  /* Se cuenta lo que ha hecho el reparto. Quitar ejercicios sin decirlo es
-     justo lo que convierte un ajuste en una sorpresa desagradable. */
-  const ajustes=[];
-  if(infoReparto.repetidos)
-    ajustes.push('se ha'+(infoReparto.repetidos===1?' quitado 1 ejercicio repetido':
-      'n quitado '+infoReparto.repetidos+' ejercicios repetidos'));
-  if(infoReparto.movidos)
-    ajustes.push('se ha'+(infoReparto.movidos===1?' movido 1 ejercicio a otra sesión':
-      'n movido '+infoReparto.movidos+' ejercicios a otra sesión'));
-  document.getElementById('cfg-propuesta-info').innerHTML=
-    'Se aplicará a <b>'+sinEmpezar.length+' semana'+(sinEmpezar.length===1?'':'s')+'</b> sin empezar '+
-    '(la '+sinEmpezar.map(w=>w.num).join(', la ')+'). Con '+destino+' días, cada sesión se deja en '+
-    '<b>'+maxEjerciciosPorSesion(destino)+' ejercicios como mucho</b>'+
-    (ajustes.length?': '+ajustes.join(' y ')+'.':'.')+
-    (infoReparto.descartados.length
-      ? ' <b style="color:var(--danger);">No cabían '+infoReparto.descartados.length+
-        ': '+infoReparto.descartados.map(escaparHTML).join(', ')+'.</b>'
-      : '')+
-    ' Puedes renombrar cada sesión y mover ejercicios antes de aplicar.';
+  propuestaDias=repartirSesiones(modeloParaDias(act),destino);
+  document.getElementById('cfg-propuesta-info').innerHTML=textoInfoReparto(sinEmpezar,destino);
   pintarPropuesta();
   document.getElementById('cfg-propuesta').classList.remove('hidden');
   document.getElementById('cfg-propuesta').scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -5588,19 +5637,27 @@ window.proponerCambioDias=function(){
 
 function pintarPropuesta(){
   const c=document.getElementById('cfg-propuesta-lista');
-  if(!propuestaDias){ c.innerHTML=''; return; }
-  c.innerHTML=propuestaDias.map((s,i)=>`
+  c.innerHTML=propuestaDias?htmlPropuesta(propuestaDias,''):'';
+}
+
+/* La propuesta editable, para cualquier dueño. `ns` es el sufijo de los
+   manejadores: '' para Ajustes (renombrarPropuesta...) y 'Cliente' para la
+   ficha del cliente (renombrarPropuestaCliente...), que guardan en sitios
+   distintos. */
+function htmlPropuesta(prop,ns){
+  ns=ns||'';
+  return prop.map((s,i)=>`
     <div class="card" style="background:var(--surface);margin-bottom:8px;">
       <label>Sesión ${i+1}</label>
-      <input type="text" value="${escaparHTML(s.nombre)}" onchange="renombrarPropuesta(${i},this.value)">
+      <input type="text" value="${escaparHTML(s.nombre)}" onchange="renombrarPropuesta${ns}(${i},this.value)">
       <div style="margin-top:8px;">
         ${s.ex.length?s.ex.map((e,j)=>`
           <div class="plan-linea" style="align-items:center;gap:6px;">
             <span style="flex:1;">${escaparHTML(e[0])} <span class="plan-esquema">${escaparHTML(e[1]||'')}</span></span>
-            <select onchange="moverEjercicioPropuesta(${i},${j},this.value)" style="width:auto;padding:4px 6px;font-size:11px;margin:0;">
-              ${propuestaDias.map((_,k)=>`<option value="${k}"${k===i?' selected':''}>Sesión ${k+1}</option>`).join('')}
+            <select onchange="moverEjercicioPropuesta${ns}(${i},${j},this.value)" style="width:auto;padding:4px 6px;font-size:11px;margin:0;">
+              ${prop.map((_,k)=>`<option value="${k}"${k===i?' selected':''}>Sesión ${k+1}</option>`).join('')}
             </select>
-            <button class="btn-sm btn-danger" onclick="quitarEjercicioPropuesta(${i},${j})">×</button>
+            <button class="btn-sm btn-danger" onclick="quitarEjercicioPropuesta${ns}(${i},${j})">×</button>
           </div>`).join('')
         :'<div style="font-size:12px;color:var(--muted);">Sin ejercicios. Mueve alguno aquí o quedará vacía.</div>'}
       </div>
@@ -5647,23 +5704,8 @@ window.aplicarCambioDias=function(){
     msg.innerHTML='<div class="msg msg-err">Todas las sesiones quedarían vacías.</div>';
     return;
   }
-  const sinEmpezar=semanasSinEmpezar();
-  // Ids nuevos por encima de todos los existentes: reutilizar uno reviviría
-  // el registro de otra sesión.
-  let siguienteId=0;
-  (act.plan||[]).forEach(w=>(w.days||[]).forEach(d=>{ if(d.s>siguienteId)siguienteId=d.s; }));
-  Object.keys(act.sessions||{}).forEach(k=>{ const n=parseInt(k); if(n>siguienteId)siguienteId=n; });
-
-  sinEmpezar.forEach(w=>{
-    w.days=propuestaDias.map((s,i)=>({
-      s:++siguienteId,
-      name:'S'+(i+1)+' · '+s.nombre,
-      type:s.tipo||'',
-      ex:s.ex.map(e=>[e[0],e[1]||''])
-    }));
-  });
+  const cuantas=aplicarPropuestaARutina(act,propuestaDias);
   save();
-  const cuantas=sinEmpezar.length;
   const nuevosDias=propuestaDias.length;
   propuestaDias=null;
   pintarConfig();
@@ -8393,7 +8435,7 @@ async function aplicarRutinaActiva(uid, routineId){
   if(perfilesCliente[uid]) perfilesCliente[uid].activeRoutine = routineId;
   if(detalle.uid === uid){
     detalle.activa = routineId;
-    if(detalle.editando == null) pintarDetalle();
+    if(puedeRepintarDetalle()) pintarDetalle();
   }
 }
 
@@ -8935,7 +8977,7 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
   detalle.unsubFotos = onSnapshot(collection(fdb,'users',uid,'fotos'), qs => {
     detalle.fotos = qs.docs.map(d => ({ id:d.id, ...d.data() }))
       .sort((a,b) => (a.ts||0) - (b.ts||0));
-    if(detalle.editando == null) pintarDetalle();
+    if(puedeRepintarDetalle()) pintarDetalle();
   }, err => {
     // Sin permiso o sin fotos no debe tumbar la ficha entera del cliente.
     console.error('[fotos] no se pudieron leer las del cliente', err);
@@ -8966,7 +9008,7 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
     /* Con el editor abierto NO se repinta: el snapshot llega por cualquier
        cambio (incluido el propio guardado) y borraría lo que se está
        escribiendo. Al cerrar el editor se repinta con lo que haya. */
-    if(detalle.editando == null) pintarDetalle();
+    if(puedeRepintarDetalle()) pintarDetalle();
   }, err => {
     document.getElementById('detalle-cuerpo').innerHTML =
       '<div class="msg msg-err">No se pudieron leer sus datos: '+escaparHTML(err.message)+'</div>';
@@ -8998,8 +9040,30 @@ window.marcarMedidasAbierto = function(abierto){ detalle.medidasAbierto = !!abie
 window.verSemanaDetalle = function(num){ detalle.semana = parseInt(num); detalle.editando = null; pintarDetalle(); };
 
 window.verRutinaDetalle = function(id){
+  /* Tocar una rutina lleva a SU PLAN, abierto y a la vista: al elegirla lo que
+     se quiere es ver sus ejercicios, y el plan estaba plegado varias tarjetas
+     más abajo (lo pidió Jhon, 15/09/2026). */
   detalle.viendo = id; detalle.ejercicio = null; detalle.semana = null;
-  detalle.editando = null; pintarDetalle();
+  detalle.editando = null; detalle.dias = null;
+  detalle.planAbierto = true; detalle.saltarAlPlan = true;
+  pintarDetalle();
+};
+
+/* Con una propuesta de días en pantalla no se repinta lo que llega en vivo
+   (una sesión que registra el cliente, una foto): borraría lo que el
+   entrenador está moviendo. Igual que con el editor de sesiones. */
+function puedeRepintarDetalle(){
+  return detalle.editando == null && !(detalle.dias && detalle.dias.propuesta);
+}
+
+/* Solo para las pruebas de interfaz: la ficha de verdad necesita sesión de
+   entrenador y los onSnapshot del cliente, que en la prueba no hay. */
+window.__pintarDetallePrueba = function(estado){
+  detalle = Object.assign({ uid:'prueba', nombre:'Cliente', rutinas:[], viendo:null, ejercicio:null,
+    semana:null, editando:null, unsub:null, unsubFotos:null, fotos:[], activa:null,
+    aviso:null, sesionCoach:null, pausado:false }, estado);
+  document.getElementById('cliente-detalle').classList.remove('hidden');
+  pintarDetalle();
 };
 window.verEjercicioDetalle = function(nombre){ detalle.ejercicio = nombre || null; pintarDetalle(); };
 
@@ -9078,7 +9142,7 @@ function pintarDetalle(){
   const enCurso = semanaEnCurso(r);
   const sem = (r.plan || []).find(x => x.num === detalle.semana) || (r.plan || [])[0];
   if(!sem){
-    partes.push('<div class="card"><div class="section-title">Su plan</div>'+
+    partes.push('<div class="card" id="detalle-plan"><div class="section-title">Su plan</div>'+
       '<p style="font-size:13px;color:var(--muted);">Esta rutina no tiene sesiones.</p></div>');
   }else{
     const selector = (r.plan || []).map(x => {
@@ -9114,14 +9178,15 @@ function pintarDetalle(){
        editor bajo los dedos en cada repintado sería peor que el problema.
        Y el estado se guarda en `detalle`, porque pintarDetalle() se ejecuta
        con cada cambio que llega del cliente y si no se cerraría solo. */
-    const abierto = detalle.editando != null || detalle.planAbierto === true;
-    partes.push(`<div class="card">
+    const abierto = detalle.editando != null || detalle.planAbierto === true || !!detalle.dias;
+    partes.push(`<div class="card" id="detalle-plan">
       <details ${abierto ? 'open' : ''} ontoggle="marcarPlanAbierto(this.open)">
         <summary class="det-resumen">
           <span class="section-title" style="margin:0;">Su plan</span>
           <span class="det-pista">${prog.hechas}/${prog.total} sesiones · semana ${enCurso}</span>
         </summary>
         <div style="margin-top:12px;">
+          ${bloqueDiasCliente(r)}
           <div class="sem-selector">${selector}</div>
           <div style="font-size:12px;color:var(--muted);margin:8px 0 6px;">
             Semana ${sem.num} · ${escaparHTML(sem.title||'')}${sem.num===enCurso?' <span style="color:var(--accent);">· en curso</span>':''}
@@ -9170,6 +9235,11 @@ function pintarDetalle(){
 
   partes.push(accionesCliente());
   cuerpo.innerHTML = partes.join('');
+  if(detalle.saltarAlPlan){
+    detalle.saltarAlPlan = false;
+    const plan = document.getElementById('detalle-plan');
+    if(plan) plan.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
   if(detalle.ejercicio) pintarGraficaCargas(r, detalle.ejercicio);
 }
 
@@ -9454,6 +9524,150 @@ window.guardarEjerciciosCliente = async function(s){
   }finally{
     btn.disabled = false;
     btn.textContent = txt;
+  }
+};
+
+/* ── Cambiar los días por semana de la rutina de un CLIENTE (15/09/2026) ──
+   Lo pidió un entrenador: un cliente que entrenaba 5 días ahora solo puede 3.
+   Es lo mismo que ya hace Ajustes → "Días de entrenamiento" con la rutina
+   propia, así que usa la MISMA lógica (repartirSesiones,
+   aplicarPropuestaARutina): mismo tope de ejercicios por sesión, propuesta
+   editable antes de aplicar, y lo que ya entrenó no se toca nunca. Solo cambia
+   dónde se guarda: en la rutina del cliente, igual que el editor de sesiones. */
+function rutinaViendo(){
+  return detalle.rutinas.find(x => x.id === detalle.viendo) || detalle.rutinas[0] || null;
+}
+
+function bloqueDiasCliente(r){
+  const actuales = diasPorSemanaDe(r);
+  const d = detalle.dias;
+  const cab = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <span style="font-size:13px;">Entrena <b>${actuales || '—'}</b> día${actuales === 1 ? '' : 's'} por semana</span>
+      ${d ? '' : '<button class="btn-sm" onclick="abrirDiasCliente()">Cambiar días</button>'}
+    </div>`;
+  if(!d) return `<div class="dias-cliente">${cab}</div>`;
+  if(d.hecho){
+    return `<div class="dias-cliente">${cab}
+      <div class="msg msg-ok" style="margin-top:8px;">${d.hecho}</div>
+      <button class="btn-sm" onclick="cerrarDiasCliente()">Entendido</button></div>`;
+  }
+  if(!d.propuesta){
+    const opciones = [1,2,3,4,5,6,7].map(n =>
+      `<option value="${n}"${n === d.destino ? ' selected' : ''}>${n} día${n === 1 ? '' : 's'}</option>`).join('');
+    return `<div class="dias-cliente">${cab}
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin:8px 0;">
+        ¿Cuántos días puede entrenar ahora? Se reorganizan solo las semanas que
+        <b>todavía no ha empezado</b>; lo que ya entrenó no se toca.</div>
+      <select onchange="elegirDiasCliente(this.value)">${opciones}</select>
+      ${d.msg || ''}
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn-sm" onclick="proponerDiasCliente()">Ver cómo quedaría</button>
+        <button class="btn-sm" onclick="cerrarDiasCliente()">Cancelar</button>
+      </div></div>`;
+  }
+  return `<div class="dias-cliente">${cab}
+    <div class="section-title" style="margin:10px 0 6px;font-size:14px;">Así quedarían sus semanas</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">${d.info}</div>
+    ${htmlPropuesta(d.propuesta, 'Cliente')}
+    ${d.msg || ''}
+    <div class="msg msg-info" style="margin-top:8px;">
+      Lo verá al abrir la app; si la tiene abierta ahora mismo, su próximo
+      guardado podría deshacer esto.</div>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+      <button class="btn-sm" id="dias-cliente-aplicar" onclick="aplicarDiasCliente()">Aplicar a sus semanas sin empezar</button>
+      <button class="btn-sm" onclick="cerrarDiasCliente()">Cancelar</button>
+    </div></div>`;
+}
+
+const msgDias = (clase, texto) => `<div class="msg ${clase}" style="margin-top:8px;">${texto}</div>`;
+
+window.abrirDiasCliente = function(){
+  const r = rutinaViendo();
+  if(!r) return;
+  detalle.dias = { destino: diasPorSemanaDe(r) || 3, propuesta: null, info: '', msg: '' };
+  detalle.planAbierto = true;
+  pintarDetalle();
+};
+window.cerrarDiasCliente = function(){ detalle.dias = null; pintarDetalle(); };
+window.elegirDiasCliente = function(v){
+  if(!detalle.dias) return;
+  detalle.dias.destino = parseInt(v, 10);
+  detalle.dias.msg = '';
+};
+
+window.proponerDiasCliente = function(){
+  const r = rutinaViendo();
+  const d = detalle.dias;
+  if(!r || !d) return;
+  const actuales = diasPorSemanaDe(r);
+  if(d.destino === actuales){
+    d.msg = msgDias('msg-info', 'Ya entrena ' + actuales + ' días por semana.');
+    pintarDetalle(); return;
+  }
+  const sinEmpezar = semanasSinEmpezarDe(r);
+  if(!sinEmpezar.length){
+    d.msg = msgDias('msg-err', 'Todas sus semanas tienen sesiones registradas, así que no hay '
+      + 'ninguna que reorganizar sin tocar su historial. Añádele una rutina con los días que puede entrenar.');
+    pintarDetalle(); return;
+  }
+  d.propuesta = repartirSesiones(modeloParaDias(r), d.destino);
+  d.info = textoInfoReparto(sinEmpezar, d.destino);
+  d.msg = '';
+  pintarDetalle();
+};
+
+const propuestaCliente = () => (detalle.dias && detalle.dias.propuesta) || null;
+window.renombrarPropuestaCliente = function(i, v){
+  const p = propuestaCliente();
+  if(p && p[i]) p[i].nombre = v.trim() || ('Sesión ' + (i + 1));
+};
+window.quitarEjercicioPropuestaCliente = function(i, j){
+  const p = propuestaCliente();
+  if(!p || !p[i]) return;
+  p[i].ex.splice(j, 1);
+  pintarDetalle();
+};
+window.moverEjercicioPropuestaCliente = function(i, j, destino){
+  const p = propuestaCliente();
+  const k = parseInt(destino, 10);
+  if(!p || !p[i] || !p[k] || k === i) return;
+  const [ex] = p[i].ex.splice(j, 1);
+  p[k].ex.push(ex);
+  pintarDetalle();
+};
+
+window.aplicarDiasCliente = async function(){
+  const r = rutinaViendo();
+  const d = detalle.dias;
+  if(!r || !d || !d.propuesta) return;
+  if(d.propuesta.every(s => !s.ex.length)){
+    d.msg = msgDias('msg-err', 'Todas las sesiones quedarían vacías.');
+    pintarDetalle(); return;
+  }
+  // Sobre una copia: si Firestore lo rechaza, lo que se ve no puede quedar cambiado.
+  const copia = { plan: JSON.parse(JSON.stringify(r.plan || [])), sessions: r.sessions || {} };
+  const cuantas = aplicarPropuestaARutina(copia, d.propuesta);
+  if(!cuantas){
+    d.msg = msgDias('msg-err', 'Ya no le queda ninguna semana sin empezar: acaba de registrar una sesión.');
+    pintarDetalle(); return;
+  }
+  const btn = document.getElementById('dias-cliente-aplicar');
+  if(btn){ btn.disabled = true; btn.textContent = 'Guardando...'; }
+  try{
+    await updateDoc(doc(fdb,'users',detalle.uid,'routines',r.id), {
+      plan: window.planParaFirestore(copia.plan)   // Firestore no admite arrays anidados
+    });
+    r.plan = copia.plan;
+    const n = d.propuesta.length;
+    detalle.dias = { hecho: 'Ahora ' + escaparHTML(detalle.nombre) + ' entrena <b>' + n + ' día'
+      + (n === 1 ? '' : 's') + ' por semana</b>. Se han reorganizado ' + cuantas + ' semana'
+      + (cuantas === 1 ? '' : 's') + ' sin empezar; su historial no se ha tocado.' };
+    detalle.semana = null;
+    pintarDetalle();
+  }catch(e){
+    console.error('[entrenador] no se pudieron cambiar los días del cliente', e);
+    d.msg = msgDias('msg-err', 'No se pudo guardar: ' + escaparHTML(e.code || e.message));
+    pintarDetalle();
   }
 };
 

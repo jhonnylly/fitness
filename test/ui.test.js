@@ -1289,6 +1289,62 @@ async function appLista(page, url){
        'y en Chrome de iPhone, los suyos: Compartir está arriba');
     await page.evaluate(()=>localStorage.clear());
 
+    console.log('\n13m. Ficha del cliente: de la rutina a su plan, y cambiarle los días');
+    /* Jhon (15/09): tocar una rutina en "Rutina que estás viendo" tiene que
+       llevar a su plan con los ejercicios; y un entrenador necesita pasar a un
+       cliente de 5 días a 3. Guardar necesita Firebase: aquí se prueba todo
+       hasta la propuesta, y la lógica de aplicar en storage.test.js §17c. */
+    const ficha = await page.evaluate(async ()=>{
+      const r = {};
+      const dia = (s, nombre, tipo, ex) => ({ s, name:'S'+s+' · '+nombre, type:tipo, ex });
+      const semana = (num, b) => ({ num, title:'Semana '+num, days:[
+        dia(b+1,'Pecho','Torso',[['Press banca','4×8'],['Aperturas','3×12']]),
+        dia(b+2,'Pierna','Pierna',[['Sentadilla','4×8'],['Zancadas','3×10']]),
+        dia(b+3,'Espalda','Torso',[['Remo','4×8'],['Jalón','3×12']]),
+        dia(b+4,'Glúteo','Pierna',[['Hip thrust','4×10'],['Peso muerto rumano','3×10']]),
+        dia(b+5,'Hombro','Torso',[['Press militar','4×8'],['Elevaciones','3×15']]) ]});
+      const plan = [semana(1,0), semana(2,5), semana(3,10)];
+      __pintarDetallePrueba({ nombre:'Laura', activa:'r2', rutinas:[
+        { id:'r1', name:'Fuerza', plan, sessions:{ 1:{ date:'01/09', exercises:[] } } },
+        { id:'r2', name:'Definición', plan: JSON.parse(JSON.stringify(plan)), sessions:{} } ] });
+      const inicial = document.getElementById('detalle-plan');
+      r.plegadoAlEntrar = !!inicial && !inicial.querySelector('details').open;
+      verRutinaDetalle('r1');
+      await new Promise(res => setTimeout(res, 900));
+      const cuerpo = document.getElementById('detalle-cuerpo');
+      const planEl = document.getElementById('detalle-plan');
+      r.abierto = !!planEl && planEl.querySelector('details').open;
+      r.distancia = planEl ? Math.round(planEl.getBoundingClientRect().top - cuerpo.getBoundingClientRect().top) : null;
+      r.textoPlan = planEl ? planEl.textContent.replace(/\s+/g,' ') : '';
+      abrirDiasCliente();
+      const bloque = () => document.querySelector('#detalle-plan .dias-cliente');
+      r.editor = { select: !!bloque().querySelector('select'), texto: bloque().textContent.replace(/\s+/g,' ') };
+      elegirDiasCliente('5');
+      proponerDiasCliente();
+      r.mismosDias = bloque().textContent.replace(/\s+/g,' ');
+      elegirDiasCliente('3');
+      proponerDiasCliente();
+      r.propuesta = { sesiones: bloque().querySelectorAll('input[type="text"]').length,
+                      texto: bloque().textContent.replace(/\s+/g,' '),
+                      aplicar: !!document.getElementById('dias-cliente-aplicar') };
+      cerrarDiasCliente();
+      r.cerrado = !bloque().querySelector('select') && /Cambiar días/.test(bloque().textContent);
+      cerrarDetalleCliente();
+      return r;
+    });
+    ok(ficha.plegadoAlEntrar, 'al abrir la ficha, su plan sigue plegado como siempre');
+    ok(ficha.abierto && ficha.distancia !== null && ficha.distancia < 140,
+       'tocar una rutina abre su plan y te lleva hasta él (a '+ficha.distancia+' px del borde)');
+    // S1 ya está registrada (enseña lo que hizo, no el plan): se miran días pendientes.
+    ok(/Sentadilla/.test(ficha.textoPlan) && /Remo/.test(ficha.textoPlan),
+       'con los ejercicios de los días pendientes a la vista');
+    ok(/Entrena 5 días por semana/.test(ficha.editor.texto) && ficha.editor.select,
+       'dentro del plan dice cuántos días entrena y deja elegir otros');
+    ok(/Ya entrena 5 días/.test(ficha.mismosDias), 'elegir los mismos días lo dice en vez de proponer nada');
+    ok(ficha.propuesta.sesiones === 3 && /la 2, la 3/.test(ficha.propuesta.texto) && ficha.propuesta.aplicar,
+       'a 3 días: propuesta editable de 3 sesiones, solo para las semanas sin empezar');
+    ok(ficha.cerrado, 'y cancelar lo deja como estaba');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
