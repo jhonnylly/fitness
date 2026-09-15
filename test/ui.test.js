@@ -1289,13 +1289,15 @@ async function appLista(page, url){
        'y en Chrome de iPhone, los suyos: Compartir está arriba');
     await page.evaluate(()=>localStorage.clear());
 
-    console.log('\n13m. Ficha del cliente: de la rutina a su plan, y cambiarle los días');
-    /* Jhon (15/09): tocar una rutina en "Rutina que estás viendo" tiene que
-       llevar a su plan con los ejercicios; y un entrenador necesita pasar a un
-       cliente de 5 días a 3. Guardar necesita Firebase: aquí se prueba todo
-       hasta la propuesta, y la lógica de aplicar en storage.test.js §17c. */
+    console.log('\n13m. Ficha del cliente: cada rutina en su ventana, y cambiarle los días');
+    /* Jhon (15/09): tocar una rutina tiene que abrir OTRA VENTANA con sus datos
+       (primero se deslizaba dentro de la ficha y la hacía larguísima); y un
+       entrenador necesita pasar a un cliente de 5 días a 3. Guardar necesita
+       Firebase: aquí se prueba todo hasta la propuesta, y aplicar en
+       storage.test.js §17c. */
     const ficha = await page.evaluate(async ()=>{
       const r = {};
+      const esperar = ms => new Promise(res => setTimeout(res, ms));
       const dia = (s, nombre, tipo, ex) => ({ s, name:'S'+s+' · '+nombre, type:tipo, ex });
       const semana = (num, b) => ({ num, title:'Semana '+num, days:[
         dia(b+1,'Pecho','Torso',[['Press banca','4×8'],['Aperturas','3×12']]),
@@ -1307,17 +1309,27 @@ async function appLista(page, url){
       __pintarDetallePrueba({ nombre:'Laura', activa:'r2', rutinas:[
         { id:'r1', name:'Fuerza', plan, sessions:{ 1:{ date:'01/09', exercises:[] } } },
         { id:'r2', name:'Definición', plan: JSON.parse(JSON.stringify(plan)), sessions:{} } ] });
-      const inicial = document.getElementById('detalle-plan');
-      r.plegadoAlEntrar = !!inicial && !inicial.querySelector('details').open;
+      const v = el => !!(el && el.offsetParent !== null);
+      const ventana = document.getElementById('rutina-cliente');
+      const cuerpoFicha = document.getElementById('detalle-cuerpo');
+      r.ficha = { sinPlan: !cuerpoFicha.querySelector('#detalle-plan'),
+                  texto: cuerpoFicha.textContent.replace(/\s+/g,' '),
+                  ventanaCerrada: ventana.classList.contains('hidden') };
+
       verRutinaDetalle('r1');
-      await new Promise(res => setTimeout(res, 900));
-      const cuerpo = document.getElementById('detalle-cuerpo');
-      const planEl = document.getElementById('detalle-plan');
-      r.abierto = !!planEl && planEl.querySelector('details').open;
-      r.distancia = planEl ? Math.round(planEl.getBoundingClientRect().top - cuerpo.getBoundingClientRect().top) : null;
-      r.textoPlan = planEl ? planEl.textContent.replace(/\s+/g,' ') : '';
+      await esperar(450);                                     // la transición de la capa
+      const vr = document.getElementById('rutina-cliente-cuerpo');
+      r.ventana = { abierta: !ventana.classList.contains('hidden'),
+                    encima: parseInt(getComputedStyle(ventana).zIndex, 10) >
+                            parseInt(getComputedStyle(document.getElementById('cliente-detalle')).zIndex, 10),
+                    volver: document.getElementById('rutina-cliente-volver').textContent,
+                    texto: vr.textContent.replace(/\s+/g,' '),
+                    plan: !!vr.querySelector('#detalle-plan'),
+                    activar: /Activar esta rutina para Laura/.test(vr.textContent),
+                    fichaSinMover: cuerpoFicha.scrollTop === 0 };
+
       abrirDiasCliente();
-      const bloque = () => document.querySelector('#detalle-plan .dias-cliente');
+      const bloque = () => vr.querySelector('.dias-cliente');
       r.editor = { select: !!bloque().querySelector('select'), texto: bloque().textContent.replace(/\s+/g,' ') };
       elegirDiasCliente('5');
       proponerDiasCliente();
@@ -1328,22 +1340,46 @@ async function appLista(page, url){
                       texto: bloque().textContent.replace(/\s+/g,' '),
                       aplicar: !!document.getElementById('dias-cliente-aplicar') };
       cerrarDiasCliente();
-      r.cerrado = !bloque().querySelector('select') && /Cambiar días/.test(bloque().textContent);
+      r.cancelado = !bloque().querySelector('select') && /Cambiar días/.test(bloque().textContent);
+
+      cerrarRutinaCliente();
+      await esperar(450);
+      r.alVolver = { ventanaCerrada: ventana.classList.contains('hidden'),
+                     fichaSigue: v(cuerpoFicha) };
+
+      // Una semana con 9 sesiones: antes decía "Entrena 9 días por semana".
+      __pintarDetallePrueba({ nombre:'Pablo', rutinas:[{ id:'r9', name:'Doble', sessions:{},
+        plan:[{ num:1, title:'Semana 1', days: Array.from({length:9}, (_,i) => dia(100+i,'D'+i,'Full',[['Burpees','3×10']])) }] }] });
+      verRutinaDetalle('r9');
+      r.nueve = document.querySelector('#rutina-cliente .dias-cliente').textContent.replace(/\s+/g,' ');
+      abrirDiasCliente();
+      r.nueveSelect = document.querySelector('#rutina-cliente .dias-cliente select').value;
       cerrarDetalleCliente();
+      r.todoCerrado = ventana.classList.contains('hidden')
+        && document.getElementById('cliente-detalle').classList.contains('hidden');
       return r;
     });
-    ok(ficha.plegadoAlEntrar, 'al abrir la ficha, su plan sigue plegado como siempre');
-    ok(ficha.abierto && ficha.distancia !== null && ficha.distancia < 140,
-       'tocar una rutina abre su plan y te lleva hasta él (a '+ficha.distancia+' px del borde)');
-    // S1 ya está registrada (enseña lo que hizo, no el plan): se miran días pendientes.
-    ok(/Sentadilla/.test(ficha.textoPlan) && /Remo/.test(ficha.textoPlan),
-       'con los ejercicios de los días pendientes a la vista');
+    ok(ficha.ficha.sinPlan && ficha.ficha.ventanaCerrada && /Sus rutinas/.test(ficha.ficha.texto),
+       'la ficha es de la persona: lista sus rutinas y ya no lleva el plan dentro');
+    ok(ficha.ventana.abierta && ficha.ventana.encima,
+       'tocar una rutina abre su propia ventana, por encima de la ficha');
+    ok(ficha.ventana.volver === 'Volver a Laura', 'con "Volver a Laura" arriba a la izquierda');
+    ok(ficha.ventana.plan && /Sentadilla/.test(ficha.ventana.texto) && /Remo/.test(ficha.ventana.texto),
+       'dentro, su plan desplegado con los ejercicios de los días pendientes');
+    ok(ficha.ventana.activar, 'y el botón de activarla, que es de la rutina');
+    ok(ficha.ventana.fichaSinMover, 'la ficha no se ha desplazado por debajo');
     ok(/Entrena 5 días por semana/.test(ficha.editor.texto) && ficha.editor.select,
-       'dentro del plan dice cuántos días entrena y deja elegir otros');
+       'dice cuántos días entrena y deja elegir otros');
     ok(/Ya entrena 5 días/.test(ficha.mismosDias), 'elegir los mismos días lo dice en vez de proponer nada');
     ok(ficha.propuesta.sesiones === 3 && /la 2, la 3/.test(ficha.propuesta.texto) && ficha.propuesta.aplicar,
        'a 3 días: propuesta editable de 3 sesiones, solo para las semanas sin empezar');
-    ok(ficha.cerrado, 'y cancelar lo deja como estaba');
+    ok(ficha.cancelado, 'cancelar lo deja como estaba');
+    ok(ficha.alVolver.ventanaCerrada && ficha.alVolver.fichaSigue,
+       'y "Volver" cierra la ventana y deja la ficha donde estaba');
+    ok(/9 sesiones/.test(ficha.nueve) && !/9 días/.test(ficha.nueve),
+       '🔴 una semana de 9 sesiones ya no dice "9 días por semana": '+JSON.stringify(ficha.nueve));
+    ok(ficha.nueveSelect === '7', 'y al cambiar días parte de 7, el máximo posible');
+    ok(ficha.todoCerrado, 'cerrar la ficha cierra también la ventana de la rutina');
 
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')

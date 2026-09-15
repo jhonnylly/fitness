@@ -921,6 +921,8 @@ textarea{resize:vertical;min-height:60px;}
   stroke-linecap:round;stroke-linejoin:round;}
 .btn-volver:active{opacity:.55;}
 .comp-barra .btn-volver{margin:0;min-height:0;padding:4px 8px 4px 0;color:#c4b5fd;font-size:13.5px;}
+.routine-panel-header .btn-volver{margin:0;min-height:0;padding:4px 10px 4px 0;color:#c4b5fd;font-size:15px;}
+.rutina-flecha{flex:none;width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
 
 /* ── Instalar en iPhone, paso a paso (15/09/2026) ──
    Un párrafo decía "toca Compartir", pero en el Safari nuevo Compartir ya no
@@ -1313,7 +1315,7 @@ textarea{resize:vertical;min-height:60px;}
     <div class="card">
       <div class="section-title">Días de entrenamiento</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
-        Tu rutina tiene ahora <b id="cfg-dias-actual" style="color:var(--text);">—</b> días por semana.
+        Tu rutina tiene ahora <b id="cfg-dias-actual" style="color:var(--text);">—</b> por semana.
         Cambiarlo reorganiza las semanas que <b>todavía no has empezado</b>; lo
         ya entrenado no se toca.
       </div>
@@ -1998,6 +2000,19 @@ textarea{resize:vertical;min-height:60px;}
     <div class="card"><p style="font-size:13px;color:var(--muted);">Cargando...</p></div>
   </div>
 </div>
+
+<!-- Una rutina del cliente, en su propia ventana (15/09/2026). Antes todo
+     —resumen, cargas, plan y medidas— iba dentro de la ficha y al tocar una
+     rutina se deslizaba hacia abajo: la ficha se hacía larguísima y Jhon vio
+     que "podía confundir". Ahora la ficha es de la PERSONA y esto es de la
+     RUTINA. Encima de la ficha (z-index 320 contra 300) y con volver arriba a
+     la izquierda: al cerrar, la ficha sigue donde estaba. -->
+<div id="rutina-cliente" class="routine-panel hidden" style="z-index:320;">
+  <div class="routine-panel-header">
+    <button class="btn-volver" onclick="cerrarRutinaCliente()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span id="rutina-cliente-volver">Volver a la ficha</span></button>
+  </div>
+  <div style="padding:12px;flex:1;overflow-y:auto;" id="rutina-cliente-cuerpo"></div>
+</div>
 <div id="rest-timer" class="hidden">
   <div class="timer-ring">
     <svg width="48" height="48" viewBox="0 0 48 48">
@@ -2625,7 +2640,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 19:02';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 19:15';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5369,6 +5384,16 @@ function ultimoPeso(){
    cambio seguiría diciendo el número viejo y parecería que no se aplicó. */
 function diasPorSemanaActuales(){ return diasPorSemanaDe(getActive()); }
 
+/* Lo que se cuenta son SESIONES por semana, y una semana puede tener más de 7
+   (se añaden con "+ Añadir sesión"). Salía "Entrena 9 días por semana", que
+   no existe; lo vio Jhon el 15/09/2026. Hasta 7 se leen como días; por encima
+   se dice lo que son. */
+function textoDiasSemana(n){
+  if(!n) return '—';
+  if(n>7) return n+' sesiones';
+  return n+(n===1?' día':' días');
+}
+
 /* De CUALQUIER rutina, no solo la activa: la ficha del cliente la usa con la
    rutina del cliente que el entrenador está mirando (15/09/2026). */
 function diasPorSemanaDe(act){
@@ -5410,9 +5435,10 @@ function pintarConfig(){
 
   const dias=diasPorSemanaActuales();
   const elAct=document.getElementById('cfg-dias-actual');
-  if(elAct)elAct.textContent=dias||'—';
+  if(elAct)elAct.textContent=textoDiasSemana(dias);
   const sel=document.getElementById('cfg-dias');
-  if(sel&&dias)sel.value=String(dias);
+  // El desplegable llega a 7: con 9 sesiones se quedaba en blanco.
+  if(sel&&dias)sel.value=String(Math.min(dias,7));
   cancelarCambioDias();
 }
 
@@ -9022,6 +9048,7 @@ window.cerrarDetalleCliente = function(){
   // siguiente. Mismo motivo que cerrarVigilancias() con las rutinas.
   if(detalle.unsubFotos){ detalle.unsubFotos(); detalle.unsubFotos = null; }
   if(window._detalleChart){ window._detalleChart.destroy(); window._detalleChart = null; }
+  document.getElementById('rutina-cliente').classList.add('hidden');
   document.getElementById('cliente-detalle').classList.add('hidden');
 };
 
@@ -9040,12 +9067,21 @@ window.marcarMedidasAbierto = function(abierto){ detalle.medidasAbierto = !!abie
 window.verSemanaDetalle = function(num){ detalle.semana = parseInt(num); detalle.editando = null; pintarDetalle(); };
 
 window.verRutinaDetalle = function(id){
-  /* Tocar una rutina lleva a SU PLAN, abierto y a la vista: al elegirla lo que
-     se quiere es ver sus ejercicios, y el plan estaba plegado varias tarjetas
-     más abajo (lo pidió Jhon, 15/09/2026). */
+  /* Tocar una rutina abre SU VENTANA (15/09/2026). Primero se deslizaba hasta
+     el plan dentro de la ficha, y Jhon lo vio al probarlo: la ficha se hacía
+     larguísima y "podía confundir en un futuro". */
   detalle.viendo = id; detalle.ejercicio = null; detalle.semana = null;
   detalle.editando = null; detalle.dias = null;
-  detalle.planAbierto = true; detalle.saltarAlPlan = true;
+  document.getElementById('rutina-cliente').classList.remove('hidden');
+  document.getElementById('rutina-cliente-cuerpo').scrollTop = 0;
+  pintarDetalle();
+};
+
+window.cerrarRutinaCliente = function(){
+  detalle.dias = null;
+  detalle.editando = null;
+  if(window._detalleChart){ window._detalleChart.destroy(); window._detalleChart = null; }
+  document.getElementById('rutina-cliente').classList.add('hidden');
   pintarDetalle();
 };
 
@@ -9093,23 +9129,48 @@ function pintarDetalle(){
      de la ficha, en "Acciones"; Jhon pidió subirlos aquí (13/09/2026). Por eso
      la tarjeta sale también con UNA rutina: si no, con una sola no habría
      dónde añadir la segunda. */
-  partes.push('<div class="card"><div class="section-title">Rutina que estás viendo</div>' +
+  /* Cada rutina abre SU ventana (15/09/2026): activar, cargas, plan y medidas
+     son de la rutina y viven allí. Aquí solo la lista y añadir otra. */
+  partes.push('<div class="card"><div class="section-title">Sus rutinas</div>' +
+    '<div style="font-size:12px;color:var(--muted);margin:-4px 0 4px;">Toca una para ver su plan, sus cargas y sus medidas.</div>' +
     detalle.rutinas.map(x => {
       const p = resumenProgreso(x);
-      return `<button class="preset-op${x.id===r.id?' elegida':''}" data-id="${escaparHTML(x.id)}" onclick="verRutinaDetalle(this.dataset.id)">
-        <div class="preset-op-name">${escaparHTML(x.name||'(sin nombre)')}${esRutinaActiva(x)?' <span style="color:var(--green);font-size:10px;">· activa</span>':''}</div>
-        <div class="preset-op-meta">${p.hechas}/${p.total} sesiones · ${escaparHTML(origenRutina(x))}</div>
+      const activa = esRutinaActiva(x);
+      return `<button class="preset-op${activa?' elegida':''}" data-id="${escaparHTML(x.id)}" onclick="verRutinaDetalle(this.dataset.id)">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div class="preset-op-name">${escaparHTML(x.name||'(sin nombre)')}${activa?' <span style="color:var(--green);font-size:10px;">· activa</span>':''}</div>
+            <div class="preset-op-meta">${p.hechas}/${p.total} sesiones · ${escaparHTML(origenRutina(x))}</div>
+          </div>
+          <svg class="rutina-flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </div>
       </button>`;
     }).join('') +
-    (esRutinaActiva(r) ? '' : `<button class="btn btn-primary" style="margin-top:10px;"
-        data-uid="${escaparHTML(detalle.uid)}" data-rid="${escaparHTML(r.id)}" data-nombre="${escaparHTML(r.name||'')}"
-        onclick="activarRutinaCliente(this.dataset.uid,this.dataset.rid,this)">Activar esta rutina para ${escaparHTML(detalle.nombre)}</button>`) +
     `<button class="btn btn-secondary" style="margin-top:8px;color:var(--accent);border-color:var(--accent);"
         data-uid="${escaparHTML(detalle.uid)}" data-nombre="${escaparHTML(detalle.nombre||'')}"
         onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Añadir rutina</button>` +
     '</div>');
 
-  // Resumen
+  partes.push(tarjetaFotosCliente());
+  partes.push(accionesCliente());
+  cuerpo.innerHTML = partes.join('');
+  pintarRutinaCliente();
+}
+
+/* La ventana de UNA rutina del cliente (#rutina-cliente). Se repinta junto con
+   la ficha cada vez que llega algo del cliente, así que lo que registre con la
+   ventana abierta también se ve. */
+function pintarRutinaCliente(){
+  const panel = document.getElementById('rutina-cliente');
+  const cuerpo = document.getElementById('rutina-cliente-cuerpo');
+  if(!panel || !cuerpo || panel.classList.contains('hidden')) return;
+  const r = detalle.rutinas.find(x => x.id === detalle.viendo);
+  if(!r){ window.cerrarRutinaCliente(); return; }
+  document.getElementById('rutina-cliente-volver').textContent = 'Volver a ' + (detalle.nombre || 'la ficha');
+  const prog = resumenProgreso(r);
+  const partes = [];
+
+  // Resumen, y activarla: es lo primero que se decide sobre una rutina.
   partes.push(`<div class="card">
     <div class="section-title">${escaparHTML(r.name||'(sin nombre)')}</div>
     <div class="stat-grid">
@@ -9120,6 +9181,11 @@ function pintarDetalle(){
     <div style="font-size:12px;color:var(--muted);">${escaparHTML(prog.ultima)}</div>
     <div style="font-size:11px;color:var(--muted);margin-top:4px;opacity:.7;">${escaparHTML(origenRutina(r))}</div>
     ${prog.total === 0 ? '<div class="msg msg-err" style="margin-top:8px;">Esta rutina no tiene ninguna sesión: tu cliente no puede entrenar con ella. Asígnale otra.</div>' : ''}
+    ${esRutinaActiva(r)
+      ? '<div style="margin-top:10px;"><span class="badge badge-green">Es su rutina activa</span></div>'
+      : `<button class="btn btn-primary" style="margin-top:10px;"
+          data-uid="${escaparHTML(detalle.uid)}" data-rid="${escaparHTML(r.id)}" data-nombre="${escaparHTML(r.name||'')}"
+          onclick="activarRutinaCliente(this.dataset.uid,this.dataset.rid,this)">Activar esta rutina para ${escaparHTML(detalle.nombre)}</button>`}
   </div>`);
 
   // Gráfica de cargas — antes que el plan: es lo que se consulta a diario
@@ -9168,23 +9234,14 @@ function pintarDetalle(){
                    : (hecha ? pintarSesionCliente(d, ses) : pintarPlanSesion(d))}
       </div>`;
     }).join('');
-    /* PLEGADO por defecto. Desplegado ocupaba pantallas enteras y empujaba
-       "Acciones" —asignar rutina, pausar, desvincular— tan abajo que Jhon lo
-       describió como "imperceptible o como si no existiera para quien no
-       sabe". El plan es lo que más sitio ocupa y lo que menos se toca; las
-       acciones son a lo que se viene.
-
-       Se queda abierto si el entrenador está editando una sesión: cerrarle el
-       editor bajo los dedos en cada repintado sería peor que el problema.
-       Y el estado se guarda en `detalle`, porque pintarDetalle() se ejecuta
-       con cada cambio que llega del cliente y si no se cerraría solo. */
-    const abierto = detalle.editando != null || detalle.planAbierto === true || !!detalle.dias;
+    /* Ya no va plegado: estaba plegado para no empujar las acciones de la
+       ficha fuera de la pantalla, y desde que la rutina tiene su propia
+       ventana (15/09/2026) el plan es justo a lo que se viene aquí. */
     partes.push(`<div class="card" id="detalle-plan">
-      <details ${abierto ? 'open' : ''} ontoggle="marcarPlanAbierto(this.open)">
-        <summary class="det-resumen">
-          <span class="section-title" style="margin:0;">Su plan</span>
-          <span class="det-pista">${prog.hechas}/${prog.total} sesiones · semana ${enCurso}</span>
-        </summary>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span class="section-title" style="margin:0;">Su plan</span>
+        <span class="det-pista">${prog.hechas}/${prog.total} sesiones · semana ${enCurso}</span>
+      </div>
         <div style="margin-top:12px;">
           ${bloqueDiasCliente(r)}
           <div class="sem-selector">${selector}</div>
@@ -9193,7 +9250,6 @@ function pintarDetalle(){
           </div>
           ${dias}
         </div>
-      </details>
     </div>`);
   }
 
@@ -9206,41 +9262,36 @@ function pintarDetalle(){
     const pista = (ultima.peso!=null ? ultima.peso+' kg' : '')
                 + (ultima.peso!=null && ultima.cintura!=null ? ' · ' : '')
                 + (ultima.cintura!=null ? ultima.cintura+' cm' : '');
+    // Sin plegar, como el plan: en su ventana no empuja nada fuera de la vista.
     partes.push(`<div class="card">
-      <details ${detalle.medidasAbierto === true ? 'open' : ''} ontoggle="marcarMedidasAbierto(this.open)">
-        <summary class="det-resumen">
-          <span class="section-title" style="margin:0;">Sus medidas</span>
-          <span class="det-pista">${med.length} registro${med.length===1?'':'s'}${pista?' · última: '+escaparHTML(pista):''}</span>
-        </summary>
-        <div style="margin-top:12px;">` +
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span class="section-title" style="margin:0;">Sus medidas</span>
+        <span class="det-pista">${med.length} registro${med.length===1?'':'s'}${pista?' · última: '+escaparHTML(pista):''}</span>
+      </div>
+      <div style="margin-top:12px;">` +
       med.map(m => `<div class="week-row">
         <span style="font-size:12.5px;">Semana ${m.semana}${m.fecha?' · '+escaparHTML(m.fecha):''}</span>
         <span style="font-size:12.5px;color:var(--muted);">${m.peso!=null?m.peso+' kg':''}${m.peso!=null&&m.cintura!=null?' · ':''}${m.cintura!=null?m.cintura+' cm':''}</span>
-      </div>`).join('') + '</div></details></div>');
+      </div>`).join('') + '</div></div>');
   }
 
-  // Fotos
-  /* Las fotos son del cliente, no de esta rutina: salen de detalle.fotos
-     (su colección propia) y por eso no cambian al mirar otra rutina suya. */
+  cuerpo.innerHTML = partes.join('');
+  if(detalle.ejercicio) pintarGraficaCargas(r, detalle.ejercicio);
+}
+
+/* Las fotos son del cliente, no de una rutina: salen de detalle.fotos (su
+   colección propia) y por eso se quedan en la ficha y no en la ventana de la
+   rutina. */
+function tarjetaFotosCliente(){
   const fotos = detalle.fotos || [];
-  if(fotos.length){
-    partes.push(`<div class="card"><div class="section-title">Sus fotos</div>
+  if(!fotos.length) return '';
+  return `<div class="card"><div class="section-title">Sus fotos</div>
       <div class="foto-tira">
       ${fotos.map(f => `<div class="foto-item"><div class="foto-toque">
              <img src="${escaparHTML(f.url||'')}" alt="">
              <span class="foto-fecha">${escaparHTML(f.fecha||'—')}</span>
            </div></div>`).join('')}
-    </div></div>`);
-  }
-
-  partes.push(accionesCliente());
-  cuerpo.innerHTML = partes.join('');
-  if(detalle.saltarAlPlan){
-    detalle.saltarAlPlan = false;
-    const plan = document.getElementById('detalle-plan');
-    if(plan) plan.scrollIntoView({ behavior:'smooth', block:'start' });
-  }
-  if(detalle.ejercicio) pintarGraficaCargas(r, detalle.ejercicio);
+    </div></div>`;
 }
 
 /* Asignar y desvincular vivían en la tarjeta de la lista. Al pasar la lista a
@@ -9542,7 +9593,9 @@ function bloqueDiasCliente(r){
   const actuales = diasPorSemanaDe(r);
   const d = detalle.dias;
   const cab = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <span style="font-size:13px;">Entrena <b>${actuales || '—'}</b> día${actuales === 1 ? '' : 's'} por semana</span>
+      <span style="font-size:13px;">${actuales > 7
+        ? 'Su semana tiene <b>' + actuales + ' sesiones</b>, más que días'
+        : 'Entrena <b>' + textoDiasSemana(actuales) + '</b> por semana'}</span>
       ${d ? '' : '<button class="btn-sm" onclick="abrirDiasCliente()">Cambiar días</button>'}
     </div>`;
   if(!d) return `<div class="dias-cliente">${cab}</div>`;
@@ -9584,8 +9637,8 @@ const msgDias = (clase, texto) => `<div class="msg ${clase}" style="margin-top:8
 window.abrirDiasCliente = function(){
   const r = rutinaViendo();
   if(!r) return;
-  detalle.dias = { destino: diasPorSemanaDe(r) || 3, propuesta: null, info: '', msg: '' };
-  detalle.planAbierto = true;
+  // Como mucho 7: una semana con más sesiones que días no es un destino posible.
+  detalle.dias = { destino: Math.min(diasPorSemanaDe(r) || 3, 7), propuesta: null, info: '', msg: '' };
   pintarDetalle();
 };
 window.cerrarDiasCliente = function(){ detalle.dias = null; pintarDetalle(); };

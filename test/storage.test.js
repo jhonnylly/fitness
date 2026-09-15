@@ -79,7 +79,7 @@ const puente = `
   migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
   repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
   semanasSinEmpezarDe, diasPorSemanaDe, modeloParaDias, aplicarPropuestaARutina, htmlPropuesta,
-  textoInfoReparto,
+  textoInfoReparto, textoDiasSemana,
   claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas, getPrevKgs,
   ejerciciosDeRutina, progresoReto,
   leerDecisionSync, guardarDecisionSync,
@@ -778,6 +778,12 @@ const ok = (cond, msg) => {
   const dbAntes = JSON.stringify(app.DB);
 
   ok(app.diasPorSemanaDe(deCliente) === 5, 'cuenta los días de una rutina cualquiera: 5');
+  /* Salía "Entrena 9 días por semana" (Jhon, 15/09): lo que se cuenta son
+     sesiones, y una semana puede tener más de 7. */
+  ok(app.textoDiasSemana(1) === '1 día' && app.textoDiasSemana(5) === '5 días' && app.textoDiasSemana(7) === '7 días',
+     'hasta 7 se leen como días');
+  ok(app.textoDiasSemana(9) === '9 sesiones', '🔴 por encima de 7 dice sesiones: "9 días por semana" no existe');
+  ok(app.textoDiasSemana(0) === '—', 'y sin plan, una raya');
   ok(app.semanasSinEmpezarDe(deCliente).map(w => w.num).join() === '2,3',
      'la semana 1, con una sesión registrada, no cuenta como sin empezar');
   const propC = app.repartirSesiones(app.modeloParaDias(deCliente), 3);
