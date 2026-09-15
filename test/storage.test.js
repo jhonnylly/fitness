@@ -79,7 +79,7 @@ const puente = `
   migrarFotosDeRutinas, fotosOrdenadas, fechaAMs, nuevoIdFoto,
   repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
   semanasSinEmpezarDe, diasPorSemanaDe, modeloParaDias, aplicarPropuestaARutina, htmlPropuesta,
-  textoInfoReparto, textoDiasSemana,
+  textoInfoReparto, textoDiasSemana, quitarDiaDelPlan,
   claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas, getPrevKgs,
   ejerciciosDeRutina, progresoReto,
   leerDecisionSync, guardarDecisionSync,
@@ -812,6 +812,30 @@ const ok = (cond, msg) => {
   ok(deCliente.plan[1].days.flatMap(d => d.ex).filter(e => e[0] !== 'Press banca').every(e => e.length === 2),
      'y los ejercicios sin nota se guardan como siempre, en par');
   ok(JSON.stringify(app.DB) === dbAntes, 'y no toca para nada los datos propios (DB)');
+
+  console.log('\n17d. el entrenador quita un día PENDIENTE del plan de su cliente');
+  /* Jhon (15/09/2026): borrar sesiones como entrenador, y solo días que el
+     cliente aún no ha hecho. Lo registrado no se toca nunca. */
+  const conHecha = {
+    plan: [
+      { num: 1, days: [{ s: 1, name: 'S1 · Upper', ex: [] }, { s: 2, name: 'S2 · Lower', ex: [] }] },
+      { num: 2, days: [{ s: 3, name: 'S3 · Push', ex: [] }, { s: 4, name: 'S4 · Pull', ex: [] },
+                       { s: 5, name: 'S5 · Cardio', ex: [] }] },
+    ],
+    sessions: { 1: { date: '01/09/2026', exercises: [] } },
+  };
+  const antesHecha = JSON.stringify(conHecha);
+  const negada = app.quitarDiaDelPlan(conHecha, 1);
+  ok(!negada.ok && negada.motivo === 'registrada', '🔴 una sesión ya entrenada NO se quita');
+  ok(JSON.stringify(conHecha) === antesHecha, 'y el plan queda exactamente igual');
+  ok(!app.quitarDiaDelPlan(conHecha, 99).ok, 'una que no existe tampoco, sin romper nada');
+
+  const quitada = app.quitarDiaDelPlan(conHecha, '4');       // llega como texto desde el botón
+  ok(quitada.ok && quitada.semana === 2 && quitada.nombre === 'S4 · Pull', 'una pendiente se quita, y dice cuál y de qué semana');
+  ok(conHecha.plan[1].days.map(d => d.s).join() === '3,5', 'desaparece solo ese día; el resto conserva su id');
+  ok(conHecha.plan[1].days.map(d => d.name).join() === 'S3 · Push,S4 · Cardio',
+     'y los nombres se renumeran en todo el plan (S5 pasa a S4)');
+  ok(conHecha.sessions[1] && conHecha.plan[0].days.length === 2, 'lo registrado sigue intacto');
 
   console.log('\n18. cambiar los días no deja sesiones imposibles');
   // Reportado por Jhon usándola: al pasar de 5 días a 4, dos sesiones se

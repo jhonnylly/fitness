@@ -2640,7 +2640,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 19:15';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 19:25';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7287,6 +7287,23 @@ function renumerarNombresSesiones(act){
   }));
 }
 
+/* Quitar un día del plan de CUALQUIER rutina, solo si todavía no se ha
+   entrenado. La usa el entrenador con la rutina de un cliente (15/09/2026):
+   ahí borrar lo registrado sería borrarle historial a otra persona, así que ni
+   se ofrece. Devuelve {ok, motivo, nombre, semana} y no guarda: la rutina del
+   cliente se guarda con updateDoc, no con save(). */
+function quitarDiaDelPlan(act,s){
+  s=+s;
+  if(!act)return {ok:false,motivo:'sin-rutina'};
+  if((act.sessions||{})[s])return {ok:false,motivo:'registrada'};
+  const week=(act.plan||[]).find(w=>(w.days||[]).some(d=>d.s===s));
+  if(!week)return {ok:false,motivo:'no-existe'};
+  const dia=week.days.find(d=>d.s===s);
+  week.days=week.days.filter(d=>d.s!==s);
+  renumerarNombresSesiones(act);
+  return {ok:true,nombre:dia.name||'',semana:week.num};
+}
+
 function deleteSession(weekNum,s){
   const act=getActive();
   if(!act)return;
@@ -9228,6 +9245,7 @@ function pintarRutinaCliente(){
           <span style="display:flex;gap:6px;align-items:center;">
             <span class="badge ${hecha?'badge-green':'badge-accent'}">${hecha ? escaparHTML(ses.date||'hecha') : 'pendiente'}</span>
             ${editando ? '' : `<button class="btn-sm" data-s="${d.s}" onclick="editarSesionCliente(this.dataset.s)">Editar</button>`}
+            ${editando || hecha ? '' : `<button class="btn-sm btn-danger" data-s="${d.s}" onclick="quitarDiaCliente(this.dataset.s)">Borrar</button>`}
           </span>
         </div>
         ${editando ? pintarEditorEjercicios(d)
@@ -9687,6 +9705,42 @@ window.moverEjercicioPropuestaCliente = function(i, j, destino){
   const [ex] = p[i].ex.splice(j, 1);
   p[k].ex.push(ex);
   pintarDetalle();
+};
+
+/* Borrar un día PENDIENTE del plan del cliente (15/09/2026, pedido por Jhon).
+   Solo pendientes: los ya entrenados no llevan el botón, y quitarDiaDelPlan()
+   se niega igualmente si llega uno. Si era el día al que el entrenador le
+   había mandado con "Decirle algo", sesionImpuesta() lo ignora al no
+   encontrarlo: el aviso de cambio de día desaparece solo. */
+window.quitarDiaCliente = async function(s){
+  const r = rutinaViendo();
+  if(!r) return;
+  const buscado = buscarDiaEnPlan(r, s);
+  if(!buscado) return;
+  const nombre = buscado.dia.name || 'esta sesión';
+  if(!confirm('¿Quitar "' + nombre + '" de la semana ' + buscado.semana + ' del plan de '
+      + (detalle.nombre || 'tu cliente') + '?\n\nNo la ha entrenado todavía, así que no pierde '
+      + 'nada de su historial.')) return;
+  // Sobre una copia: si Firestore lo rechaza, lo que se ve no puede quedar cambiado.
+  const copia = { plan: JSON.parse(JSON.stringify(r.plan || [])), sessions: r.sessions || {} };
+  const res = quitarDiaDelPlan(copia, s);
+  if(!res.ok){
+    aviso(res.motivo === 'registrada'
+      ? 'No se puede: esa sesión ya la ha entrenado.'
+      : 'No se encontró esa sesión en el plan.', 'mal');
+    return;
+  }
+  try{
+    await updateDoc(doc(fdb,'users',detalle.uid,'routines',r.id), {
+      plan: window.planParaFirestore(copia.plan)   // Firestore no admite arrays anidados
+    });
+    r.plan = copia.plan;
+    aviso('«' + nombre + '» quitada del plan', 'bien');
+    pintarDetalle();
+  }catch(e){
+    console.error('[entrenador] no se pudo quitar la sesión del plan del cliente', e);
+    aviso('No se pudo borrar: ' + (e.code || e.message), 'mal');
+  }
 };
 
 window.aplicarDiasCliente = async function(){

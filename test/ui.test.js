@@ -1381,6 +1381,29 @@ async function appLista(page, url){
     ok(ficha.nueveSelect === '7', 'y al cambiar días parte de 7, el máximo posible');
     ok(ficha.todoCerrado, 'cerrar la ficha cierra también la ventana de la rutina');
 
+    console.log('\n13n. El entrenador puede borrar días pendientes del plan');
+    /* Jhon (15/09): borrar sesiones como entrenador, solo las que el cliente aún
+       no ha hecho. Aquí se mira que el botón esté solo donde toca; quitar de
+       verdad escribe en Firestore y la lógica se prueba en storage.test.js §17d.
+       No se pulsa: abriría un confirm(), que en la prueba bloquea la página. */
+    const borrar = await page.evaluate(()=>{
+      const dia = (s, nombre) => ({ s, name:'S'+s+' · '+nombre, type:'Full', ex:[['Burpees','3×10']] });
+      __pintarDetallePrueba({ nombre:'Laura', rutinas:[{ id:'rb', name:'Con hechas',
+        plan:[{ num:1, title:'Semana 1', days:[dia(1,'Upper'), dia(2,'Lower'), dia(3,'Push')] }],
+        sessions:{ 1:{ date:'01/09', exercises:[] } } }] });
+      verRutinaDetalle('rb');
+      const filas = [...document.querySelectorAll('#rutina-cliente .week-row')].map(f => ({
+        nombre: f.querySelector('span').textContent.trim(),
+        borrar: !!f.querySelector('button[onclick^="quitarDiaCliente"]'),
+        editar: !!f.querySelector('button[onclick^="editarSesionCliente"]') }));
+      cerrarDetalleCliente();
+      return { filas, funcion: typeof quitarDiaCliente === 'function' };
+    });
+    const fila = n => borrar.filas.find(f => f.nombre.startsWith(n)) || {};
+    ok(borrar.funcion, 'existe la acción de quitar un día del plan del cliente');
+    ok(fila('S2').borrar && fila('S3').borrar, 'los días pendientes llevan "Borrar"');
+    ok(!fila('S1').borrar && fila('S1').editar, '🔴 el día ya entrenado NO lleva "Borrar" (su historial no se toca)');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
