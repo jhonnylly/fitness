@@ -1442,6 +1442,56 @@ async function appLista(page, url){
     ok(volverTodo.trasVolver.etiqueta === 'Volver a la rutina' && volverTodo.trasVolver.abierto && volverTodo.cerrado,
        'y da un paso atrás cada vez: de un músculo a los músculos, y de ahí fuera');
 
+    console.log('\n13p. Tocar tu foto abre tu cuenta: perfil y sesión juntos');
+    /* Jhon (15/09): quitar el botón de la nube y que la foto de la cabecera
+       abra todo lo de la cuenta: iniciar o cerrar sesión, cambiar la foto,
+       verla en grande y el nombre. */
+    const cuenta = await page.evaluate(()=>{
+      const r = {};
+      const panel = document.getElementById('auth-panel');
+      if(!panel.classList.contains('hidden')) toggleAuthPanel();
+      r.sinNube = !document.getElementById('account-btn');
+      document.getElementById('profile-pic').click();
+      r.abre = !panel.classList.contains('hidden');
+      r.titulo = panel.querySelector('.routine-panel-header h2').textContent.trim();
+      const av = document.getElementById('cuenta-avatar');
+      r.perfil = { avatar: !!av && panel.contains(av),
+                   nombre: panel.contains(document.getElementById('profile-name')),
+                   unSoloNombre: document.querySelectorAll('#profile-name').length === 1,
+                   cambiarFoto: /Cambiar foto/.test(panel.textContent),
+                   cambiarNombre: /Cambiar nombre/.test(panel.textContent),
+                   sesion: panel.contains(document.getElementById('auth-logged-out'))
+                           && panel.contains(document.getElementById('auth-logged-in')) };
+      const antes = DB.profilePic;
+      DB.profilePic = null; renderProfilePic();
+      r.sinFoto = { iniciales: av.classList.contains('sin-foto') && !av.querySelector('img'),
+                    pista: document.getElementById('cuenta-avatar-pista').textContent };
+      const px = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+      DB.profilePic = px; renderProfilePic();
+      r.conFoto = { dosSitios: !!av.querySelector('img') && !!document.querySelector('#profile-pic img'),
+                    pista: document.getElementById('cuenta-avatar-pista').textContent };
+      av.click();
+      const visor = document.getElementById('visor-foto');
+      r.visorEncima = !visor.classList.contains('hidden')
+        && parseInt(getComputedStyle(visor).zIndex, 10) > parseInt(getComputedStyle(panel).zIndex, 10);
+      cerrarVisorFoto();
+      DB.profilePic = antes; renderProfilePic();
+      toggleAuthPanel();
+      return r;
+    });
+    ok(cuenta.sinNube, 'ya no está el botón de la nube en la cabecera');
+    ok(cuenta.abre && cuenta.titulo === 'TU CUENTA', 'tocar tu foto abre "Tu cuenta"');
+    ok(cuenta.perfil.avatar && cuenta.perfil.cambiarFoto && cuenta.perfil.cambiarNombre,
+       'arriba, tu perfil: la foto, cambiarla y cambiar el nombre');
+    ok(cuenta.perfil.nombre && cuenta.perfil.unSoloNombre,
+       'el nombre está aquí y solo aquí (ya no repetido en Ajustes)');
+    ok(cuenta.perfil.sesion, 'y debajo, iniciar o cerrar sesión, como siempre');
+    ok(cuenta.sinFoto.iniciales && /ponerla/.test(cuenta.sinFoto.pista),
+       'sin foto salen tus iniciales y explica cómo ponerla');
+    ok(cuenta.conFoto.dosSitios && /grande/.test(cuenta.conFoto.pista),
+       'con foto, la misma en la cabecera y en tu perfil');
+    ok(cuenta.visorEncima, 'y tocarla la abre en grande, por encima de la cuenta');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

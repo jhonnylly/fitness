@@ -268,6 +268,14 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
   align-items:center;justify-content:center;background:var(--surface);
   border:2px dashed var(--border);color:var(--muted);font-size:22px;overflow:hidden;}
 .alta-avatar img{width:100%;height:100%;object-fit:cover;}
+/* "Tu perfil" dentro de Tu cuenta: la foto grande, tocable para verla. */
+.cuenta-perfil{display:flex;gap:14px;align-items:center;}
+.cuenta-avatar{flex:none;width:84px;height:84px;border-radius:50%;overflow:hidden;padding:0;
+  border:3px solid var(--accent);background:var(--surface);cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;}
+.cuenta-avatar img{width:100%;height:100%;object-fit:cover;}
+.cuenta-avatar.sin-foto{background:var(--accent);color:#fff;font-size:28px;font-weight:800;}
+.cuenta-avatar:active{transform:scale(.96);}
 
 .aviso-coach-quien{font-size:15px;font-weight:800;color:#fff;line-height:1.2;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -979,7 +987,10 @@ textarea{resize:vertical;min-height:60px;}
   <div class="cab">
     <!-- Vacío a propósito: lo rellena renderProfilePic() con la foto o con las
          iniciales, y un 👤 aquí se vería en el parpadeo de la carga. -->
-    <div id="profile-pic" class="cab-avatar sin-foto" onclick="abrirVisorFoto()"></div>
+    <!-- Tocar tu foto abre TU CUENTA (15/09/2026, pedido por Jhon): foto, nombre
+         y sesión en un solo sitio. Antes la foto abría el visor y la cuenta
+         tenía su propio botón de nube a la derecha. -->
+    <div id="profile-pic" class="cab-avatar sin-foto" onclick="toggleAuthPanel()" role="button" aria-label="Tu cuenta"></div>
     <input type="file" id="profile-input" accept="image/*" onchange="saveProfilePic(this)" style="display:none;">
 
     <div class="cab-centro">
@@ -1001,9 +1012,9 @@ textarea{resize:vertical;min-height:60px;}
       </div>
     </div>
 
-    <!-- Iconos sin etiqueta: en 390 px no caben tres botones con texto y la
-         cabecera es lo que estaba de más. El title es para el escritorio. -->
-    <button id="account-btn" class="cab-ico" onclick="toggleAuthPanel()" title="Cuenta"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></button>
+    <!-- Icono sin etiqueta: en 390 px no cabe con texto. El title es para el
+         escritorio. El de la nube (cuenta) se fue: la cuenta se abre tocando
+         tu foto, que es donde uno busca lo suyo. -->
     <button id="config-btn" class="cab-ico" onclick="toggleConfigPanel()" title="Ajustes"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></button>
   </div>
 </header>
@@ -1012,9 +1023,29 @@ textarea{resize:vertical;min-height:60px;}
 <div id="auth-panel" class="routine-panel hidden">
   <div class="routine-panel-header">
     <button class="btn-volver" onclick="toggleAuthPanel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver</span></button>
-    <h2>CUENTA</h2>
+    <h2>TU CUENTA</h2>
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
+
+    <!-- Tu perfil. Siempre arriba, con sesión o sin ella: la foto y el nombre
+         son tuyos también sin cuenta (se guardan en el dispositivo). Vino de
+         dos sitios: el visor que abría la foto de la cabecera y "Tus datos" en
+         Ajustes, donde estaba el nombre. -->
+    <div class="card">
+      <div class="cuenta-perfil">
+        <button type="button" id="cuenta-avatar" class="cuenta-avatar sin-foto" onclick="abrirVisorFoto()" aria-label="Tu foto de perfil"></button>
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Tu perfil</div>
+          <a href="#" id="profile-name" onclick="editProfileName();return false;"
+             style="display:block;font-size:18px;font-weight:800;color:var(--text);margin-top:2px;word-break:break-word;">—</a>
+          <div class="acciones-fila" style="margin-left:0;margin-top:8px;flex-wrap:wrap;">
+            <button class="btn-sm" onclick="document.getElementById('profile-input').click()">Cambiar foto</button>
+            <button class="btn-sm" onclick="editProfileName()">Cambiar nombre</button>
+          </div>
+          <div id="cuenta-avatar-pista" style="font-size:11px;color:var(--muted);margin-top:6px;"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- Estado: sin sesión -->
     <div id="auth-logged-out">
@@ -1292,13 +1323,9 @@ textarea{resize:vertical;min-height:60px;}
       <input type="text" inputmode="numeric" id="cfg-altura" placeholder="175" onchange="guardarAltura(this.value)">
       <!-- El peso NO se escribe aquí: se registra por semana en Medidas y
            alimenta la gráfica. Dos sitios para el mismo dato se contradicen. -->
-      <!-- Se editaba tocando el nombre bajo la foto de la cabecera, que la
-           versión compacta ya no tiene. Es dato de perfil: su sitio es este. -->
+      <!-- El nombre vivía aquí; desde el 15/09/2026 está en "Tu cuenta", junto a
+           la foto (se abre tocando tu foto en la cabecera). -->
       <div style="margin-top:10px;font-size:12px;color:var(--muted);">
-        Nombre: <a href="#" id="profile-name" onclick="editProfileName();return false;"
-                   style="color:var(--accent);font-weight:700;">—</a>
-      </div>
-      <div style="margin-top:6px;font-size:12px;color:var(--muted);">
         Peso: <b id="cfg-peso" style="color:var(--text);">—</b>
         <a href="#" onclick="irAMedidas();return false;" style="color:var(--accent);font-weight:700;margin-left:6px;">Registrar en Medidas</a>
       </div>
@@ -2652,7 +2679,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 19:40';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 19:53';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3342,13 +3369,21 @@ function cerrarVisorFoto(){
    cada sistema a su manera y en Android sale azul, el único azul de una app
    violeta. Además las iniciales son tuyas y la silueta no es de nadie. */
 function renderProfilePic(){
-  const el=document.getElementById('profile-pic');
-  if(!el)return;
   const hayFoto=!!DB.profilePic;
-  el.classList.toggle('sin-foto',!hayFoto);
-  el.innerHTML=hayFoto
+  const contenido=hayFoto
     ? `<img src="${DB.profilePic}" style="width:100%;height:100%;object-fit:cover;">`
     : escaparHTML(iniciales(DB.profileName||'JHON'));   // el mismo por defecto que renderProfileName
+  // La cabecera y la tarjeta "Tu perfil" de la cuenta enseñan la misma cara.
+  ['profile-pic','cuenta-avatar'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.classList.toggle('sin-foto',!hayFoto);
+    el.innerHTML=contenido;
+  });
+  const pista=document.getElementById('cuenta-avatar-pista');
+  if(pista)pista.textContent=hayFoto
+    ? 'Toca la foto para verla en grande.'
+    : 'Aún no tienes foto: toca el círculo para ponerla.';
 }
 
 /* ── No sacar el onboarding mientras Firebase decide ──
@@ -7907,9 +7942,15 @@ function pintarSesion(user){
   $('auth-need-profile').classList.toggle('hidden', !faltaPerfil);
   if(faltaPerfil) pintarFilaAltaPerfil();
   $('auth-logged-in').classList.toggle('hidden', !dentro || faltaPerfil);
-  // Con la cabecera compacta el botón es solo el icono: el estado de sesión se
-  // dice en el title, no reescribiendo el contenido (borraría el icono).
-  $('account-btn').title = dentro ? 'Mi cuenta' : 'Cuenta';
+  /* El estado de sesión se decía en el title del botón de la nube. Ese botón ya
+     no existe (15/09/2026): la cuenta se abre tocando tu foto, así que es ella
+     la que lo dice. Comprobado antes de usarlo: cuando el botón desapareció,
+     esta línea reventaba y cortaba pintarSesion() a medias. */
+  const pic = $('profile-pic');
+  if(pic){
+    pic.title = dentro ? 'Tu cuenta (sesión iniciada)' : 'Tu cuenta';
+    pic.setAttribute('aria-label', pic.title);
+  }
 
   if(faltaPerfil){
     $('perfil-email').textContent = user.email || '';
