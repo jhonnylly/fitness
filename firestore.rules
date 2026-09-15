@@ -72,7 +72,39 @@ service cloud.firestore {
     function activo() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('suspendido', false) != true;
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('suspendido', false) != true
+        && dentroDePlazo(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('accesoHasta', null));
+    }
+
+    /* ═══ Acceso gratuito con fecha de fin (15/09/2026) ═══
+       Un entrenador que entró con un código "hasta una fecha" o "de prueba"
+       lleva `accesoHasta` en su perfil. Pasada esa fecha queda exactamente
+       igual que un suspendido, SIN que nadie tenga que hacer nada: lo decide
+       request.time, no la pantalla. Sin fecha (cortesía, o las cuentas de
+       antes) no caduca nunca. */
+    function dentroDePlazo(hasta) {
+      return hasta == null || request.time < hasta;
+    }
+
+    /* La fecha con la que nace el perfil tiene que ser la que dice su código.
+       Si no se comprobara, bastaría con no mandar `accesoHasta` para convertir
+       una prueba de 30 días en acceso para siempre.
+       - cortesía (y los códigos de antes, sin `tipo`): sin fecha.
+       - hasta: la MISMA fecha que puso el admin en el código.
+       - prueba: como mucho `dias` desde ahora. La fecha la calcula el móvil y
+         su reloj puede ir algo adelantado, así que se da un día de margen;
+         acortársela uno mismo no le da nada a nadie. */
+    function accesoSegunCodigo(altaId) {
+      return accesoParaAlta(get(/databases/$(database)/documents/altas/$(altaId)).data,
+                            request.resource.data.get('accesoHasta', null));
+    }
+    function accesoParaAlta(alta, hasta) {
+      return (alta.get('tipo', 'cortesia') == 'cortesia' && hasta == null)
+        || (alta.get('tipo', 'cortesia') == 'hasta'
+            && hasta != null && hasta == alta.get('hasta', null))
+        || (alta.get('tipo', 'cortesia') == 'prueba'
+            && hasta is timestamp
+            && hasta <= request.time + duration.value(alta.get('dias', 0) + 1, 'd'));
     }
 
     function altaValida(altaId) {
@@ -183,7 +215,8 @@ service cloud.firestore {
                     && !('suspendidoPorCoach' in request.resource.data)
                     && (
                       (request.resource.data.role == 'trainer'
-                       && altaValida(request.resource.data.altaId))
+                       && altaValida(request.resource.data.altaId)
+                       && accesoSegunCodigo(request.resource.data.altaId))
                       || (request.resource.data.role == 'client'
                           && invitacionValida(request.resource.data.inviteId,
                                               request.resource.data.trainerId))
@@ -210,15 +243,18 @@ service cloud.firestore {
          alta. isOwner() da permiso sobre todo el documento, así que los dos
          campos que otorgan privilegios hay que sacarlos a mano.
          Los pone el admin (abajo) o la consola de Firebase, nadie más. */
+      /* `accesoHasta` va en la misma lista por la misma razón: si el dueño
+         pudiera tocarlo, se alargaría la prueba él solo. */
       allow update: if (isOwner(uid)
                         && !request.resource.data.diff(resource.data)
-                              .affectedKeys().hasAny(['suspendido','admin','suspendidoPorCoach']))
-                    /* Suspender o reactivar a un entrenador por impago. Solo el
-                       admin, y solo ese campo: no puede tocarle nada más de su
-                       perfil. Es lo que sostiene el cobro. */
+                              .affectedKeys().hasAny(['suspendido','admin','suspendidoPorCoach','accesoHasta']))
+                    /* Suspender o reactivar a un entrenador por impago, o quitarle
+                       la fecha de fin cuando pasa a pagar. Solo el admin, y solo
+                       esos campos: no puede tocarle nada más de su perfil. Es lo
+                       que sostiene el cobro. */
                     || (soyAdmin()
                         && request.resource.data.diff(resource.data)
-                             .affectedKeys().hasOnly(['suspendido']))
+                             .affectedKeys().hasOnly(['suspendido','accesoHasta']))
                     || (isMyClientDoc()
                         && request.resource.data.diff(resource.data)
                              .affectedKeys().hasOnly(['activeRoutine']))

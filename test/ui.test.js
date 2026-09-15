@@ -1014,6 +1014,84 @@ async function appLista(page, url){
     ok(marcaVieja.ob && marcaVieja.marca === null,
        'con una marca vieja y sin sesión real, Firebase la borra y sale el onboarding');
 
+    console.log('\n13h. Tipos de código de alta y fin del acceso gratuito');
+    /* Quien corta el acceso de verdad son las reglas (test/rules.test.js §9).
+       Aquí: que el formulario pida lo que toca, que la fecha con la que nace
+       el perfil sea la que las reglas van a aceptar, y que al entrenador
+       vencido se le explique qué pasa en vez de dejarle botones que fallan. */
+    const tipos = await page.evaluate(()=>{
+      const v = el => !!(el && el.offsetParent !== null);
+      const DIA = 86400000, ahora = Date.now();
+      document.body.classList.add('es-entrenador','es-admin');
+      setModo('coaches');
+      const sel = document.getElementById('alta-tipo');
+      const mira = t => { sel.value = t; pintarTipoAlta();
+        return { hasta: v(document.getElementById('alta-fila-hasta')),
+                 dias: v(document.getElementById('alta-fila-dias')) }; };
+      const r = { cortesia: mira('cortesia'), hasta: mira('hasta'), prueba: mira('prueba') };
+      mira('cortesia');
+      setModo('entreno');
+      document.body.classList.remove('es-entrenador','es-admin');
+
+      r.alEntrar = {
+        cortesia: accesoAlEntrar({ tipo:'cortesia' }),
+        antiguo: accesoAlEntrar({}),
+        prueba: accesoAlEntrar({ tipo:'prueba', dias:30 }).getTime() - ahora,
+        hasta: accesoAlEntrar({ tipo:'hasta', hasta:'mismo-objeto' })
+      };
+      r.etiquetas = {
+        sinFecha: etiquetaAcceso(undefined, null),
+        futura: etiquetaAcceso('prueba', ahora + 10 * DIA),
+        pasada: etiquetaAcceso('hasta', ahora - DIA)
+      };
+
+      const pantalla = () => ({
+        aviso: v(document.getElementById('aviso-suspendido')),
+        titulo: document.getElementById('aviso-suspendido-titulo').textContent,
+        invitar: v(document.getElementById('invitar-btn')),
+        plazo: v(document.getElementById('aviso-plazo')),
+        textoPlazo: document.getElementById('aviso-plazo').textContent
+      });
+      pintarModoEntrenador({ role:'trainer', accesoHasta: ahora - DIA });
+      setModo('clientes');
+      r.vencido = pantalla();
+      pintarModoEntrenador({ role:'trainer', accesoHasta: ahora + 10 * DIA });
+      r.enPlazo = pantalla();
+      pintarModoEntrenador({ role:'trainer', suspendido:true, accesoHasta: ahora - DIA });
+      r.impago = pantalla();
+      pintarModoEntrenador({ role:'trainer' });
+      r.cortesia2 = pantalla();
+      pintarModoEntrenador(null);
+      setModo('entreno');
+      return r;
+    });
+    ok(!tipos.cortesia.hasta && !tipos.cortesia.dias, 'cortesía no pide fecha ni días');
+    ok(tipos.hasta.hasta && !tipos.hasta.dias, '"gratis hasta una fecha" pide la fecha');
+    ok(tipos.prueba.dias && !tipos.prueba.hasta, 'la prueba pide los días');
+    ok(tipos.alEntrar.cortesia === null && tipos.alEntrar.antiguo === null,
+       'cortesía y los códigos de antes entran sin fecha de fin');
+    ok(Math.abs(tipos.alEntrar.prueba - 30 * 86400000) < 60000,
+       'la prueba cuenta los días desde que se registra');
+    ok(tipos.alEntrar.hasta === 'mismo-objeto',
+       '🔴 "hasta" copia la fecha del código tal cual: las reglas la exigen idéntica');
+    ok(/cortesía/i.test(tipos.etiquetas.sinFecha.texto) && !tipos.etiquetas.sinFecha.vencido,
+       'en la lista, sin fecha se lee como cortesía');
+    ok(/en prueba hasta/i.test(tipos.etiquetas.futura.texto) && !tipos.etiquetas.futura.vencido,
+       'con fecha futura, hasta cuándo');
+    ok(/terminó/i.test(tipos.etiquetas.pasada.texto) && tipos.etiquetas.pasada.vencido,
+       'y con la fecha pasada, que se terminó');
+    ok(tipos.vencido.aviso && /acceso gratuito ha terminado/i.test(tipos.vencido.titulo),
+       'al entrenador vencido se le explica que se acabó su acceso gratuito');
+    ok(!tipos.vencido.invitar && !tipos.vencido.plazo,
+       'y no le quedan botones que van a fallar');
+    ok(!tipos.enPlazo.aviso && tipos.enPlazo.invitar && tipos.enPlazo.plazo
+       && /hasta el/i.test(tipos.enPlazo.textoPlazo),
+       'dentro del plazo trabaja normal y ve hasta cuándo le dura');
+    ok(tipos.impago.aviso && /suspendida/i.test(tipos.impago.titulo),
+       'suspendido por impago sigue diciendo "suspendida", aunque también haya vencido');
+    ok(!tipos.cortesia2.aviso && !tipos.cortesia2.plazo,
+       'y sin fecha no se le enseña ningún plazo');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

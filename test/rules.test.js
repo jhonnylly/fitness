@@ -57,7 +57,7 @@ async function permitido(promesa) {
     },
   });
 
-  const { doc, getDoc, setDoc, updateDoc, deleteDoc,
+  const { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp,
           collection, getDocs, query, where, setLogLevel } = require('firebase/firestore');
   /* Cada denegación es un PERMISSION_DENIED que el SDK escupe por consola, y
      aquí se deniegan cosas a propósito todo el rato: con el log en silencio se
@@ -241,6 +241,74 @@ async function permitido(promesa) {
        '🔴 pero NO puede poner ni quitar ninguna: las pone quien es su cuerpo');
     ok(!await permitido(deleteDoc(doc(cliente, 'users/u-cliente'))),
        'y ningún perfil se borra, ni el propio');
+
+    /* ─────────────────────────────────────────────────────────────────
+       9. Tipos de código: cortesía, gratis hasta una fecha y prueba
+       ───────────────────────────────────────────────────────────────── */
+    console.log('\n9. Acceso gratuito con fecha de fin');
+    await sembrar();
+    const DIA = 86400000;
+    const fin = Timestamp.fromMillis(Date.now() + 60 * DIA);
+    await env.withSecurityRulesDisabled(async ctx => {
+      const db = ctx.firestore();
+      const base = { creadoPor:'u-admin', usado:false, usadoPor:null };
+      await setDoc(doc(db, 'altas/cod-cortesia'), { ...base, tipo:'cortesia' });
+      await setDoc(doc(db, 'altas/cod-hasta'),    { ...base, tipo:'hasta', hasta:fin });
+      await setDoc(doc(db, 'altas/cod-prueba'),   { ...base, tipo:'prueba', dias:30 });
+      await setDoc(doc(db, 'users/u-vencido'), { name:'Fin de prueba', role:'trainer', trainerId:null,
+                                                 accesoHasta: Timestamp.fromMillis(Date.now() - DIA) });
+      await setDoc(doc(db, 'users/u-enplazo'), { name:'En prueba', role:'trainer', trainerId:null,
+                                                 accesoHasta: Timestamp.fromMillis(Date.now() + 10 * DIA) });
+      await setDoc(doc(db, 'users/u-cli-vencido'), { name:'Cliente', role:'client', trainerId:'u-vencido' });
+      await setDoc(doc(db, 'users/u-cli-enplazo'), { name:'Cliente', role:'client', trainerId:'u-enplazo' });
+    });
+    const como = uid => env.authenticatedContext(uid).firestore();
+    const perfilCoach = extra => ({ name:'Nuevo', role:'trainer', trainerId:null, ...extra });
+
+    ok(await permitido(setDoc(doc(como('n1'), 'users/n1'),
+        perfilCoach({ altaId:'cod-cortesia', accesoHasta:null }))),
+       'cortesía: entra sin fecha de fin');
+    ok(await permitido(setDoc(doc(como('n0'), 'users/n0'), perfilCoach({ altaId:'codigo-libre' }))),
+       'los códigos de antes, sin tipo, siguen valiendo como cortesía');
+    ok(!await permitido(setDoc(doc(como('n1b'), 'users/n1b'),
+        perfilCoach({ altaId:'cod-hasta' }))),
+       '🔴 código "hasta una fecha": NO se entra sin la fecha (sería acceso para siempre)');
+    ok(!await permitido(setDoc(doc(como('n2'), 'users/n2'),
+        perfilCoach({ altaId:'cod-hasta', accesoHasta: Timestamp.fromMillis(fin.toMillis() + 365 * DIA) }))),
+       '🔴 ni alargándose la fecha');
+    ok(await permitido(setDoc(doc(como('n2'), 'users/n2'),
+        perfilCoach({ altaId:'cod-hasta', accesoHasta: fin }))),
+       'con la fecha exacta del código, sí');
+    ok(!await permitido(setDoc(doc(como('n3'), 'users/n3'),
+        perfilCoach({ altaId:'cod-prueba' }))),
+       '🔴 código de prueba: NO se entra sin fecha de fin');
+    ok(!await permitido(setDoc(doc(como('n3'), 'users/n3'),
+        perfilCoach({ altaId:'cod-prueba', accesoHasta: Timestamp.fromMillis(Date.now() + 365 * DIA) }))),
+       '🔴 ni con una prueba más larga de la del código');
+    ok(await permitido(setDoc(doc(como('n3'), 'users/n3'),
+        perfilCoach({ altaId:'cod-prueba', accesoHasta: Timestamp.fromMillis(Date.now() + 30 * DIA) }))),
+       'con los días del código, sí');
+
+    const vencido = como('u-vencido'), enplazo = como('u-enplazo');
+    ok(await permitido(getDoc(doc(enplazo, 'users/u-cli-enplazo'))),
+       'dentro del plazo trabaja con normalidad');
+    ok(!await permitido(getDoc(doc(vencido, 'users/u-cli-vencido'))),
+       '🔴 con el plazo vencido NO ve a su cliente, sin que nadie le suspenda');
+    ok(!await permitido(setDoc(doc(vencido, 'invites/inv-vencido'), { trainerId:'u-vencido', usado:false })),
+       '🔴 ni reparte invitaciones');
+    ok(await permitido(getDoc(doc(vencido, 'users/u-vencido'))),
+       'pero conserva su propia cuenta');
+    ok(!await permitido(updateDoc(doc(vencido, 'users/u-vencido'), { accesoHasta:null })),
+       '🔴 y NO puede quitarse la fecha él mismo');
+    ok(!await permitido(updateDoc(doc(enplazo, 'users/u-enplazo'),
+        { accesoHasta: Timestamp.fromMillis(Date.now() + 999 * DIA) })),
+       '🔴 ni alargarse la prueba');
+    ok(!await permitido(updateDoc(doc(admin, 'users/u-vencido'), { name:'Cambiado', accesoHasta:null })),
+       'el admin no puede colar otros campos junto a la fecha');
+    ok(await permitido(updateDoc(doc(admin, 'users/u-vencido'), { accesoHasta:null })),
+       'el admin sí le quita la fecha cuando pasa a pagar');
+    ok(await permitido(getDoc(doc(vencido, 'users/u-cli-vencido'))),
+       'y en ese momento vuelve a ver a su cliente');
 
   } catch (e) {
     console.log('  ❌ las pruebas se rompieron: ' + (e && e.message));
