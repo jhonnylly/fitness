@@ -7,13 +7,18 @@
     "test:ui": "node test/ui.test.js",
     "test:todo": "node test/storage.test.js && node test/ui.test.js && bash tools/probar-reglas.sh",
     "imagenes": "node tools/generar-imagenes.js",
-    "test:rules": "bash tools/probar-reglas.sh"
+    "test:rules": "bash tools/probar-reglas.sh",
+    "lint": "eslint ."
   },
-  "comentario": "Sin dependencias en tiempo de ejecución: la app es un index.html que se abre y ya. Las herramientas de prueba se instalan sueltas para no arrastrarlas en el repo: npm install --no-save puppeteer-core firebase-tools@13 @firebase/rules-unit-testing firebase. Ojo: firebase-tools@13 trae universal-analytics, que pide uuid ^14 (solo ESM) y luego lo carga con require; si el CLI falla con ERR_REQUIRE_ESM, borrar node_modules/universal-analytics/node_modules/uuid y usa el de la raíz.",
+  "comentario": "Sin dependencias en tiempo de ejecución: la app es un index.html que se abre y ya. Las herramientas de prueba se instalan sueltas para no arrastrarlas en el repo: npm install --no-save puppeteer-core firebase-tools@13 @firebase/rules-unit-testing firebase eslint@9 @eslint/js@9 eslint-plugin-html globals. Ojo: firebase-tools@13 trae universal-analytics, que pide uuid ^14 (solo ESM) y luego lo carga con require; si el CLI falla con ERR_REQUIRE_ESM, borrar node_modules/universal-analytics/node_modules/uuid y usa el de la raíz.",
   "devDependencies": {
     "puppeteer-core": "*",
     "firebase-tools": "^13",
     "@firebase/rules-unit-testing": "*",
-    "firebase": "*"
+    "firebase": "*",
+    "eslint": "^9",
+    "@eslint/js": "^9",
+    "eslint-plugin-html": "*",
+    "globals": "*"
   }
 }
