@@ -1492,6 +1492,39 @@ async function appLista(page, url){
        'con foto, la misma en la cabecera y en tu perfil');
     ok(cuenta.visorEncima, 'y tocarla la abre en grande, por encima de la cuenta');
 
+    console.log('\n13q. Ver la contraseña (el ojo)');
+    /* Pedido por quienes la probaron (15/09): no había forma de comprobar si la
+       contraseña estaba bien escrita. */
+    const ojo = await page.evaluate(()=>{
+      const panel = document.getElementById('auth-panel');
+      if(panel.classList.contains('hidden')) toggleAuthPanel();
+      setAuthTab('login');
+      const campo = document.getElementById('auth-password');
+      const btn = document.getElementById('ver-clave');
+      const v = el => !!(el && el.offsetParent !== null);
+      campo.value = 'secreta123';
+      const r = { hay: v(btn), inicial: campo.type, etiqueta: btn.getAttribute('aria-label') };
+      const rc = campo.getBoundingClientRect(), rb = btn.getBoundingClientRect();
+      r.dentro = rb.left >= rc.left && rb.right <= rc.right + 1 && rb.top >= rc.top - 1 && rb.bottom <= rc.bottom + 1;
+      btn.click();
+      r.visto = { tipo: campo.type, etiqueta: btn.getAttribute('aria-label'),
+                  pulsado: btn.getAttribute('aria-pressed'), valor: campo.value };
+      btn.click();
+      r.otraVez = campo.type;
+      btn.click();                                   // se deja a la vista…
+      toggleAuthPanel();                             // …y se cierra la cuenta
+      r.alCerrar = campo.type;
+      campo.value = '';
+      return r;
+    });
+    ok(ojo.hay && ojo.dentro, 'el campo de contraseña lleva el ojo, dentro del propio campo');
+    ok(ojo.inicial === 'password' && ojo.etiqueta === 'Mostrar contraseña', 'empieza oculta');
+    ok(ojo.visto.tipo === 'text' && ojo.visto.pulsado === 'true' && ojo.visto.etiqueta === 'Ocultar contraseña'
+       && ojo.visto.valor === 'secreta123',
+       'al tocarlo se ve lo escrito, sin perder nada');
+    ok(ojo.otraVez === 'password', 'y al tocarlo otra vez se vuelve a ocultar');
+    ok(ojo.alCerrar === 'password', 'si se cierra la cuenta con ella a la vista, se oculta sola');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

@@ -459,6 +459,14 @@ details[open] > .det-resumen::after{transform:rotate(-135deg);}
 label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;}
 select,input,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:14px;outline:none;font-family:inherit;}
 select:focus,input:focus,textarea:focus{border-color:var(--accent);}
+/* Contraseña con ojo: el botón va DENTRO del campo, y el campo deja hueco a la
+   derecha para que lo escrito no quede debajo del icono. */
+.campo-clave{position:relative;}
+.campo-clave input{padding-right:48px;}
+.ver-clave{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:40px;padding:0;
+  border:none;background:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.ver-clave svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.ver-clave[aria-pressed="true"]{color:var(--accent);}
 textarea{resize:vertical;min-height:60px;}
 /* Tacto al pulsar. Lo tenían las pestañas y las tarjetas de Inicio, pero no los
    botones ni las tarjetas del mosaico, que es lo que más se toca ahora: sin
@@ -1064,7 +1072,15 @@ textarea{resize:vertical;min-height:60px;}
         <input type="email" id="auth-email" placeholder="tu@email.com" autocomplete="email">
         <div style="height:8px;"></div>
         <label>Contraseña</label>
-        <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+        <!-- El ojo para ver lo que escribes (15/09/2026, pedido por quienes la
+             probaron: no había forma de comprobar si la contraseña estaba bien
+             puesta). onmousedown evita que el campo pierda el foco: en el móvil
+             se cerraría el teclado a cada toque. -->
+        <div class="campo-clave">
+          <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+          <button type="button" class="ver-clave" id="ver-clave" onmousedown="event.preventDefault()" onclick="alternarVerClave()"
+                  aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
         <!-- Solo al iniciar sesión: en el registro no tiene sentido. Lo esconde
              setAuthTab(). -->
         <div id="olvide-fila" style="margin-top:6px;text-align:right;">
@@ -2679,7 +2695,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 19:53';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 20:01';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5805,10 +5821,30 @@ window.aplicarCambioDias=function(){
    intentaría pintarse dentro del "Hecho". */
 window.cerrarConfirmacionDias=function(){ restaurarTarjetaPropuesta(); };
 
+/* Ver u ocultar la contraseña. Sin argumento alterna (el botón del ojo);
+   con `true` la oculta siempre (al cerrar la cuenta, al entrar y al enviar). */
+const ICO_OJO='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const ICO_OJO_TACHADO='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19"/><path d="M1 1l22 22"/></svg>';
+function alternarVerClave(ocultar){
+  const campo=document.getElementById('auth-password');
+  const btn=document.getElementById('ver-clave');
+  if(!campo||!btn)return;
+  const ver=ocultar===true ? false : campo.type==='password';
+  campo.type=ver?'text':'password';
+  btn.innerHTML=ver?ICO_OJO_TACHADO:ICO_OJO;
+  const etiqueta=ver?'Ocultar contraseña':'Mostrar contraseña';
+  btn.setAttribute('aria-label',etiqueta);
+  btn.setAttribute('aria-pressed',String(ver));
+  btn.title=etiqueta;
+}
+
 function toggleAuthPanel(){
   const p=document.getElementById('auth-panel');
   p.classList.toggle('hidden');
   if(p.classList.contains('hidden')) alCerrarPanelDeCuenta();
+  // Al cerrar, la contraseña vuelve a ocultarse: la próxima vez que se abra, en
+  // un móvil que puede estar mirando otra persona, no tiene por qué estar a la vista.
+  if(p.classList.contains('hidden')) alternarVerClave(true);
   // Al abrirlo: ¿está el alta abierta? Se pregunta aquí y no al arrancar la app.
   if(!p.classList.contains('hidden')&&window.cargarConfigAppSiHaceFalta) window.cargarConfigAppSiHaceFalta();
   if(!p.classList.contains('hidden')&&!window.__authReady){
@@ -7829,6 +7865,9 @@ window.recuperarContrasena = async function(){
 window.submitAuth = async function(){
   const email = $('auth-email').value.trim();
   const password = $('auth-password').value;
+  /* Se oculta antes de enviar: el iPhone y Chrome solo ofrecen guardar la
+     contraseña si el campo es de tipo contraseña en el momento de enviarlo. */
+  alternarVerClave(true);
   if(!email || !password){ showMsg('Completa correo y contraseña'); return; }
 
   const btn = $('auth-submit');
@@ -7959,6 +7998,7 @@ function pintarSesion(user){
   if(dentro){
     $('auth-email').value = '';
     $('auth-password').value = '';
+    alternarVerClave(true);
     $('auth-msg').innerHTML = '';
   }
   if(dentro && meData){
