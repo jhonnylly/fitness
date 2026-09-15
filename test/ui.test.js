@@ -1545,8 +1545,9 @@ async function appLista(page, url){
       r.acceso.pruebaBien.dias = Math.round((r.acceso.pruebaBien.accesoHasta - ahora) / DIA);
       r.acceso.hastaBien.futura = r.acceso.hastaBien.accesoHasta > ahora;
 
+      // Vive en Ajustes → Cuentas desde el 15/09 (antes, en Entrenadores).
       document.body.classList.add('es-entrenador','es-admin');
-      setModo('coaches');
+      if(document.getElementById('config-panel').classList.contains('hidden')) toggleConfigPanel();
       const v = el => !!(el && el.offsetParent !== null);
       r.tarjeta = v(document.getElementById('pane-rol'));
       const res = () => document.getElementById('rol-resultado');
@@ -1564,9 +1565,9 @@ async function appLista(page, url){
       r.propia = res().textContent.replace(/\s+/g,' ');
 
       __pintarCuentaRolPrueba(null, null);
-      setModo('entreno');
       document.body.classList.remove('es-entrenador','es-admin');
       r.sinAdmin = !v(document.getElementById('pane-rol'));
+      toggleConfigPanel();
       return r;
     });
     ok(rol.acceso.cortesia.ok && rol.acceso.cortesia.accesoHasta === null, 'cortesía: entra sin fecha de fin');
@@ -1574,7 +1575,7 @@ async function appLista(page, url){
     ok(rol.acceso.hastaBien.ok && rol.acceso.hastaBien.futura, 'una futura sí');
     ok(!rol.acceso.pruebaMal.ok && rol.acceso.pruebaBien.ok && rol.acceso.pruebaBien.dias === 30,
        'la prueba pide entre 1 y 365 días y los cuenta desde hoy');
-    ok(rol.tarjeta, 'en el panel de Entrenadores está "Cambiar el rol de una cuenta"');
+    ok(rol.tarjeta, 'en Ajustes → Cuentas está "Cambiar el rol o el entrenador de una cuenta"');
     ok(/Pasar a entrenador/.test(rol.cliente.texto) && rol.cliente.selector && /dejará de tener entrenador/.test(rol.cliente.texto),
        'con un cliente: ofrece pasarlo a entrenador, eligiendo el acceso, y avisa de que deja a su entrenador');
     ok(rol.cliente.dias, 'y al elegir prueba pide los días');
@@ -1628,7 +1629,8 @@ async function appLista(page, url){
     ok(vinculo.estados.usada === 'usada' && vinculo.estados.aceptada === 'ya-aceptada'
        && vinculo.estados.noValida === 'no-valida' && vinculo.estados.sinPerfil === 'sin-perfil',
        'y una invitación usada, aceptada, inexistente o sin perfil tiene su explicación');
-    ok(vinculo.aceptarHtml.boton && /Carlos Pérez te invita/.test(vinculo.aceptarHtml.texto)
+    ok(vinculo.aceptarHtml.boton && /Carlos Pérez/.test(vinculo.aceptarHtml.texto)
+       && /Te propone ser tu entrenador/i.test(vinculo.aceptarHtml.texto)
        && /historial se queda/.test(vinculo.aceptarHtml.texto),
        'al aceptar ve quién le invita, qué verá y que su historial se queda');
     ok(/desvincule/.test(vinculo.yaTieneTexto), 'a quien ya tiene entrenador se le dice qué hacer');
@@ -1638,6 +1640,54 @@ async function appLista(page, url){
     ok(vinculo.conCoach.valor === 'c2' && /Ahora le entrena Marta Gil/.test(vinculo.conCoach.texto),
        'si ya tiene, sale marcado quién le entrena');
     ok(vinculo.entrenadorSinAsignar, 'a una cuenta de entrenador no se le asigna entrenador');
+
+    console.log('\n13t. Invitación destacada, pedir otro entrenador y Cuentas en Ajustes');
+    /* Jhon (15/09): la invitación "costaba verla, salía muy random"; tiene que
+       decir que ahora no tiene entrenador y dejar aceptar o pedir otro, que
+       avisa al admin. Y "Cambiar el rol" no pinta en Entrenadores: a Ajustes. */
+    const pedir = await page.evaluate(()=>{
+      const r = {};
+      r.estadoPedido = estadoInvitacionConSesion(
+        { role:'client', trainerId:null, pideEntrenador:{ pendiente:true } }, { trainerId:'c1', usado:false }, 'u1');
+      const d = document.createElement('div');
+      d.innerHTML = htmlInvitacionConSesion('aceptar', { nombre:'Carlos Pérez' });
+      r.aceptar = { violeta: !!d.querySelector('.aviso-coach'), texto: d.textContent.replace(/\s+/g,' '),
+                    otro: !!d.querySelector('button[onclick^="pedirOtroEntrenador"]') };
+      d.innerHTML = htmlInvitacionConSesion('pedido', { nombre:'Carlos Pérez' });
+      r.pedido = { texto: d.textContent.replace(/\s+/g,' '), otro: !!d.querySelector('button[onclick^="pedirOtroEntrenador"]'),
+                   aceptar: !!d.querySelector('#inv-aceptar') };
+
+      const aviso = document.getElementById('aviso-invitacion-sesion');
+      const perfil = document.getElementById('cuenta-avatar');
+      r.arriba = !!(aviso && perfil && (aviso.compareDocumentPosition(perfil) & Node.DOCUMENT_POSITION_FOLLOWING));
+      r.fueraDeSesion = !document.getElementById('auth-logged-in').contains(aviso);
+
+      document.body.classList.add('es-entrenador','es-admin');
+      __pintarPeticionesPrueba([{ name:'Laura', email:'laura@ejemplo.es', pideEntrenador:{ pendiente:true, ts: Date.now() } }]);
+      r.peticion = { texto: document.getElementById('rol-peticiones').textContent.replace(/\s+/g,' '),
+                     asignar: !!document.querySelector('#rol-peticiones button[onclick^="atenderPeticion"]'),
+                     punto: document.getElementById('config-btn').classList.contains('con-punto') };
+      __pintarPeticionesPrueba([]);
+      r.sinPeticiones = !document.getElementById('config-btn').classList.contains('con-punto')
+        && !document.getElementById('rol-peticiones').textContent.trim();
+      r.enAjustes = !!document.querySelector('#config-panel #pane-cuentas #pane-rol')
+        && !document.querySelector('#pane-coaches #pane-rol');
+      document.body.classList.remove('es-entrenador','es-admin');
+      return r;
+    });
+    ok(pedir.aceptar.violeta && /Ahora mismo no tienes entrenador/.test(pedir.aceptar.texto),
+       'la invitación sale destacada en violeta y dice que ahora no tiene entrenador');
+    ok(/Aceptar a Carlos/.test(pedir.aceptar.texto) && pedir.aceptar.otro && /Prefiero otro entrenador/.test(pedir.aceptar.texto),
+       'con dos salidas: aceptar a ese entrenador o pedir otro');
+    ok(pedir.arriba && pedir.fueraDeSesion, 'y va arriba del todo de "Tu cuenta", antes de tu perfil');
+    ok(pedir.estadoPedido === 'pedido' && /te escribiremos pronto/.test(pedir.pedido.texto)
+       && pedir.pedido.aceptar && !pedir.pedido.otro,
+       'si ya pidió otro, se le recuerda y aún puede aceptar');
+    ok(/1 persona pide entrenador/.test(pedir.peticion.texto) && /laura@ejemplo.es/.test(pedir.peticion.texto)
+       && pedir.peticion.asignar && pedir.peticion.punto,
+       'al admin le sale en Ajustes quién pide entrenador, con "Asignar" y un punto en el botón de Ajustes');
+    ok(pedir.sinPeticiones, 'sin peticiones, ni lista ni punto');
+    ok(pedir.enAjustes, '"Cambiar el rol" está en Ajustes → Cuentas y ya no en Entrenadores');
 
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')

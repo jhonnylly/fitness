@@ -453,6 +453,32 @@ async function permitido(promesa) {
        'el admin sí puede asignarle entrenador directamente');
     ok(await permitido(getDoc(doc(coach2, 'users/u-suelto2'))), 'y ese entrenador ya le ve');
 
+    /* ─────────────────────────────────────────────────────────────────
+       13. Pedir otro entrenador
+       ───────────────────────────────────────────────────────────────── */
+    console.log('\n13. Pedir otro entrenador');
+    await sembrar();
+    await env.withSecurityRulesDisabled(async ctx => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/u-suelto'),  { name:'Suelto',  role:'client', trainerId:null });
+      await setDoc(doc(db, 'users/u-suelto3'), { name:'Suelto3', role:'client', trainerId:null,
+                                                 pideEntrenador:{ pendiente:true, ts:1, propuesto:null } });
+    });
+    const s13 = como('u-suelto');
+    ok(await permitido(updateDoc(doc(s13, 'users/u-suelto'), { pideEntrenador:{ pendiente:true, ts:1, propuesto:'u-coach' } })),
+       'un cliente sin entrenador puede pedir otro entrenador');
+    ok(await permitido(getDocs(query(collection(admin, 'users'), where('pideEntrenador.pendiente','==',true)))),
+       'el admin ve quién pide entrenador');
+    ok(!await permitido(getDocs(query(collection(coach, 'users'), where('pideEntrenador.pendiente','==',true)))),
+       '🔴 un entrenador NO puede ver esa lista');
+    const lote13 = writeBatch(s13);
+    lote13.update(doc(s13, 'users/u-suelto'), { trainerId:'u-coach', inviteId:'inv-libre', pideEntrenador:null });
+    lote13.update(doc(s13, 'invites/inv-libre'), { usado:true, usadoPor:'u-suelto', usadoEn:1 });
+    ok(await permitido(lote13.commit()),
+       'si al final acepta una invitación, la petición se borra en la misma escritura');
+    ok(await permitido(updateDoc(doc(admin, 'users/u-suelto3'), { trainerId:'u-coach2', pideEntrenador:null })),
+       'y al asignarle entrenador el admin, también');
+
   } catch (e) {
     console.log('  ❌ las pruebas se rompieron: ' + (e && e.message));
     fallos++;

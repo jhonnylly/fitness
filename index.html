@@ -481,6 +481,21 @@ textarea{resize:vertical;min-height:60px;}
 .mos-card:not(.arrastrando):active{transform:scale(.97);}
 .ex-musculos img, .cab-avatar, .cab-ico{transition:transform .12s ease;}
 .cab-ico:active, .cab-avatar:active{transform:scale(.92);}
+/* Punto en Ajustes cuando alguien pide entrenador (solo lo ve el admin). */
+.cab-ico.con-punto{position:relative;}
+.cab-ico.con-punto::after{content:'';position:absolute;top:5px;right:5px;width:10px;height:10px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 0 2px var(--dark);}
+/* Segundo botón sobre el violeta lleno del aviso: hueco, para que "Aceptar" siga siendo el principal. */
+/* Con `.aviso-coach` delante a propósito: .btn-sm está definida MÁS ABAJO con
+   la misma especificidad y le devolvía el fondo gris y el borde de siempre.
+   El margin-top de .aviso-coach-btn (pensado para cuando va solo) desalineaba
+   los dos botones en la misma fila. */
+.aviso-coach .aviso-coach-acciones{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;}
+.aviso-coach .aviso-coach-acciones .btn-sm{margin:0;padding:8px 14px;font-size:13px;}
+.aviso-coach .aviso-coach-acciones .aviso-coach-btn{background:#fff;border:1.5px solid #fff;color:var(--accent);}
+.aviso-coach .aviso-coach-btn-sec{background:transparent;border:1.5px solid rgba(255,255,255,.85);color:#fff;font-weight:800;}
+/* "Cuentas" en Ajustes: solo para el admin. */
+body:not(.es-admin) #pane-cuentas{display:none;}
 .btn-primary{background:var(--accent);color:#fff;margin-top:10px;}
 .btn-primary:active{opacity:0.85;}
 .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text);margin-top:8px;}
@@ -1035,6 +1050,12 @@ textarea{resize:vertical;min-height:60px;}
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
 
+    <!-- Invitación abierta teniendo ya cuenta. ARRIBA DEL TODO y en violeta
+         (15/09/2026): entre el perfil y la sesión, en gris, Jhon dijo que le
+         costó verla y que salía "muy random". Es a lo que viene quien abre el
+         enlace. Lo pinta pintarInvitacionConSesion(). -->
+    <div id="aviso-invitacion-sesion" class="hidden"></div>
+
     <!-- Tu perfil. Siempre arriba, con sesión o sin ella: la foto y el nombre
          son tuyos también sin cuenta (se guardan en el dispositivo). Vino de
          dos sitios: el visor que abría la foto de la cabecera y "Tus datos" en
@@ -1198,9 +1219,6 @@ textarea{resize:vertical;min-height:60px;}
 
     <!-- Estado: con sesión -->
     <div id="auth-logged-in" class="hidden">
-      <!-- Llegar por un enlace de invitación teniendo ya sesión abierta: sin
-           esto el enlace se traga en silencio y parece que no ha hecho nada. -->
-      <div id="aviso-invitacion-sesion" class="msg msg-info hidden"></div>
       <div class="card">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Sesión iniciada</div>
         <div id="me-name" style="font-size:18px;font-weight:800;margin-top:4px;">—</div>
@@ -1284,6 +1302,31 @@ textarea{resize:vertical;min-height:60px;}
     <h2>AJUSTES</h2>
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
+
+    <!-- Cuentas: solo el admin (lo esconde el CSS sin body.es-admin). Estaba en
+         el panel de Entrenadores y Jhon lo movió aquí (15/09/2026): allí se
+         confundía con llevar clientes, y es gestión de la app, no de un
+         entrenador. Se busca por CORREO EXACTO a propósito: listar todas las
+         cuentas enseñaría datos de todo el mundo sin necesidad. -->
+    <div class="card" id="pane-cuentas">
+      <div class="section-title">Cuentas <span style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0;">· solo tú</span></div>
+      <!-- Quién ha pedido otro entrenador. Lo pinta pintarPeticionesEntrenador(). -->
+      <div id="rol-peticiones"></div>
+      <div id="pane-rol">
+        <div style="font-size:14px;font-weight:800;">Cambiar el rol o el entrenador de una cuenta</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.45;margin-top:4px;">
+          Pasa un cliente a entrenador o al revés, o asígnale entrenador. Nadie
+          pierde nada de lo suyo: rutinas, medidas y fotos se quedan donde están.
+        </p>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Correo de la cuenta</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="email" id="rol-correo" placeholder="persona@ejemplo.com" style="flex:1;min-width:0;">
+          <button class="btn-sm" id="rol-buscar" onclick="buscarCuentaRol()">Buscar</button>
+        </div>
+        <div id="rol-msg" style="margin-top:8px;"></div>
+        <div id="rol-resultado"></div>
+      </div>
+    </div>
 
     <!-- Vivían arriba del todo de la pestaña Historial, que era lo primero que
          se veía al entrar ahí y lo que menos se usa. Son mantenimiento, no
@@ -2000,24 +2043,6 @@ textarea{resize:vertical;min-height:60px;}
     <div id="altas-lista" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
   </div>
 
-  <!-- Cambiar el rol de una cuenta (15/09/2026, pedido por Jhon). Solo el admin.
-       Se busca por CORREO EXACTO a propósito: listar todas las cuentas de la
-       app para elegir enseñaría datos de todo el mundo sin necesidad. -->
-  <div class="card" id="pane-rol">
-    <div class="section-title">Cambiar el rol de una cuenta</div>
-    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
-      Pasa un cliente a entrenador o un entrenador a cliente. Nadie pierde nada
-      de lo suyo: rutinas, medidas y fotos se quedan donde están.
-    </p>
-    <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Correo de la cuenta</label>
-    <div style="display:flex;gap:6px;align-items:center;">
-      <input type="email" id="rol-correo" placeholder="persona@ejemplo.com" style="flex:1;min-width:0;">
-      <button class="btn-sm" id="rol-buscar" onclick="buscarCuentaRol()">Buscar</button>
-    </div>
-    <div id="rol-msg" style="margin-top:8px;"></div>
-    <div id="rol-resultado"></div>
-  </div>
-
   <!-- Alta abierta y datos de la app (15/09/2026). Todo vive en /config/app y
        se lee en vivo: cambiar el WhatsApp o el responsable (al pasar a cuenta
        de empresa, por ejemplo) no necesita tocar el código ni desplegar. -->
@@ -2713,7 +2738,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 20:33';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 21:55';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -8049,6 +8074,8 @@ function estadoInvitacionConSesion(perfil, inv, uid){
   if(perfil.role === 'trainer') return 'es-entrenador';
   if(perfil.trainerId && perfil.trainerId === inv.trainerId) return 'ya-es-tuyo';
   if(perfil.trainerId) return 'ya-tiene';
+  // Ya dijo que prefiere otro: se le recuerda, pero puede cambiar de idea y aceptar.
+  if(perfil.pideEntrenador && perfil.pideEntrenador.pendiente) return 'pedido';
   return 'aceptar';
 }
 window.estadoInvitacionConSesion = estadoInvitacionConSesion;
@@ -8056,17 +8083,28 @@ window.estadoInvitacionConSesion = estadoInvitacionConSesion;
 function htmlInvitacionConSesion(estado, coach){
   const nombre = (coach && coach.nombre) || '';
   const quien = escaparHTML(nombre || 'Tu entrenador');
-  if(estado === 'aceptar'){
-    return `<div style="display:flex;gap:12px;align-items:center;">
-        ${avatarPersona(coach && coach.foto, nombre, {ampliable:false})}
-        <div style="min-width:0;"><b style="color:var(--text);">${quien}</b> te invita a entrenar.</div>
+  const corto = escaparHTML((nombre || 'tu entrenador').split(' ')[0]);
+  /* En violeta lleno, como un recado del entrenador sin leer (15/09/2026): en
+     gris entre el perfil y la sesión costaba verlo. Dice lo que pasa —que
+     ahora no tiene entrenador— y las dos salidas: aceptar o pedir otro. */
+  if(estado === 'aceptar' || estado === 'pedido'){
+    return `<div class="aviso-coach">
+      <div class="aviso-coach-cab">
+        ${avatarPersona(coach && coach.foto, nombre, {clase:'aviso-coach-cara', ampliable:false})}
+        <div style="min-width:0;">
+          <div class="aviso-coach-quien">${quien}</div>
+          <div class="aviso-coach-rol">Te propone ser tu entrenador</div>
+        </div>
       </div>
-      <div style="margin-top:8px;">Verá tus rutinas, tus medidas y tus fotos, y podrá
-        asignarte planes. Todo tu historial se queda como está.</div>
-      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
-        <button class="btn-sm" id="inv-aceptar" onclick="aceptarInvitacionConSesion()">Aceptar</button>
-        <button class="btn-sm" onclick="descartarInvitacionConSesion()">Ahora no</button>
-      </div>`;
+      <div class="aviso-coach-txt" style="font-size:18px;">Ahora mismo no tienes entrenador</div>
+      <div class="aviso-coach-ses">${estado === 'pedido'
+        ? 'Ya has avisado de que prefieres otro entrenador: te escribiremos pronto. Si cambias de idea, puedes aceptar a ' + corto + '.'
+        : 'Puedes aceptar a ' + corto + ' o pedir otro entrenador. Si aceptas, verá tus rutinas, tus medidas y tus fotos y podrá asignarte planes. Tu historial se queda como está.'}</div>
+      <div class="aviso-coach-acciones">
+        <button class="btn-sm aviso-coach-btn" id="inv-aceptar" onclick="aceptarInvitacionConSesion()">Aceptar a ${corto}</button>
+        ${estado === 'pedido' ? '' : '<button class="btn-sm aviso-coach-btn-sec" onclick="pedirOtroEntrenador()">Prefiero otro entrenador</button>'}
+      </div>
+    </div>`;
   }
   const textos = {
     'ya-es-tuyo': quien + ' ya es tu entrenador: no hace falta hacer nada.',
@@ -8079,9 +8117,27 @@ function htmlInvitacionConSesion(estado, coach){
     'no-valida': 'Este enlace de invitación ya no es válido. Pídele uno nuevo a tu entrenador.',
     'sin-perfil': 'Completa tu perfil aquí abajo y vuelve a abrir el enlace para aceptar la invitación.',
   };
-  return textos[estado] || textos['no-valida'];
+  return '<div class="msg msg-info">' + (textos[estado] || textos['no-valida']) + '</div>';
 }
 window.htmlInvitacionConSesion = htmlInvitacionConSesion;
+
+/* "Prefiero otro entrenador": deja la petición en su perfil y al admin le sale
+   en Ajustes → Cuentas, con un punto en el botón de Ajustes. Se borra sola
+   cuando el admin le asigna entrenador o él acepta una invitación. */
+window.pedirOtroEntrenador = async function(){
+  if(!meUid) return;
+  const p = invitacionPendiente;
+  const peticion = { pendiente: true, ts: Date.now(), propuesto: p ? p.trainerId : null };
+  try{
+    await setDoc(doc(fdb, 'users', meUid), { pideEntrenador: peticion }, { merge: true });
+    if(meData) meData.pideEntrenador = peticion;
+    aviso('Aviso enviado: te buscaremos otro entrenador', 'bien');
+    if(auth.currentUser) pintarInvitacionConSesion(auth.currentUser);
+  }catch(e){
+    console.error('[invitaciones] no se pudo pedir otro entrenador', e);
+    aviso('No se pudo enviar el aviso: ' + (e.code || e.message), 'mal');
+  }
+};
 
 async function pintarInvitacionConSesion(user){
   const el = document.getElementById('aviso-invitacion-sesion');
@@ -8102,7 +8158,8 @@ async function pintarInvitacionConSesion(user){
     console.error('[invitaciones] no se pudo leer la invitación', e);
   }
   const estado = estadoInvitacionConSesion(meData, inv, user.uid);
-  invitacionPendiente = estado === 'aceptar' ? { codigo, trainerId: inv.trainerId, nombre: coach.nombre } : null;
+  invitacionPendiente = (estado === 'aceptar' || estado === 'pedido')
+    ? { codigo, trainerId: inv.trainerId, nombre: coach.nombre } : null;
   el.innerHTML = htmlInvitacionConSesion(estado, coach);
   el.classList.remove('hidden');
 }
@@ -8114,10 +8171,11 @@ window.aceptarInvitacionConSesion = async function(){
   if(btn){ btn.disabled = true; btn.textContent = 'Aceptando...'; }
   try{
     const lote = writeBatch(fdb);
-    lote.update(doc(fdb, 'users', meUid), { trainerId: p.trainerId, inviteId: p.codigo });
+    // pideEntrenador a null: si había pedido otro y al final acepta, la petición ya está atendida.
+    lote.update(doc(fdb, 'users', meUid), { trainerId: p.trainerId, inviteId: p.codigo, pideEntrenador: null });
     lote.update(doc(fdb, 'invites', p.codigo), { usado: true, usadoPor: meUid, usadoEn: Date.now() });
     await lote.commit();
-    if(meData){ meData.trainerId = p.trainerId; meData.inviteId = p.codigo; }
+    if(meData){ meData.trainerId = p.trainerId; meData.inviteId = p.codigo; meData.pideEntrenador = null; }
     invitacionPendiente = null;
     history.replaceState({}, '', location.pathname);   // enlace gastado: fuera de la URL
     aviso('«' + (p.nombre || 'Tu entrenador') + '» ya es tu entrenador ✓', 'bien');
@@ -8940,6 +8998,7 @@ function vigilarCodigosAlta(){
   cerrarVigilanciaAltas();
   // Sin admin ni se escucha: las reglas rechazarían el list de /altas.
   if(!soyAdmin()) return;
+  vigilarPeticionesEntrenador();
 
   const q = query(collection(fdb,'altas'), where('creadoPor','==',meUid));
   altasUnsub = onSnapshot(q, qs => {
@@ -9273,7 +9332,8 @@ window.asignarEntrenadorCuenta = async function(){
       ? '¿Asignar a ' + nombre + ' a ' + coach + '?\n\n' + coach + ' verá sus rutinas, medidas y fotos.'
       : '¿Dejar a ' + nombre + ' sin entrenador?\n\nNo pierde nada de lo suyo.')) return;
   try{
-    await setDoc(doc(fdb, 'users', uid), { trainerId: nuevo }, { merge: true });
+    // Con entrenador nuevo, su petición de "quiero otro entrenador" queda atendida.
+    await setDoc(doc(fdb, 'users', uid), nuevo ? { trainerId: nuevo, pideEntrenador: null } : { trainerId: null }, { merge: true });
     cuentaRol.datos = { ...p, trainerId: nuevo };
     pintarCuentaRol();
     document.getElementById('rol-aplicar-msg').innerHTML = '<div class="msg msg-ok" style="margin-top:8px;">'
@@ -9348,7 +9408,61 @@ function recargarEntrenadores(){ pintarEntrenadoresDeAlta(ultimasAltasUsadas); }
 
 function cerrarVigilanciaAltas(){
   if(altasUnsub){ altasUnsub(); altasUnsub = null; }
+  if(peticionesUnsub){ peticionesUnsub(); peticionesUnsub = null; }
+  pintarPeticionesEntrenador([]);   // sin admin, ni lista ni punto
 }
+
+/* ─── Quién pide otro entrenador (15/09/2026) ───
+   En vivo para el admin: lista en Ajustes → Cuentas y un punto en el botón de
+   Ajustes, que es por donde se entera sin tener que ir a mirar. Solo cuentan
+   las que siguen sin entrenador: si ya lo tiene, la petición está atendida. */
+let peticionesUnsub = null;
+function vigilarPeticionesEntrenador(){
+  if(peticionesUnsub){ peticionesUnsub(); peticionesUnsub = null; }
+  if(!soyAdmin()) return;
+  const q = query(collection(fdb,'users'), where('pideEntrenador.pendiente','==',true));
+  peticionesUnsub = onSnapshot(q, qs => {
+    const lista = qs.docs.map(d => d.data())
+      .filter(p => !p.trainerId && p.role !== 'trainer')
+      .sort((a,b) => ((a.pideEntrenador || {}).ts || 0) - ((b.pideEntrenador || {}).ts || 0));
+    pintarPeticionesEntrenador(lista);
+  }, err => {
+    console.error('[peticiones] no se pudieron leer', err);
+  });
+}
+
+function pintarPeticionesEntrenador(lista){
+  const n = lista.length;
+  const btn = document.getElementById('config-btn');
+  if(btn){
+    btn.classList.toggle('con-punto', n > 0);
+    btn.title = n ? 'Ajustes · ' + (n === 1 ? '1 persona pide' : n + ' personas piden') + ' entrenador' : 'Ajustes';
+  }
+  const c = document.getElementById('rol-peticiones');
+  if(!c) return;
+  if(!n){ c.innerHTML = ''; return; }
+  c.innerHTML = `<div class="msg msg-info" style="margin-bottom:14px;">
+      <b style="color:var(--text);">${n === 1 ? '1 persona pide' : n + ' personas piden'} entrenador</b>` +
+    lista.map(p => `<div class="week-row" style="gap:8px;">
+        <span style="min-width:0;font-size:12.5px;line-height:1.4;">
+          <b style="color:var(--text);">${escaparHTML((p.name || '').trim() || 'Sin nombre')}</b><br>
+          <span style="word-break:break-all;">${escaparHTML(p.email || '')}</span>${
+            p.pideEntrenador && p.pideEntrenador.ts ? ' · lo pidió el ' + escaparHTML(fechaCorta(p.pideEntrenador.ts)) : ''}
+        </span>
+        <button class="btn-sm" data-correo="${escaparHTML(p.email || '')}" onclick="atenderPeticion(this.dataset.correo)">Asignar</button>
+      </div>`).join('') + '</div>';
+}
+window.__pintarPeticionesPrueba = pintarPeticionesEntrenador;
+
+/* "Asignar" de una petición: abre esa cuenta en la tarjeta de abajo, lista
+   para elegirle entrenador. */
+window.atenderPeticion = function(correo){
+  const panel = document.getElementById('config-panel');
+  if(panel && panel.classList.contains('hidden')) toggleConfigPanel();
+  document.getElementById('rol-correo').value = correo || '';
+  buscarCuentaRol();
+  document.getElementById('pane-rol').scrollIntoView({ behavior:'smooth', block:'start' });
+};
 
 /* ─────────── Invitaciones ───────────
    El entrenador genera un enlace con un código aleatorio; quien lo abre se

@@ -308,7 +308,8 @@ service cloud.firestore {
                     || (soyAdmin()
                         && request.resource.data.diff(resource.data)
                              .affectedKeys().hasOnly(['suspendido','accesoHasta','quierePagar',
-                                                      'role','trainerId','accesoTipo','rolCambiadoEn']))
+                                                      'role','trainerId','accesoTipo','rolCambiadoEn',
+                                                      'pideEntrenador']))
                     /* Aceptar una invitación teniendo YA cuenta (15/09/2026). Un
                        cliente SIN entrenador puede ponerse trainerId e inviteId,
                        y nada más, solo con una invitación válida de ESE entrenador
@@ -319,8 +320,9 @@ service cloud.firestore {
                     || (isOwner(uid)
                         && resource.data.get('role', 'client') != 'trainer'
                         && resource.data.get('trainerId', null) == null
+                        // pideEntrenador: si había pedido otro entrenador y al final acepta, el aviso se borra a la vez.
                         && request.resource.data.diff(resource.data)
-                             .affectedKeys().hasOnly(['trainerId','inviteId'])
+                             .affectedKeys().hasOnly(['trainerId','inviteId','pideEntrenador'])
                         && invitacionValida(request.resource.data.get('inviteId', null),
                                             request.resource.data.get('trainerId', null))
                         && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.inviteId))
