@@ -2713,7 +2713,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 20:16';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 20:33';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -8024,23 +8024,128 @@ function pintarSesion(user){
     $('me-email').textContent = user.email || '';
     $('me-role').textContent  = meData.role === 'trainer' ? 'Entrenador' : 'Cliente';
   }
-  /* Una invitación es para una cuenta NUEVA. Quien la abre ya con sesión
-     abierta (el propio entrenador probando su enlace, o un cliente que ya
-     tiene cuenta) no puede usarla sin salir antes, y hay que decírselo: si
-     no, la app se limita a enseñar su cuenta y el enlace parece roto. */
-  const avisoInv = $('aviso-invitacion-sesion');
-  if(avisoInv){
-    const mostrar = dentro && !!codigoInvitacion;
-    avisoInv.classList.toggle('hidden', !mostrar);
-    if(mostrar){
-      avisoInv.textContent = 'Has abierto un enlace de invitación, pero ya tienes '
-        + 'la sesión de ' + (user.email || 'otra cuenta') + ' abierta. Una invitación '
-        + 'sirve para crear una cuenta nueva: cierra sesión aquí abajo y vuelve a '
-        + 'abrir el enlace.';
-    }
-  }
+  /* Abrir una invitación YA con cuenta. Antes se le decía que cerrara sesión,
+     y eso llevaba a crear una cuenta NUEVA y perder su historial. Ahora un
+     cliente sin entrenador la puede aceptar (15/09/2026). */
+  pintarInvitacionConSesion(dentro ? user : null);
   pintarModoEntrenador();
   pintarEntrenador();
+}
+
+/* ═══ Aceptar una invitación teniendo ya cuenta (15/09/2026) ═══
+   Pasó al pasar un entrenador a cliente: él y sus antiguos clientes quedaban
+   sin entrenador y NO había forma de volver a vincularlos, porque una
+   invitación solo servía para crear una cuenta nueva. Ahora un cliente sin
+   entrenador que abre el enlace ve quién le invita y lo acepta; conserva todo
+   su historial. Las reglas exigen que la invitación quede gastada por él en la
+   misma escritura. */
+let invitacionPendiente = null;   // { codigo, trainerId, nombre }
+
+/* Qué se le puede ofrecer. Pura para poder probarla. */
+function estadoInvitacionConSesion(perfil, inv, uid){
+  if(!inv) return 'no-valida';
+  if(inv.usado) return inv.usadoPor === uid ? 'ya-aceptada' : 'usada';
+  if(!perfil) return 'sin-perfil';
+  if(perfil.role === 'trainer') return 'es-entrenador';
+  if(perfil.trainerId && perfil.trainerId === inv.trainerId) return 'ya-es-tuyo';
+  if(perfil.trainerId) return 'ya-tiene';
+  return 'aceptar';
+}
+window.estadoInvitacionConSesion = estadoInvitacionConSesion;
+
+function htmlInvitacionConSesion(estado, coach){
+  const nombre = (coach && coach.nombre) || '';
+  const quien = escaparHTML(nombre || 'Tu entrenador');
+  if(estado === 'aceptar'){
+    return `<div style="display:flex;gap:12px;align-items:center;">
+        ${avatarPersona(coach && coach.foto, nombre, {ampliable:false})}
+        <div style="min-width:0;"><b style="color:var(--text);">${quien}</b> te invita a entrenar.</div>
+      </div>
+      <div style="margin-top:8px;">Verá tus rutinas, tus medidas y tus fotos, y podrá
+        asignarte planes. Todo tu historial se queda como está.</div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn-sm" id="inv-aceptar" onclick="aceptarInvitacionConSesion()">Aceptar</button>
+        <button class="btn-sm" onclick="descartarInvitacionConSesion()">Ahora no</button>
+      </div>`;
+  }
+  const textos = {
+    'ya-es-tuyo': quien + ' ya es tu entrenador: no hace falta hacer nada.',
+    'ya-aceptada': 'Ya aceptaste esta invitación: ' + quien + ' es tu entrenador.',
+    'ya-tiene': 'Ya tienes entrenador. Para pasar con ' + quien + ', pide primero a tu entrenador '
+      + 'actual que te desvincule y vuelve a abrir este enlace.',
+    'es-entrenador': 'Has abierto una invitación de cliente, pero tu cuenta es de entrenador. Si '
+      + 'quieres entrenar con ' + quien + ' como cliente, habla con el administrador de la app.',
+    'usada': 'Esta invitación ya la ha usado otra persona. Pídele a ' + quien + ' un enlace nuevo.',
+    'no-valida': 'Este enlace de invitación ya no es válido. Pídele uno nuevo a tu entrenador.',
+    'sin-perfil': 'Completa tu perfil aquí abajo y vuelve a abrir el enlace para aceptar la invitación.',
+  };
+  return textos[estado] || textos['no-valida'];
+}
+window.htmlInvitacionConSesion = htmlInvitacionConSesion;
+
+async function pintarInvitacionConSesion(user){
+  const el = document.getElementById('aviso-invitacion-sesion');
+  if(!el) return;
+  // De la URL y no de codigoInvitacion: al aceptar o descartar se limpia la URL.
+  const codigo = new URLSearchParams(location.search).get('inv');
+  if(!user || !codigo){ el.classList.add('hidden'); el.innerHTML = ''; invitacionPendiente = null; return; }
+  let inv = null;
+  const coach = { nombre:'', foto:null };
+  try{
+    const s = await getDoc(doc(fdb, 'invites', codigo));
+    inv = s.exists() ? s.data() : null;
+    if(inv && inv.trainerId){
+      const c = await getDoc(doc(fdb, 'users', inv.trainerId));
+      if(c.exists()){ coach.nombre = (c.data().name || '').trim(); coach.foto = c.data().profilePic || null; }
+    }
+  }catch(e){
+    console.error('[invitaciones] no se pudo leer la invitación', e);
+  }
+  const estado = estadoInvitacionConSesion(meData, inv, user.uid);
+  invitacionPendiente = estado === 'aceptar' ? { codigo, trainerId: inv.trainerId, nombre: coach.nombre } : null;
+  el.innerHTML = htmlInvitacionConSesion(estado, coach);
+  el.classList.remove('hidden');
+}
+
+window.aceptarInvitacionConSesion = async function(){
+  const p = invitacionPendiente;
+  if(!p || !meUid) return;
+  const btn = document.getElementById('inv-aceptar');
+  if(btn){ btn.disabled = true; btn.textContent = 'Aceptando...'; }
+  try{
+    const lote = writeBatch(fdb);
+    lote.update(doc(fdb, 'users', meUid), { trainerId: p.trainerId, inviteId: p.codigo });
+    lote.update(doc(fdb, 'invites', p.codigo), { usado: true, usadoPor: meUid, usadoEn: Date.now() });
+    await lote.commit();
+    if(meData){ meData.trainerId = p.trainerId; meData.inviteId = p.codigo; }
+    invitacionPendiente = null;
+    history.replaceState({}, '', location.pathname);   // enlace gastado: fuera de la URL
+    aviso('«' + (p.nombre || 'Tu entrenador') + '» ya es tu entrenador ✓', 'bien');
+    alCambiarVinculo();
+  }catch(e){
+    console.error('[invitaciones] no se pudo aceptar', e);
+    aviso('No se pudo aceptar la invitación: ' + (e.code || e.message), 'mal');
+    if(btn && btn.isConnected){ btn.disabled = false; btn.textContent = 'Aceptar'; }
+  }
+};
+
+window.descartarInvitacionConSesion = function(){
+  invitacionPendiente = null;
+  history.replaceState({}, '', location.pathname);
+  const el = document.getElementById('aviso-invitacion-sesion');
+  if(el){ el.classList.add('hidden'); el.innerHTML = ''; }
+};
+
+/* El vínculo con el entrenador o el rol han cambiado con la app abierta:
+   aceptó una invitación, el admin le asignó entrenador o le cambió el rol, o su
+   entrenador le desvinculó. Sin esto seguía viendo al entrenador y los retos
+   de antes hasta recargar. */
+function alCambiarVinculo(){
+  if(auth.currentUser) pintarSesion(auth.currentUser);   // entrenador, modo y aviso
+  vigilarRetos();
+  vigilarMisRetos();
+  vigilarCodigosAlta();
+  updateHome();
 }
 
 /* Un cliente no tenía forma de saber quién le entrena: el vínculo existía en
@@ -9017,6 +9122,7 @@ window.quitarPlazoEntrenador = async function(uid){
    un ex entrenador que sigue viendo a sus clientes, o clientes colgando de
    alguien que ya no entrena a nadie. */
 let cuentaRol = null;   // { uid, datos } de la cuenta encontrada
+let entrenadoresParaAsignar = [];   // [{ uid, nombre }] para "Su entrenador"
 
 /* El acceso con el que entra quien pasa a entrenador. Pura para poder probarla:
    devuelve {ok, accesoHasta} o {ok:false, error}. Mismas reglas que al crear un
@@ -9059,6 +9165,17 @@ window.buscarCuentaRol = async function(){
     }
     const d = qs.docs[0];
     cuentaRol = { uid: d.id, datos: d.data() };
+    entrenadoresParaAsignar = [];
+    if(d.data().role !== 'trainer'){
+      try{
+        const ts = await getDocs(query(collection(fdb,'users'), where('role','==','trainer')));
+        entrenadoresParaAsignar = ts.docs
+          .map(t => ({ uid: t.id, nombre: (t.data().name || '').trim() || t.data().email || 'Sin nombre' }))
+          .sort((a,b) => a.nombre.localeCompare(b.nombre, 'es'));
+      }catch(e){
+        console.error('[rol] no se pudo leer la lista de entrenadores', e);
+      }
+    }
     msg.innerHTML = '';
     pintarCuentaRol();
   }catch(e){
@@ -9085,7 +9202,8 @@ function pintarCuentaRol(){
         y se anularán las invitaciones que tenga pendientes.</div>
       <button class="btn btn-primary" style="margin-top:10px;" onclick="cambiarRolCuenta('client')">Pasar a cliente</button>`;
   }else{
-    cuerpo = `<div style="font-size:12.5px;line-height:1.5;margin-top:8px;">
+    cuerpo = htmlAsignarEntrenador(p) + `<div style="font-size:13px;font-weight:800;border-top:1px solid var(--border);margin-top:14px;padding-top:12px;">Su rol</div>
+      <div style="font-size:12.5px;line-height:1.5;margin-top:4px;">
         Pasará a <b>entrenador</b>${p.trainerId ? ' y <b>dejará de tener entrenador</b>' : ''}.
         Conserva sus rutinas, medidas y fotos.</div>
       <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Qué acceso le das</label>
@@ -9117,7 +9235,55 @@ function pintarCuentaRol(){
     </div>${cuerpo}<div id="rol-aplicar-msg"></div>`;
 }
 // Solo para las pruebas: pintar una cuenta encontrada sin buscar en Firestore.
-window.__pintarCuentaRolPrueba = function(uid, datos){ cuentaRol = datos ? { uid, datos } : null; pintarCuentaRol(); };
+window.__pintarCuentaRolPrueba = function(uid, datos, entrenadores){
+  cuentaRol = datos ? { uid, datos } : null;
+  entrenadoresParaAsignar = entrenadores || [];
+  pintarCuentaRol();
+};
+
+/* Asignar entrenador desde el panel (15/09/2026). Es la otra vía, además de
+   que el cliente acepte una invitación: más rápida, pero el entrenador empieza
+   a ver sus datos sin que el cliente lo haya aceptado, y se dice. */
+function htmlAsignarEntrenador(p){
+  const actual = entrenadoresParaAsignar.find(e => e.uid === p.trainerId);
+  const opciones = '<option value="">Sin entrenador</option>' + entrenadoresParaAsignar.map(e =>
+    `<option value="${escaparHTML(e.uid)}"${e.uid === p.trainerId ? ' selected' : ''}>${escaparHTML(e.nombre)}</option>`).join('');
+  return `<div style="font-size:13px;font-weight:800;margin-top:12px;">Su entrenador</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.45;margin:4px 0 8px;">
+      ${p.trainerId ? 'Ahora le entrena <b style="color:var(--text);">' + escaparHTML(actual ? actual.nombre : 'otro entrenador') + '</b>.'
+                    : 'Ahora <b style="color:var(--text);">no tiene entrenador</b>.'}
+      Al asignarlo, ese entrenador verá sus rutinas, medidas y fotos sin que el
+      cliente lo acepte. Si prefieres que lo acepte él, que el entrenador le
+      mande su enlace de invitación.</div>
+    <select id="rol-entrenador">${opciones}</select>
+    <button class="btn btn-secondary" style="margin-top:8px;" onclick="asignarEntrenadorCuenta()">Asignar entrenador</button>`;
+}
+
+window.asignarEntrenadorCuenta = async function(){
+  if(!cuentaRol || !soyAdmin()) return;
+  const { uid, datos:p } = cuentaRol;
+  const msg = document.getElementById('rol-aplicar-msg');
+  const nuevo = document.getElementById('rol-entrenador').value || null;
+  const nombre = (p.name || '').trim() || 'esta cuenta';
+  if((p.trainerId || null) === nuevo){
+    msg.innerHTML = '<div class="msg msg-info" style="margin-top:8px;">Ya tiene ese entrenador.</div>'; return;
+  }
+  const coach = nuevo ? ((entrenadoresParaAsignar.find(e => e.uid === nuevo) || {}).nombre || 'ese entrenador') : '';
+  if(!confirm(nuevo
+      ? '¿Asignar a ' + nombre + ' a ' + coach + '?\n\n' + coach + ' verá sus rutinas, medidas y fotos.'
+      : '¿Dejar a ' + nombre + ' sin entrenador?\n\nNo pierde nada de lo suyo.')) return;
+  try{
+    await setDoc(doc(fdb, 'users', uid), { trainerId: nuevo }, { merge: true });
+    cuentaRol.datos = { ...p, trainerId: nuevo };
+    pintarCuentaRol();
+    document.getElementById('rol-aplicar-msg').innerHTML = '<div class="msg msg-ok" style="margin-top:8px;">'
+      + (nuevo ? escaparHTML(nombre) + ' ya entrena con ' + escaparHTML(coach) + '. Lo verá al abrir la app.'
+               : escaparHTML(nombre) + ' se ha quedado sin entrenador.') + '</div>';
+  }catch(e){
+    console.error('[rol] no se pudo asignar el entrenador', e);
+    msg.innerHTML = '<div class="msg msg-err">No se pudo asignar: ' + escaparHTML(e.code || e.message) + '</div>';
+  }
+};
 
 window.pintarTipoRol = function(){
   const tipo = document.getElementById('rol-tipo').value;
@@ -10978,6 +11144,7 @@ function vigilarAvisoCoach(){
     miSesionCoach = (d && d.sesionCoach) || null;
     /* meData se refresca con lo que llegue: si no, el resto de la app seguiría
        viendo el perfil que se leyó al entrar. */
+    const antes = meData ? { t: meData.trainerId || null, r: meData.role || null } : null;
     if(d) meData = d;
     pintarAvisoCoach();
     updateHome();
@@ -10986,6 +11153,7 @@ function vigilarAvisoCoach(){
        la pantalla se enterara. */
     pintarModoEntrenador();
     pintarSeguimientoPausado();
+    if(d && antes && (antes.t !== (d.trainerId || null) || antes.r !== (d.role || null))) alCambiarVinculo();
   }, err => {
     console.error('[aviso] no se pudo escuchar el perfil', err);
   });

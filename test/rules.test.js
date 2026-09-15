@@ -57,7 +57,7 @@ async function permitido(promesa) {
     },
   });
 
-  const { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp,
+  const { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp, writeBatch,
           collection, getDocs, query, where, setLogLevel } = require('firebase/firestore');
   /* Cada denegación es un PERMISSION_DENIED que el SDK escupe por consola, y
      aquí se deniegan cosas a propósito todo el rato: con el log en silencio se
@@ -415,6 +415,43 @@ async function permitido(promesa) {
        '🔴 el antiguo entrenador ya no ve a quien era su cliente');
     ok(await permitido(getDoc(doc(como('u-cli-c'), 'users/u-cli-c'))),
        'y el cliente sigue viendo lo suyo');
+
+    /* ─────────────────────────────────────────────────────────────────
+       12. Volver a vincular a quien ya tiene cuenta
+       ───────────────────────────────────────────────────────────────── */
+    console.log('\n12. Un cliente que ya tiene cuenta acepta una invitación');
+    await sembrar();
+    await env.withSecurityRulesDisabled(async ctx => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/u-suelto'),  { name:'Suelto',  role:'client', trainerId:null });
+      await setDoc(doc(db, 'users/u-suelto2'), { name:'Suelto2', role:'client', trainerId:null });
+      await setDoc(doc(db, 'invites/inv-dos'), { trainerId:'u-coach2', usado:false, usadoPor:null });
+    });
+    const aceptar = (ctx, uid, inv, entrenador, gastar = true) => {
+      const lote = writeBatch(ctx);
+      lote.update(doc(ctx, 'users/' + uid), { trainerId: entrenador, inviteId: inv });
+      if(gastar) lote.update(doc(ctx, 'invites/' + inv), { usado:true, usadoPor: uid, usadoEn: 1 });
+      return lote.commit();
+    };
+    const suelto = como('u-suelto');
+    ok(!await permitido(aceptar(suelto, 'u-suelto', 'inv-libre', 'u-coach', false)),
+       '🔴 sin gastar la invitación en la misma escritura, no se vincula');
+    ok(!await permitido(aceptar(suelto, 'u-suelto', 'inv-libre', 'u-coach2')),
+       '🔴 ni diciendo que la invitación es de otro entrenador');
+    ok(!await permitido(updateDoc(doc(suelto, 'users/u-suelto'), { trainerId:'u-coach' })),
+       '🔴 ni sin invitación');
+    ok(await permitido(aceptar(suelto, 'u-suelto', 'inv-libre', 'u-coach')),
+       'con su invitación válida, gastándola a la vez, sí');
+    ok(await permitido(getDoc(doc(coach, 'users/u-suelto'))), 'y su nuevo entrenador ya le ve');
+    ok(!await permitido(aceptar(suelto, 'u-suelto', 'inv-dos', 'u-coach2')),
+       '🔴 quien ya tiene entrenador no se cambia solo a otro');
+    ok(!await permitido(aceptar(coach, 'u-coach', 'inv-dos', 'u-coach2')),
+       '🔴 una cuenta de entrenador no se hace cliente de otro por esta vía');
+    ok(!await permitido(aceptar(como('u-suelto2'), 'u-suelto2', 'inv-libre', 'u-coach')),
+       'y una invitación ya gastada no vale dos veces');
+    ok(await permitido(updateDoc(doc(admin, 'users/u-suelto2'), { trainerId:'u-coach2' })),
+       'el admin sí puede asignarle entrenador directamente');
+    ok(await permitido(getDoc(doc(coach2, 'users/u-suelto2'))), 'y ese entrenador ya le ve');
 
   } catch (e) {
     console.log('  ❌ las pruebas se rompieron: ' + (e && e.message));

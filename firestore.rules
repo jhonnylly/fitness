@@ -309,6 +309,22 @@ service cloud.firestore {
                         && request.resource.data.diff(resource.data)
                              .affectedKeys().hasOnly(['suspendido','accesoHasta','quierePagar',
                                                       'role','trainerId','accesoTipo','rolCambiadoEn']))
+                    /* Aceptar una invitación teniendo YA cuenta (15/09/2026). Un
+                       cliente SIN entrenador puede ponerse trainerId e inviteId,
+                       y nada más, solo con una invitación válida de ESE entrenador
+                       que quede gastada por él en el mismo lote. Es el propio
+                       cliente quien da permiso para que le vean. Sin el getAfter
+                       bastaría con vincularse y no gastarla, y el enlace seguiría
+                       sirviendo para otro. */
+                    || (isOwner(uid)
+                        && resource.data.get('role', 'client') != 'trainer'
+                        && resource.data.get('trainerId', null) == null
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['trainerId','inviteId'])
+                        && invitacionValida(request.resource.data.get('inviteId', null),
+                                            request.resource.data.get('trainerId', null))
+                        && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.inviteId))
+                             .data.get('usadoPor', null) == request.auth.uid)
                     || (isMyClientDoc()
                         && request.resource.data.diff(resource.data)
                              .affectedKeys().hasOnly(['activeRoutine']))

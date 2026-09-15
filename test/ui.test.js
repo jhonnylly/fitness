@@ -1585,6 +1585,60 @@ async function appLista(page, url){
        '🔴 la cuenta propia no se puede cambiar (perdería el panel)');
     ok(rol.sinAdmin, 'y sin ser admin la tarjeta no se ve');
 
+    console.log('\n13s. Volver a vincular a quien ya tiene cuenta');
+    /* Jhon (15/09): tras pasar un entrenador a cliente, él y sus clientes
+       quedaban sin entrenador y no había forma de volver a vincularlos. Dos
+       vías: el cliente acepta una invitación, o el admin lo asigna. Guardar
+       necesita Firebase (reglas §12); aquí, qué se ofrece en cada caso. */
+    const vinculo = await page.evaluate(()=>{
+      const r = {};
+      const inv = { trainerId:'c1', usado:false, usadoPor:null };
+      const e = (perfil, i) => estadoInvitacionConSesion(perfil, i, 'u1');
+      r.estados = {
+        aceptar: e({ role:'client', trainerId:null }, inv),
+        yaTiene: e({ role:'client', trainerId:'c2' }, inv),
+        yaEsTuyo: e({ role:'client', trainerId:'c1' }, inv),
+        entrenador: e({ role:'trainer', trainerId:null }, inv),
+        usada: e({ role:'client', trainerId:null }, { ...inv, usado:true, usadoPor:'otro' }),
+        aceptada: e({ role:'client', trainerId:'c1' }, { ...inv, usado:true, usadoPor:'u1' }),
+        noValida: e({ role:'client', trainerId:null }, null),
+        sinPerfil: e(null, inv),
+      };
+      const d = document.createElement('div');
+      d.innerHTML = htmlInvitacionConSesion('aceptar', { nombre:'Carlos Pérez', foto:null });
+      r.aceptarHtml = { texto: d.textContent.replace(/\s+/g,' '), boton: !!d.querySelector('button[onclick^="aceptarInvitacionConSesion"]') };
+      r.yaTieneTexto = htmlInvitacionConSesion('ya-tiene', { nombre:'Carlos Pérez' });
+
+      const lista = [{ uid:'c1', nombre:'Carlos Pérez' }, { uid:'c2', nombre:'Marta Gil' }];
+      __pintarCuentaRolPrueba('u-laura', { name:'Laura', email:'laura@ejemplo.es', role:'client', trainerId:null }, lista);
+      const sel = () => document.getElementById('rol-entrenador');
+      const res = () => document.getElementById('rol-resultado').textContent.replace(/\s+/g,' ');
+      r.sinCoach = { opciones: sel() ? sel().options.length : 0, valor: sel() && sel().value, texto: res() };
+      __pintarCuentaRolPrueba('u-laura', { name:'Laura', email:'laura@ejemplo.es', role:'client', trainerId:'c2' }, lista);
+      r.conCoach = { valor: sel() && sel().value, texto: res() };
+      __pintarCuentaRolPrueba('u-pablo', { name:'Pablo', email:'pablo@ejemplo.es', role:'trainer', trainerId:null }, lista);
+      r.entrenadorSinAsignar = !sel();
+      __pintarCuentaRolPrueba(null, null);
+      return r;
+    });
+    ok(vinculo.estados.aceptar === 'aceptar', 'un cliente sin entrenador puede aceptar la invitación');
+    ok(vinculo.estados.yaTiene === 'ya-tiene' && vinculo.estados.yaEsTuyo === 'ya-es-tuyo',
+       'si ya tiene entrenador no se le ofrece (y si es el mismo, se le dice)');
+    ok(vinculo.estados.entrenador === 'es-entrenador', 'una cuenta de entrenador tampoco');
+    ok(vinculo.estados.usada === 'usada' && vinculo.estados.aceptada === 'ya-aceptada'
+       && vinculo.estados.noValida === 'no-valida' && vinculo.estados.sinPerfil === 'sin-perfil',
+       'y una invitación usada, aceptada, inexistente o sin perfil tiene su explicación');
+    ok(vinculo.aceptarHtml.boton && /Carlos Pérez te invita/.test(vinculo.aceptarHtml.texto)
+       && /historial se queda/.test(vinculo.aceptarHtml.texto),
+       'al aceptar ve quién le invita, qué verá y que su historial se queda');
+    ok(/desvincule/.test(vinculo.yaTieneTexto), 'a quien ya tiene entrenador se le dice qué hacer');
+    ok(vinculo.sinCoach.opciones === 3 && vinculo.sinCoach.valor === '' && /no tiene entrenador/.test(vinculo.sinCoach.texto)
+       && /Asignar entrenador/.test(vinculo.sinCoach.texto) && /sin que el cliente lo acepte/.test(vinculo.sinCoach.texto),
+       'en tu panel, un cliente sin entrenador se puede asignar a uno, avisando de que no lo acepta él');
+    ok(vinculo.conCoach.valor === 'c2' && /Ahora le entrena Marta Gil/.test(vinculo.conCoach.texto),
+       'si ya tiene, sale marcado quién le entrena');
+    ok(vinculo.entrenadorSinAsignar, 'a una cuenta de entrenador no se le asigna entrenador');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
