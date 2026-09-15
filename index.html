@@ -485,6 +485,8 @@ textarea{resize:vertical;min-height:60px;}
 .cab-ico.con-punto{position:relative;}
 .cab-ico.con-punto::after{content:'';position:absolute;top:5px;right:5px;width:10px;height:10px;border-radius:50%;
   background:var(--accent);box-shadow:0 0 0 2px var(--dark);}
+/* La versión arriba de Ajustes: nombre a la izquierda, botón a la derecha. */
+.card.version-fila{display:flex;gap:12px;align-items:center;}
 /* Segundo botón sobre el violeta lleno del aviso: hueco, para que "Aceptar" siga siendo el principal. */
 /* Con `.aviso-coach` delante a propósito: .btn-sm está definida MÁS ABAJO con
    la misma especificidad y le devolvía el fondo gris y el borde de siempre.
@@ -1308,6 +1310,13 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <h2>AJUSTES</h2>
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
+    <!-- La versión, ARRIBA DEL TODO (15/09/2026). Estaba al final de Ajustes y
+         para actualizar había que bajar hasta ella; Jhon la quiso como un botón
+         a mano y con aviso cuando hay una nueva. Lo pinta pintarVersion(). -->
+    <div id="cfg-version"></div>
+    <div style="font-size:11.5px;text-align:right;margin:-4px 4px 14px;">
+      <a href="#" onclick="limpiarCache();return false;" style="color:var(--muted);">¿No se actualiza? Vaciar caché y recargar</a>
+    </div>
 
     <!-- Cuentas: solo el admin (lo esconde el CSS sin body.es-admin). Estaba en
          el panel de Entrenadores y Jhon lo movió aquí (15/09/2026): allí se
@@ -1372,17 +1381,6 @@ body:not(.es-admin) #pane-cuentas{display:none;}
          El aviso y el cambio de día son invisibles cuando fallan y en el móvil
          no hay consola: sin esto se depura a ciegas. -->
     <div class="card" id="diag-coach"></div>
-
-    <div class="card">
-      <div class="section-title">Versión</div>
-      <div style="font-size:13px;" id="version-txt">—</div>
-      <div id="version-aviso"></div>
-      <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;">
-        La app guarda una copia para poder abrirse sin cobertura. Si alguna vez
-        se queda pillada en una versión vieja, vacíala:
-      </div>
-      <button class="btn-sm" style="margin-top:6px;" onclick="limpiarCache()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2.1-9.4L1 10"/></svg> Vaciar caché y recargar</button>
-    </div>
 
     <div class="card">
       <div class="section-title">Tus datos</div>
@@ -2746,7 +2744,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 22:05';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 22:14';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5432,30 +5430,101 @@ function toggleRoutinePanel(){
 /* GitHub Pages cachea el index.html en el navegador, así que es fácil estar
    usando la versión de ayer sin saberlo — nos ha costado tiempo tres veces.
    Esto compara la versión cargada con la publicada y, si difieren, ofrece
-   recargar saltándose la caché. Se consulta al abrir el panel, no al arrancar:
-   descarga el HTML entero y no merece la pena hacerlo en cada visita. */
+   recargar saltándose la caché.
+
+   15/09/2026, pedido por Jhon: la versión va arriba de Ajustes como un botón y,
+   si hay una nueva, sale en violeta y con un punto en el botón de Ajustes para
+   enterarse sin ir a buscarla. Para que el punto aparezca solo, ya no basta con
+   comprobar al abrir Ajustes: se comprueba también al arrancar y al volver a la
+   app, pero COMO MUCHO cada 30 minutos y solo con conexión, porque descarga el
+   HTML entero. */
+let versionPublicada=null;             // la publicada, si es distinta de la cargada
+let ultimaComprobacionVersion=0;
+const CADA_CUANTO_VERSION=30*60*1000;
+
+function versionEsNueva(publicada,actual){ return !!publicada && publicada!==actual; }
+
 function pintarVersion(){
-  const el=document.getElementById('version-txt');
-  if(el)el.textContent=APP_VERSION;
+  const c=document.getElementById('cfg-version');
+  if(c){
+    if(versionEsNueva(versionPublicada,APP_VERSION)){
+      c.innerHTML=`<div class="aviso-coach">
+        <div class="aviso-coach-rol">Actualización disponible</div>
+        <div class="aviso-coach-txt" style="font-size:18px;margin-top:2px;">Hay una versión nueva</div>
+        <div class="aviso-coach-ses">Tienes la ${escaparHTML(APP_VERSION)} y ya está publicada la
+          ${escaparHTML(versionPublicada)}. Tus entrenamientos no se tocan.</div>
+        <div class="aviso-coach-acciones">
+          <button class="btn-sm aviso-coach-btn" onclick="recargarUltimaVersion()">Actualizar ahora</button>
+        </div>
+      </div>`;
+    }else{
+      c.innerHTML=`<div class="card version-fila">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Versión de la app</div>
+          <div style="font-size:14px;font-weight:800;margin-top:2px;" id="version-txt">${escaparHTML(APP_VERSION)}</div>
+          <div id="version-aviso" style="font-size:11.5px;color:var(--muted);margin-top:2px;"></div>
+        </div>
+        <button class="btn-sm" id="version-btn" onclick="buscarActualizacion()">Buscar actualización</button>
+      </div>`;
+    }
+  }
+  pintarPuntoAjustes();
 }
 
-async function comprobarVersionNueva(){
-  const aviso=document.getElementById('version-aviso');
-  if(!aviso)return;
+/* `avisar`: la ha pedido la persona con el botón, así que se le dice el
+   resultado aunque no haya nada nuevo. En segundo plano, silencio. */
+async function comprobarVersionNueva(avisar){
   try{
     const resp=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});
     const texto=await resp.text();
     const m=texto.match(/const APP_VERSION='([^']+)'/);
-    if(!m||m[1]===APP_VERSION){ aviso.innerHTML=''; return; }
-    aviso.innerHTML='<div class="msg msg-info" style="margin-top:8px;">'+
-      'Hay una versión más reciente ('+escaparHTML(m[1])+'). '+
-      '<a href="#" onclick="recargarUltimaVersion();return false;" style="color:var(--accent);font-weight:700;">Actualizar</a>'+
-      '</div>';
+    versionPublicada=(m&&m[1]!==APP_VERSION)?m[1]:null;
+    ultimaComprobacionVersion=Date.now();
+    pintarVersion();
+    if(avisar&&!versionPublicada){
+      const a=document.getElementById('version-aviso');
+      if(a)a.textContent='Estás en la última versión ✓';
+    }
   }catch(e){
-    // Sin conexión no se puede saber, y no es motivo para molestar.
-    aviso.innerHTML='';
+    // Sin conexión no se puede saber, y en segundo plano no es motivo para molestar.
+    if(avisar){
+      pintarVersion();
+      const a=document.getElementById('version-aviso');
+      if(a)a.textContent='Sin conexión: no se ha podido comprobar.';
+    }
   }
 }
+
+window.buscarActualizacion=function(){
+  const b=document.getElementById('version-btn');
+  if(b){ b.disabled=true; b.textContent='Buscando...'; }
+  comprobarVersionNueva(true);
+};
+
+function comprobarVersionEnSegundoPlano(){
+  if(navigator.onLine===false)return;
+  if(Date.now()-ultimaComprobacionVersion<CADA_CUANTO_VERSION)return;
+  ultimaComprobacionVersion=Date.now();
+  comprobarVersionNueva(false);
+}
+
+/* El punto del botón de Ajustes lo encienden dos cosas: una versión nueva (para
+   todos) y gente pidiendo entrenador (solo el admin; lo cuenta el módulo de
+   Firebase con fijarPeticionesAjustes). Un solo sitio que decide, para que
+   ninguna de las dos apague la de la otra. */
+const estadoPuntoAjustes={peticiones:0};
+function pintarPuntoAjustes(){
+  const btn=document.getElementById('config-btn');
+  if(!btn)return;
+  const nueva=versionEsNueva(versionPublicada,APP_VERSION);
+  const n=estadoPuntoAjustes.peticiones||0;
+  btn.classList.toggle('con-punto',nueva||n>0);
+  const partes=[];
+  if(nueva)partes.push('hay una versión nueva');
+  if(n)partes.push(n===1?'1 persona pide entrenador':n+' personas piden entrenador');
+  btn.title=partes.length?'Ajustes · '+partes.join(' · '):'Ajustes';
+}
+window.fijarPeticionesAjustes=function(n){ estadoPuntoAjustes.peticiones=n||0; pintarPuntoAjustes(); };
 
 function recargarUltimaVersion(){
   location.replace(location.pathname+'?v='+Date.now());
@@ -5466,9 +5535,9 @@ function recargarUltimaVersion(){
 function toggleConfigPanel(){
   const p=document.getElementById('config-panel');
   p.classList.toggle('hidden');
-  /* La versión se consulta al ABRIR, no al arrancar: comprobar si hay una más
-     nueva descarga el HTML entero y no merece la pena en cada visita. */
-  if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); pintarCopiaPrevia(); comprobarVersionNueva(); pintarInstalar();
+  /* Al abrir se comprueba siempre: es donde se mira la versión. En segundo
+     plano va limitada (comprobarVersionEnSegundoPlano). */
+  if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); pintarCopiaPrevia(); comprobarVersionNueva(false); pintarInstalar();
     if(window.pintarDiagCoach) window.pintarDiagCoach(); }
 }
 
@@ -7551,6 +7620,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
   load()
     .catch(e=>console.error('[init] fallo al arrancar',e))
     .finally(resolverCargaInicial);
+  /* ¿Hay una versión nueva? Unos segundos después de arrancar, para no competir
+     con la carga, y cada vez que se vuelve a la app (con el tope de 30 min). */
+  setTimeout(comprobarVersionEnSegundoPlano,8000);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible')comprobarVersionEnSegundoPlano();
+  });
 });
 </script>
 
@@ -9441,11 +9516,8 @@ function vigilarPeticionesEntrenador(){
 
 function pintarPeticionesEntrenador(lista){
   const n = lista.length;
-  const btn = document.getElementById('config-btn');
-  if(btn){
-    btn.classList.toggle('con-punto', n > 0);
-    btn.title = n ? 'Ajustes · ' + (n === 1 ? '1 persona pide' : n + ' personas piden') + ' entrenador' : 'Ajustes';
-  }
+  // El punto de Ajustes lo comparte con el aviso de versión nueva: lo decide el script clásico.
+  if(window.fijarPeticionesAjustes) window.fijarPeticionesAjustes(n);
   const c = document.getElementById('rol-peticiones');
   if(!c) return;
   if(!n){ c.innerHTML = ''; return; }

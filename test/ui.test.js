@@ -1693,6 +1693,50 @@ async function appLista(page, url){
     ok(pedir.sinPeticiones, 'sin peticiones, ni lista ni punto');
     ok(pedir.enAjustes, '"Cambiar el rol" está en Ajustes → Cuentas y ya no en Entrenadores');
 
+    console.log('\n13u. La versión, arriba de Ajustes y con aviso cuando hay una nueva');
+    /* Jhon (15/09): la versión se quedaba muy abajo para actualizar. La quiso
+       como un botón en Ajustes y con un identificador cuando hay una nueva. */
+    const version = await page.evaluate(async ()=>{
+      const r = {};
+      r.pura = { igual: versionEsNueva(APP_VERSION, APP_VERSION), nada: versionEsNueva(null, APP_VERSION),
+                 otra: versionEsNueva('2099-01-01 00:00', APP_VERSION) };
+      const panel = document.getElementById('config-panel');
+      if(panel.classList.contains('hidden')) toggleConfigPanel();
+      await comprobarVersionNueva(true);            // contra el propio servidor de la prueba: es la misma
+      const cuerpo = panel.querySelector('.routine-panel-header').nextElementSibling;
+      const c = document.getElementById('cfg-version');
+      const punto = () => document.getElementById('config-btn').classList.contains('con-punto');
+      r.arriba = cuerpo.firstElementChild === c;
+      r.alDia = { texto: c.textContent.replace(/\s+/g,' '), boton: !!document.getElementById('version-btn'), punto: punto() };
+      r.sinTarjetaVieja = ![...panel.querySelectorAll('.section-title')].some(t => t.textContent.trim() === 'Versión');
+      r.vaciar = !!panel.querySelector('a[onclick^="limpiarCache"]');
+      versionPublicada = '2099-01-01 00:00'; pintarVersion();
+      r.nueva = { violeta: !!c.querySelector('.aviso-coach'), texto: c.textContent.replace(/\s+/g,' '),
+                  boton: !!c.querySelector('button[onclick^="recargarUltimaVersion"]'), punto: punto(),
+                  titulo: document.getElementById('config-btn').title };
+      versionPublicada = null; pintarVersion();
+      r.trasActualizar = !punto();
+      fijarPeticionesAjustes(1); r.puntoPeticiones = punto();
+      versionPublicada = '2099-01-01 00:00'; pintarVersion(); fijarPeticionesAjustes(0);
+      r.peticionesNoApaganVersion = punto();
+      versionPublicada = null; pintarVersion();
+      toggleConfigPanel();
+      return r;
+    });
+    ok(!version.pura.igual && !version.pura.nada && version.pura.otra, 'solo hay versión nueva si la publicada es distinta');
+    ok(version.arriba, 'la versión va arriba del todo de Ajustes');
+    ok(version.alDia.boton && /Buscar actualización/.test(version.alDia.texto) && /última versión/.test(version.alDia.texto)
+       && !version.alDia.punto,
+       'como un botón "Buscar actualización", que dice que estás al día');
+    ok(version.sinTarjetaVieja && version.vaciar, 'la tarjeta de abajo se fue, y "vaciar caché" sigue a mano');
+    ok(version.nueva.violeta && /Hay una versión nueva/.test(version.nueva.texto) && version.nueva.boton,
+       'con una nueva publicada sale en violeta, con "Actualizar ahora"');
+    ok(version.nueva.punto && /versión nueva/.test(version.nueva.titulo),
+       'y un punto en el botón de Ajustes para enterarse sin ir a buscarla');
+    ok(version.trasActualizar, 'sin versión nueva, el punto se va');
+    ok(version.puntoPeticiones && version.peticionesNoApaganVersion,
+       'el punto lo comparten la versión y las peticiones de entrenador, sin apagarse la una a la otra');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
