@@ -1404,6 +1404,44 @@ async function appLista(page, url){
     ok(fila('S2').borrar && fila('S3').borrar, 'los días pendientes llevan "Borrar"');
     ok(!fila('S1').borrar && fila('S1').editar, '🔴 el día ya entrenado NO lleva "Borrar" (su historial no se toca)');
 
+    console.log('\n13o. Todas las ventanas se cierran con "Volver", arriba a la izquierda');
+    /* Jhon (15/09): le gustó el "Volver" de Registrar y lo quiso en todos los
+       sitios donde había un "✕ Cerrar" gris. Se recorren TODAS las cabeceras
+       y barras: si mañana se añade una ventana con el botón viejo, esto cae. */
+    const volverTodo = await page.evaluate(()=>{
+      const cabeceras = [...document.querySelectorAll('.routine-panel-header, .comp-barra')];
+      const malas = cabeceras.filter(c => {
+        const primero = c.firstElementChild;
+        const botonViejo = [...c.children].some(b => b.tagName === 'BUTTON' && /✕|Cerrar/.test(b.textContent));
+        return !(primero && primero.classList.contains('btn-volver') && primero.querySelector('svg')) || botonViejo;
+      }).map(c => (c.closest('[id]') || {}).id || c.className);
+
+      // El selector de ejercicios: un solo botón que da un paso atrás cada vez.
+      const r = { total: cabeceras.length, malas };
+      openNewRoutinePanel();
+      nrDias = [{ nombre:'Día 1', ex:[] }];
+      nrAbrirSelector(0);
+      const etiqueta = () => document.querySelector('#sel-volver span').textContent;
+      const abierto = () => !document.getElementById('selector-ejercicio').classList.contains('hidden');
+      r.enMusculos = etiqueta();
+      nrAbrirMusculo(nrMusculosConEjercicios()[0].clave);
+      r.dentroDeUno = etiqueta();
+      nrSelVolver();
+      r.trasVolver = { etiqueta: etiqueta(), abierto: abierto() };
+      nrSelVolver();
+      r.cerrado = !abierto();
+      closeNewRoutinePanel();
+      return r;
+    });
+    ok(volverTodo.total >= 12, 'se revisan todas las cabeceras y barras ('+volverTodo.total+')');
+    ok(volverTodo.malas.length === 0,
+       volverTodo.malas.length ? 'estas aún tienen el botón viejo: '+volverTodo.malas.join(', ')
+                               : 'en todas, el primer botón es "Volver" con su flecha y ya no queda ningún "✕ Cerrar"');
+    ok(volverTodo.enMusculos === 'Volver a la rutina' && volverTodo.dentroDeUno === 'Músculos',
+       'en el selector de ejercicios el botón dice a dónde lleva: la rutina o los músculos');
+    ok(volverTodo.trasVolver.etiqueta === 'Volver a la rutina' && volverTodo.trasVolver.abierto && volverTodo.cerrado,
+       'y da un paso atrás cada vez: de un músculo a los músculos, y de ahí fuera');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
