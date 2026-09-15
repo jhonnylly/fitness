@@ -537,7 +537,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden,#home-pausado.hidden,#alta-fila-hasta.hidden,#alta-fila-dias.hidden,#home-plan.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden,#home-pausado.hidden,#alta-fila-hasta.hidden,#alta-fila-dias.hidden,#home-plan.hidden,#rol-fila-hasta.hidden,#rol-fila-dias.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -2000,6 +2000,24 @@ textarea{resize:vertical;min-height:60px;}
     <div id="altas-lista" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
   </div>
 
+  <!-- Cambiar el rol de una cuenta (15/09/2026, pedido por Jhon). Solo el admin.
+       Se busca por CORREO EXACTO a propósito: listar todas las cuentas de la
+       app para elegir enseñaría datos de todo el mundo sin necesidad. -->
+  <div class="card" id="pane-rol">
+    <div class="section-title">Cambiar el rol de una cuenta</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
+      Pasa un cliente a entrenador o un entrenador a cliente. Nadie pierde nada
+      de lo suyo: rutinas, medidas y fotos se quedan donde están.
+    </p>
+    <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Correo de la cuenta</label>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input type="email" id="rol-correo" placeholder="persona@ejemplo.com" style="flex:1;min-width:0;">
+      <button class="btn-sm" id="rol-buscar" onclick="buscarCuentaRol()">Buscar</button>
+    </div>
+    <div id="rol-msg" style="margin-top:8px;"></div>
+    <div id="rol-resultado"></div>
+  </div>
+
   <!-- Alta abierta y datos de la app (15/09/2026). Todo vive en /config/app y
        se lee en vivo: cambiar el WhatsApp o el responsable (al pasar a cuenta
        de empresa, por ejemplo) no necesita tocar el código ni desplegar. -->
@@ -2695,7 +2713,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 20:01';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 20:16';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -8877,8 +8895,9 @@ async function pintarEntrenadoresDeAlta(usadas){
     perfiles = qs.docs.filter(d => d.id !== meUid).map(d => {
       const p = d.data();
       return { perfil: p, alta: altaDe[d.id] || {
-        usadoPor: d.id, usadoEn: p.createdAt || null,
-        tipo: p.registroAbierto ? 'prueba' : undefined } };
+        usadoPor: d.id, usadoEn: p.rolCambiadoEn || p.createdAt || null,
+        // Sin código: por el alta abierta (prueba) o porque se le cambió el rol.
+        tipo: p.accesoTipo || (p.registroAbierto ? 'prueba' : undefined) } };
     });
   }catch(e){
     /* Sin la consulta (reglas nuevas sin publicar), al menos los que entraron
@@ -8987,6 +9006,172 @@ window.quitarPlazoEntrenador = async function(uid){
   }catch(e){
     console.error('[altas] no se pudo quitar la fecha', e);
     aviso('No se pudo quitar la fecha: '+(e.code||e.message),'mal');
+  }
+};
+
+/* ═══════════ Cambiar el rol de una cuenta (15/09/2026) ═══════════
+   Decidido con Jhon: solo el admin; al pasar a entrenador se elige el acceso
+   (cortesía, hasta una fecha o prueba), y al pasar un entrenador a cliente sus
+   clientes se quedan sin entrenador —conservando todo lo suyo— y se anulan sus
+   invitaciones pendientes. Todo en UNA escritura por lotes: a medias quedaría
+   un ex entrenador que sigue viendo a sus clientes, o clientes colgando de
+   alguien que ya no entrena a nadie. */
+let cuentaRol = null;   // { uid, datos } de la cuenta encontrada
+
+/* El acceso con el que entra quien pasa a entrenador. Pura para poder probarla:
+   devuelve {ok, accesoHasta} o {ok:false, error}. Mismas reglas que al crear un
+   código de alta. */
+function accesoParaCambioRol(tipo, dia, dias, ahora = Date.now()){
+  if(tipo === 'cortesia') return { ok:true, accesoHasta:null };
+  if(tipo === 'hasta'){
+    const fin = dia ? new Date(dia + 'T23:59:59') : null;
+    if(!fin || isNaN(fin)) return { ok:false, error:'Elige hasta qué día es gratis.' };
+    if(fin.getTime() <= ahora) return { ok:false, error:'Esa fecha ya ha pasado: entraría con el acceso terminado.' };
+    return { ok:true, accesoHasta: fin };
+  }
+  if(tipo === 'prueba'){
+    const n = parseInt(dias, 10);
+    if(!(n >= 1 && n <= 365)) return { ok:false, error:'Pon entre 1 y 365 días de prueba.' };
+    return { ok:true, accesoHasta: new Date(ahora + n * DIA_MS) };
+  }
+  return { ok:false, error:'Elige qué acceso le das.' };
+}
+window.accesoParaCambioRol = accesoParaCambioRol;
+
+window.buscarCuentaRol = async function(){
+  const msg = document.getElementById('rol-msg');
+  const escrito = (document.getElementById('rol-correo').value || '').trim();
+  cuentaRol = null;
+  pintarCuentaRol();
+  if(!/^\S+@\S+\.\S+$/.test(escrito)){
+    msg.innerHTML = '<div class="msg msg-err">Escribe el correo completo de la cuenta.</div>'; return;
+  }
+  msg.innerHTML = '<div class="msg msg-info">Buscando...</div>';
+  try{
+    // Firebase suele guardar el correo en minúsculas, pero no siempre: se prueban las dos.
+    let qs = await getDocs(query(collection(fdb,'users'), where('email','==',escrito.toLowerCase())));
+    if(qs.empty && escrito !== escrito.toLowerCase()){
+      qs = await getDocs(query(collection(fdb,'users'), where('email','==',escrito)));
+    }
+    if(qs.empty){
+      msg.innerHTML = '<div class="msg msg-info">No hay ninguna cuenta con ese correo. Comprueba que esté bien escrito.</div>';
+      return;
+    }
+    const d = qs.docs[0];
+    cuentaRol = { uid: d.id, datos: d.data() };
+    msg.innerHTML = '';
+    pintarCuentaRol();
+  }catch(e){
+    console.error('[rol] no se pudo buscar la cuenta', e);
+    msg.innerHTML = '<div class="msg msg-err">No se pudo buscar: ' + escaparHTML(e.code || e.message) + '</div>';
+  }
+};
+
+function pintarCuentaRol(){
+  const res = document.getElementById('rol-resultado');
+  if(!res) return;
+  if(!cuentaRol){ res.innerHTML = ''; return; }
+  const { uid, datos:p } = cuentaRol;
+  const nombre = (p.name || '').trim() || 'Sin nombre';
+  const esEntrenador = p.role === 'trainer';
+  let cuerpo;
+  if(uid === meUid){
+    // Perdería el panel de Entrenadores (y con él la forma de deshacerlo).
+    cuerpo = '<div class="msg msg-info" style="margin-top:8px;">Es tu propia cuenta: no puedes cambiarte el rol, perderías este panel.</div>';
+  }else if(esEntrenador){
+    cuerpo = `<div style="font-size:12.5px;line-height:1.5;margin-top:8px;">
+        Pasará a <b>cliente</b>. Conserva su entrenamiento personal, pero
+        <b>sus clientes se quedarán sin entrenador</b> (no pierden nada de lo suyo)
+        y se anularán las invitaciones que tenga pendientes.</div>
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="cambiarRolCuenta('client')">Pasar a cliente</button>`;
+  }else{
+    cuerpo = `<div style="font-size:12.5px;line-height:1.5;margin-top:8px;">
+        Pasará a <b>entrenador</b>${p.trainerId ? ' y <b>dejará de tener entrenador</b>' : ''}.
+        Conserva sus rutinas, medidas y fotos.</div>
+      <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Qué acceso le das</label>
+      <select id="rol-tipo" onchange="pintarTipoRol()">
+        <option value="cortesia">Cortesía: gratis y sin fecha de fin</option>
+        <option value="hasta">Gratis hasta una fecha</option>
+        <option value="prueba">Prueba: unos días desde hoy</option>
+      </select>
+      <div id="rol-fila-hasta" class="hidden">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Gratis hasta el día (incluido)</label>
+        <input type="date" id="rol-hasta">
+      </div>
+      <div id="rol-fila-dias" class="hidden">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Días de prueba</label>
+        <div class="fila-reto">
+          <input type="text" inputmode="numeric" id="rol-dias" value="30" style="max-width:90px;">
+          <span style="font-size:13px;color:var(--muted);">días desde hoy</span>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="cambiarRolCuenta('trainer')">Pasar a entrenador</button>`;
+  }
+  res.innerHTML = `<div class="client-item" style="display:flex;gap:12px;align-items:center;margin-top:10px;">
+      ${avatarPersona(p.profilePic, nombre, {ampliable:false})}
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:14px;font-weight:800;">${escaparHTML(nombre)}</div>
+        <div style="font-size:11.5px;color:var(--muted);word-break:break-all;">${escaparHTML(p.email || '')}</div>
+        <span class="badge ${esEntrenador ? 'badge-accent' : 'badge-green'}" style="margin-top:4px;display:inline-block;">${esEntrenador ? 'Entrenador' : 'Cliente'}</span>
+      </div>
+    </div>${cuerpo}<div id="rol-aplicar-msg"></div>`;
+}
+// Solo para las pruebas: pintar una cuenta encontrada sin buscar en Firestore.
+window.__pintarCuentaRolPrueba = function(uid, datos){ cuentaRol = datos ? { uid, datos } : null; pintarCuentaRol(); };
+
+window.pintarTipoRol = function(){
+  const tipo = document.getElementById('rol-tipo').value;
+  document.getElementById('rol-fila-hasta').classList.toggle('hidden', tipo !== 'hasta');
+  document.getElementById('rol-fila-dias').classList.toggle('hidden', tipo !== 'prueba');
+};
+
+window.cambiarRolCuenta = async function(destino){
+  if(!cuentaRol || !soyAdmin()) return;
+  const { uid, datos:p } = cuentaRol;
+  if(uid === meUid) return;
+  const msg = document.getElementById('rol-aplicar-msg');
+  const nombre = (p.name || '').trim() || 'esta cuenta';
+  let cambios;
+  if(destino === 'trainer'){
+    const tipo = document.getElementById('rol-tipo').value;
+    const acceso = accesoParaCambioRol(tipo, (document.getElementById('rol-hasta') || {}).value,
+                                       (document.getElementById('rol-dias') || {}).value);
+    if(!acceso.ok){ msg.innerHTML = '<div class="msg msg-err">' + acceso.error + '</div>'; return; }
+    if(!confirm('¿Pasar a ' + nombre + ' a entrenador?\n\n' + (p.trainerId ? 'Dejará de tener entrenador. ' : '')
+        + 'Conserva sus rutinas, medidas y fotos.')) return;
+    cambios = { role:'trainer', trainerId:null, accesoHasta: acceso.accesoHasta, accesoTipo: tipo, rolCambiadoEn: Date.now() };
+  }else{
+    if(!confirm('¿Pasar a ' + nombre + ' a cliente?\n\nSus clientes se quedarán sin entrenador (no pierden '
+        + 'nada de lo suyo) y se anularán sus invitaciones pendientes.')) return;
+    cambios = { role:'client', trainerId:null, accesoHasta:null, accesoTipo:null, rolCambiadoEn: Date.now() };
+  }
+  msg.innerHTML = '<div class="msg msg-info">Cambiando...</div>';
+  try{
+    const lote = writeBatch(fdb);
+    lote.set(doc(fdb,'users',uid), cambios, { merge:true });
+    let sueltos = 0, anuladas = 0;
+    if(destino === 'client'){
+      const clientes = await getDocs(query(collection(fdb,'users'), where('trainerId','==',uid)));
+      clientes.forEach(c => { lote.set(doc(fdb,'users',c.id), { trainerId:null }, { merge:true }); sueltos++; });
+      const invs = await getDocs(query(collection(fdb,'invites'), where('trainerId','==',uid)));
+      // Las ya usadas se quedan: son el registro de quién entró con qué enlace.
+      invs.forEach(i => { if(i.data().usado !== true){ lote.delete(i.ref); anuladas++; } });
+    }
+    await lote.commit();
+    cuentaRol.datos = { ...p, ...cambios };
+    pintarCuentaRol();
+    document.getElementById('rol-aplicar-msg').innerHTML = '<div class="msg msg-ok" style="margin-top:8px;">'
+      + (destino === 'trainer'
+        ? escaparHTML(nombre) + ' ya es entrenador. Lo verás en la lista de arriba; lo notará al abrir la app.'
+        : escaparHTML(nombre) + ' ya es cliente.'
+          + (sueltos ? ' ' + sueltos + (sueltos === 1 ? ' cliente se ha quedado' : ' clientes se han quedado') + ' sin entrenador.' : '')
+          + (anuladas ? ' Se ' + (anuladas === 1 ? 'ha anulado 1 invitación' : 'han anulado ' + anuladas + ' invitaciones') + '.' : ''))
+      + '</div>';
+    recargarEntrenadores();
+  }catch(e){
+    console.error('[rol] no se pudo cambiar el rol', e);
+    document.getElementById('rol-aplicar-msg').innerHTML =
+      '<div class="msg msg-err">No se pudo cambiar: ' + escaparHTML(e.code || e.message) + '</div>';
   }
 };
 

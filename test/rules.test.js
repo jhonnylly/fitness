@@ -365,6 +365,57 @@ async function permitido(promesa) {
     ok(!await permitido(setDoc(doc(como('s5'), 'users/s5'), abierto())),
        '🔴 y al cerrar el alta se cierra al instante, sin desplegar nada');
 
+    /* ─────────────────────────────────────────────────────────────────
+       11. Cambiar el rol de una cuenta: solo el admin
+       ───────────────────────────────────────────────────────────────── */
+    console.log('\n11. Cambiar el rol de una cuenta: solo el admin');
+    await sembrar();
+    await env.withSecurityRulesDisabled(async ctx => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'users/u-cliente'), { name:'Laura', role:'client', trainerId:'u-coach', email:'laura@ejemplo.es' });
+      await setDoc(doc(db, 'users/u-cli-c'),   { name:'Pedro', role:'client', trainerId:'u-coach', email:'pedro@ejemplo.es' });
+      await setDoc(doc(db, 'invites/inv-pend'), { trainerId:'u-coach', usado:false, usadoPor:null });
+    });
+
+    // El agujero: esto se podía hacer desde las herramientas del navegador.
+    ok(!await permitido(updateDoc(doc(cliente, 'users/u-cliente'), { role:'trainer' })),
+       '🔴 un cliente NO puede hacerse entrenador a sí mismo');
+    ok(!await permitido(updateDoc(doc(cliente, 'users/u-cliente'), { trainerId:'u-coach2' })),
+       '🔴 ni colgarse de otro entrenador');
+    ok(!await permitido(setDoc(doc(cliente, 'users/u-cliente'), { role:'trainer' }, { merge:true })),
+       'ni colándolo por un setDoc con merge');
+    ok(await permitido(updateDoc(doc(cliente, 'users/u-cliente'), { profileName:'LAURA' })),
+       'lo suyo de siempre lo sigue cambiando');
+
+    ok(await permitido(getDocs(query(collection(admin, 'users'), where('email','==','laura@ejemplo.es')))),
+       'el admin busca una cuenta por su correo');
+    ok(!await permitido(getDocs(query(collection(coach, 'users'), where('email','==','laura@ejemplo.es')))),
+       '🔴 un entrenador NO puede buscar cuentas por correo');
+
+    // Cliente → entrenador
+    ok(await permitido(updateDoc(doc(admin, 'users/u-cliente'), { role:'trainer', trainerId:null,
+        accesoHasta: Timestamp.fromMillis(Date.now() + 30 * DIA), accesoTipo:'prueba', rolCambiadoEn: 1 })),
+       'el admin pasa un cliente a entrenador, con su acceso');
+    ok(!await permitido(updateDoc(doc(admin, 'users/u-cliente'), { name:'Otro nombre' })),
+       'pero sigue sin poder tocar el resto de su perfil');
+
+    // Entrenador → cliente: sus clientes y sus invitaciones
+    ok(await permitido(getDocs(query(collection(admin, 'invites'), where('trainerId','==','u-coach')))),
+       'el admin ve las invitaciones de un entrenador');
+    ok(await permitido(deleteDoc(doc(admin, 'invites/inv-pend'))), 'y puede anularlas');
+    ok(!await permitido(deleteDoc(doc(coach2, 'invites/inv-libre'))), 'otro entrenador no');
+    ok(await permitido(getDocs(query(collection(admin, 'users'), where('trainerId','==','u-coach')))),
+       'el admin encuentra a los clientes de un entrenador');
+    ok(await permitido(updateDoc(doc(admin, 'users/u-coach'),
+        { role:'client', trainerId:null, accesoHasta:null, accesoTipo:null, rolCambiadoEn: 2 })),
+       'el admin pasa un entrenador a cliente');
+    ok(await permitido(updateDoc(doc(admin, 'users/u-cli-c'), { trainerId:null })),
+       'y desvincula a sus clientes');
+    ok(!await permitido(getDoc(doc(coach, 'users/u-cli-c'))),
+       '🔴 el antiguo entrenador ya no ve a quien era su cliente');
+    ok(await permitido(getDoc(doc(como('u-cli-c'), 'users/u-cli-c'))),
+       'y el cliente sigue viendo lo suyo');
+
   } catch (e) {
     console.log('  ❌ las pruebas se rompieron: ' + (e && e.message));
     fallos++;

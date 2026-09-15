@@ -1525,6 +1525,66 @@ async function appLista(page, url){
     ok(ojo.otraVez === 'password', 'y al tocarlo otra vez se vuelve a ocultar');
     ok(ojo.alCerrar === 'password', 'si se cierra la cuenta con ella a la vista, se oculta sola');
 
+    console.log('\n13r. Cambiar el rol de una cuenta (panel del admin)');
+    /* Jhon (15/09): pasar un cliente a entrenador y al revés, solo él. Quien
+       manda son las reglas (rules §11); aquí, el cálculo del acceso y lo que
+       enseña la tarjeta en cada caso. Cambiar de verdad escribe en Firestore y
+       pide confirm(): no se pulsa. */
+    const rol = await page.evaluate(()=>{
+      const r = {};
+      const DIA = 86400000, ahora = Date.now();
+      const manana = new Date(ahora + 2 * DIA).toISOString().slice(0,10);
+      const ayer = new Date(ahora - 2 * DIA).toISOString().slice(0,10);
+      r.acceso = {
+        cortesia: accesoParaCambioRol('cortesia', '', '', ahora),
+        hastaPasada: accesoParaCambioRol('hasta', ayer, '', ahora),
+        hastaBien: accesoParaCambioRol('hasta', manana, '', ahora),
+        pruebaMal: accesoParaCambioRol('prueba', '', '0', ahora),
+        pruebaBien: accesoParaCambioRol('prueba', '', '30', ahora),
+      };
+      r.acceso.pruebaBien.dias = Math.round((r.acceso.pruebaBien.accesoHasta - ahora) / DIA);
+      r.acceso.hastaBien.futura = r.acceso.hastaBien.accesoHasta > ahora;
+
+      document.body.classList.add('es-entrenador','es-admin');
+      setModo('coaches');
+      const v = el => !!(el && el.offsetParent !== null);
+      r.tarjeta = v(document.getElementById('pane-rol'));
+      const res = () => document.getElementById('rol-resultado');
+
+      __pintarCuentaRolPrueba('u-laura', { name:'Laura', email:'laura@ejemplo.es', role:'client', trainerId:'u-coach' });
+      r.cliente = { texto: res().textContent.replace(/\s+/g,' '), selector: !!document.getElementById('rol-tipo') };
+      const sel = document.getElementById('rol-tipo');
+      sel.value = 'prueba'; pintarTipoRol();
+      r.cliente.dias = v(document.getElementById('rol-fila-dias')) && !v(document.getElementById('rol-fila-hasta'));
+
+      __pintarCuentaRolPrueba('u-pablo', { name:'Pablo', email:'pablo@ejemplo.es', role:'trainer', trainerId:null });
+      r.entrenador = { texto: res().textContent.replace(/\s+/g,' '), selector: !!document.getElementById('rol-tipo') };
+
+      __pintarCuentaRolPrueba(null, { name:'Yo', email:'yo@ejemplo.es', role:'trainer' });   // meUid es null en la prueba
+      r.propia = res().textContent.replace(/\s+/g,' ');
+
+      __pintarCuentaRolPrueba(null, null);
+      setModo('entreno');
+      document.body.classList.remove('es-entrenador','es-admin');
+      r.sinAdmin = !v(document.getElementById('pane-rol'));
+      return r;
+    });
+    ok(rol.acceso.cortesia.ok && rol.acceso.cortesia.accesoHasta === null, 'cortesía: entra sin fecha de fin');
+    ok(!rol.acceso.hastaPasada.ok && /ha pasado/.test(rol.acceso.hastaPasada.error), 'una fecha que ya pasó no se acepta');
+    ok(rol.acceso.hastaBien.ok && rol.acceso.hastaBien.futura, 'una futura sí');
+    ok(!rol.acceso.pruebaMal.ok && rol.acceso.pruebaBien.ok && rol.acceso.pruebaBien.dias === 30,
+       'la prueba pide entre 1 y 365 días y los cuenta desde hoy');
+    ok(rol.tarjeta, 'en el panel de Entrenadores está "Cambiar el rol de una cuenta"');
+    ok(/Pasar a entrenador/.test(rol.cliente.texto) && rol.cliente.selector && /dejará de tener entrenador/.test(rol.cliente.texto),
+       'con un cliente: ofrece pasarlo a entrenador, eligiendo el acceso, y avisa de que deja a su entrenador');
+    ok(rol.cliente.dias, 'y al elegir prueba pide los días');
+    ok(/Pasar a cliente/.test(rol.entrenador.texto) && /sus clientes se quedarán sin entrenador/.test(rol.entrenador.texto)
+       && !rol.entrenador.selector,
+       'con un entrenador: ofrece pasarlo a cliente y avisa de lo que pasa con sus clientes');
+    ok(/tu propia cuenta/.test(rol.propia) && !/Pasar a/.test(rol.propia),
+       '🔴 la cuenta propia no se puede cambiar (perdería el panel)');
+    ok(rol.sinAdmin, 'y sin ser admin la tarjeta no se ve');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
