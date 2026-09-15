@@ -1092,6 +1092,46 @@ async function appLista(page, url){
     ok(!tipos.cortesia2.aviso && !tipos.cortesia2.plazo,
        'y sin fecha no se le enseña ningún plazo');
 
+    console.log('\n13i. El onboarding de una cuenta que ya existe trae su nombre y su foto');
+    /* Jhon (15/09): tras darse de alta un entrenador, al cargar le salía el
+       onboarding pidiendo otra vez nombre y foto. Y terminarlo sin volver a
+       elegir la foto borraba la del alta, que es la que ven sus clientes. */
+    const obCuenta = await page.evaluate(()=>{
+      const FOTO = 'data:image/png;base64,iVBORw0KGgo=';
+      const campo = document.getElementById('ob-name');
+      campo.value = ''; obPhotoData = null;
+      showOnboarding();
+      rellenarOnboardingDesdeCuenta({ name:'Laura Coach', foto:FOTO });
+      const r = { nombre: campo.value, foto: obPhotoData === FOTO,
+                  img: (document.querySelector('#ob-avatar img') || {}).src || '' };
+      // La cuenta llega tarde y la persona ya había escrito algo.
+      campo.value = 'Lau';
+      rellenarOnboardingDesdeCuenta({ name:'Laura Coach', foto:FOTO });
+      r.respeta = campo.value === 'Lau';
+      campo.value = 'Laura Coach';
+      // Cierra sesión: no puede quedarse el nombre de otra cuenta.
+      rellenarOnboardingDesdeCuenta(null);
+      r.trasSalir = { nombre: campo.value, foto: obPhotoData,
+                      img: !!document.querySelector('#ob-avatar img') };
+      // Terminarlo con la foto de la cuenta: se guarda esa, no un vacío.
+      rellenarOnboardingDesdeCuenta({ name:'Laura Coach', foto:FOTO });
+      obSelectRoutine(PRESET_ROUTINES[0].id);
+      r.backend = STORAGE.backend.name;
+      if(r.backend === 'local') obFinish();   // nunca contra la nube
+      r.guardada = !!(DB && DB.profilePic === FOTO);
+      r.oculto = document.getElementById('onboarding').classList.contains('hidden');
+      return r;
+    });
+    ok(obCuenta.nombre === 'Laura Coach' && obCuenta.foto && obCuenta.img.startsWith('data:image/png'),
+       'con cuenta, el onboarding trae ya el nombre y la foto');
+    ok(obCuenta.respeta, 'pero no pisa lo que la persona haya escrito');
+    ok(obCuenta.trasSalir.nombre === '' && obCuenta.trasSalir.foto === null && !obCuenta.trasSalir.img,
+       'al cerrar sesión se retiran: no se queda lo de otra cuenta');
+    ok(obCuenta.backend === 'local' && obCuenta.guardada,
+       '🔴 al terminarlo se guarda la foto de la cuenta, no se borra');
+    ok(obCuenta.oculto, 'y el onboarding se cierra');
+    await page.evaluate(()=>localStorage.clear());
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

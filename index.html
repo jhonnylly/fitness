@@ -2520,7 +2520,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 17:18';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 17:38';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -6308,6 +6308,51 @@ function toggleCompletedWeeks(){
 let obSelectedRoutine=null;
 let obPhotoData=null;
 
+/* ── El onboarding de una cuenta que YA existe (15/09/2026) ──
+   Un entrenador recién dado de alta (o un cliente invitado) no tiene rutinas,
+   así que al cargar sale el onboarding, que volvía a pedirle nombre y foto como
+   si nadie supiera quién es. Y era peligroso: obFinish() guarda profilePic con
+   la foto elegida AQUÍ, así que sin volver a elegirla se borraba la del alta,
+   que es la que ven sus clientes. Lo encontró Jhon probando el alta.
+   Se rellena con lo de la cuenta. Nunca se pisa lo que la persona haya escrito
+   o elegido, y al cerrar sesión se retira: no puede quedarse puesto el nombre
+   de otra cuenta. */
+let obNombreAuto=null, obFotoAuto=null, obAvatarVacio=null;
+
+function pintarAvatarOnboarding(){
+  const av=document.getElementById('ob-avatar');
+  if(!av) return;
+  if(obAvatarVacio===null) obAvatarVacio=av.innerHTML;
+  if(!obPhotoData){ av.innerHTML=obAvatarVacio; return; }
+  const img=document.createElement('img');
+  img.src=obPhotoData;
+  av.innerHTML='';
+  av.appendChild(img);
+}
+
+/* Sin argumento lee la sesión (perfilDeCuenta, del módulo de Firebase); las
+   pruebas le pasan el perfil directamente. null = no hay cuenta. */
+function rellenarOnboardingDesdeCuenta(perfil){
+  if(perfil===undefined) perfil=window.perfilDeCuenta ? window.perfilDeCuenta() : null;
+  const campo=document.getElementById('ob-name');
+  if(!campo) return;
+  if(!perfil){
+    if(obNombreAuto!==null && campo.value===obNombreAuto) campo.value='';
+    if(obFotoAuto!==null && obPhotoData===obFotoAuto){ obPhotoData=null; pintarAvatarOnboarding(); }
+    obNombreAuto=null; obFotoAuto=null;
+    return;
+  }
+  if(perfil.name && (!campo.value.trim() || campo.value===obNombreAuto)){
+    campo.value=perfil.name;
+    obNombreAuto=perfil.name;
+  }
+  if(perfil.foto && (!obPhotoData || obPhotoData===obFotoAuto)){
+    obPhotoData=perfil.foto;
+    obFotoAuto=perfil.foto;
+    pintarAvatarOnboarding();
+  }
+}
+
 /* El script clásico corre antes que el módulo, así que no puede preguntarle a
    éste si hay invitación: lo mira por su cuenta. */
 /* Llegar por un enlace —de cliente (?inv=) o de entrenador (?alta=)— significa
@@ -6325,6 +6370,7 @@ function hayInvitacionEnURL(){
 
 function showOnboarding(){
   document.getElementById('onboarding').classList.remove('hidden');
+  rellenarOnboardingDesdeCuenta();
   renderObRoutineList();
 }
 
@@ -7992,6 +8038,15 @@ function vigilarClientes(){
 let altasUnsub = null;
 
 function soyAdmin(){ return !!(meData && meData.admin === true); }
+
+/* Nombre y foto de la cuenta con sesión, para que el onboarding no los vuelva a
+   pedir (rellenarOnboardingDesdeCuenta, en el script clásico). */
+window.perfilDeCuenta = function(){
+  if(!meData) return null;
+  const name = (meData.name || meData.profileName
+                || (auth.currentUser && auth.currentUser.displayName) || '').trim();
+  return { name, foto: meData.profilePic || null };
+};
 
 function enlaceDeAlta(codigo){
   return location.origin + location.pathname + '?alta=' + codigo;
@@ -9987,6 +10042,7 @@ onAuthStateChanged(auth, async (user) => {
   try{
     if(!user){
       meUid = null; meData = null;
+      rellenarOnboardingDesdeCuenta(null);   // fuera el nombre y la foto de esta cuenta
       cerrarVigilanciaRetos();
       cerrarVigilanciaAviso();
       cerrarVigilanciaAltas();
@@ -10004,6 +10060,8 @@ onAuthStateChanged(auth, async (user) => {
       // Sin documento no es un error: es una cuenta creada desde la consola que
       // todavía no tiene perfil. pintarSesion() enseña el formulario.
       meData = snap.exists() ? snap.data() : null;
+      // Si el onboarding ya estaba en pantalla, que se entere de quién es.
+      rellenarOnboardingDesdeCuenta();
     }catch(e){
       console.error('[auth] no se pudo leer el perfil', e);
       meData = null;
