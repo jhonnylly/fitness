@@ -310,6 +310,61 @@ async function permitido(promesa) {
     ok(await permitido(getDoc(doc(vencido, 'users/u-cli-vencido'))),
        'y en ese momento vuelve a ver a su cliente');
 
+    /* ─────────────────────────────────────────────────────────────────
+       10. Alta abierta, datos de la app y lista de entrenadores
+       ───────────────────────────────────────────────────────────────── */
+    console.log('\n10. Alta abierta y datos de la app');
+    await sembrar();
+    const consentimiento = { version:'2026-09-15', ts:1 };
+    const abierto = () => ({ name:'Solo', role:'trainer', trainerId:null, registroAbierto:true,
+                             consentimiento, accesoHasta: Timestamp.fromMillis(Date.now() + 30 * DIA) });
+
+    ok(await permitido(getDoc(doc(anonimo, 'config/app'))),
+       'los datos de la app los lee cualquiera, también sin sesión (los usa la página de privacidad)');
+    ok(!await permitido(setDoc(doc(coach, 'config/app'), { altaAbierta:true, diasPrueba:999 })),
+       '🔴 un entrenador NO puede abrir el alta ni tocar los datos');
+    ok(!await permitido(setDoc(doc(como('s1'), 'users/s1'), abierto())),
+       '🔴 con el alta cerrada, nadie entra sin código');
+    ok(await permitido(setDoc(doc(admin, 'config/app'),
+        { altaAbierta:true, diasPrueba:30, responsable:'X', correo:'x@x.es', whatsapp:'' })),
+       'el admin abre el alta');
+    ok(await permitido(setDoc(doc(como('s1'), 'users/s1'), abierto())),
+       'abierta: se entra sin código, con su prueba y su consentimiento');
+    ok(!await permitido(setDoc(doc(como('s2'), 'users/s2'), { ...abierto(), accesoHasta:null })),
+       '🔴 pero NO sin fecha de fin');
+    ok(!await permitido(setDoc(doc(como('s2'), 'users/s2'),
+        { ...abierto(), accesoHasta: Timestamp.fromMillis(Date.now() + 90 * DIA) })),
+       '🔴 ni con más días de prueba de los que diste');
+    const { consentimiento: _sinUsar, ...sinConsentimiento } = abierto();
+    ok(!await permitido(setDoc(doc(como('s2'), 'users/s2'), sinConsentimiento)),
+       '🔴 ni sin haber aceptado la privacidad');
+    ok(!await permitido(setDoc(doc(como('s3'), 'users/s3'), { ...abierto(), admin:true })),
+       'ni naciendo admin');
+    ok(!await permitido(setDoc(doc(como('s4'), 'users/s4'),
+        { name:'Cliente suelto', role:'client', trainerId:'u-coach', consentimiento })),
+       'el alta abierta es de entrenadores: los clientes siguen entrando por invitación');
+
+    ok(await permitido(getDocs(query(collection(admin, 'users'), where('role','==','trainer')))),
+       'el admin lista a todos los entrenadores, también los que entran sin código');
+    ok(!await permitido(getDocs(query(collection(coach, 'users'), where('role','==','trainer')))),
+       '🔴 otro entrenador NO puede listarlos con su correo y su teléfono');
+    ok(!await permitido(getDocs(query(collection(como('s1'), 'users'), where('role','==','trainer')))),
+       '🔴 ni alguien que acaba de entrar por el alta abierta');
+    ok(await permitido(getDoc(doc(cliente, 'users/u-coach'))),
+       'pero un cliente sigue pudiendo leer a su entrenador');
+    ok(await permitido(getDocs(query(collection(coach, 'users'), where('trainerId','==','u-coach')))),
+       'y el entrenador sigue listando a sus clientes');
+
+    ok(await permitido(updateDoc(doc(coach, 'users/u-coach'), { quierePagar: Date.now() })),
+       'un entrenador puede avisar de que quiere pagar');
+    ok(await permitido(updateDoc(doc(admin, 'users/u-coach'), { accesoHasta:null, quierePagar:null })),
+       'y el admin le quita la fecha y el aviso a la vez');
+    await env.withSecurityRulesDisabled(async ctx => {
+      await setDoc(doc(ctx.firestore(), 'config/app'), { altaAbierta:false, diasPrueba:30 });
+    });
+    ok(!await permitido(setDoc(doc(como('s5'), 'users/s5'), abierto())),
+       '🔴 y al cerrar el alta se cierra al instante, sin desplegar nada');
+
   } catch (e) {
     console.log('  ❌ las pruebas se rompieron: ' + (e && e.message));
     fallos++;

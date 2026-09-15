@@ -518,7 +518,7 @@ textarea{resize:vertical;min-height:60px;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden,#home-pausado.hidden,#alta-fila-hasta.hidden,#alta-fila-dias.hidden,#aviso-plazo.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden,#home-pausado.hidden,#alta-fila-hasta.hidden,#alta-fila-dias.hidden,#home-plan.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -1022,6 +1022,18 @@ textarea{resize:vertical;min-height:60px;}
               una mano. Tus clientes no lo ven.
             </div>
           </div>
+
+          <!-- Consentimiento. Obligatorio en TODOS los registros (código,
+               invitación y alta abierta): medidas, fotos del cuerpo y
+               entrenamientos son datos de salud, y para tratarlos hace falta
+               un consentimiento explícito. Se guarda qué versión aceptó. -->
+          <label style="display:flex;gap:9px;align-items:flex-start;margin-top:14px;font-size:12px;line-height:1.45;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:500;">
+            <input type="checkbox" id="auth-consiente" style="width:auto;margin:2px 0 0;flex:none;">
+            <span>He leído la <a href="legal.html#privacidad" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">política de privacidad</a>
+              y los <a href="legal.html#terminos" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">términos</a>,
+              y doy mi consentimiento para que se traten mis datos de salud
+              (medidas, fotos y entrenamientos) para usar la app.</span>
+          </label>
         </div>
 
         <button class="btn btn-primary" id="auth-submit" onclick="submitAuth()">Iniciar sesión</button>
@@ -1032,6 +1044,11 @@ textarea{resize:vertical;min-height:60px;}
       </div>
       <div class="msg msg-info" id="registro-cerrado-aviso">
         El registro está cerrado: las cuentas se crean por invitación.
+      </div>
+      <div style="font-size:11.5px;text-align:center;margin-top:4px;">
+        <a href="legal.html#privacidad" target="_blank" rel="noopener" style="color:var(--muted);">Privacidad</a>
+        <span style="color:var(--muted);"> · </span>
+        <a href="legal.html#terminos" target="_blank" rel="noopener" style="color:var(--muted);">Términos</a>
       </div>
     </div>
 
@@ -1336,6 +1353,13 @@ textarea{resize:vertical;min-height:60px;}
        La llama sigue siendo EXCLUSIVA del reto sin contestar, así que la
        jerarquía queda: llama > violeta lleno > tarjeta en calma. -->
   <div id="home-aviso" class="hidden"></div>
+
+  <!-- Prueba gratis del ENTRENADOR: cuánto le queda (o que se acabó) y el botón
+       para pagar. Estaba como un aviso gris dentro de "Mis clientes" y Jhon
+       (15/09) lo quiso aquí y resaltado: es lo que decide si sigue con la app,
+       y en "Mis clientes" se entra a trabajar, no a leer avisos. Violeta lleno,
+       el mismo peso que un recado sin leer. Lo pinta pintarPlazoEntrenador(). -->
+  <div id="home-plan" class="hidden"></div>
 
   <!-- Seguimiento pausado por el entrenador (impago). Va donde el aviso del
        coach y por encima de todo lo demás: si no, el cliente ve su plan
@@ -1753,11 +1777,6 @@ textarea{resize:vertical;min-height:60px;}
       <b>Mi entrenamiento</b>.
     </p>
   </div>
-
-  <!-- Hasta cuándo dura su acceso gratuito, si tiene fecha. Que se entere aquí
-       y no el día que deja de ver a sus clientes. -->
-  <div class="msg msg-info hidden" id="aviso-plazo"></div>
-
   <div class="card">
     <div class="section-title">Invitar a un cliente</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.45;">
@@ -1875,6 +1894,45 @@ textarea{resize:vertical;min-height:60px;}
     <button class="btn btn-primary" id="alta-btn" onclick="crearCodigoAlta()">+ Crear código de alta</button>
     <div id="alta-msg"></div>
     <div id="altas-lista" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
+  </div>
+
+  <!-- Alta abierta y datos de la app (15/09/2026). Todo vive en /config/app y
+       se lee en vivo: cambiar el WhatsApp o el responsable (al pasar a cuenta
+       de empresa, por ejemplo) no necesita tocar el código ni desplegar. -->
+  <div class="card" id="pane-config-app">
+    <div class="section-title">Alta abierta y datos de la app</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
+      Con el alta abierta, cualquier entrenador puede crearse la cuenta desde la
+      web sin código, y entra con una prueba gratis. Los códigos siguen
+      funcionando igual.
+    </p>
+    <label style="display:flex;gap:9px;align-items:center;margin-top:10px;font-size:14px;font-weight:700;text-transform:none;letter-spacing:0;color:var(--text);">
+      <input type="checkbox" id="cfg-alta-abierta" style="width:auto;margin:0;flex:none;">
+      Alta abierta
+    </label>
+    <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Días de prueba de quien entre solo</label>
+    <div class="fila-reto">
+      <input type="text" inputmode="numeric" id="cfg-dias-prueba" value="30" style="max-width:90px;">
+      <span style="font-size:13px;color:var(--muted);">días desde que se registre</span>
+    </div>
+    <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Responsable (sale en la política de privacidad)</label>
+    <input type="text" id="cfg-responsable" placeholder="Tu nombre o el de tu empresa">
+    <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">Correo de contacto</label>
+    <input type="email" id="cfg-correo" placeholder="contacto@ejemplo.com">
+    <label style="font-size:11px;color:var(--muted);display:block;margin-top:10px;">WhatsApp para «Quiero pagar»</label>
+    <input type="tel" id="cfg-whatsapp" placeholder="+34 600 000 000">
+    <div style="font-size:11px;color:var(--muted);line-height:1.45;margin-top:6px;">
+      Puedes cambiar estos datos cuando quieras (por ejemplo, al pasar a una
+      cuenta de empresa o a WhatsApp Business). El correo, el responsable y el
+      número quedan públicos: salen en la web.
+    </div>
+    <div id="cfg-app-msg" style="margin-top:8px;"></div>
+    <button class="btn btn-primary" id="cfg-app-btn" onclick="guardarConfigApp()">Guardar</button>
+    <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:10px;word-break:break-all;">
+      Enlace del alta abierta: <span id="cfg-enlace"></span><br>
+      <a href="legal.html#privacidad" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">Ver privacidad</a> ·
+      <a href="legal.html#terminos" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">Ver términos</a>
+    </div>
   </div>
 </div>
 
@@ -2520,7 +2578,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 17:38';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 18:11';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5567,6 +5625,8 @@ function toggleAuthPanel(){
   const p=document.getElementById('auth-panel');
   p.classList.toggle('hidden');
   if(p.classList.contains('hidden')) alCerrarPanelDeCuenta();
+  // Al abrirlo: ¿está el alta abierta? Se pregunta aquí y no al arrancar la app.
+  if(!p.classList.contains('hidden')&&window.cargarConfigAppSiHaceFalta) window.cargarConfigAppSiHaceFalta();
   if(!p.classList.contains('hidden')&&!window.__authReady){
     document.getElementById('auth-msg').innerHTML=
       '<div class="msg msg-err">No se pudo cargar el servicio de cuentas. '+
@@ -7177,12 +7237,180 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const fdb  = getFirestore(app);
 
-/* Las altas están cerradas: la creación de cuentas está desactivada en la
-   consola de Firebase (Authentication → Settings), que es el candado de
-   verdad. Esto solo oculta la pestaña para no ofrecer algo que va a fallar.
-   Ponerlo a true no abre nada por sí solo: hay que reactivarlo también en la
-   consola, y para entonces debería existir el mecanismo de invitaciones. */
-const REGISTRO_ABIERTO = false;
+/* ═══════════ Datos de la app y alta abierta (15/09/2026) ═══════════
+   Antes aquí había `const REGISTRO_ABIERTO = false`. Ahora el interruptor vive
+   en /config/app y lo enciende Jhon desde el panel de Entrenadores, sin
+   desplegar. Quien manda de verdad son las reglas (altaAbiertaValida): esto
+   solo decide qué formulario se enseña.
+   Si /config/app no se puede leer (sin cobertura, o reglas sin publicar), se
+   queda como estaba: registro cerrado. */
+let configApp = {};
+let registroAbierto = false;
+
+/* 🔴 Se lee cuando hace falta (abrir Cuenta, llegar con ?registro, tener
+   sesión o entrar en Entrenadores), NUNCA al arrancar. Un getDoc al arrancar
+   deja abierto el canal de escucha de Firestore para cualquiera que abra la
+   web, aunque no vaya a registrarse nunca: datos y batería de visitantes, y un
+   ERR_INTERNET_DISCONNECTED en consola en cuanto pierden la red. Lo cazó la
+   prueba de "sin cobertura". Una sola lectura compartida por página; si falla,
+   la siguiente vez se reintenta. */
+let promesaConfig = null;
+window.cargarConfigAppSiHaceFalta = function(){
+  return promesaConfig || (promesaConfig = cargarConfigApp());
+};
+
+/* Versión de la política que acepta quien se registra. Subirla al cambiar el
+   texto de legal.html, para saber qué aceptó cada uno. */
+const VERSION_LEGAL = '2026-09-15';
+function consentimientoAhora(){ return { version: VERSION_LEGAL, ts: Date.now() }; }
+
+async function cargarConfigApp(){
+  /* Sin conexión ni se intenta: el SDK tarda en rendirse y llena la consola de
+     errores (lo cazó la prueba de "sin cobertura"). Sin red no se puede
+     registrar nadie de todas formas; al volver, se lee. */
+  if(navigator.onLine === false){
+    window.addEventListener('online', () => { cargarConfigApp(); }, { once: true });
+    return configApp;
+  }
+  try{
+    const snap = await getDoc(doc(fdb, 'config', 'app'));
+    configApp = snap.exists() ? snap.data() : {};
+  }catch(e){
+    console.warn('[config] no se pudieron leer los datos de la app', e && e.code);
+    configApp = {};
+    promesaConfig = null;   // que la próxima vez lo intente otra vez
+  }
+  pintarRegistroAbierto();
+  pintarConfigAdmin();
+  return configApp;
+}
+
+/* El formulario de cuenta según el interruptor. Con código o invitación no se
+   toca: esos caminos ya fijan el rol y sus avisos. `cfg` solo lo pasan las
+   pruebas. */
+function pintarRegistroAbierto(cfg = configApp){
+  if(codigoInvitacion || codigoAlta) return;
+  const abierto = !!(cfg && cfg.altaAbierta === true);
+  registroAbierto = abierto;
+  document.querySelector('#auth-panel .auth-tabs').classList.toggle('hidden', !abierto);
+  $('registro-cerrado-aviso').classList.toggle('hidden', abierto);
+  // El alta abierta es SOLO de entrenadores: los clientes entran por invitación.
+  $('fila-rol').classList.toggle('hidden', abierto);
+  $('auth-role').value = abierto ? 'trainer' : 'client';
+  $('alta-extra').classList.toggle('hidden', !abierto);
+  const av = $('aviso-invitacion');
+  if(abierto){
+    const dias = parseInt(cfg.diasPrueba, 10) || 0;
+    av.textContent = '¿Eres entrenador? Crea tu cuenta y prueba la app gratis '
+      + dias + ' días, sin tarjeta.';
+    av.classList.remove('hidden');
+  }else{
+    av.textContent = '';
+    av.classList.add('hidden');
+    if(authMode === 'register') setAuthTab('login');
+  }
+}
+window.pintarRegistroAbierto = pintarRegistroAbierto;
+
+function pintarConfigAdmin(){
+  const casilla = document.getElementById('cfg-alta-abierta');
+  if(!casilla) return;
+  casilla.checked = configApp.altaAbierta === true;
+  document.getElementById('cfg-dias-prueba').value = configApp.diasPrueba || 30;
+  document.getElementById('cfg-responsable').value = configApp.responsable || '';
+  document.getElementById('cfg-correo').value = configApp.correo || '';
+  document.getElementById('cfg-whatsapp').value = configApp.whatsapp || '';
+  document.getElementById('cfg-enlace').textContent = location.origin + location.pathname + '?registro';
+}
+
+window.guardarConfigApp = async function(){
+  const msg = document.getElementById('cfg-app-msg');
+  const err = t => { msg.innerHTML = '<div class="msg msg-err">' + t + '</div>'; };
+  const abierta = document.getElementById('cfg-alta-abierta').checked;
+  const dias = parseInt(document.getElementById('cfg-dias-prueba').value, 10);
+  const responsable = (document.getElementById('cfg-responsable').value || '').trim();
+  const correo = (document.getElementById('cfg-correo').value || '').trim();
+  const whatsapp = (document.getElementById('cfg-whatsapp').value || '').trim();
+  if(!(dias >= 1 && dias <= 365)) return err('Pon entre 1 y 365 días de prueba.');
+  /* La política de privacidad dice quién es el responsable y cómo escribirle.
+     Abrir la puerta a desconocidos sin eso sería publicarla con huecos. */
+  if(abierta && (!responsable || !correo)){
+    return err('Antes de abrir el alta, rellena el responsable y el correo de contacto: salen en la política de privacidad.');
+  }
+  if(correo && !/^\S+@\S+\.\S+$/.test(correo)) return err('Ese correo no parece válido.');
+  if(whatsapp && !numeroWhatsApp(whatsapp)) return err('Ese número de WhatsApp no parece válido. Ponlo con prefijo, por ejemplo +34 600 000 000.');
+  const datos = { altaAbierta: abierta, diasPrueba: dias, responsable, correo, whatsapp,
+                  actualizadoEn: Date.now() };
+  const btn = document.getElementById('cfg-app-btn');
+  btn.disabled = true;
+  try{
+    await setDoc(doc(fdb, 'config', 'app'), datos);
+    configApp = datos;
+    pintarRegistroAbierto();
+    msg.innerHTML = '<div class="msg msg-ok">Guardado. ' + (abierta
+      ? 'El alta está abierta: cualquiera con el enlace puede darse de alta como entrenador.'
+      : 'El alta está cerrada: solo se entra con código.') + '</div>';
+  }catch(e){
+    console.error('[config] no se pudo guardar', e);
+    err('No se pudo guardar: ' + escaparHTML(e.code || e.message));
+  }finally{
+    btn.disabled = false;
+  }
+};
+
+/* Solo cifras y con prefijo de país, que es lo que pide wa.me. "" si no vale. */
+function numeroWhatsApp(n){
+  let d = String(n || '').replace(/\D/g, '');
+  if(d.startsWith('00')) d = d.slice(2);
+  return d.length >= 8 ? d : '';
+}
+
+/* Alta de entrenador SIN código. Se relee la config justo antes: si Jhon ha
+   cambiado los días (o cerrado el alta) desde que se abrió la página, las
+   reglas rechazarían una fecha calculada con los viejos. */
+async function altaAbierta(user, name, extra){
+  await cargarConfigApp();
+  if(!registroAbierto) throw new Error('ALTA_CERRADA');
+  const dias = parseInt(configApp.diasPrueba, 10) || 0;
+  await setDoc(doc(fdb, 'users', user.uid), {
+    name, email: user.email, role: 'trainer', trainerId: null,
+    registroAbierto: true,
+    accesoHasta: new Date(Date.now() + dias * DIA_MS),
+    gimnasio: extra.gimnasio || null,
+    telefono: extra.telefono || null,
+    profilePic: extra.foto || null,
+    consentimiento: consentimientoAhora(),
+    createdAt: Date.now()
+  });
+}
+
+/* «Quiero pagar la app». Hasta que haya cobro de verdad (Stripe, paso 3): deja
+   constancia en su perfil —a Jhon le sale en la lista de Entrenadores— y, si
+   hay WhatsApp configurado, lo abre con el mensaje escrito. */
+window.quieroPagar = async function(){
+  if(!meUid || !meData) return;
+  const wa = numeroWhatsApp(configApp.whatsapp);
+  if(wa){
+    const nombre = (meData.name || '').trim() || 'un entrenador';
+    const gim = (meData.gimnasio || '').trim();
+    const texto = 'Hola, soy ' + nombre + (gim ? ' (' + gim + ')' : '')
+      + '. Quiero pagar My Fitness Tracker para seguir con mis clientes.'
+      + (meData.email ? ' Mi correo: ' + meData.email + '.' : '');
+    /* ANTES de cualquier await: Safari bloquea las ventanas que no salen
+       directamente del toque, y tras esperar a Firestore ya no saldría. */
+    window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+  }
+  try{
+    const ahora = Date.now();
+    await setDoc(doc(fdb, 'users', meUid), { quierePagar: ahora }, { merge: true });
+    meData.quierePagar = ahora;
+    pintarModoEntrenador();
+    if(!wa) aviso('Aviso enviado. Te contactamos pronto.', 'bien');
+  }catch(e){
+    console.error('[pago] no se pudo guardar el aviso', e);
+    aviso('No se pudo enviar el aviso: ' + (e.code || e.message), 'mal');
+  }
+};
 
 let authMode = 'login';
 let meUid = null;
@@ -7274,11 +7502,15 @@ window.submitAuth = async function(){
       /* Se comprueba ANTES de createUserWithEmailAndPassword: si se dejara para
          después, un campo vacío dejaría una cuenta de Auth creada y sin perfil,
          que es el limbo del que hay que sacar a la gente a mano. */
-      if(codigoAlta && !($('alta-gimnasio').value || '').trim()){
+      const altaEntrenador = !!(codigoAlta || (registroAbierto && !codigoInvitacion));
+      if(altaEntrenador && !($('alta-gimnasio').value || '').trim()){
         showMsg('Escribe el nombre de tu gimnasio o marca'); return;
       }
-      if(codigoAlta && !($('alta-telefono').value || '').trim()){
+      if(altaEntrenador && !($('alta-telefono').value || '').trim()){
         showMsg('Escribe un teléfono de contacto'); return;
+      }
+      if(!$('auth-consiente').checked){
+        showMsg('Para crear la cuenta tienes que aceptar la política de privacidad y los términos.'); return;
       }
 
       let resolveProfile;
@@ -7290,6 +7522,12 @@ window.submitAuth = async function(){
           await altaPorInvitacion(cred.user, name);
         }else if(codigoAlta){
           await altaPorCodigo(cred.user, name, {
+            gimnasio: ($('alta-gimnasio').value || '').trim(),
+            telefono: ($('alta-telefono').value || '').trim(),
+            foto: altaFotoData
+          });
+        }else if(registroAbierto){
+          await altaAbierta(cred.user, name, {
             gimnasio: ($('alta-gimnasio').value || '').trim(),
             telefono: ($('alta-telefono').value || '').trim(),
             foto: altaFotoData
@@ -7315,6 +7553,12 @@ window.submitAuth = async function(){
           showMsg('Tu código es válido, pero la app todavía no admite cuentas '
             + 'nuevas. Avisa a quien te dio de alta: tiene que activar el '
             + 'registro en Firebase Authentication.');
+        }else if(err.code === 'auth/admin-restricted-operation' && registroAbierto){
+          showMsg('El alta está abierta, pero la app todavía no admite cuentas nuevas. '
+            + 'Avísanos por el correo de la política de privacidad.');
+        }else if(err.message === 'ALTA_CERRADA'){
+          showMsg('El alta abierta se acaba de cerrar. Si te han pasado un código, entra con su enlace.');
+          await signOut(auth).catch(()=>{});
         }else if(err.message === 'ALTA_NO_VALIDA'){
           showMsg('Ese código de alta ya se ha usado o ha sido revocado. Pide uno nuevo.');
           await signOut(auth).catch(()=>{});
@@ -7323,7 +7567,9 @@ window.submitAuth = async function(){
           await signOut(auth).catch(()=>{});
         }else if(err.code === 'permission-denied'){
           console.error('[invitaciones] las reglas rechazaron el alta', err);
-          showMsg('No se pudo completar el alta con esa invitación. Pídele a tu entrenador un enlace nuevo.');
+          showMsg(registroAbierto && !codigoInvitacion && !codigoAlta
+            ? 'No se pudo completar el alta. Puede que el alta abierta haya cambiado hace un momento: recarga e inténtalo otra vez.'
+            : 'No se pudo completar el alta con esa invitación. Pídele a tu entrenador un enlace nuevo.');
           await signOut(auth).catch(()=>{});
         }else{
           showMsg(translateAuthError(err.code));
@@ -8232,20 +8478,41 @@ async function pintarEntrenadoresDeAlta(usadas){
   const c = document.getElementById('coaches-lista');
   if(!c) return;
   ultimasAltasUsadas = usadas;
-  if(!usadas.length){
-    c.textContent = 'Todavía no ha entrado ningún entrenador. Crea un código aquí abajo y pásaselo.';
+  const altaDe = {};
+  usadas.forEach(a => { altaDe[a.usadoPor] = a; });
+
+  /* Desde el alta abierta hay entrenadores SIN código, así que la lista sale de
+     /users y no de /altas: si no, los que entran solos no aparecerían. Las
+     altas se siguen usando para saber de qué tipo era su código. */
+  let perfiles;
+  try{
+    const qs = await getDocs(query(collection(fdb,'users'), where('role','==','trainer')));
+    perfiles = qs.docs.filter(d => d.id !== meUid).map(d => {
+      const p = d.data();
+      return { perfil: p, alta: altaDe[d.id] || {
+        usadoPor: d.id, usadoEn: p.createdAt || null,
+        tipo: p.registroAbierto ? 'prueba' : undefined } };
+    });
+  }catch(e){
+    /* Sin la consulta (reglas nuevas sin publicar), al menos los que entraron
+       con código, uno a uno como antes. */
+    console.error('[altas] no se pudo listar a los entrenadores', e);
+    perfiles = await Promise.all(usadas.map(async a => {
+      try{
+        const snap = await getDoc(doc(fdb,'users',a.usadoPor));
+        return { alta:a, perfil: snap.exists() ? snap.data() : null };
+      }catch(err){
+        // Un perfil ilegible no puede tumbar la lista entera.
+        console.error('[altas] no se pudo leer el perfil de', a.usadoPor, err);
+        return { alta:a, perfil:null };
+      }
+    }));
+  }
+  perfiles.sort((x, y) => (y.alta.usadoEn || 0) - (x.alta.usadoEn || 0));
+  if(!perfiles.length){
+    c.textContent = 'Todavía no ha entrado ningún entrenador. Crea un código aquí abajo o abre el alta, y pásale el enlace.';
     return;
   }
-  const perfiles = await Promise.all(usadas.map(async a => {
-    try{
-      const snap = await getDoc(doc(fdb,'users',a.usadoPor));
-      return { alta:a, perfil: snap.exists() ? snap.data() : null };
-    }catch(e){
-      // Un perfil ilegible no puede tumbar la lista entera.
-      console.error('[altas] no se pudo leer el perfil de', a.usadoPor, e);
-      return { alta:a, perfil:null };
-    }
-  }));
 
   c.innerHTML = perfiles.map(({alta, perfil}) => {
     if(!perfil){
@@ -8268,7 +8535,10 @@ async function pintarEntrenadoresDeAlta(usadas){
           ${escaparHTML(perfil.email||'')}${perfil.telefono ? ' · '+escaparHTML(perfil.telefono) : ''}
         </div>
         ${desde ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">Entró el ${escaparHTML(desde)}</div>` : ''}
-        <div style="font-size:11px;margin-top:2px;color:${acceso.vencido ? 'var(--danger)' : 'var(--muted)'};">${escaparHTML(acceso.texto)}</div>
+        <div style="font-size:11px;margin-top:2px;color:${acceso.vencido ? 'var(--danger)' : 'var(--muted)'};">${escaparHTML(acceso.texto)}${perfil.registroAbierto ? ' · entró con el alta abierta' : ''}</div>
+        ${perfil.quierePagar
+          ? `<div style="font-size:12px;margin-top:4px;color:var(--accent);font-weight:800;">Quiere pagar · lo pidió el ${escaparHTML(fechaCorta(msDeFecha(perfil.quierePagar)))}</div>`
+          : ''}
         <div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           ${perfil.suspendido
             ? `<span class="badge" style="color:var(--danger);background:rgba(200,60,60,.12);">Suspendido</span>
@@ -8323,7 +8593,8 @@ window.reactivarEntrenador = async function(uid){
 window.quitarPlazoEntrenador = async function(uid){
   if(!confirm('¿Quitarle la fecha de fin?\n\nTendrá acceso sin límite, hasta que lo suspendas tú.')) return;
   try{
-    await setDoc(doc(fdb,'users',uid), { accesoHasta:null }, { merge:true });
+    // El aviso de "quiere pagar" se va con la fecha: ya está atendido.
+    await setDoc(doc(fdb,'users',uid), { accesoHasta:null, quierePagar:null }, { merge:true });
     aviso('Fecha quitada: acceso sin límite','bien');
     recargarEntrenadores();
   }catch(e){
@@ -9125,7 +9396,10 @@ window.setModo = function(modo){
     cerrarVigilancias();
     cerrarAsignar();
   }
-  if(esCoaches) vigilarCodigosAlta();
+  if(esCoaches){
+    vigilarCodigosAlta();
+    window.cargarConfigAppSiHaceFalta();   // rellena el panel del alta abierta
+  }
   window.scrollTo(0,0);
 };
 
@@ -9170,6 +9444,27 @@ window.pintarModoEntrenador = pintarModoEntrenador;
    (y comiéndose errores de permisos) hasta recargar. setTimeout no aguanta más
    de ~24 días; más lejos da igual, porque la app se habrá recargado antes. */
 let timerFinPlazo = null;
+
+function tarjetaPlan(perfil, hastaMs, vencido){
+  const quedan = Math.ceil((hastaMs - Date.now()) / DIA_MS);
+  const titulo = vencido ? 'Tu acceso gratuito ha terminado'
+    : quedan <= 1 ? 'Te queda 1 día gratis'
+    : 'Te quedan ' + quedan + ' días gratis';
+  const detalle = vencido
+    ? 'Terminó el ' + fechaPlazo(hastaMs) + '. Tus clientes siguen entrenando y no han '
+      + 'perdido nada; para volver a llevarlos desde la app, pásate al plan de pago.'
+    : 'Hasta el ' + fechaPlazo(hastaMs) + '. Después, para seguir llevando a tus clientes '
+      + 'desde la app, tendrás que pasarte al plan de pago.';
+  const pedido = msDeFecha(perfil.quierePagar);
+  return `<div class="aviso-coach">
+    <div class="aviso-coach-rol">${vencido ? 'Tu cuenta de entrenador' : 'Prueba gratis'}</div>
+    <div class="aviso-coach-txt" style="margin-top:4px;">${escaparHTML(titulo)}</div>
+    <div class="aviso-coach-ses">${escaparHTML(detalle)}</div>
+    ${pedido ? `<div class="aviso-coach-ses"><b>Ya nos avisaste el ${escaparHTML(fechaCorta(pedido))}.</b> Te contactamos pronto.</div>` : ''}
+    <button class="btn-sm aviso-coach-btn" onclick="quieroPagar()">${pedido ? 'Volver a avisar' : 'Quiero pagar la app'}</button>
+  </div>`;
+}
+
 function pintarPlazoEntrenador(perfil, porImpago, vencido){
   const hastaMs = perfil ? msDeFecha(perfil.accesoHasta) : null;
   const soloPlazo = vencido && !porImpago;
@@ -9178,16 +9473,17 @@ function pintarPlazoEntrenador(perfil, porImpago, vencido){
   if(tit) tit.textContent = soloPlazo ? 'Tu acceso gratuito ha terminado' : 'Cuenta suspendida';
   if(mot) mot.textContent = soloPlazo
     ? 'Tu acceso gratuito terminó el ' + fechaPlazo(hastaMs) + ', así que ahora mismo no '
-      + 'puedes ver ni gestionar a tus clientes. Habla con quien te dio de alta para seguir.'
+      + 'puedes ver ni gestionar a tus clientes. Para seguir, pulsa «Quiero pagar la app» en Inicio.'
     : 'Tu cuenta de entrenador está suspendida, así que ahora mismo no puedes ver '
       + 'ni gestionar a tus clientes.';
 
-  const pl = document.getElementById('aviso-plazo');
-  const mostrar = !!perfil && !porImpago && !vencido && hastaMs != null;
-  if(pl){
-    pl.classList.toggle('hidden', !mostrar);
-    if(mostrar) pl.textContent = 'Tu acceso gratuito dura hasta el ' + fechaPlazo(hastaMs)
-      + '. Para seguir después, habla con quien te dio de alta.';
+  /* La tarjeta de Inicio: con fecha, dentro o fuera de plazo. Suspendido por
+     impago no: ahí no se le está ofreciendo nada, se le ha cortado. */
+  const plan = document.getElementById('home-plan');
+  const mostrar = !!perfil && !porImpago && hastaMs != null;
+  if(plan){
+    plan.classList.toggle('hidden', !mostrar);
+    plan.innerHTML = mostrar ? tarjetaPlan(perfil, hastaMs, vencido) : '';
   }
 
   clearTimeout(timerFinPlazo);
@@ -10074,6 +10370,8 @@ onAuthStateChanged(auth, async (user) => {
     vigilarMisRetos();
     vigilarAvisoCoach();
     vigilarCodigosAlta();
+    // Con sesión el canal de Firestore ya está abierto: el WhatsApp de «Quiero pagar».
+    window.cargarConfigAppSiHaceFalta();
     // Sin perfil todavía no se sincroniza: primero hay que completarlo.
     if(meData) await cambiarANube();
   }finally{
@@ -10136,6 +10434,7 @@ async function altaPorCodigo(user, name, extra){
     trainerId: null,
     altaId: codigoAlta,
     accesoHasta: accesoAlEntrar(alta.data()),
+    consentimiento: consentimientoAhora(),
     gimnasio: extra.gimnasio || null,
     telefono: extra.telefono || null,
     profilePic: extra.foto || null,
@@ -10183,6 +10482,7 @@ async function altaPorInvitacion(user, name){
     name, email: user.email, role: 'client',
     trainerId: inv.data().trainerId,
     inviteId: codigoInvitacion,
+    consentimiento: consentimientoAhora(),
     createdAt: Date.now()
   });
   lote.update(doc(fdb, 'invites', codigoInvitacion), {
@@ -10198,7 +10498,7 @@ async function altaPorInvitacion(user, name){
 
 /* Estado inicial del panel: con el registro cerrado sobra la fila de pestañas
    (una sola pestaña no es una elección). */
-if(!REGISTRO_ABIERTO && !codigoInvitacion && !codigoAlta){
+if(!codigoInvitacion && !codigoAlta){
   document.querySelector('#auth-panel .auth-tabs').classList.add('hidden');
   $('register-extra').classList.add('hidden');
   $('auth-submit').textContent = 'Iniciar sesión';
@@ -10209,6 +10509,12 @@ if(!REGISTRO_ABIERTO && !codigoInvitacion && !codigoAlta){
 prepararRegistroPorInvitacion();
 prepararRegistroPorAlta();
 pintarEstadoSync();
+/* El enlace del alta abierta lleva ?registro: abre el panel de cuenta al
+   llegar, y abrirlo es lo que lee si el alta está abierta. Sin ese parámetro no
+   se toca Firestore hasta que alguien lo necesite. */
+if(new URLSearchParams(location.search).has('registro') && !codigoInvitacion && !codigoAlta){
+  if($('auth-panel').classList.contains('hidden')) toggleAuthPanel();
+}
 
 /* Marca de que el módulo llegó a ejecutarse: toggleAuthPanel() la consulta
    para avisar si Firebase no cargó. */

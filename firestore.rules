@@ -113,6 +113,35 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/altas/$(altaId)).data.usado == false;
     }
 
+    /* ═══ Alta abierta (15/09/2026) ═══
+       Con `config/app.altaAbierta` encendido, un entrenador puede crearse la
+       cuenta sin código. Entra SIEMPRE con prueba: fecha de fin como mucho a
+       `diasPrueba` días (+1 de margen por el reloj del móvil) y con el
+       consentimiento de privacidad guardado. Sin eso, "alta abierta" sería
+       "acceso gratis para siempre". Apagar el interruptor cierra la puerta al
+       instante, sin desplegar nada. */
+    function configApp() {
+      return get(/databases/$(database)/documents/config/app).data;
+    }
+    function altaAbiertaValida() {
+      return exists(/databases/$(database)/documents/config/app)
+        && configApp().get('altaAbierta', false) == true
+        && request.resource.data.get('accesoHasta', null) is timestamp
+        && request.resource.data.accesoHasta
+             <= request.time + duration.value(configApp().get('diasPrueba', 0) + 1, 'd')
+        && request.resource.data.get('consentimiento', null) is map;
+    }
+
+    /* Datos de la app: interruptor del alta, días de prueba y contacto. Los lee
+       cualquiera, también sin sesión: la página de privacidad saca de aquí el
+       responsable y el correo, y el formulario de registro si el alta está
+       abierta. Solo los cambia el admin. */
+    match /config/{docId} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if soyAdmin();
+    }
+
     match /altas/{codigo} {
       // get sí, list no: el candidato necesita leer el suyo para el alta, pero
       // enumerarlos daría la lista de códigos sin gastar de todo el mundo.
@@ -191,7 +220,13 @@ service cloud.firestore {
       // si su rol es "trainer" (necesario para que el invitado vea quién le
       // invita). No permite listar todos los entrenadores, solo leer uno del
       // que ya se conoce el ID exacto.
-      allow read: if isOwner(uid) || isMyClientDoc() || (isSignedIn() && resource.data.role == 'trainer');
+      /* 🔴 get y list por separado (15/09/2026). Antes era un único `read`, así
+         que cualquiera con sesión podía LISTAR todos los perfiles de entrenador
+         —con su correo y su teléfono— con un where('role','==','trainer'). Con
+         el alta abierta, cualquiera es cualquiera. Leer UNO conocido sigue
+         permitido (el cliente lee a su entrenador); listarlos, solo el admin. */
+      allow get: if isOwner(uid) || isMyClientDoc() || (isSignedIn() && resource.data.role == 'trainer');
+      allow list: if isMyClientDoc() || (soyAdmin() && resource.data.role == 'trainer');
 
       // Un cliente solo existe si trae una invitación válida de su entrenador.
       // Esto es lo que impide que un desconocido se cuelgue de la lista de
@@ -214,9 +249,13 @@ service cloud.firestore {
                     && !('suspendido' in request.resource.data)
                     && !('suspendidoPorCoach' in request.resource.data)
                     && (
+                      /* `.get('altaId', null)`: quien entra por el alta abierta
+                         no trae código, y leer el campo ausente a pelo sería un
+                         error que deniega. */
                       (request.resource.data.role == 'trainer'
-                       && altaValida(request.resource.data.altaId)
-                       && accesoSegunCodigo(request.resource.data.altaId))
+                       && ((altaValida(request.resource.data.get('altaId', null))
+                            && accesoSegunCodigo(request.resource.data.get('altaId', null)))
+                           || altaAbiertaValida()))
                       || (request.resource.data.role == 'client'
                           && invitacionValida(request.resource.data.inviteId,
                                               request.resource.data.trainerId))
@@ -254,7 +293,7 @@ service cloud.firestore {
                        que sostiene el cobro. */
                     || (soyAdmin()
                         && request.resource.data.diff(resource.data)
-                             .affectedKeys().hasOnly(['suspendido','accesoHasta']))
+                             .affectedKeys().hasOnly(['suspendido','accesoHasta','quierePagar']))
                     || (isMyClientDoc()
                         && request.resource.data.diff(resource.data)
                              .affectedKeys().hasOnly(['activeRoutine']))

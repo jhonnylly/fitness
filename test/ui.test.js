@@ -1049,8 +1049,8 @@ async function appLista(page, url){
         aviso: v(document.getElementById('aviso-suspendido')),
         titulo: document.getElementById('aviso-suspendido-titulo').textContent,
         invitar: v(document.getElementById('invitar-btn')),
-        plazo: v(document.getElementById('aviso-plazo')),
-        textoPlazo: document.getElementById('aviso-plazo').textContent
+        plan: !document.getElementById('home-plan').classList.contains('hidden'),
+        textoPlan: document.getElementById('home-plan').textContent
       });
       pintarModoEntrenador({ role:'trainer', accesoHasta: ahora - DIA });
       setModo('clientes');
@@ -1082,14 +1082,18 @@ async function appLista(page, url){
        'y con la fecha pasada, que se terminó');
     ok(tipos.vencido.aviso && /acceso gratuito ha terminado/i.test(tipos.vencido.titulo),
        'al entrenador vencido se le explica que se acabó su acceso gratuito');
-    ok(!tipos.vencido.invitar && !tipos.vencido.plazo,
-       'y no le quedan botones que van a fallar');
-    ok(!tipos.enPlazo.aviso && tipos.enPlazo.invitar && tipos.enPlazo.plazo
-       && /hasta el/i.test(tipos.enPlazo.textoPlazo),
-       'dentro del plazo trabaja normal y ve hasta cuándo le dura');
+    ok(!tipos.vencido.invitar, 'y no le quedan botones que van a fallar');
+    ok(tipos.vencido.plan && /ha terminado/i.test(tipos.vencido.textoPlan)
+       && /quiero pagar/i.test(tipos.vencido.textoPlan),
+       'en Inicio le sale en grande que se acabó, con el botón de pagar');
+    ok(!tipos.enPlazo.aviso && tipos.enPlazo.invitar && tipos.enPlazo.plan
+       && /días gratis/i.test(tipos.enPlazo.textoPlan) && /hasta el/i.test(tipos.enPlazo.textoPlan)
+       && /quiero pagar/i.test(tipos.enPlazo.textoPlan),
+       'dentro del plazo trabaja normal y en Inicio ve cuánto le queda, con el botón de pagar');
     ok(tipos.impago.aviso && /suspendida/i.test(tipos.impago.titulo),
        'suspendido por impago sigue diciendo "suspendida", aunque también haya vencido');
-    ok(!tipos.cortesia2.aviso && !tipos.cortesia2.plazo,
+    ok(!tipos.impago.plan, 'y a un suspendido por impago no se le enseña la prueba');
+    ok(!tipos.cortesia2.aviso && !tipos.cortesia2.plan,
        'y sin fecha no se le enseña ningún plazo');
 
     console.log('\n13i. El onboarding de una cuenta que ya existe trae su nombre y su foto');
@@ -1131,6 +1135,59 @@ async function appLista(page, url){
        '🔴 al terminarlo se guarda la foto de la cuenta, no se borra');
     ok(obCuenta.oculto, 'y el onboarding se cierra');
     await page.evaluate(()=>localStorage.clear());
+
+    console.log('\n13j. Alta abierta, consentimiento y datos de la app');
+    /* Las reglas deciden quién entra (rules §10). Aquí: que el formulario
+       cambie con el interruptor, que no se cree ninguna cuenta sin aceptar la
+       privacidad, y que no se pueda abrir el alta sin responsable ni correo. */
+    const abierta = await page.evaluate(async ()=>{
+      const v = el => !!(el && el.offsetParent !== null);
+      const $ = id => document.getElementById(id);
+      const tabs = () => v(document.querySelector('#auth-panel .auth-tabs'));
+      const r = {};
+      if($('auth-panel').classList.contains('hidden')) toggleAuthPanel();
+      /* Abrir el panel lanza la lectura real de /config/app. Se espera a que
+         acabe: si llegara a mitad de la prueba, repintaría el formulario con
+         lo que haya en producción y pisaría el estado que se está probando. */
+      await window.cargarConfigAppSiHaceFalta();
+      pintarRegistroAbierto({});
+      r.cerrada = { tabs: tabs(), cerrado: v($('registro-cerrado-aviso')) };
+      pintarRegistroAbierto({ altaAbierta:true, diasPrueba:21 });
+      setAuthTab('register');
+      r.abierta = { tabs: tabs(), cerrado: v($('registro-cerrado-aviso')), extra: v($('alta-extra')),
+                    rol: $('auth-role').value, filaRol: v($('fila-rol')),
+                    aviso: $('aviso-invitacion').textContent, consiente: v($('auth-consiente')) };
+      $('auth-email').value = 'prueba@ejemplo.es'; $('auth-password').value = 'secreta123';
+      $('auth-name').value = 'Coach'; $('alta-gimnasio').value = 'Gym'; $('alta-telefono').value = '600';
+      $('auth-consiente').checked = false;
+      await submitAuth();
+      r.sinConsentir = $('auth-msg').textContent;
+      pintarRegistroAbierto({});
+      r.vuelveACerrar = { tabs: tabs(), boton: $('auth-submit').textContent };
+      toggleAuthPanel();
+      $('cfg-alta-abierta').checked = true;
+      $('cfg-dias-prueba').value = '30'; $('cfg-responsable').value = ''; $('cfg-correo').value = '';
+      await guardarConfigApp();
+      r.cfgSinDatos = $('cfg-app-msg').textContent;
+      $('cfg-alta-abierta').checked = false;
+      return r;
+    });
+    ok(!abierta.cerrada.tabs && abierta.cerrada.cerrado, 'con el alta cerrada, solo se puede iniciar sesión');
+    ok(abierta.abierta.tabs && !abierta.abierta.cerrado && abierta.abierta.extra
+       && abierta.abierta.rol === 'trainer' && !abierta.abierta.filaRol,
+       'abierta: se puede registrar, siempre como entrenador y con sus datos');
+    ok(/21 días/.test(abierta.abierta.aviso), 'y dice cuántos días de prueba tiene: '+JSON.stringify(abierta.abierta.aviso));
+    ok(abierta.abierta.consiente, 'con la casilla de privacidad a la vista');
+    ok(/privacidad/i.test(abierta.sinConsentir),
+       '🔴 sin aceptar la privacidad no se crea la cuenta: '+JSON.stringify(abierta.sinConsentir));
+    ok(!abierta.vuelveACerrar.tabs && abierta.vuelveACerrar.boton === 'Iniciar sesión',
+       'al cerrar el alta vuelve a quedar solo iniciar sesión');
+    ok(/responsable/i.test(abierta.cfgSinDatos),
+       '🔴 no se abre el alta sin responsable ni correo para la privacidad');
+    const legal = fs.readFileSync(path.join(__dirname, '..', 'legal.html'), 'utf8');
+    ok(/id="privacidad"/.test(legal) && /id="terminos"/.test(legal)
+       && /datos de salud/i.test(legal) && /AEPD/.test(legal),
+       'la página legal existe, con privacidad y términos');
 
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
