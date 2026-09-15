@@ -887,6 +887,52 @@ textarea{resize:vertical;min-height:60px;}
 .ob-routine-btn.selected{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
 .ob-routine-btn-name{font-size:14px;font-weight:700;color:var(--text);}
 .ob-routine-btn-desc{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* ── Elegir VARIAS rutinas (15/09/2026, pedido por quienes la probaron) ──
+   Casilla cuadrada = puedes marcar varias; redonda = eliges una. La diferencia
+   es la de siempre en los formularios, y es lo que dice sin palabras qué se
+   espera de ti en cada paso. */
+.ob-routine-btn{display:flex;gap:12px;align-items:flex-start;}
+.preset-opcion{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;font-family:inherit;
+  color:var(--text);background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:12px 14px;margin-bottom:8px;cursor:pointer;}
+.preset-opcion.seleccionada{border-color:var(--accent);background:rgba(var(--accent-rgb),.07);}
+.preset-opcion[disabled]{cursor:default;opacity:.65;}
+.marca{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid var(--border);margin-top:1px;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;line-height:1;}
+.marca.redonda{border-radius:50%;}
+.seleccionada .marca,.ob-routine-btn.selected .marca{background:var(--accent);border-color:var(--accent);}
+.marca.redonda i{display:block;width:8px;height:8px;border-radius:50%;background:#fff;}
+.preset-pie{padding:12px 12px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--bg);}
+.preset-pie .btn{margin:0;}
+
+/* ── Volver (15/09/2026) ──
+   Era un "← Semanas" gris a la derecha del título, con pinta de un botón más:
+   una entrenadora probándolo solo entendió que era volver a base de pulsarlo.
+   Ahora está donde el iPhone pone siempre "atrás" —arriba a la izquierda, antes
+   del título—, en el color de lo que se toca y diciendo a dónde te lleva. */
+.btn-volver{display:inline-flex;align-items:center;gap:2px;background:none;border:none;
+  padding:6px 10px 6px 0;margin:-6px 0 4px;min-height:40px;font-family:inherit;font-size:14.5px;
+  font-weight:700;color:var(--accent);cursor:pointer;}
+.btn-volver svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2.4;
+  stroke-linecap:round;stroke-linejoin:round;}
+.btn-volver:active{opacity:.55;}
+.comp-barra .btn-volver{margin:0;min-height:0;padding:4px 8px 4px 0;color:#c4b5fd;font-size:13.5px;}
+
+/* ── Instalar en iPhone, paso a paso (15/09/2026) ──
+   Un párrafo decía "toca Compartir", pero en el Safari nuevo Compartir ya no
+   está en la barra: está dentro de "•••". Pasos numerados y con el dibujo de
+   cada botón, que es lo que se busca con el dedo. */
+.pasos-instalar{list-style:none;padding:0;margin:10px 0 0;counter-reset:paso;}
+.pasos-instalar li{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5;
+  margin-bottom:9px;color:var(--text);}
+.pasos-instalar li::before{counter-increment:paso;content:counter(paso);flex:none;width:22px;height:22px;
+  border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;margin-top:0;}
+.tecla{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;
+  padding:0 6px;border-radius:7px;background:var(--surface);border:1px solid var(--border);
+  font-weight:800;vertical-align:middle;line-height:1;}
+.tecla svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 /* Los botones de cada paso, pegados abajo del panel. En el móvil la lista de
    rutinas empuja el "Continuar" fuera de la pantalla, y encima la barra de
    direcciones del navegador se come la franja de abajo: el botón quedaba donde
@@ -1454,10 +1500,8 @@ textarea{resize:vertical;min-height:60px;}
   <!-- Vista sesiones de la semana -->
   <div id="session-list-view" style="display:none;">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div style="font-size:15px;font-weight:800;" id="week-detail-title"></div>
-        <button class="btn-sm" onclick="closeWeekDetail()">← Semanas</button>
-      </div>
+      <button class="btn-volver" onclick="closeWeekDetail()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver a semanas</span></button>
+      <div style="font-size:15px;font-weight:800;margin-bottom:10px;" id="week-detail-title"></div>
       <div id="session-list"></div>
       <button class="btn btn-secondary" onclick="addSessionToWeek(curWeekNum)">+ Añadir sesión</button>
       <!-- Duplicar y borrar la semana vivían en cada tarjeta del listado. En el
@@ -1472,12 +1516,12 @@ textarea{resize:vertical;min-height:60px;}
   </div>
  <div id="session-form" style="display:none;">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div>
-          <div style="font-size:16px;font-weight:800;" id="form-title"></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="form-type"></div>
-        </div>
-        <button class="btn-sm" id="btn-volver" onclick="volverAtras()">← Sesiones</button>
+      <!-- El texto lo pone actualizarBotonVolver(): "Volver a sesiones" o
+           "Volver a ejercicios", según dónde estés. -->
+      <button class="btn-volver" id="btn-volver" onclick="volverAtras()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver a sesiones</span></button>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:16px;font-weight:800;" id="form-title"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="form-type"></div>
       </div>
       <div id="aviso-borrador" class="msg msg-info" style="display:none;"></div>
       <!-- El descanso ocupaba una etiqueta y un campo enteros ARRIBA DEL TODO,
@@ -1668,7 +1712,7 @@ textarea{resize:vertical;min-height:60px;}
      así se elige sin perder de vista lo que llevas montado. -->
 <div id="selector-ejercicio" class="hidden">
   <div class="comp-barra">
-    <button class="btn-sm" id="sel-volver" onclick="nrVolverAMusculos()">← Músculos</button>
+    <button class="btn-volver" id="sel-volver" onclick="nrVolverAMusculos()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Músculos</span></button>
     <div id="sel-titulo" style="font-size:13px;font-weight:800;"></div>
     <button class="btn-sm" onclick="nrCerrarSelector()">✕</button>
   </div>
@@ -2578,7 +2622,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 18:11';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-15 18:36';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3829,7 +3873,9 @@ function pasoActual(){
 function actualizarBotonVolver(){
   const b=document.getElementById('btn-volver');
   if(!b)return;
-  b.textContent=pasoActual()==='sesion'?'← Sesiones':'← Ejercicios';
+  // En el <span>: textContent sobre el botón se llevaría la flecha dibujada.
+  const t=b.querySelector('span')||b;
+  t.textContent=pasoActual()==='sesion'?'Volver a sesiones':'Volver a ejercicios';
 }
 
 function volverAtras(){
@@ -5024,6 +5070,35 @@ function ocultarInstalar(){
   pintarInstalar();
 }
 
+/* Instrucciones de iPhone, paso a paso y con el dibujo de cada botón.
+   Una entrenadora (15/09/2026) no lo entendía: el texto decía "toca Compartir",
+   pero en el Safari nuevo (iOS 26) la barra de abajo solo tiene la dirección y
+   "•••", y Compartir está DENTRO de ese menú. En versiones anteriores sí está en
+   la barra, así que el paso 1 cuenta las dos cosas.
+   Chrome en iPhone (CriOS) lo tiene en otro sitio: arriba, junto a la dirección.
+   `ua` solo lo pasan las pruebas. */
+const ICO_COMPARTIR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M7 10H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1"/></svg>';
+const ICO_ANADIR_INICIO = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg>';
+function cuerpoInstalarIOS(ua = navigator.userAgent){
+  const enChrome = /CriOS/.test(ua);
+  const pasos = enChrome
+    ? `<li><span>Toca <span class="tecla">${ICO_COMPARTIR}</span> <b>arriba a la derecha</b>, junto a la dirección.</span></li>
+       <li><span>Elige <b>Añadir a pantalla de inicio</b> <span class="tecla">${ICO_ANADIR_INICIO}</span>. Si no lo ves, desliza la lista o toca <b>Ver más</b>.</span></li>
+       <li><span>Toca <b>Añadir</b>. Ya la tienes con su icono, como cualquier app.</span></li>`
+    : `<li><span>Abajo a la derecha, toca <span class="tecla">•••</span>. Si en tu barra ves directamente <span class="tecla">${ICO_COMPARTIR}</span>, tócalo y salta al paso 3.</span></li>
+       <li><span>Toca <b>Compartir</b> <span class="tecla">${ICO_COMPARTIR}</span>.</span></li>
+       <li><span>Elige <b>Añadir a pantalla de inicio</b> <span class="tecla">${ICO_ANADIR_INICIO}</span>. Si no lo ves, desliza la lista hacia arriba o toca <b>Ver más</b>.</span></li>
+       <li><span>Toca <b>Añadir</b>. Ya la tienes con su icono, como cualquier app.</span></li>`;
+  return `<div class="section-title">Tenla a mano</div>
+    <div style="font-size:12.5px;color:var(--muted);line-height:1.5;">
+      Ponla en la pantalla de inicio: se abre a pantalla completa y funciona
+      también sin cobertura.</div>
+    <ol class="pasos-instalar">${pasos}</ol>
+    <div class="acciones-fila" style="margin-left:0;margin-top:4px;">
+      <button class="btn-sm" onclick="ocultarInstalar()">Ya la tengo</button>
+    </div>`;
+}
+
 function pintarInstalar(){
   const enInicio = document.getElementById('instalar-aviso');
   const enAjustes = document.getElementById('instalar-ajustes');
@@ -5046,13 +5121,7 @@ function pintarInstalar(){
        puede salirle esto en Safari. Por eso el botón dice "ya la tengo" y no
        "entendido": con un toque se calla para siempre en ese móvil, y mientras
        tanto el texto no da por hecho que le falte nada. */
-    : `<div class="section-title">Tenla a mano</div>
-       <div style="font-size:12.5px;color:var(--muted);line-height:1.5;">
-         En el iPhone se añade desde Safari: toca <b>Compartir</b> (el cuadrado
-         con la flecha) y luego <b>Añadir a pantalla de inicio</b>.</div>
-       <div class="acciones-fila" style="margin-left:0;margin-top:10px;">
-         <button class="btn-sm" onclick="ocultarInstalar()">Ya la tengo</button>
-       </div>`);
+    : cuerpoInstalarIOS());
 
   /* En Inicio se puede decir "ahora no" y no vuelve a salir; en Ajustes sigue
      estando siempre, que es donde se busca después de haberlo descartado. */
@@ -6302,61 +6371,139 @@ function vigilarCapas(){
   sincronizarBloqueoFondo();
 }
 
+/* ── Explorar rutinas: marcar VARIAS, cargarlas y elegir la activa ──
+   15/09/2026, pedido por amigos de Jhon que la probaron. Antes cada rutina
+   tenía su "+ Añadir" suelto y la activa se cambiaba luego en "Mis rutinas":
+   quien quería probar tres hacía tres viajes y luego buscaba dónde activar.
+   Dos pasos: marcar y "Cargar", y después "¿cuál activas?". Por defecto se
+   sigue con la que ya estaba: cargar rutinas nuevas no puede cambiarte la de
+   Inicio sin que lo digas. */
+let presetSeleccion = [];          // ids marcados, en el orden en que se marcaron
+let presetRecienCargadas = null;   // null = marcando; array = eligiendo la activa
+let presetActivaElegida = null;
+
 function openPresetPanel(){
   if(bloqueadoPorPausa('añadir rutinas')) return;
+  presetSeleccion = [];
+  presetRecienCargadas = null;
+  presetActivaElegida = null;
   document.getElementById('preset-panel').classList.remove('hidden');
   renderPresetList();
 }
 
 function closePresetPanel(){
   document.getElementById('preset-panel').classList.add('hidden');
+  presetSeleccion = [];
+  presetRecienCargadas = null;
   renderRoutineList();
 }
 
+const PRESET_DESC_PANEL={
+  'preset_quema':'Alta intensidad, circuitos metabólicos y cardio. Ideal para quemar grasa rápido.',
+  'preset_volumen':'Progresión de cargas y volumen alto. Para ganar masa muscular.',
+  'preset_fuerza':'Pocas reps, cargas máximas. Para desarrollar fuerza real.',
+  'preset_recomp':'Equilibrio entre fuerza y cardio. Pierde grasa y gana músculo a la vez.',
+  'preset_definicion':'Déficit calórico + cardio moderado. Para marcar y definir el cuerpo.',
+  'preset_mantenimiento':'Frecuencia equilibrada. Para mantener el físico sin perder ni ganar.',
+  'preset_gluteo_pierna':'Enfoque en glúteo, pierna y abdomen sin descuidar el resto. Lunes a viernes.',
+};
+
 function renderPresetList(){
   const c=document.getElementById('preset-list');
-  const descriptions={
-    'preset_quema':'Alta intensidad, circuitos metabólicos y cardio. Ideal para quemar grasa rápido.',
-    'preset_volumen':'Progresión de cargas y volumen alto. Para ganar masa muscular.',
-    'preset_fuerza':'Pocas reps, cargas máximas. Para desarrollar fuerza real.',
-    'preset_recomp':'Equilibrio entre fuerza y cardio. Pierde grasa y gana músculo a la vez.',
-    'preset_definicion':'Déficit calórico + cardio moderado. Para marcar y definir el cuerpo.',
-    'preset_mantenimiento':'Frecuencia equilibrada. Para mantener el físico sin perder ni ganar.',
-    'preset_gluteo_pierna':'Enfoque en glúteo, pierna y abdomen sin descuidar el resto. Lunes a viernes.',
-  };
+  const intro=document.getElementById('preset-intro');
+  const pie=document.getElementById('preset-pie');
+  if(presetRecienCargadas){ renderElegirActivaPreset(c, intro, pie); return; }
+
+  if(intro) intro.textContent='Marca las rutinas que quieras y cárgalas de una vez. Después eliges cuál activar.';
   c.innerHTML=PRESET_ROUTINES.map(r=>{
-    const alreadyAdded=DB.routines.some(ur=>ur.id===r.id);
+    const yaEsta=DB.routines.some(ur=>ur.id===r.id);
+    const marcada=presetSeleccion.includes(r.id);
     const totalSess=r.plan.reduce((s,w)=>s+w.days.length,0);
     const diasSemana=r.plan[0]?.days.length||0;
-    return`<div class="routine-item" style="flex-direction:column;align-items:flex-start;gap:8px;">
-      <div style="width:100%;display:flex;justify-content:space-between;align-items:center;">
-        <div class="routine-item-name">${r.name}</div>
-        ${alreadyAdded
-          ?'<span style="font-size:11px;color:var(--green);font-weight:700;">✓ Añadida</span>'
-          :`<button class="btn-sm" onclick="addPresetRoutine('${r.id}')">+ Añadir</button>`
-        }
-      </div>
-      <div class="routine-item-meta">${descriptions[r.id]||''}</div>
-      <div class="routine-item-meta">${totalSess} sesiones · ${r.plan.length} semanas · ${diasSemana} días/semana</div>
-    </div>`;
+    return`<button class="preset-opcion${marcada?' seleccionada':''}" ${yaEsta?'disabled':''}
+        aria-pressed="${marcada}" onclick="presetToggle('${r.id}')">
+      <span class="marca">${marcada?'✓':''}</span>
+      <span style="min-width:0;flex:1;">
+        <span class="routine-item-name">${escaparHTML(r.name)}
+          ${yaEsta?'<span style="font-size:11px;color:var(--green);font-weight:700;">✓ Ya en tu biblioteca</span>':''}</span>
+        <span class="routine-item-meta">${PRESET_DESC_PANEL[r.id]||''}</span>
+        <span class="routine-item-meta">${totalSess} sesiones · ${r.plan.length} semanas · ${diasSemana} días/semana</span>
+      </span>
+    </button>`;
   }).join('');
+  if(pie){
+    const n=presetSeleccion.length;
+    pie.innerHTML=`<button class="btn btn-primary" style="width:100%;" id="preset-cargar" ${n?'':'disabled'}
+      onclick="cargarPresetsElegidos()">${n ? 'Cargar '+n+' rutina'+(n===1?'':'s') : 'Marca las rutinas que quieras'}</button>`;
+  }
 }
 
-function addPresetRoutine(id){
-  const preset=PRESET_ROUTINES.find(r=>r.id===id);
-  if(!preset)return;
-  if(DB.routines.some(r=>r.id===id)){aviso('Esta rutina ya está en tu biblioteca.');return;}
-  DB.routines.push({
-    id:preset.id,
-    name:preset.name,
-    plan:JSON.parse(JSON.stringify(preset.plan)),
-    sessions:{},
-    medidas:[]
-  });
-  if(!DB.activeRoutine)DB.activeRoutine=preset.id;
-  save();
+function presetToggle(id){
+  if(DB.routines.some(r=>r.id===id)) return;          // ya está: no se carga dos veces
+  const i=presetSeleccion.indexOf(id);
+  if(i>=0) presetSeleccion.splice(i,1); else presetSeleccion.push(id);
   renderPresetList();
-  aviso('Rutina "'+preset.name+'" añadida a tu biblioteca ✓');
+}
+
+function cargarPresetsElegidos(){
+  if(bloqueadoPorPausa('añadir rutinas')) return;
+  const nuevas=presetSeleccion
+    .map(id=>PRESET_ROUTINES.find(r=>r.id===id))
+    .filter(p=>p && !DB.routines.some(r=>r.id===p.id));
+  if(!nuevas.length) return;
+  nuevas.forEach(p=>DB.routines.push({
+    id:p.id, name:p.name,
+    plan:JSON.parse(JSON.stringify(p.plan)),
+    sessions:{}, medidas:[]
+  }));
+  const habiaActiva=!!(DB.activeRoutine && DB.routines.some(r=>r.id===DB.activeRoutine));
+  // Sin rutina en curso no puede quedarse ninguna: la primera, hasta que elija.
+  if(!habiaActiva) DB.activeRoutine=nuevas[0].id;
+  save();
+  presetRecienCargadas=nuevas.map(p=>p.id);
+  presetActivaElegida=DB.activeRoutine;
+  presetSeleccion=[];
+  renderPresetList();
+}
+
+function renderElegirActivaPreset(c, intro, pie){
+  const n=presetRecienCargadas.length;
+  if(intro) intro.textContent=(n===1?'Se ha añadido 1 rutina':'Se han añadido '+n+' rutinas')+
+    ' a tu biblioteca. La activa es la que ves en Inicio y en Registrar; cambiarla no borra nada.';
+  const opcion=(id, etiqueta, detalle)=>{
+    const sel=presetActivaElegida===id;
+    return `<button class="preset-opcion${sel?' seleccionada':''}" role="radio" aria-checked="${sel}"
+        onclick="presetElegirActiva('${id}')">
+      <span class="marca redonda">${sel?'<i></i>':''}</span>
+      <span style="min-width:0;flex:1;">
+        <span class="routine-item-name">${escaparHTML(etiqueta)}</span>
+        ${detalle?`<span class="routine-item-meta">${escaparHTML(detalle)}</span>`:''}
+      </span>
+    </button>`;
+  };
+  const actual=DB.routines.find(r=>r.id===DB.activeRoutine && !presetRecienCargadas.includes(r.id));
+  c.innerHTML=`<div class="section-title" style="margin:4px 0 10px;">¿Cuál quieres activar?</div>`+
+    presetRecienCargadas.map(id=>{
+      const r=DB.routines.find(x=>x.id===id);
+      return r?opcion(r.id, r.name, 'Recién añadida'):'';
+    }).join('')+
+    (actual?opcion(actual.id, 'Seguir con «'+actual.name+'»', 'La que tienes ahora en curso'):'');
+  if(pie) pie.innerHTML=`<button class="btn btn-primary" style="width:100%;" onclick="confirmarActivaPreset()">Listo</button>`;
+}
+
+function presetElegirActiva(id){
+  presetActivaElegida=id;
+  renderPresetList();
+}
+
+function confirmarActivaPreset(){
+  const id=presetActivaElegida;
+  const r=DB.routines.find(x=>x.id===id);
+  if(r && DB.activeRoutine!==id) activateRoutine(id);
+  closePresetPanel();
+  updateHeaderRoutine();
+  updateHome();
+  if(r) aviso('Rutina en curso: «'+r.name+'»');
 }
 
 function toggleCompletedWeeks(){
@@ -6478,20 +6625,55 @@ function obSetPhoto(input){
   });
 }
 
+/* Onboarding con VARIAS rutinas (15/09/2026). `obSeleccion` son las marcadas;
+   `obSelectedRoutine` es con la que empieza (la activa). Con una sola marcada
+   no se pregunta nada: es esa. */
+let obSeleccion=[];
+
 function renderObRoutineList(){
   const descriptions=PRESET_DESC;
   const c=document.getElementById('ob-routine-list');
-  c.innerHTML=PRESET_ROUTINES.map(r=>`
-    <button class="ob-routine-btn${obSelectedRoutine===r.id?' selected':''}" onclick="obSelectRoutine('${r.id}')">
-      <div class="ob-routine-btn-name">${r.name}</div>
-      <div class="ob-routine-btn-desc">${descriptions[r.id]||''}</div>
-    </button>
-  `).join('');
+  c.innerHTML=PRESET_ROUTINES.map(r=>{
+    const marcada=obSeleccion.includes(r.id);
+    return `
+    <button class="ob-routine-btn${marcada?' selected':''}" aria-pressed="${marcada}" onclick="obSelectRoutine('${r.id}')">
+      <span class="marca">${marcada?'✓':''}</span>
+      <span style="min-width:0;flex:1;">
+        <div class="ob-routine-btn-name">${r.name}</div>
+        <div class="ob-routine-btn-desc">${descriptions[r.id]||''}</div>
+      </span>
+    </button>`;
+  }).join('');
 }
 
+/* Marca o desmarca. Sigue llamándose así porque las pruebas y el resto de la
+   app la usan para "elegir una". */
 function obSelectRoutine(id){
-  obSelectedRoutine=id;
+  const i=obSeleccion.indexOf(id);
+  if(i>=0) obSeleccion.splice(i,1); else obSeleccion.push(id);
+  if(!obSeleccion.includes(obSelectedRoutine)) obSelectedRoutine=obSeleccion[0]||null;
   renderObRoutineList();
+}
+
+function obElegirActiva(id){
+  if(!obSeleccion.includes(id)) return;
+  obSelectedRoutine=id;
+  renderObActiva();
+}
+
+/* En "¡Todo listo!", con más de una marcada: con cuál empiezas. */
+function renderObActiva(){
+  const c=document.getElementById('ob-activa');
+  if(!c) return;
+  if(obSeleccion.length<2){ c.innerHTML=''; return; }
+  c.innerHTML=obSeleccion.map(id=>{
+    const p=PRESET_ROUTINES.find(r=>r.id===id);
+    const sel=obSelectedRoutine===id;
+    return p?`<button class="ob-routine-btn${sel?' selected':''}" role="radio" aria-checked="${sel}" onclick="obElegirActiva('${id}')">
+      <span class="marca redonda">${sel?'<i></i>':''}</span>
+      <span style="min-width:0;flex:1;"><div class="ob-routine-btn-name">${p.name}</div></span>
+    </button>`:'';
+  }).join('');
 }
 
 function obNext(step){
@@ -6500,11 +6682,17 @@ function obNext(step){
     if(!name){aviso('Escribe tu nombre para continuar.');return;}
   }
   if(step===2){
-    if(!obSelectedRoutine){aviso('Elige una rutina para continuar.');return;}
-    const preset=PRESET_ROUTINES.find(r=>r.id===obSelectedRoutine);
+    if(!obSeleccion.length){aviso('Elige al menos una rutina para continuar.');return;}
     const name=document.getElementById('ob-name').value.trim();
-    document.getElementById('ob-summary').textContent=
-      `${name}, tu rutina "${preset.name}" está lista. ¡A entrenar!`;
+    if(obSeleccion.length===1){
+      const preset=PRESET_ROUTINES.find(r=>r.id===obSeleccion[0]);
+      document.getElementById('ob-summary').textContent=
+        `${name}, tu rutina "${preset.name}" está lista. ¡A entrenar!`;
+    }else{
+      document.getElementById('ob-summary').textContent=
+        `${name}, tus ${obSeleccion.length} rutinas están listas. ¿Con cuál empiezas? Las demás quedan en "Mis rutinas".`;
+    }
+    renderObActiva();
   }
   document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
   document.getElementById('ob-step-'+step).classList.add('active');
@@ -6513,19 +6701,24 @@ function obNext(step){
 
 function obFinish(){
   const name=document.getElementById('ob-name').value.trim();
-  const preset=PRESET_ROUTINES.find(r=>r.id===obSelectedRoutine);
+  const presets=obSeleccion.map(id=>PRESET_ROUTINES.find(r=>r.id===id)).filter(Boolean);
+  if(!presets.length){aviso('Elige al menos una rutina para continuar.');return;}
+  const activa=presets.some(p=>p.id===obSelectedRoutine)?obSelectedRoutine:presets[0].id;
   DB={
-    routines:[{
+    routines:presets.map(preset=>({
       id:preset.id,
       name:preset.name,
       plan:JSON.parse(JSON.stringify(preset.plan)),
       sessions:{},
       medidas:[]
-    }],
-    activeRoutine:preset.id,
+    })),
+    activeRoutine:activa,
     profileName:name.toUpperCase(),
     profilePic:obPhotoData||null
   };
+  // Si el onboarding vuelve a salir en este móvil, que empiece sin nada marcado.
+  obSeleccion=[];
+  obSelectedRoutine=null;
   save();
   onboardingEnEspera = false;      // se terminó a mano: ya no hay nada que restaurar
   document.getElementById('onboarding').classList.add('hidden');
@@ -7137,9 +7330,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <button class="btn-sm" onclick="closePresetPanel()">✕ Cerrar</button>
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Elige una rutina prediseñada y añádela a tu biblioteca. Podrás activarla desde "Mis rutinas".</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;" id="preset-intro">Marca las rutinas que quieras y cárgalas de una vez. Después eliges cuál activar.</p>
     <div id="preset-list"></div>
   </div>
+  <!-- Fijo abajo: "Cargar N rutinas" mientras se marcan, y "Listo" al elegir
+       la activa. Lo pinta renderPresetList(). -->
+  <div id="preset-pie" class="preset-pie"></div>
 </div>
 
 <div id="onboarding" class="onboarding hidden">
@@ -7179,8 +7375,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   <!-- Paso 2: Elegir rutina -->
   <div class="ob-step" id="ob-step-1" style="align-items:stretch;justify-content:flex-start;padding-top:16px;">
-    <div class="ob-title" style="text-align:left;">Elige tu rutina</div>
-    <div class="ob-sub" style="text-align:left;">Selecciona el programa que mejor se adapte a tu objetivo.</div>
+    <div class="ob-title" style="text-align:left;">Elige tus rutinas</div>
+    <div class="ob-sub" style="text-align:left;">Marca una o varias. Si marcas más de una, después eliges con cuál empiezas.</div>
     <div id="ob-routine-list" style="width:100%;"></div>
     <div class="ob-acciones">
       <button class="btn btn-secondary" style="flex:1;" onclick="obNext(0)">← Atrás</button>
@@ -7198,6 +7394,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     </svg>
     <div class="ob-title">¡Todo listo!</div>
     <div class="ob-sub" id="ob-summary">Estás listo para empezar tu entrenamiento.</div>
+    <!-- Con varias rutinas marcadas: con cuál empieza. Lo pinta renderObActiva(). -->
+    <div id="ob-activa" style="width:100%;margin:-16px 0 18px;"></div>
     <div class="ob-acciones">
       <button class="btn btn-primary" style="width:100%;" onclick="obFinish()">Empezar ahora →</button>
     </div>

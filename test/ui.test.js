@@ -1189,6 +1189,106 @@ async function appLista(page, url){
        && /datos de salud/i.test(legal) && /AEPD/.test(legal),
        'la página legal existe, con privacidad y términos');
 
+    console.log('\n13k. Elegir varias rutinas (onboarding y Explorar rutinas)');
+    /* Pedido por amigos de Jhon (15/09): marcar varias, cargarlas de una vez y
+       decir luego cuál activar. */
+    const varias = await page.evaluate(()=>{
+      if(STORAGE.backend.name !== 'local') return { saltado:true };   // nunca contra la nube
+      const P = PRESET_ROUTINES.map(r => r.id);
+      const r = {};
+      showOnboarding();
+      document.getElementById('ob-name').value = 'Ana';
+      obNext(1);
+      obSelectRoutine(P[0]); obSelectRoutine(P[1]); obSelectRoutine(P[2]);
+      obSelectRoutine(P[2]);                                  // desmarcar también vale
+      r.marcadas = document.querySelectorAll('#ob-routine-list .ob-routine-btn.selected').length;
+      obNext(2);
+      r.opcionesActiva = document.querySelectorAll('#ob-activa .ob-routine-btn').length;
+      r.resumen = document.getElementById('ob-summary').textContent;
+      obElegirActiva(P[1]);
+      obFinish();
+      r.tras = { rutinas: DB.routines.map(x => x.id), activa: DB.activeRoutine };
+
+      openPresetPanel();
+      presetToggle(P[0]);                                     // ya la tiene: no se marca
+      presetToggle(P[3]); presetToggle(P[4]);
+      r.boton = document.getElementById('preset-cargar').textContent.trim();
+      r.yaEstaDeshabilitada = document.querySelectorAll('#preset-list .preset-opcion[disabled]').length;
+      cargarPresetsElegidos();
+      r.cargadas = DB.routines.map(x => x.id);
+      r.activaSinConfirmar = DB.activeRoutine;
+      r.eleccion = document.getElementById('preset-list').textContent.replace(/\s+/g,' ');
+      r.opcionesEleccion = document.querySelectorAll('#preset-list .preset-opcion').length;
+      presetElegirActiva(P[4]);
+      confirmarActivaPreset();
+      r.final = { activa: DB.activeRoutine,
+                  panelCerrado: document.getElementById('preset-panel').classList.contains('hidden') };
+      return r;
+    });
+    const P = await page.evaluate(()=>PRESET_ROUTINES.map(r => r.id));
+    ok(!varias.saltado, 'la prueba corre en local, nunca contra la nube');
+    ok(varias.marcadas === 2, 'en el onboarding se marcan varias (y se desmarcan)');
+    ok(varias.opcionesActiva === 2 && /con cuál empiezas/i.test(varias.resumen),
+       'con más de una, al final pregunta con cuál empieza');
+    ok(varias.tras.rutinas.length === 2 && varias.tras.activa === P[1],
+       'y entran las dos, activa la que eligió');
+    ok(/Cargar 2 rutinas/.test(varias.boton) && varias.yaEstaDeshabilitada >= 2,
+       'en Explorar rutinas se marcan varias, sin poder repetir las que ya tiene: '+varias.boton);
+    ok(varias.cargadas.length === 4 && varias.cargadas.includes(P[3]) && varias.cargadas.includes(P[4]),
+       'se cargan todas de una vez');
+    ok(varias.activaSinConfirmar === P[1],
+       '🔴 cargar no cambia la rutina en curso hasta que lo digas');
+    ok(varias.opcionesEleccion === 3 && /Seguir con/.test(varias.eleccion),
+       'pregunta cuál activar: las nuevas o seguir con la de ahora');
+    ok(varias.final.activa === P[4] && varias.final.panelCerrado,
+       'y activa la elegida y se cierra');
+
+    console.log('\n13l. Botones de volver y cómo instalar en iPhone');
+    /* Una entrenadora (15/09) no veía que "← Semanas" era volver, y no entendía
+       las instrucciones de instalar en su iPhone. */
+    const volver = await page.evaluate(async ()=>{
+      const v = el => !!(el && el.offsetParent !== null);
+      // openSession/openExDetail ponen el texto con setTimeout(…, 0): hay que dejarles el tic.
+      const tic = () => new Promise(res => setTimeout(res, 20));
+      const r = {};
+      const act = getActive();
+      showTab('log', document.getElementById('tab-log'));
+      openWeekDetail(1);
+      const bs = document.querySelector('#session-list-view .btn-volver');
+      const tit = document.getElementById('week-detail-title');
+      r.semana = { visible: v(bs), texto: bs && bs.textContent.trim(),
+                   arribaIzq: !!(bs && bs.getBoundingClientRect().bottom <= tit.getBoundingClientRect().top + 2
+                     && bs.getBoundingClientRect().left <= tit.getBoundingClientRect().left + 2),
+                   flecha: !!(bs && bs.querySelector('svg')) };
+      openSession(act.plan[0].days[0].s);
+      await tic();
+      r.sesion = document.getElementById('btn-volver').textContent.trim();
+      openExDetail(0);
+      await tic();
+      r.ejercicio = document.getElementById('btn-volver').textContent.trim();
+      r.flechaSigue = !!document.querySelector('#btn-volver svg');
+      volverAtras(); volverAtras(); closeWeekDetail();
+      const safari = 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
+      const chrome = 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/140.0 Mobile/15E148 Safari/604.1';
+      const d = document.createElement('div');
+      d.innerHTML = cuerpoInstalarIOS(safari);
+      r.safari = { pasos: d.querySelectorAll('.pasos-instalar li').length, texto: d.textContent.replace(/\s+/g,' ') };
+      d.innerHTML = cuerpoInstalarIOS(chrome);
+      r.chrome = { pasos: d.querySelectorAll('.pasos-instalar li').length, texto: d.textContent.replace(/\s+/g,' ') };
+      return r;
+    });
+    ok(volver.semana.visible && volver.semana.texto === 'Volver a semanas' && volver.semana.flecha,
+       'dentro de una semana, el botón dice "Volver a semanas" y lleva flecha');
+    ok(volver.semana.arribaIzq, 'y está arriba a la izquierda, antes del título (donde el iPhone pone "atrás")');
+    ok(volver.sesion === 'Volver a sesiones' && volver.ejercicio === 'Volver a ejercicios' && volver.flechaSigue,
+       'en la sesión y en el ejercicio dice a dónde vuelve, sin perder la flecha');
+    ok(volver.safari.pasos === 4 && /•••/.test(volver.safari.texto) && /Compartir/.test(volver.safari.texto)
+       && /Añadir a pantalla de inicio/.test(volver.safari.texto) && /Ya la tengo/.test(volver.safari.texto),
+       'en Safari de iPhone: 4 pasos, empezando por el botón •••');
+    ok(volver.chrome.pasos === 3 && /arriba a la derecha/.test(volver.chrome.texto),
+       'y en Chrome de iPhone, los suyos: Compartir está arriba');
+    await page.evaluate(()=>localStorage.clear());
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
