@@ -80,6 +80,7 @@ const puente = `
   repartirSesiones, maxEjerciciosPorSesion, get infoReparto(){ return infoReparto },
   semanasSinEmpezarDe, diasPorSemanaDe, modeloParaDias, aplicarPropuestaARutina, htmlPropuesta,
   textoInfoReparto, textoDiasSemana, quitarDiaDelPlan,
+  unidadDe, aKg, deKg, pesoTexto, fijarUnidad,
   claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas, getPrevKgs,
   ejerciciosDeRutina, progresoReto,
   leerDecisionSync, guardarDecisionSync,
@@ -836,6 +837,31 @@ const ok = (cond, msg) => {
   ok(conHecha.plan[1].days.map(d => d.name).join() === 'S3 · Push,S4 · Cardio',
      'y los nombres se renumeran en todo el plan (S5 pasa a S4)');
   ok(conHecha.sessions[1] && conHecha.plan[0].days.length === 2, 'lo registrado sigue intacto');
+
+  console.log('\n17e. kilos y libras: en los datos SIEMPRE hay kilos');
+  /* Idea de Jhon (09/09, hecha el 16/09): anotar en libras las máquinas que
+     vienen en libras. Lo que sostiene todo esto es que lo guardado nunca cambia
+     de unidad: si se guardaran libras, el histórico quedaría mezclado y los
+     retos —que comparan la marca de antes con la de ahora— dejarían de cuadrar. */
+  const soloLb = app.fijarUnidad({}, 'Press banca', 'lb');
+  ok(app.unidadDe({}, 'Press banca') === 'kg', 'sin decir nada, un ejercicio va en kilos');
+  ok(app.unidadDe(soloLb, 'Press banca') === 'lb', 'y en libras si se ha elegido');
+  ok(app.unidadDe(soloLb, 'press de bancas') === 'lb',
+     'la unidad va por clave laxa: "press de bancas" es el mismo ejercicio');
+  ok(Object.keys(app.fijarUnidad(soloLb, 'Press banca', 'kg')).length === 0,
+     'volver a kilos BORRA la entrada: el mapa solo guarda excepciones');
+  ok(app.unidadDe(soloLb, 'Sentadilla') === 'kg', 'y no se contagia a los demás ejercicios');
+
+  ok(app.aKg('62,5', 'kg') === 62.5, 'con coma decimal también: "62,5" son 62,5 kg');
+  ok(Math.abs(app.aKg('100', 'lb') - 45.36) < 0.01, '🔴 100 lb se guardan como 45,36 kg');
+  ok(Math.abs(app.deKg(45.36, 'lb') - 100) < 0.1, 'y 45,36 kg se enseñan como 100 lb');
+  ok(app.deKg(80, 'kg') === 80, 'en kilos no se toca nada');
+  ok(app.aKg('', 'kg') === null && app.deKg('', 'kg') === null, 'sin peso, nada que convertir');
+  const ida = app.aKg('225', 'lb');
+  ok(Math.abs(app.deKg(ida, 'lb') - 225) < 0.1, 'ida y vuelta no pierde el número que tecleó');
+  ok(app.pesoTexto(80, 'kg') === '80 kg' && app.pesoTexto(45.36, 'lb') === '100 lb',
+     'el texto lleva su unidad: '+app.pesoTexto(45.36, 'lb'));
+  ok(app.pesoTexto('', 'kg') === '', 'y una serie sin peso no escribe nada');
 
   console.log('\n18. cambiar los días no deja sesiones imposibles');
   // Reportado por Jhon usándola: al pasar de 5 días a 4, dos sesiones se

@@ -1690,7 +1690,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <div id="ex-detail-view" style="display:none;">
       <div class="card">
         <div class="ex-detail-header">
-          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" onchange="if(curExIndex!==null){curEx[curExIndex].name=this.value;pintarImagenEjercicio();pintarGraficaCargasEjercicio();}">
+          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" onchange="if(curExIndex!==null){curEx[curExIndex].name=this.value;pintarImagenEjercicio();renderEx();pintarGraficaCargasEjercicio();}">
+          <!-- kg o lb para ESTE ejercicio (16/09/2026): las máquinas que vienen
+               en libras se anotan en libras, y por dentro se guarda en kilos. -->
+          <button class="btn-sm" id="ex-unidad" title="Unidad de este ejercicio" onclick="alternarUnidadEjercicio()">kg</button>
           <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
         </div>
       </div>
@@ -2744,7 +2747,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-15 22:14';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-17 17:36';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4103,15 +4106,22 @@ function renderEx(){
   /* La indicación del entrenador va ANTES de las series, no debajo: se lee
      para saber cómo hacerlo, y debajo de los campos llegaría tarde. */
   const nota=curNotas[claveEjercicioLaxa(ex.name||'')]||'';
+  /* El campo enseña la unidad del ejercicio; lo que se guarda en curEx son
+     SIEMPRE kilos (aKg al escribir, deKg al pintar). */
+  const u=unidadDe(DB.unidades,ex.name||'');
+  const btnU=document.getElementById('ex-unidad');
+  if(btnU)btnU.textContent=u;
   c.innerHTML=`
     ${nota?`<div class="ex-nota-coach"><span class="ex-nota-tag">Tu entrenador</span>${escaparHTML(nota)}</div>`:''}
     <div class="ex-card">
       <div id="sets-container">
-        ${ex.sets.map((set,si)=>`
+        ${ex.sets.map((set,si)=>{
+          const mostrado=set.kg===''||set.kg==null?'':deKg(set.kg,u);
+          return `
           <div class="set-row">
             <span class="set-label">S${si+1}</span>
-            <input type="text" inputmode="decimal" class="set-inp" value="${set.kg||''}" placeholder="kg" onchange="curEx[${curExIndex}].sets[${si}].kg=this.value">
-            <span class="set-unit">kg</span>
+            <input type="text" inputmode="decimal" class="set-inp" value="${mostrado===''?'':escaparHTML(String(mostrado))}" placeholder="${u}" onchange="anotarPeso(${si},this.value)">
+            <span class="set-unit">${u}</span>
             <input type="text" inputmode="numeric" class="set-inp" value="${set.reps||''}" placeholder="reps" onchange="curEx[${curExIndex}].sets[${si}].reps=this.value;if(this.value)startTimer(parseInt(document.getElementById('rest').value)||90)">
             <span class="set-unit">reps</span>
             ${DB.rirActivo?`
@@ -4119,12 +4129,34 @@ function renderEx(){
             <span class="set-unit">rir</span>`:''}
             <button class="btn-sm" onclick="removeSetFromCurrent(${si})" style="padding:6px 8px;">−</button>
           </div>
-        `).join('')}
+        `;}).join('')}
       </div>
     </div>
   `;
   pintarImagenEjercicio();
   pintarGraficaCargasEjercicio();
+}
+
+/* Lo tecleado entra convertido a kilos. Vacío se guarda como '' y no como 0:
+   una serie sin peso no es una serie de 0 kg. */
+function anotarPeso(si,valor){
+  if(curExIndex===null)return;
+  const u=unidadDe(DB.unidades,curEx[curExIndex].name||'');
+  const kg=aKg(valor,u);
+  curEx[curExIndex].sets[si].kg = kg==null ? '' : kg;
+  guardarBorrador();
+}
+
+function alternarUnidadEjercicio(){
+  if(curExIndex===null)return;
+  const nombre=(curEx[curExIndex].name||'').trim();
+  if(!nombre){ aviso('Ponle nombre al ejercicio para elegir su unidad'); return; }
+  const u=unidadDe(DB.unidades,nombre)==='kg'?'lb':'kg';
+  DB.unidades=fijarUnidad(DB.unidades,nombre,u);
+  save();
+  renderEx();                      // los mismos kilos, mostrados en la otra unidad
+  pintarGraficaCargasEjercicio();
+  aviso(u==='lb'?'«'+nombre+'» se anota en libras':'«'+nombre+'» se anota en kilos','bien');
 }
 
 function removeSetFromCurrent(si){
@@ -4272,7 +4304,8 @@ function celebrarSesion({records,hechasAntes,sesion}){
   const TOPE=3;
   const ordenados=records.slice().sort((a,b)=>b.mas-a.mas);
   ordenados.slice(0,TOPE).forEach(r=>filas.push(celLinea('record','trofeo',
-    'Marca personal en <b>'+escaparHTML(r.nombre)+'</b>', num(r.kg)+' kg')));
+    'Marca personal en <b>'+escaparHTML(r.nombre)+'</b>',
+    pesoTexto(r.kg,unidadDe(DB.unidades,r.nombre)))));
   if(ordenados.length>TOPE){
     const resto=ordenados.length-TOPE;
     filas.push(celLinea('record','trofeo',
@@ -4600,7 +4633,8 @@ keys.forEach(n=>{
     s.exercises.forEach(ex=>{
       const sets=ex.sets.filter(v=>v.kg!=='');
       if(!sets.length)return;
-      txt+='  '+ex.name+' [descanso:'+s.rest+'s] → '+sets.map((v,i)=>'S'+(i+1)+': '+v.kg+'kg x'+v.reps).join(' | ')+'\n';
+      const uEx=unidadDe(DB.unidades,ex.name||'');
+      txt+='  '+ex.name+' [descanso:'+s.rest+'s] → '+sets.map((v,i)=>'S'+(i+1)+': '+pesoTexto(v.kg,uEx)+' x'+v.reps).join(' | ')+'\n';
     });
     const cd=s.cardio;
     if(cd?.tiempo)txt+='  CARDIO: '+cd.tipo+' · '+cd.tiempo+'min · '+cd.kcal+'kcal · FC:'+cd.fc+'bpm · '+cd.dist+'km\n';
@@ -4707,6 +4741,57 @@ function adherenciaSemana(r){
    solo se vio mirando la pantalla; el dato era correcto, el formato no. */
 function num(v){
   return Number(v).toLocaleString('es-ES',{maximumFractionDigits:1});
+}
+
+/* ═══════════ Kilos y libras (16/09/2026) ═══════════
+   Idea de Jhon del 09/09: poder anotar en libras los ejercicios de las máquinas
+   que vienen en libras, sin tocar el resto.
+
+   🔴 REGLA QUE SOSTIENE ESTO: en los datos SIEMPRE hay kilos. La libra existe
+   solo al escribir y al mostrar. Guardar libras mezclaría el histórico (una
+   sesión en lb y la de al lado en kg, indistinguibles) y rompería los retos,
+   que comparan la marca de antes con la de ahora.
+
+   La unidad es del EJERCICIO, no de la app: en el mismo gimnasio hay máquinas
+   de los dos tipos. Se guarda por clave laxa del nombre ("press banca" y
+   "press de bancas" son el mismo) y SOLO cuando es libras: sin entrada, kilos.
+   Así los datos de antes de hoy siguen valiendo tal cual. */
+const LB_POR_KG = 2.2046226218;
+
+function unidadDe(unidades, nombre){
+  const c = claveEjercicioLaxa(nombre || '');
+  return (unidades && c && unidades[c] === 'lb') ? 'lb' : 'kg';
+}
+
+/* De lo que teclea la persona a kilos. Acepta coma decimal: en el móvil el
+   teclado español pone coma y parseFloat("62,5") daría 62. */
+function aKg(valor, unidad){
+  const n = parseFloat(String(valor == null ? '' : valor).replace(',', '.'));
+  if(isNaN(n)) return null;
+  return unidad === 'lb' ? Math.round(n / LB_POR_KG * 100) / 100 : n;
+}
+
+function deKg(kg, unidad){
+  const n = parseFloat(kg);
+  if(isNaN(n)) return null;
+  return unidad === 'lb' ? Math.round(n * LB_POR_KG * 10) / 10 : n;
+}
+
+/* "80 kg" / "176,4 lb". Vacío si no hay peso: la celda se queda en blanco. */
+function pesoTexto(kg, unidad){
+  const v = deKg(kg, unidad);
+  return v == null ? '' : num(v) + ' ' + (unidad === 'lb' ? 'lb' : 'kg');
+}
+
+/* Devuelve el mapa nuevo (no muta): kg BORRA la entrada en vez de guardar
+   'kg', para que el mapa solo tenga excepciones y no crezca con cada ejercicio
+   que se mire. */
+function fijarUnidad(unidades, nombre, unidad){
+  const c = claveEjercicioLaxa(nombre || '');
+  const out = Object.assign({}, unidades || {});
+  if(!c) return out;
+  if(unidad === 'lb') out[c] = 'lb'; else delete out[c];
+  return out;
 }
 
 /* "Semana 1 — Semana 1". Varias rutinas preconstruidas titulan sus semanas
@@ -5035,10 +5120,11 @@ function pintarGraficaCargasEjercicio(){
     return;
   }
 
-  const primero=puntos[0].kg, ultimo=puntos[puntos.length-1].kg;
+  const u=unidadDe(DB.unidades,ex.name||'');
+  const primero=deKg(puntos[0].kg,u), ultimo=deKg(puntos[puntos.length-1].kg,u);
   const dif=Math.round((ultimo-primero)*10)/10;
-  const resumen = dif>0 ? `+${num(dif)} kg desde la primera vez`
-                : dif<0 ? `${num(dif)} kg desde la primera vez`
+  const resumen = dif>0 ? `+${num(dif)} ${u} desde la primera vez`
+                : dif<0 ? `${num(dif)} ${u} desde la primera vez`
                         : 'mismo peso que la primera vez';
 
   /* El año sobra en el eje: con ocho o diez sesiones las etiquetas se pisan y
@@ -5056,8 +5142,8 @@ function pintarGraficaCargasEjercicio(){
     return;
   }
 
-  const cfg=graficaCargas(puntos,'kg máx. por sesión',
-    {etiqueta:p=>p.fecha?etiquetaFecha(p.fecha):('S'+p.s)});
+  const cfg=graficaCargas(puntos,u+' máx. por sesión',
+    {etiqueta:p=>p.fecha?etiquetaFecha(p.fecha):('S'+p.s), unidad:u});
 
   /* Lo que cuenta el RIR y el peso solo no puede: mismo peso con más margen es
      mejorar. Se dice con las dos cifras delante en vez de interpretarlo. */
@@ -5085,6 +5171,10 @@ function pintarGraficaCargasEjercicio(){
    mueva—; si el peso sube y el RIR baja, estás apretando más para subirlo. */
 function graficaCargas(puntos, etiquetaKg, cfg){
   cfg = cfg || {};
+  /* Los puntos llegan en kilos (es lo que hay guardado); si el ejercicio se
+     anota en libras, se convierten aquí, que es lo último antes de dibujar. */
+  const unidad = cfg.unidad === 'lb' ? 'lb' : 'kg';
+  if(unidad === 'lb') puntos = puntos.map(p => Object.assign({}, p, {kg: deKg(p.kg, 'lb')}));
   const oscuro = window.matchMedia('(prefers-color-scheme:dark)').matches;
   const colorTexto = oscuro ? '#888' : '#7a7060';
   const colorRejilla = oscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
@@ -5114,7 +5204,7 @@ function graficaCargas(puntos, etiquetaKg, cfg){
   const scales = {
     x:{ticks:{color:colorTexto,font:{size:fuente}},grid:{color:colorRejilla}},
     y:{ticks:{color:colorTexto,font:{size:fuente}},grid:{color:colorRejilla},
-       title:{display:true,text:'kg',color:colorTexto,font:{size:10}}}
+       title:{display:true,text:unidad,color:colorTexto,font:{size:10}}}
   };
   if(hayRir) scales.y2 = {
     position:'right', min:0, suggestedMax:5,
@@ -8506,7 +8596,10 @@ const StorageFirestore = {
       profileName: cab.profileName || cab.name || '',
       profilePic: cab.profilePic || null,
       altura: cab.altura != null ? cab.altura : null,
-      rirActivo: !!cab.rirActivo
+      rirActivo: !!cab.rirActivo,
+      // Qué ejercicios se anotan en libras. Del perfil, como el RIR: es de la
+      // persona y tiene que estar igual en el móvil y en el ordenador.
+      unidades: cab.unidades || {}
     };
   },
 
@@ -8521,7 +8614,8 @@ const StorageFirestore = {
       altura: db.altura != null ? db.altura : null,
       // Ajuste de la persona, no de la rutina: viaja con el perfil, como la
       // altura, para que esté igual en el móvil y en el ordenador.
-      rirActivo: !!db.rirActivo
+      rirActivo: !!db.rirActivo,
+      unidades: db.unidades || {}
     };
     comprobarApto(cabecera, 'Perfil');
     await setDoc(doc(fdb, 'users', user.uid), cabecera, { merge: true });
@@ -8897,6 +8991,9 @@ function vigilarClientes(){
       // Para la ficha, que se abre desde aquí: nombre, correo y foto ya vienen.
       perfilesCliente[d.id] = {name: cl.name||'', email: cl.email||'', profilePic: cl.profilePic||null,
                                avisoCoach: cl.avisoCoach || null, sesionCoach: cl.sesionCoach || null,
+                               // Para verle los pesos en SU unidad: si él anota esa máquina
+                               // en libras, el entrenador ve libras y hablan del mismo número.
+                               unidades: cl.unidades || {},
                                suspendidoPorCoach: cl.suspendidoPorCoach === true};
       mosaico.insertAdjacentHTML('beforeend', `
         <button type="button" class="mos-card cliente-card"
@@ -9666,6 +9763,7 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
               // El aviso vigente ya vino con la lista de clientes: no hay que releerlo.
               aviso: (perfilesCliente[uid] || {}).avisoCoach || null,
               sesionCoach: (perfilesCliente[uid] || {}).sesionCoach || null,
+              unidades: (perfilesCliente[uid] || {}).unidades || {},
               pausado: (perfilesCliente[uid] || {}).suspendidoPorCoach === true };
 
   /* Las fotos del cliente ya no viajan dentro de sus rutinas: tienen colección
@@ -10446,10 +10544,13 @@ function pintarSesionCliente(dia, ses){
        (pasó: 20 de 21 etiquetas resaltadas). */
     const hayVariacion = new Set(pesos).size > 1;
     const tope = hayVariacion ? Math.max(...pesos) : null;
+    // En la unidad de SU cliente: si él lo anota en libras, aquí se ven libras.
+    const uEx = unidadDe(detalle.unidades, ex.name || '');
     const chips = sets.map(v => {
       const kg = parseFloat(v.kg);
       const esTope = tope != null && kg === tope;
-      return `<span class="chip-serie${esTope?' tope':''}">${escaparHTML(String(v.kg))}×${escaparHTML(String(v.reps||''))}</span>`;
+      const mostrado = deKg(v.kg, uEx);
+      return `<span class="chip-serie${esTope?' tope':''}">${escaparHTML(mostrado==null?String(v.kg):num(mostrado))}${uEx==='lb'?' lb':''}×${escaparHTML(String(v.reps||''))}</span>`;
     }).join('');
     return `<div class="ej-bloque">
       <div class="ej-nombre">${escaparHTML(ex.name||'')}</div>
@@ -10483,9 +10584,10 @@ function pintarGraficaCargas(r, nombreEjercicio){
   if(typeof Chart==='undefined'){ wrap.innerHTML='<p style="font-size:12px;color:var(--muted);">La gráfica necesita conexión.</p>'; return; }
   /* La leyenda se queda siempre: aquí es lo único que dice de qué ejercicio es
      la gráfica (en el detalle del ejercicio el nombre está arriba). */
+  const uEx = unidadDe(detalle.unidades, nombreEjercicio);
   window._detalleChart = new Chart(document.getElementById('detalle-chart').getContext('2d'),
-    graficaCargas(puntos, nombreEjercicio + ' (kg máx.)',
-      {fuente:11, punto:5, leyendaSiempre:true}));
+    graficaCargas(puntos, nombreEjercicio + ' (' + uEx + ' máx.)',
+      {fuente:11, punto:5, leyendaSiempre:true, unidad:uEx}));
 }
 
 /* Desvincular es irreversible desde aquí (para volver a vincularlo hace falta

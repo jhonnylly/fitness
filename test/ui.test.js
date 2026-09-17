@@ -1737,6 +1737,70 @@ async function appLista(page, url){
     ok(version.puntoPeticiones && version.peticionesNoApaganVersion,
        'el punto lo comparten la versión y las peticiones de entrenador, sin apagarse la una a la otra');
 
+    console.log('\n13v. Kilos y libras por ejercicio');
+    /* Idea de Jhon del 09/09, hecha el 16/09. Lo que se comprueba aquí es que
+       cambiar de unidad NO toca lo guardado: en los datos siempre hay kilos. */
+    const unidades = await page.evaluate(async ()=>{
+      if(STORAGE.backend.name !== 'local') return { saltado:true };   // nunca contra la nube
+      const tic = () => new Promise(res => setTimeout(res, 20));
+      const r = {};
+      const act = getActive();
+      showTab('log', document.getElementById('tab-log'));
+      openWeekDetail(1);
+      openSession(act.plan[0].days[0].s);
+      await tic();
+      openExDetail(0);
+      await tic();
+      /* Se escribe en el campo y se dispara el change, que es lo que hace el
+         dedo: llamar a anotarPeso() a pelo dejaría el cuadro con lo de antes. */
+      const escribir = v => {
+        const inp = document.querySelector('#sets-container .set-inp');
+        inp.value = v;
+        inp.dispatchEvent(new Event('change'));
+      };
+      const campo = () => document.querySelector('#sets-container .set-inp').value;
+      const etiqueta = () => document.querySelector('#sets-container .set-unit').textContent;
+      const boton = () => document.getElementById('ex-unidad').textContent;
+      const guardado = () => curEx[curExIndex].sets[0].kg;
+
+      escribir('100');
+      r.enKg = { guardado: guardado(), campo: campo(), etiqueta: etiqueta(), boton: boton() };
+      alternarUnidadEjercicio();
+      r.enLb = { guardado: guardado(), campo: campo(), etiqueta: etiqueta(), boton: boton(),
+                 marcadas: Object.keys(DB.unidades || {}).length };
+      escribir('225');
+      r.tecleadoEnLb = { guardado: guardado(), campo: campo() };
+      alternarUnidadEjercicio();
+      r.vuelta = { etiqueta: etiqueta(), marcadas: Object.keys(DB.unidades || {}).length };
+      const kgGuardados = guardado();
+      volverAtras(); volverAtras(); closeWeekDetail();
+
+      // El entrenador ve los pesos de su cliente en la unidad del cliente.
+      __pintarDetallePrueba({ nombre:'Laura', unidades:{ [claveEjercicioLaxa('Press banca')]:'lb' },
+        rutinas:[{ id:'r1', name:'Plan', sessions:{ 1:{ date:'01/09',
+            exercises:[{ name:'Press banca', sets:[{ kg:100, reps:'8' }] }] } },
+          plan:[{ num:1, title:'Semana 1', days:[{ s:1, name:'S1 · Push', type:'Push', ex:[['Press banca','4×8']] }] }] }] });
+      verRutinaDetalle('r1');
+      r.cliente = document.getElementById('rutina-cliente-cuerpo').textContent.replace(/\s+/g,' ');
+      cerrarDetalleCliente();
+      r.kgGuardados = kgGuardados;
+      return r;
+    });
+    ok(!unidades.saltado, 'la prueba corre en local, nunca contra la nube');
+    ok(unidades.enKg.guardado === 100 && unidades.enKg.campo === '100' && unidades.enKg.etiqueta === 'kg'
+       && unidades.enKg.boton === 'kg',
+       'por defecto, kilos: lo tecleado se guarda tal cual');
+    ok(unidades.enLb.guardado === 100 && unidades.enLb.campo === '220.5' && unidades.enLb.etiqueta === 'lb'
+       && unidades.enLb.marcadas === 1,
+       '🔴 al pasar a libras se ven 220,5 lb pero lo GUARDADO siguen siendo 100 kg');
+    ok(Math.abs(unidades.tecleadoEnLb.guardado - 102.06) < 0.05 && unidades.tecleadoEnLb.campo === '225',
+       'y al teclear 225 lb se guardan 102,06 kg');
+    ok(unidades.vuelta.etiqueta === 'kg' && unidades.vuelta.marcadas === 0,
+       'volver a kilos deja el ejercicio como estaba, sin marca');
+    ok(Math.abs(unidades.kgGuardados - 102.06) < 0.05, 'y el peso guardado no cambia al cambiar de unidad');
+    ok(/220,5 lb/.test(unidades.cliente),
+       'el entrenador ve ese ejercicio en libras, como su cliente: '+(unidades.cliente.match(/[\d,]+ lb/)||[''])[0]);
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');
