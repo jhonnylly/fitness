@@ -1874,6 +1874,46 @@ async function appLista(page, url){
     ok(renom.recuperaFoto.hayFigura && renom.recuperaFoto.sinSugerencias,
        'eligiendo una sugerencia del catálogo, vuelve la foto: '+renom.recuperaFoto.nombre);
 
+    console.log('\n13x. La espera mientras bajan los datos de la cuenta');
+    /* Jhon (17/09): al abrir se veían los datos de este dispositivo —o una foto
+       vacía— mientras Firebase contestaba, y el cliente los tomaba por suyos. */
+    const espera = await page.evaluate(async ()=>{
+      const tic = () => new Promise(res => setTimeout(res, 30));
+      const capa = document.getElementById('esperando-nube');
+      const r = { sinSesion: { visible: !capa.classList.contains('hidden'),
+                               debe: debeEsperarNube() } };
+      // Este dispositivo recuerda una sesión: al abrir habría que tapar.
+      recordarSesion(true);
+      r.conSesion = { debe: debeEsperarNube() };
+      mostrarEsperaNube();
+      await tic();
+      r.tapando = { visible: !capa.classList.contains('hidden'),
+                    opaca: getComputedStyle(capa).backgroundColor,
+                    porEncima: +getComputedStyle(capa).zIndex,
+                    fondoQuieto: document.body.classList.contains('capa-abierta'),
+                    figuras: capa.querySelectorAll('.esp-figura').length,
+                    frase: document.getElementById('esp-frase').textContent,
+                    puntos: capa.querySelectorAll('.esp-punto').length };
+      quitarEsperaNube();
+      await tic();
+      r.tras = { visible: !capa.classList.contains('hidden'),
+                 fondoQuieto: document.body.classList.contains('capa-abierta') };
+      recordarSesion(false);
+      return r;
+    });
+    ok(!espera.sinSesion.visible && !espera.sinSesion.debe,
+       'sin sesión en este dispositivo no se tapa nada: se entra directo');
+    ok(espera.conSesion.debe, 'con sesión recordada sí, y se sabe ANTES de que Firebase conteste');
+    ok(espera.tapando.visible && espera.tapando.figuras === 1 && espera.tapando.puntos > 1,
+       'se ve la silueta entrenando mientras se espera');
+    ok(!/rgba\(.*, 0\)/.test(espera.tapando.opaca) && espera.tapando.porEncima > 500,
+       '🔴 tapa la app ENTERA (fondo opaco y por encima de todo): ver los datos de detrás era el problema');
+    ok(/cuenta|rutinas|sesiones|marcas/i.test(espera.tapando.frase),
+       'y dice qué está pasando: '+espera.tapando.frase);
+    ok(espera.tapando.fondoQuieto, 'el fondo no hace scroll por debajo');
+    ok(!espera.tras.visible && !espera.tras.fondoQuieto,
+       'cuando la nube contesta, el velo se va y la app queda usable');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

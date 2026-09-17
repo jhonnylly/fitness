@@ -893,6 +893,49 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    corregir un peso, celebrarlo otra vez la convertiría en un estorbo.
    z-index por encima de todo (el onboarding, que es lo más alto, va a 500):
    se dispara al cerrar el formulario y no debe quedar debajo de nada. */
+/* ── Espera mientras bajan los datos de la cuenta (17/09/2026, pedido por Jhon) ──
+   Al abrir, load() pinta lo que haya en localStorage y solo después contesta
+   Firebase y se repinta con lo de la nube. Entre medias el cliente veía rutinas
+   —o una foto vacía— que podían no ser las suyas y las tomaba por sus datos.
+   Tapa la app ENTERA a propósito: un velo translúcido dejaría entrever justo lo
+   que confunde. Va a 520: por encima del onboarding (500) y por debajo de la
+   celebración (550) y del aviso flotante (600). Solo la ve quien tiene sesión
+   en este dispositivo; quien usa la app en local entra directo, como siempre. */
+#esperando-nube{position:fixed;inset:0;z-index:520;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:24px;}
+#esperando-nube.hidden{display:none;}
+.esp-figura{width:160px;height:160px;}
+.esp-figura path,.esp-figura circle{fill:none;stroke:var(--accent);stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round;}
+.esp-figura .esp-disco{stroke-width:3.6;}
+.esp-figura .esp-suelo{stroke:var(--border);}
+/* La sentadilla: el tronco baja y las piernas FLEXIONAN. El muslo gira sobre la
+   cadera y la pantorrilla sobre la rodilla, heredando el giro del muslo, que es
+   como se dobla una pierna de verdad; encogerlas con scaleY las dejaba rectas.
+   Los orígenes van en coordenadas del viewBox (sin transform-box:fill-box, que
+   los referiría a la caja de cada trazo y descolocaría las articulaciones).
+   Dibujada en trazo y no con las fotos anatómicas de la app: esas son imágenes
+   realistas y animarlas se ve tosco. */
+/* La barra sube por encima de la cabeza y vuelve a los hombros; los brazos la
+   acompañan doblando el codo (esa parte la anima el propio SVG, en el marcado).
+   El cuerpo se queda quieto: en un press es lo que pasa. */
+.esp-barra{animation:esp-press 2.4s ease-in-out infinite;}
+/* -27 y no -25: la barra pasaba a cinco píxeles de la coronilla y se veía
+   pegada a la cabeza en vez de por encima. */
+@keyframes esp-press{0%,100%{transform:translateY(0);}50%{transform:translateY(-27px);}}
+.esp-titulo{font-size:16px;font-weight:800;color:var(--text);text-align:center;}
+.esp-frase{font-size:13px;color:var(--muted);text-align:center;min-height:20px;}
+.esp-puntos{display:flex;gap:7px;}
+.esp-punto{width:7px;height:7px;border-radius:50%;background:var(--border);
+  transition:background .25s ease;}
+.esp-punto.on{background:var(--accent);}
+/* Quien pide menos movimiento ve la figura quieta y las frases igual: se entera
+   de que está esperando sin que nada se mueva. */
+@media (prefers-reduced-motion:reduce){
+  .esp-barra{animation:none;}
+}
+
 #celebracion{position:fixed;inset:0;z-index:550;display:flex;align-items:center;
   justify-content:center;padding:22px;background:rgba(8,7,12,.74);
   animation:cel-fondo .25s ease both;}
@@ -1026,6 +1069,49 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 </head>
 <body>
 <div id="aviso-flotante" role="status" aria-live="polite"></div>
+
+<!-- La espera de la nube vive en el HTML y no se crea desde JS: tiene que poder
+     tapar la app desde el primer pintado, antes de que load() ponga nada en
+     pantalla. Arranca oculta; la enciende mostrarEsperaNube() si este
+     dispositivo recuerda una sesión. -->
+<div id="esperando-nube" class="hidden" role="status" aria-live="polite">
+  <!-- La sentadilla se dibuja por segmentos encadenados —muslo colgado de la
+       cadera y pantorrilla colgada de la rodilla— porque así flexiona de
+       verdad. La primera versión encogía las piernas con scaleY y salían
+       rectas: parecía un muñeco deslizándose, no alguien agachándose. -->
+  <!-- Un PRESS, no una sentadilla: de frente, lo que identifica a una sentadilla
+       —cadera atrás, rodilla adelante— no se ve, y al abrir las rodillas desde
+       una única cadera central la figura salía hecha un rombo. Levantar la barra
+       por encima de la cabeza se lee de inmediato y es el mismo "sube y baja".
+       Los brazos son trazos hombro-codo-mano que el propio SVG interpola entre
+       las dos posturas: así las tres posiciones las fijo yo. -->
+  <svg class="esp-figura" viewBox="0 0 100 100" aria-hidden="true">
+    <path class="esp-suelo" d="M16 93h68"/>
+    <circle cx="50" cy="20" r="7"/>
+    <path d="M50 27v29"/>
+    <path d="M50 56L44 75L42 93"/>
+    <path d="M50 56L56 75L58 93"/>
+    <g class="esp-barra">
+      <path class="esp-disco" d="M27 33h46"/>
+      <path class="esp-disco" d="M30 28v10M34 29.5v7M66 29.5v7M70 28v10"/>
+    </g>
+    <!-- El codo va por FUERA de la mano (x 38 contra 38, no 40): por dentro los
+         dos trazos se cruzaban y los brazos quedaban hechos una pajarita. -->
+    <path d="M50 36L38 41L38 33">
+      <animate attributeName="d" dur="2.4s" repeatCount="indefinite"
+               calcMode="spline" keyTimes="0;0.5;1" keySplines=".4 0 .6 1;.4 0 .6 1"
+               values="M50 36L38 41L38 33; M50 36L41 21L38 6; M50 36L38 41L38 33"/>
+    </path>
+    <path d="M50 36L62 41L62 33">
+      <animate attributeName="d" dur="2.4s" repeatCount="indefinite"
+               calcMode="spline" keyTimes="0;0.5;1" keySplines=".4 0 .6 1;.4 0 .6 1"
+               values="M50 36L62 41L62 33; M50 36L59 21L62 6; M50 36L62 41L62 33"/>
+    </path>
+  </svg>
+  <div class="esp-titulo">Cargando tus datos</div>
+  <div class="esp-frase" id="esp-frase">Conectando con tu cuenta…</div>
+  <div class="esp-puntos" id="esp-puntos"></div>
+</div>
 
 
 <header>
@@ -2775,7 +2861,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-17 18:18';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-17 19:20';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3514,6 +3600,58 @@ function soltarOnboardingAplazado(){
   onboardingAplazado=false;
   const sinDatos=!DB.activeRoutine||!DB.routines||!DB.routines.length;
   if(sinDatos && !hayInvitacionEnURL()) showOnboarding();
+}
+
+/* ── La espera mientras la nube contesta (17/09/2026, pedido por Jhon) ──
+   "Aparecen datos de local o a veces sin foto mientras se vuelve a cargar todos
+   tus datos... que no confunda al cliente y sepa que tiene que esperar."
+   Se apoya en sesionRecordada(), que ya sabe si aquí había cuenta ANTES de que
+   Firebase conteste: por eso puede taparse la app en el primer pintado, que es
+   justo cuando se veían los datos ajenos. Con invitación en la URL no se tapa
+   nada: esa persona viene a crearse una cuenta, no tiene datos que esperar. */
+const FRASES_ESPERA=['Conectando con tu cuenta…','Bajando tus rutinas…',
+                     'Recuperando tus sesiones…','Poniendo al día tus marcas…'];
+let esperaTimer=null, esperaFrase=0;
+
+function debeEsperarNube(){ return sesionRecordada() && !hayInvitacionEnURL(); }
+
+function pintarFraseEspera(){
+  const f=document.getElementById('esp-frase');
+  const p=document.getElementById('esp-puntos');
+  if(f) f.textContent=FRASES_ESPERA[esperaFrase % FRASES_ESPERA.length];
+  if(p) p.innerHTML=FRASES_ESPERA.map((_,i)=>
+    '<span class="esp-punto'+(i===esperaFrase % FRASES_ESPERA.length?' on':'')+'"></span>').join('');
+}
+
+function mostrarEsperaNube(){
+  const c=document.getElementById('esperando-nube');
+  if(!c) return;
+  c.classList.remove('hidden');
+  /* Los brazos los anima el propio SVG, y a eso el CSS de "menos movimiento" no
+     llega: hay que pararlo a mano. La barra sí obedece al CSS. */
+  if(sinMovimiento()){
+    const svg=c.querySelector('.esp-figura');
+    if(svg && svg.pauseAnimations) svg.pauseAnimations();
+  }
+  esperaFrase=0;
+  pintarFraseEspera();
+  clearInterval(esperaTimer);
+  esperaTimer=setInterval(()=>{ esperaFrase++; pintarFraseEspera(); },2200);
+  /* Tope de seguridad: si Firebase no contesta nunca —sin cobertura su módulo
+     ni llega a cargar— la app NO puede quedarse tapada para siempre. El mismo
+     tope que usa el onboarding aplazado, por lo mismo. */
+  setTimeout(quitarEsperaNube, ESPERA_MAX_SESION);
+}
+
+/* La llama el módulo de Firebase en cuanto sabe a qué atenerse: con los datos ya
+   bajados, pero también si no hubo conexión, si la sesión había caducado o si
+   hay que preguntar algo. Cualquier salida levanta el velo; si no, la app se
+   quedaría tapada esperando algo que no va a llegar. */
+function quitarEsperaNube(){
+  const c=document.getElementById('esperando-nube');
+  clearInterval(esperaTimer);
+  esperaTimer=null;
+  if(c) c.classList.add('hidden');
 }
 
 async function load(){
@@ -6929,7 +7067,7 @@ function renderProfileName(){
    class="hidden", pero de tres maneras distintas (display:none el onboarding y
    el comparador, transform los paneles), así que lo único fiable para saber si
    una está abierta es la propia clase. */
-const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#selector-ejercicio,#asignar-panel,#celebracion';
+const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#selector-ejercicio,#asignar-panel,#celebracion,#esperando-nube';
 
 /* Sustituye a aviso(). Tres motivos: no bloquea, no obliga a pulsar nada y se
    ve como la app y no como el navegador.
@@ -7938,6 +8076,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
      existe: sin esta llamada, un iPhone no vería nunca las instrucciones. */
   pintarInstalar();
   registrarServiceWorker();
+  /* Antes de load(): es load() quien pinta la app con lo de este dispositivo, y
+     lo que se quiere evitar es precisamente que eso se vea. */
+  if(debeEsperarNube()) mostrarEsperaNube();
   load()
     .catch(e=>console.error('[init] fallo al arrancar',e))
     .finally(resolverCargaInicial);
@@ -11888,6 +12029,11 @@ onAuthStateChanged(auth, async (user) => {
        espera a la carga inicial para que no se adelante a aplazarOnboarding(). */
     await window.cargaInicial;
     soltarOnboardingAplazado();
+    /* Aquí se sabe ya a qué atenerse, por cualquiera de los caminos: datos
+       bajados, sin conexión, conflicto que preguntar, cuenta sin perfil o
+       sesión caducada. Todos pasan por este finally, incluidos los return, así
+       que es el único sitio donde el velo se levanta seguro. */
+    quitarEsperaNube();
   }
 });
 
