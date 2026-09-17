@@ -487,6 +487,14 @@ textarea{resize:vertical;min-height:60px;}
   background:var(--accent);box-shadow:0 0 0 2px var(--dark);}
 /* La versión arriba de Ajustes: nombre a la izquierda, botón a la derecha. */
 .card.version-fila{display:flex;gap:12px;align-items:center;}
+/* Elegir kg o lb del ejercicio: en violeta y con su flecha, para que se vea que
+   se toca. En gris parecía un botón más de los de al lado. */
+.fila-unidad{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.fila-unidad .section-title{flex:1;min-width:0;}
+.unidad-etq{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0;flex:none;}
+.sel-unidad{width:auto;flex:none;padding:7px 10px;font-size:14px;font-weight:800;
+  color:var(--accent);border:1.5px solid var(--accent);background:rgba(var(--accent-rgb),0.10);}
+.sel-unidad:focus{border-color:var(--accent);}
 /* Segundo botón sobre el violeta lleno del aviso: hueco, para que "Aceptar" siga siendo el principal. */
 /* Con `.aviso-coach` delante a propósito: .btn-sm está definida MÁS ABAJO con
    la misma especificidad y le devolvía el fondo gris y el borde de siempre.
@@ -1691,14 +1699,22 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       <div class="card">
         <div class="ex-detail-header">
           <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" onchange="if(curExIndex!==null){curEx[curExIndex].name=this.value;pintarImagenEjercicio();renderEx();pintarGraficaCargasEjercicio();}">
-          <!-- kg o lb para ESTE ejercicio (16/09/2026): las máquinas que vienen
-               en libras se anotan en libras, y por dentro se guarda en kilos. -->
-          <button class="btn-sm" id="ex-unidad" title="Unidad de este ejercicio" onclick="alternarUnidadEjercicio()">kg</button>
           <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
         </div>
       </div>
       <div id="ex-musculos"></div>
-      <div class="section-title">Series</div>
+      <!-- La unidad, junto a "Series" y como desplegable (17/09/2026). Era un
+           botón gris que ponía "kg" en la cabecera, al lado del de borrar:
+           Jhon lo probó y dijo que no se entendía que se pudiera cambiar. Aquí
+           está pegado a los campos que dicen kg, que es donde surge la duda. -->
+      <div class="fila-unidad">
+        <div class="section-title" style="margin:0;">Series</div>
+        <label class="unidad-etq" for="ex-unidad">Anotar en</label>
+        <select id="ex-unidad" class="sel-unidad" onchange="elegirUnidadEjercicio(this.value)">
+          <option value="kg">kg</option>
+          <option value="lb">lb</option>
+        </select>
+      </div>
       <div id="exercises-container"></div>
       <button class="btn btn-secondary" onclick="addSetToCurrentEx()">+ Serie</button>
       <!-- La progresión va DEBAJO de las series: primero registrar, que es a lo
@@ -2747,7 +2763,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-17 17:36';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-17 17:47';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4109,8 +4125,8 @@ function renderEx(){
   /* El campo enseña la unidad del ejercicio; lo que se guarda en curEx son
      SIEMPRE kilos (aKg al escribir, deKg al pintar). */
   const u=unidadDe(DB.unidades,ex.name||'');
-  const btnU=document.getElementById('ex-unidad');
-  if(btnU)btnU.textContent=u;
+  const selU=document.getElementById('ex-unidad');
+  if(selU)selU.value=u;
   c.innerHTML=`
     ${nota?`<div class="ex-nota-coach"><span class="ex-nota-tag">Tu entrenador</span>${escaparHTML(nota)}</div>`:''}
     <div class="ex-card">
@@ -4147,11 +4163,19 @@ function anotarPeso(si,valor){
   guardarBorrador();
 }
 
-function alternarUnidadEjercicio(){
+/* La elige el desplegable de "Anotar en". Sin nombre no hay dónde guardarla:
+   la unidad va por ejercicio y la clave es su nombre. */
+function elegirUnidadEjercicio(u){
   if(curExIndex===null)return;
+  u = u==='lb' ? 'lb' : 'kg';
   const nombre=(curEx[curExIndex].name||'').trim();
-  if(!nombre){ aviso('Ponle nombre al ejercicio para elegir su unidad'); return; }
-  const u=unidadDe(DB.unidades,nombre)==='kg'?'lb':'kg';
+  if(!nombre){
+    aviso('Ponle nombre al ejercicio para elegir su unidad');
+    const selU=document.getElementById('ex-unidad');
+    if(selU)selU.value='kg';
+    return;
+  }
+  if(unidadDe(DB.unidades,nombre)===u)return;      // ya estaba: nada que decir
   DB.unidades=fijarUnidad(DB.unidades,nombre,u);
   save();
   renderEx();                      // los mismos kilos, mostrados en la otra unidad

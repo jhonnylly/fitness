@@ -1760,17 +1760,22 @@ async function appLista(page, url){
       };
       const campo = () => document.querySelector('#sets-container .set-inp').value;
       const etiqueta = () => document.querySelector('#sets-container .set-unit').textContent;
-      const boton = () => document.getElementById('ex-unidad').textContent;
+      const selector = () => document.getElementById('ex-unidad');
+      // Como se hace con el dedo: elegir en el desplegable y que dispare su change.
+      const elegirUnidad = u => { selector().value = u; selector().dispatchEvent(new Event('change')); };
       const guardado = () => curEx[curExIndex].sets[0].kg;
 
       escribir('100');
-      r.enKg = { guardado: guardado(), campo: campo(), etiqueta: etiqueta(), boton: boton() };
-      alternarUnidadEjercicio();
-      r.enLb = { guardado: guardado(), campo: campo(), etiqueta: etiqueta(), boton: boton(),
+      r.enKg = { guardado: guardado(), campo: campo(), etiqueta: etiqueta(), boton: selector().value,
+                 esDesplegable: selector().tagName === 'SELECT',
+                 opciones: [...selector().options].map(o => o.value).join(','),
+                 etiquetaVisible: !!document.querySelector('label[for="ex-unidad"]') };
+      elegirUnidad('lb');
+      r.enLb = { guardado: guardado(), campo: campo(), etiqueta: etiqueta(), boton: selector().value,
                  marcadas: Object.keys(DB.unidades || {}).length };
       escribir('225');
       r.tecleadoEnLb = { guardado: guardado(), campo: campo() };
-      alternarUnidadEjercicio();
+      elegirUnidad('kg');
       r.vuelta = { etiqueta: etiqueta(), marcadas: Object.keys(DB.unidades || {}).length };
       const kgGuardados = guardado();
       volverAtras(); volverAtras(); closeWeekDetail();
@@ -1790,6 +1795,8 @@ async function appLista(page, url){
     ok(unidades.enKg.guardado === 100 && unidades.enKg.campo === '100' && unidades.enKg.etiqueta === 'kg'
        && unidades.enKg.boton === 'kg',
        'por defecto, kilos: lo tecleado se guarda tal cual');
+    ok(unidades.enKg.esDesplegable && unidades.enKg.opciones === 'kg,lb' && unidades.enKg.etiquetaVisible,
+       'la unidad se elige en un desplegable kg/lb con su etiqueta: un botón gris no se entendía');
     ok(unidades.enLb.guardado === 100 && unidades.enLb.campo === '220.5' && unidades.enLb.etiqueta === 'lb'
        && unidades.enLb.marcadas === 1,
        '🔴 al pasar a libras se ven 220,5 lb pero lo GUARDADO siguen siendo 100 kg');
