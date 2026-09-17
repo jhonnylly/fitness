@@ -1808,6 +1808,72 @@ async function appLista(page, url){
     ok(/220,5 lb/.test(unidades.cliente),
        'el entrenador ve ese ejercicio en libras, como su cliente: '+(unidades.cliente.match(/[\d,]+ lb/)||[''])[0]);
 
+    console.log('\n13w. Renombrar un ejercicio: sugerencias, aviso sin foto y "toda la rutina"');
+    /* Jhon entrenando (17/09): renombró un ejercicio y se quedó sin imagen, y
+       pidió poder llevar el cambio a toda la rutina. */
+    const renom = await page.evaluate(async ()=>{
+      if(STORAGE.backend.name !== 'local') return { saltado:true };   // nunca contra la nube
+      const tic = () => new Promise(res => setTimeout(res, 20));
+      const r = {};
+      const act = getActive();
+      showTab('log', document.getElementById('tab-log'));
+      openWeekDetail(1);
+      openSession(act.plan[0].days[0].s);
+      await tic();
+      openExDetail(0);
+      await tic();
+      const campo = document.getElementById('ex-detail-title');
+      const original = curEx[curExIndex].name;
+      const diasAntes = diasConEjercicio(getActive(), original);
+
+      // Mientras escribe: nombres del catálogo parecidos.
+      campo.value = 'remo en maq';
+      campo.dispatchEvent(new Event('input'));
+      r.sugerencias = { texto: document.getElementById('ex-sugerencias').textContent.replace(/\s+/g,' '),
+                        botones: document.querySelectorAll('#ex-sugerencias .ex-sug-btn').length };
+
+      // Confirma un nombre que NO está en el catálogo.
+      campo.value = 'Remo en máquina';
+      campo.dispatchEvent(new Event('change'));
+      await tic();
+      r.sinFoto = document.getElementById('ex-sugerencias').textContent.replace(/\s+/g,' ');
+      r.enSesion = curEx[curExIndex].name;
+      const aviso = () => document.getElementById('ex-renombrar').textContent.replace(/\s+/g,' ');
+      r.pregunta = { texto: aviso(),
+                     botones: document.querySelectorAll('#ex-renombrar button').length,
+                     diasAntes };
+      r.planAntes = diasConEjercicio(getActive(), 'Remo en máquina');
+
+      aplicarRenombrado('rutina');
+      r.tras = { enPlan: diasConEjercicio(getActive(), 'Remo en máquina'),
+                 viejoEnPlan: diasConEjercicio(getActive(), original),
+                 avisoCerrado: aviso() === '' };
+
+      // Y una sugerencia devuelve un nombre con foto.
+      const conFoto = sugerenciasEjercicio('remo', 6)[0];
+      usarNombreSugerido(conFoto);
+      await tic();
+      r.recuperaFoto = { nombre: curEx[curExIndex].name,
+                         hayFigura: !!document.querySelector('#ex-musculos figure'),
+                         sinSugerencias: document.getElementById('ex-sugerencias').textContent.trim() === '' };
+      aplicarRenombrado('sesion');
+      volverAtras(); volverAtras(); closeWeekDetail();
+      return r;
+    });
+    ok(!renom.saltado, 'la prueba corre en local, nunca contra la nube');
+    ok(renom.sugerencias.botones > 0 && /Remo/.test(renom.sugerencias.texto),
+       'al escribir salen nombres del catálogo parecidos: '+renom.sugerencias.texto.slice(0, 70));
+    ok(/No tenemos foto/.test(renom.sinFoto) && renom.enSesion === 'Remo en máquina',
+       '🔴 con un nombre sin foto se avisa en vez de dejar el hueco vacío, y el nombre se respeta');
+    ok(renom.pregunta.botones === 2 && /toda la rutina/i.test(renom.pregunta.texto)
+       && /Solo en esta sesión/i.test(renom.pregunta.texto) && renom.pregunta.diasAntes > 0,
+       'y pregunta si cambiarlo solo en la sesión o en toda la rutina');
+    ok(renom.planAntes === 0 && renom.tras.enPlan === renom.pregunta.diasAntes && renom.tras.viejoEnPlan === 0,
+       'al elegir "toda la rutina", el plan pasa a llamarlo como el nuevo en todos sus días');
+    ok(renom.tras.avisoCerrado, 'y el aviso desaparece al decidir');
+    ok(renom.recuperaFoto.hayFigura && renom.recuperaFoto.sinSugerencias,
+       'eligiendo una sugerencia del catálogo, vuelve la foto: '+renom.recuperaFoto.nombre);
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

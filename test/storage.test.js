@@ -33,6 +33,16 @@ const el = () => ({
 });
 // Se guardan los listeners para poder disparar DOMContentLoaded a mano y
 // comprobar el arranque real de la app.
+/* Los catálogos son ficheros "window.X = {...};" generados. Se leen tal cual y
+   se evalúa solo la parte derecha: así el arnés usa los MISMOS datos que la app
+   y no una copia de mentira que se quedaría vieja. */
+function cargarCatalogo(fichero, variable){
+  const txt = fs.readFileSync(path.join(__dirname, '..', 'img', 'ejercicios', fichero), 'utf8');
+  const m = txt.match(new RegExp('window\\.' + variable + '\\s*=\\s*([\\s\\S]*?);\\s*(?:\\n|$)'));
+  if(!m) throw new Error('no se encontró ' + variable + ' en ' + fichero);
+  return JSON.parse(m[1]);
+}
+
 const listeners = {};
 const document = {
   getElementById: () => el(),
@@ -59,7 +69,14 @@ const ctx = {
      `beforeinstallprompt` y a `appinstalled` nada más cargar el script.
      matchMedia: pintarInstalar() pregunta si la app ya está en modo aplicación.
      Aquí no hay ni navegador que instale ni pantalla, así que ambos son mudos. */
-  window: { scrollTo(){}, addEventListener(){}, matchMedia: () => ({matches:false}) },
+  /* Los catálogos de ejercicios viven en img/ejercicios/*.js y se cargan con
+     <script> antes del inline. Aquí hay que ponerlos a mano: sin ellos,
+     sugerenciasEjercicio() y tieneFotoEjercicio() no tienen nada que mirar y
+     parecen rotas cuando lo que falta es el arnés. */
+  window: { scrollTo(){}, addEventListener(){}, matchMedia: () => ({matches:false}),
+            IMAGENES_EJERCICIOS: cargarCatalogo('lista.js', 'IMAGENES_EJERCICIOS'),
+            MUSCULOS_EJERCICIOS: cargarCatalogo('musculos.js', 'MUSCULOS_EJERCICIOS'),
+            NOMBRES_EJERCICIOS: cargarCatalogo('musculos.js', 'NOMBRES_EJERCICIOS') },
   setTimeout, clearTimeout, setInterval, clearInterval,
   navigator: { vibrate(){} },
   fetch: () => Promise.reject(new Error('sin red')),
@@ -81,6 +98,7 @@ const puente = `
   semanasSinEmpezarDe, diasPorSemanaDe, modeloParaDias, aplicarPropuestaARutina, htmlPropuesta,
   textoInfoReparto, textoDiasSemana, quitarDiaDelPlan,
   unidadDe, aKg, deKg, pesoTexto, fijarUnidad,
+  sugerenciasEjercicio, tieneFotoEjercicio, diasConEjercicio, renombrarEnPlan, moverUnidad,
   claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas, getPrevKgs,
   ejerciciosDeRutina, progresoReto,
   leerDecisionSync, guardarDecisionSync,
@@ -862,6 +880,50 @@ const ok = (cond, msg) => {
   ok(app.pesoTexto(80, 'kg') === '80 kg' && app.pesoTexto(45.36, 'lb') === '100 lb',
      'el texto lleva su unidad: '+app.pesoTexto(45.36, 'lb'));
   ok(app.pesoTexto('', 'kg') === '', 'y una serie sin peso no escribe nada');
+
+  console.log('\n17f. renombrar un ejercicio: sugerencias y plan');
+  /* Jhon entrenando (17/09): cambió "Remo en polea" por "Remo en máquina" y se
+     quedó sin foto, porque ese nombre no está en el catálogo. Y pidió que al
+     renombrar se pueda llevar el cambio a toda la rutina. */
+  const sug = app.sugerenciasEjercicio('remo', 6);
+  ok(sug.length > 0 && sug.every(n => /remo/i.test(n)), 'escribiendo "remo" salen los remos del catálogo: '+sug.join(', '));
+  ok(sug[0].toLowerCase().startsWith('remo'), 'y primero los que empiezan por lo escrito');
+  ok(app.sugerenciasEjercicio('r', 6).length === 0, 'con una sola letra no se sugiere nada');
+  ok(app.sugerenciasEjercicio('press banc', 6).some(n => /press banca/i.test(n)),
+     'funciona a medio escribir');
+  ok(app.sugerenciasEjercicio('jalon', 6).some(n => /Jalón/.test(n)), 'y sin tildes también');
+  ok(app.tieneFotoEjercicio('Remo polea baja') === true, 'un nombre del catálogo tiene foto');
+  ok(app.tieneFotoEjercicio('Remo en máquina') === false, '🔴 "Remo en máquina" no la tiene: por eso se quedó el hueco vacío');
+
+  const rutinaR = {
+    plan: [
+      { num:1, days:[ { s:1, name:'S1', ex:[['Remo en polea','4×12','Codos pegados'], ['Sentadilla','4×8']] },
+                      { s:2, name:'S2', ex:[['Press banca','4×8']] } ] },
+      { num:2, days:[ { s:3, name:'S3', ex:[['Remo en polea','3×15']] } ] },
+    ],
+    sessions: { 1: { exercises:[{ name:'Remo en polea', sets:[{kg:60, reps:'12'}] }] } },
+  };
+  const antesSesion = JSON.stringify(rutinaR.sessions);
+  ok(app.diasConEjercicio(rutinaR, 'Remo en polea') === 2, 'el ejercicio está en 2 días del plan');
+  ok(app.diasConEjercicio(rutinaR, 'Remo polea') === 2, 'y lo encuentra aunque el nombre lleve conectores distintos');
+  ok(app.diasConEjercicio(rutinaR, 'Dominadas') === 0, 'uno que no está, en ninguno');
+
+  const cambiados = app.renombrarEnPlan(rutinaR, 'Remo en polea', 'Remo en máquina');
+  ok(cambiados === 2, 'renombrar en el plan toca los 2 días');
+  ok(rutinaR.plan[0].days[0].ex[0][0] === 'Remo en máquina' && rutinaR.plan[1].days[0].ex[0][0] === 'Remo en máquina',
+     'con el nombre nuevo en las dos semanas');
+  ok(rutinaR.plan[0].days[0].ex[0][1] === '4×12' && rutinaR.plan[0].days[0].ex[0][2] === 'Codos pegados',
+     '🔴 conservando el esquema y la nota del entrenador');
+  ok(rutinaR.plan[0].days[0].ex[1][0] === 'Sentadilla', 'sin tocar los demás ejercicios');
+  ok(JSON.stringify(rutinaR.sessions) === antesSesion,
+     '🔴 y sin tocar lo ya registrado: eso es historial');
+
+  const conLb = app.fijarUnidad({}, 'Remo en polea', 'lb');
+  const movida = app.moverUnidad(conLb, 'Remo en polea', 'Remo en máquina');
+  ok(app.unidadDe(movida, 'Remo en máquina') === 'lb' && app.unidadDe(movida, 'Remo en polea') === 'kg',
+     'la unidad se va con el nombre nuevo: es el mismo aparato');
+  ok(Object.keys(app.moverUnidad({}, 'Sentadilla', 'Sentadilla búlgara')).length === 0,
+     'y si estaba en kilos, no se inventa ninguna entrada');
 
   console.log('\n18. cambiar los días no deja sesiones imposibles');
   // Reportado por Jhon usándola: al pasar de 5 días a 4, dos sesiones se

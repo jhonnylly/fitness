@@ -487,6 +487,12 @@ textarea{resize:vertical;min-height:60px;}
   background:var(--accent);box-shadow:0 0 0 2px var(--dark);}
 /* La versión arriba de Ajustes: nombre a la izquierda, botón a la derecha. */
 .card.version-fila{display:flex;gap:12px;align-items:center;}
+/* Sugerencias de nombre del catálogo, bajo el campo del ejercicio. */
+.ex-sug{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.ex-sug-btn{padding:6px 10px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;
+  color:var(--accent);background:rgba(var(--accent-rgb),0.10);border:1px solid var(--accent);
+  border-radius:var(--radius-sm);}
+.ex-sug-tit{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:10px;}
 /* Elegir kg o lb del ejercicio: en violeta y con su flecha, para que se vea que
    se toca. En gris parecía un botón más de los de al lado. */
 .fila-unidad{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
@@ -1698,9 +1704,15 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <div id="ex-detail-view" style="display:none;">
       <div class="card">
         <div class="ex-detail-header">
-          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" onchange="if(curExIndex!==null){curEx[curExIndex].name=this.value;pintarImagenEjercicio();renderEx();pintarGraficaCargasEjercicio();}">
+          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" autocomplete="off" oninput="pintarSugerenciasEjercicio(this.value)" onchange="renombrarEjercicioActual(this.value)">
           <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
         </div>
+        <!-- Nombres del catálogo que se parecen a lo que va escribiendo: si
+             elige uno, el ejercicio conserva su foto y su historial (17/09/2026,
+             a Jhon se le quedó sin imagen al escribir "Remo en máquina"). -->
+        <div id="ex-sugerencias"></div>
+        <!-- "¿Solo esta sesión o toda la rutina?" tras renombrar. -->
+        <div id="ex-renombrar"></div>
       </div>
       <div id="ex-musculos"></div>
       <!-- La unidad, junto a "Series" y como desplegable (17/09/2026). Era un
@@ -2763,7 +2775,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-17 17:47';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-17 18:18';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4807,6 +4819,110 @@ function pesoTexto(kg, unidad){
   return v == null ? '' : num(v) + ' ' + (unidad === 'lb' ? 'lb' : 'kg');
 }
 
+/* ═══════════ Renombrar un ejercicio (17/09/2026) ═══════════
+   Jhon entrenando: cambió "Remo en polea" por "Remo en máquina" y se quedó sin
+   foto. No es que se borrara: ese nombre no está en el catálogo, así que no hay
+   músculos que enseñar. Dos respuestas: sugerir nombres que SÍ están mientras
+   escribe, y avisar cuando el que ha puesto no tiene foto.
+
+   Y lo segundo que pidió: al renombrar, poder llevarlo a toda la rutina. El
+   plan y la sesión son cosas distintas —el plan dice qué toca hacer, la sesión
+   lo que hiciste—, así que hasta hoy renombrar solo tocaba la sesión abierta. */
+
+/* Nombres del catálogo parecidos a lo que se está escribiendo. Busca por
+   palabras sueltas y sin tildes: "remo maquina" encuentra "Remo máquina" si
+   existe, y "remo" encuentra los cinco remos. */
+function sugerenciasEjercicio(texto, limite){
+  const nombres = window.NOMBRES_EJERCICIOS || {};
+  const q = nrNormaliza(texto || '').trim();
+  if(q.length < 2) return [];
+  /* Sin conectores: nadie del catálogo se llama "Remo EN polea", así que
+     exigiendo todas las palabras, "remo en maq" no encontraba nada — y eso es
+     justo lo que escribió Jhon. */
+  const partes = q.split(/\s+/).filter(p => p && !CONECTORES_EJ.includes(p));
+  if(!partes.length) return [];
+  const todos = Object.keys(nombres).map(k => nombres[k]);
+  let casan = todos.filter(n => {
+    const limpio = nrNormaliza(n);
+    return partes.every(p => limpio.includes(p));
+  });
+  /* Si la frase entera no casa con ninguno, se busca por la primera palabra:
+     escribiendo "remo en maquina" es mejor ofrecer los cinco remos que nada. */
+  if(!casan.length && partes.length > 1){
+    casan = todos.filter(n => nrNormaliza(n).includes(partes[0]));
+  }
+  /* Primero los que empiezan por lo escrito: buscando "remo", "Remo barra"
+     antes que cualquier otro que lo lleve en medio. */
+  casan.sort((a,b) => {
+    const ea = nrNormaliza(a).startsWith(partes[0]) ? 0 : 1;
+    const eb = nrNormaliza(b).startsWith(partes[0]) ? 0 : 1;
+    return ea !== eb ? ea - eb : a.localeCompare(b, 'es');
+  });
+  return casan.slice(0, limite || 6);
+}
+
+/* ¿Tiene algo que enseñar este nombre? Músculos del catálogo o, en su defecto,
+   la silueta dibujada. Es justo lo que mira pintarImagenEjercicio(). */
+function tieneFotoEjercicio(nombre){
+  if(!nombre) return false;
+  if(buscarImagenEjercicio(nombre, window.MUSCULOS_EJERCICIOS)) return true;
+  return !!buscarImagenEjercicio(nombre, mapaImagenesEjercicios());
+}
+
+/* En cuántos días del PLAN aparece un ejercicio (por clave laxa: "Remo polea"
+   y "Remo en polea" son el mismo). */
+function diasConEjercicio(rutina, nombre){
+  const clave = claveEjercicioLaxa(nombre || '');
+  if(!clave) return 0;
+  let n = 0;
+  for(const sem of ((rutina && rutina.plan) || [])){
+    for(const dia of (sem.days || [])){
+      if((dia.ex || []).some(e => claveEjercicioLaxa(Array.isArray(e) ? e[0] : (e && e.name) || '') === clave)) n++;
+    }
+  }
+  return n;
+}
+
+/* Renombra en TODO el plan, conservando el esquema ("4×12") y la nota del
+   entrenador. No toca las sesiones ya registradas: eso es historial, y
+   reescribirlo sería cambiar lo que hiciste. Devuelve los días cambiados. */
+function renombrarEnPlan(rutina, viejo, nuevo){
+  const clave = claveEjercicioLaxa(viejo || '');
+  const limpio = (nuevo || '').trim();
+  if(!clave || !limpio) return 0;
+  let n = 0;
+  for(const sem of ((rutina && rutina.plan) || [])){
+    for(const dia of (sem.days || [])){
+      let tocado = false;
+      dia.ex = (dia.ex || []).map(e => {
+        const nombreEx = Array.isArray(e) ? e[0] : (e && e.name) || '';
+        if(claveEjercicioLaxa(nombreEx) !== clave) return e;
+        tocado = true;
+        if(Array.isArray(e)){
+          const par = [limpio, e[1] != null ? e[1] : ''];
+          if(e[2]) par.push(e[2]);          // la nota del entrenador se queda
+          return par;
+        }
+        return Object.assign({}, e, {name: limpio});
+      });
+      if(tocado) n++;
+    }
+  }
+  return n;
+}
+
+/* La unidad va por nombre: al renombrar, se lleva con él. Si no, una máquina
+   que anotabas en libras volvería a kilos por cambiarle el nombre. */
+function moverUnidad(unidades, viejo, nuevo){
+  const u = unidadDe(unidades, viejo);
+  let out = Object.assign({}, unidades || {});
+  if(u === 'lb'){
+    out = fijarUnidad(out, nuevo, 'lb');
+    out = fijarUnidad(out, viejo, 'kg');     // borra la entrada vieja
+  }
+  return out;
+}
+
 /* Devuelve el mapa nuevo (no muta): kg BORRA la entrada en vez de guardar
    'kg', para que el mapa solo tenga excepciones y no crezca con cada ejercicio
    que se mire. */
@@ -5112,6 +5228,9 @@ function pintarImagenEjercicio(){
 
   // Sin foto para algún principal: la silueta de siempre.
   const url=buscarImagenEjercicio(ex.name, mapaImagenesEjercicios());
+  /* Ni músculos ni silueta: aquí no se pinta nada, pero no se deja el hueco
+     mudo: lo explica pintarSugerenciasEjercicio(), justo bajo el nombre, que es
+     donde está el campo que acaba de cambiar (17/09/2026). */
   if(!url){ c.innerHTML=''; return; }
   c.innerHTML=`<figure class="ex-musculos silueta" onclick="this.classList.toggle('grande')">
       <img src="${url}" alt="Músculos que trabaja: ${escaparHTML(ex.name||'')}" loading="lazy">
@@ -6655,6 +6774,94 @@ function closeExDetail(){
   renderExButtons();
   window.scrollTo(0,0);
 }
+
+/* Lo que está pendiente de decidir: {viejo, nuevo, dias}. Vive fuera de la
+   función porque los botones del aviso lo consultan después. */
+let renombrePendiente=null;
+
+/* Debajo del nombre: los parecidos del catálogo mientras escribe y, cuando el
+   nombre puesto no tiene foto, el porqué. Todo junto y en el mismo sitio: es
+   una sola cosa —"este nombre no lo conozco, ¿querías uno de estos?"— y
+   repartirla entre dos huecos de la pantalla la hacía ilegible. */
+function pintarSugerenciasEjercicio(texto, confirmado){
+  const c=document.getElementById('ex-sugerencias');
+  if(!c)return;
+  const escrito=(texto||'').trim();
+  const conFoto=tieneFotoEjercicio(escrito);
+  const lista=conFoto?[]:sugerenciasEjercicio(escrito,6);
+  const botones=lista.length
+    ? `<div class="ex-sug">${lista.map(n=>
+        `<button type="button" class="ex-sug-btn" data-n="${escaparHTML(n)}"
+           onclick="usarNombreSugerido(this.dataset.n)">${escaparHTML(n)}</button>`).join('')}</div>`
+    : '';
+  if(conFoto||!escrito){ c.innerHTML=''; return; }
+  /* `confirmado`: mientras teclea solo se ofrecen nombres; ya con el nombre
+     puesto se explica que ese no tiene foto, que es la duda que le surgió. */
+  c.innerHTML=confirmado
+    ? `<div class="msg msg-info" style="margin-top:10px;">
+         No tenemos foto para <b>${escaparHTML(escrito)}</b>. Puedes dejarlo así
+         —se guarda y se registra igual— o usar uno del catálogo.${botones}</div>`
+    : (botones?`<div class="ex-sug-tit">¿Quieres decir?</div>${botones}`:'');
+}
+
+function usarNombreSugerido(nombre){
+  const campo=document.getElementById('ex-detail-title');
+  if(campo)campo.value=nombre;
+  renombrarEjercicioActual(nombre);
+}
+
+/* Renombrar el ejercicio abierto. Cambia SIEMPRE la sesión que se está
+   registrando; lo del plan se pregunta, porque son dos cosas distintas y solo
+   quien entrena sabe si se equivocó de nombre hoy o cambió de máquina. */
+function renombrarEjercicioActual(nuevo){
+  if(curExIndex===null)return;
+  const viejo=(curEx[curExIndex].name||'').trim();
+  const limpio=(nuevo||'').trim();
+  curEx[curExIndex].name=limpio;
+  const cambia=viejo&&limpio&&claveEjercicioLaxa(viejo)!==claveEjercicioLaxa(limpio);
+  // La unidad (kg/lb) se va con el nombre nuevo: es el mismo aparato.
+  if(cambia)DB.unidades=moverUnidad(DB.unidades,viejo,limpio);
+  guardarBorrador();
+  pintarSugerenciasEjercicio(limpio, true);
+  pintarImagenEjercicio();
+  renderEx();
+  pintarGraficaCargasEjercicio();
+  const dias=cambia?diasConEjercicio(getActive(),viejo):0;
+  renombrePendiente=dias?{viejo,nuevo:limpio,dias}:null;
+  pintarRenombrar();
+}
+
+function pintarRenombrar(){
+  const c=document.getElementById('ex-renombrar');
+  if(!c)return;
+  const p=renombrePendiente;
+  if(!p){ c.innerHTML=''; return; }
+  c.innerHTML=`<div class="msg msg-info" style="margin-top:10px;">
+      Has cambiado <b>${escaparHTML(p.viejo)}</b> por <b>${escaparHTML(p.nuevo)}</b>.
+      En el plan sigue llamándose como antes, en
+      <b>${p.dias} día${p.dias===1?'':'s'}</b>. ¿Qué hago?
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn-sm" onclick="aplicarRenombrado('rutina')">Cambiarlo en toda la rutina</button>
+        <button class="btn-sm" onclick="aplicarRenombrado('sesion')">Solo en esta sesión</button>
+      </div>
+      <div style="font-size:11px;margin-top:6px;">Lo que ya registraste no se toca en ningún caso.</div>
+    </div>`;
+}
+
+window.aplicarRenombrado=function(ambito){
+  const p=renombrePendiente;
+  renombrePendiente=null;
+  pintarRenombrar();
+  if(!p||ambito!=='rutina')return;
+  const act=getActive();
+  const dias=renombrarEnPlan(act,p.viejo,p.nuevo);
+  if(!dias)return;
+  save();
+  buildSessionList();
+  renderWeekButtons();
+  updateHome();
+  aviso('Cambiado en '+dias+' día'+(dias===1?'':'s')+' del plan','bien');
+};
 
 function removeCurrentEx(){
   if(curExIndex===null)return;
