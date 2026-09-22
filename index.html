@@ -13,13 +13,18 @@
 <meta name="mobile-web-app-capable" content="yes">
 <!-- iOS no lee los iconos del manifest: usa este. -->
 <meta name="apple-mobile-web-app-capable" content="yes">
+<!-- 22/09/2026: estas tres estaban duplicadas y las segundas pisaban a las
+     primeras, así que mandaba "black-translucent": en un iPhone instalado el
+     contenido se metía debajo del reloj y la batería. Con "black" la barra de
+     estado es negra y opaca, y la app empieza justo debajo, que es lo que
+     espera este CSS (apenas usa env(safe-area-inset-*) y no hay
+     viewport-fit=cover). Si algún día se quiere pantalla completa de verdad,
+     hay que añadir viewport-fit=cover Y repasar los paddings de cabecera,
+     barra de pestañas y hojas inferiores. -->
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Fitness">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="My Fitness Tracker">
 <title>My Fitness Tracker</title>
 <!-- Vista previa al compartir el enlace (LinkedIn, WhatsApp...). Sin estas
      etiquetas LinkedIn no deja añadir la app a "Destacados". -->
@@ -137,20 +142,13 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 .cab-avatar.sin-foto{background:var(--accent);border-color:transparent;color:#fff;
   font-size:20px;font-weight:800;letter-spacing:.5px;}
 .cab-centro{flex:1;min-width:0;}
-/* El nombre de la app, discreto. Desapareció al compactar la cabecera y se
-   echaba en falta: la idea era que encogiera, no que se fuera. Cabe gratis
-   —el alto lo manda la foto, 56 px, y el texto se queda en ~51— y en minúsculas
-   apretadas de un solo color no recuerda al logo de Basic-Fit, que era el
-   problema del titular anterior. */
-.cab-marca{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;
-  color:rgba(255,255,255,0.32);line-height:1;margin-bottom:3px;
+/* El saludo, al lado de la foto (22/09/2026). Ocupa el sitio que tenían la
+   marca y el nombre de la rutina. Una sola línea: con nombres largos se corta
+   con puntos suspensivos antes que romper la cabecera. Sin mayúsculas ni
+   titular grueso, que era el parecido con Basic-Fit que se quitó el
+   04/09/2026. */
+.cab-saludo{font-size:17px;font-weight:800;line-height:1.2;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-/* Tocar el nombre de la rutina abre el selector: es lo que antes hacía el
-   botón "⚡ Cambiar rutina". El chevron es la única pista de que se puede. */
-.cab-rutina{background:none;border:none;padding:0;color:inherit;font-family:inherit;font-size:17px;
-  font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;max-width:100%;}
-.cab-rutina>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cab-chevron{color:var(--accent);font-size:13px;flex-shrink:0;}
 .cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:10.5px;
   color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;}
 .cab-ico{background:rgba(255,255,255,0.08);border:none;border-radius:10px;width:36px;height:36px;
@@ -695,15 +693,18 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    salen solos. Los colores fijos que hay aquí son SOLO los de dentro de
    superficies oscuras propias (la tarjeta de entrenamiento), donde el texto
    es blanco en ambos temas a propósito. */
-.saludo{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
-.saludo-txt{font-size:21px;font-weight:800;line-height:1.25;}
-.saludo-sub{font-size:12px;color:var(--muted);margin-top:2px;}
 
 .hp{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius);padding:16px 14px;margin-bottom:14px;}
 .hp-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;}
 .hp-nombre{font-size:20px;font-weight:800;color:var(--accent);margin-top:4px;line-height:1.2;
   overflow-wrap:anywhere;}
+/* El nombre es un botón, pero tiene que verse igual que cuando era un div:
+   sin fondo, sin borde y alineado a la izquierda. El chevron avisa de que se
+   puede cambiar de rutina (22/09/2026). */
+.hp-rutina{background:none;border:none;padding:0;font-family:inherit;text-align:left;
+  cursor:pointer;display:flex;align-items:center;gap:6px;max-width:100%;}
+.hp-chevron{color:var(--accent);font-size:14px;flex-shrink:0;}
 .hp-meta{font-size:13px;color:var(--muted);margin-top:4px;}
 .hp-anillo{position:relative;width:88px;height:88px;flex-shrink:0;margin-left:auto;}
 .hp-anillo svg{width:88px;height:88px;transform:rotate(-90deg);}
@@ -1136,14 +1137,13 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <input type="file" id="profile-input" accept="image/*" onchange="saveProfilePic(this)" style="display:none;">
 
     <div class="cab-centro">
-      <div class="cab-marca">My Fitness Tracker</div>
-      <!-- Todo el bloque abre Mis rutinas. Se probó separarlo (nombre a
-           Registrar, chevron a Mis rutinas) y Jhon prefirió lo de siempre: para
-           ir a entrenar desde el listado está el atajo de tocar el nombre allí,
-           que es donde lo había pedido. -->
-      <button class="cab-rutina" onclick="toggleRoutinePanel()" title="Cambiar de rutina">
-        <span id="header-routine-name">—</span><span class="cab-chevron">⌄</span>
-      </button>
+      <!-- 22/09/2026, pedido por Jhon: aquí iban la marca y el nombre de la
+           rutina; ahora va el saludo, que es lo que pega al lado de tu foto.
+           La rutina y su selector se fueron a la tarjeta "Programa actual" de
+           Inicio, que ya decía el nombre: así no sale dos veces. La marca se
+           quitó porque ya está en la bienvenida, en el icono y en la pestaña
+           del navegador. -->
+      <div class="cab-saludo" id="cab-saludo">¡Hola!</div>
       <!-- Solo el estado de guardado. Las sesiones y semanas estaban aquí y se
            cortaban a mitad en 390 px, y además la tarjeta de Inicio las dice
            justo debajo ("Semana 1 de 8 · 0/48 sesiones"). Esto no lo dice nadie
@@ -1598,15 +1598,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 <!-- INICIO -->
 <div id="pane-inicio" class="pane active">
 
-  <!-- Sin avatar aquí a propósito: la cabecera ya muestra la foto de perfil
-       con su lápiz de editar, justo encima. Dos veces la misma cara era ruido;
-       se vio en la primera captura, no leyendo el código. -->
-  <div class="saludo">
-    <div style="min-width:0;">
-      <div class="saludo-txt" id="home-saludo">¡Hola!</div>
-      <div class="saludo-sub">Hoy es un buen día para superarte.</div>
-    </div>
-  </div>
+  <!-- El saludo se mudó a la cabecera el 22/09/2026, al lado de la foto. -->
 
   <!-- Lo que le dice su entrenador. ARRIBA DEL TODO y sin leer va en violeta
        lleno: Jhon lo probó el 09/09 pegado a "Entrenamiento de hoy", en calma,
@@ -1653,7 +1645,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   <div class="hp">
     <div style="min-width:0;">
       <div class="hp-label">Programa actual</div>
-      <div class="hp-nombre" id="home-prog-name">—</div>
+      <!-- Tocar el nombre abre "Mis rutinas": es el selector que antes estaba
+           en la cabecera (22/09/2026). El chevron es la única pista de que se
+           puede cambiar, igual que lo era arriba. -->
+      <button class="hp-nombre hp-rutina" onclick="toggleRoutinePanel()" title="Cambiar de rutina">
+        <span id="home-prog-name">—</span><span class="hp-chevron">⌄</span>
+      </button>
       <div class="hp-meta" id="home-prog-meta">—</div>
     </div>
     <div class="hp-anillo">
@@ -2872,7 +2869,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-22 18:36';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-22 21:46';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5651,7 +5648,8 @@ function pintarSaludo(){
   const h=new Date().getHours();
   const saludo=h<6?'Buenas noches':h<13?'¡Buenos días':h<21?'¡Buenas tardes':'¡Buenas noches';
   const nombre=(DB.profileName||'').trim();
-  const el=document.getElementById('home-saludo');
+  /* 22/09/2026: el saludo vive en la cabecera (#cab-saludo), no en Inicio. */
+  const el=document.getElementById('cab-saludo');
   if(el)el.textContent=saludo+(nombre?', '+nombre:'')+'! 👋';
 }
 
@@ -6530,6 +6528,10 @@ function createRoutine(){
   aviso('Rutina "'+name+'" creada ✓');
 }
 
+/* Desde el 22/09/2026 la cabecera no lleva el nombre de la rutina: lo dice la
+   tarjeta "Programa actual" de Inicio. Esta función se queda porque la llaman
+   varios sitios y por si vuelve algún hueco con esos ids; sus getElementById
+   devuelven null y los if() de dentro lo cubren. */
 function updateHeaderRoutine(){
   const act=getActive();
   const nameEl=document.getElementById('header-routine-name');
@@ -7072,6 +7074,9 @@ function editProfileName(){
 function renderProfileName(){
   const el=document.getElementById('profile-name');
   if(el)el.innerHTML=escaparHTML(DB.profileName||'JHON')+' '+ico('lapiz','ico-btn');
+  /* El saludo de la cabecera lleva el nombre y se ve desde cualquier pestaña,
+     así que se repinta aquí y no solo al pintar Inicio (22/09/2026). */
+  pintarSaludo();
 }
 
 /* Capas a pantalla completa que tapan la app. Las tres se ocultan con
