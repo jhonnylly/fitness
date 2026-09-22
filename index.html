@@ -708,6 +708,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    rutina (que se puede leer entero en "Mis rutinas") que estos números. */
 .hp-resumen{margin-left:auto;flex-shrink:0;font-size:12px;color:var(--muted);
   font-weight:600;white-space:nowrap;}
+/* Las tres acciones de rutina, debajo de la línea (22/09/2026). Se reparten el
+   ancho para que las tres se lean enteras en 390 px; "Borrar" se separa del
+   resto, como en el listado de rutinas, para no pulsarla sin querer. */
+.hp-acciones{display:flex;gap:6px;margin-bottom:14px;}
+.hp-acciones .btn-sm{flex:1;padding:8px 6px;font-size:12px;white-space:nowrap;text-align:center;}
+.hp-acciones .sep-peligro{margin-left:6px;}
 .anillo-fondo{fill:none;stroke:var(--border);stroke-width:7;}
 .anillo-fill{fill:none;stroke:var(--accent);stroke-width:7;stroke-linecap:round;
   transition:stroke-dashoffset .5s ease;}
@@ -1668,6 +1674,16 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       <span id="home-prog-name">—</span><span class="hp-chevron">⌄</span>
     </button>
     <div class="hp-resumen" id="home-prog-meta">—</div>
+  </div>
+
+  <!-- 22/09/2026, pedido por Jhon: el chevron solo no bastaba, nadie adivina
+       que ahí se cambia de rutina. Con las tres acciones escritas se ve. Las
+       tres llevan al mismo sitio de siempre —el panel "Mis rutinas"— salvo
+       borrar, que pregunta antes y avisa del historial que se pierde. -->
+  <div class="hp-acciones">
+    <button class="btn-sm" onclick="toggleRoutinePanel()">Cambiar rutina</button>
+    <button class="btn-sm" onclick="anadirRutinaDesdeInicio()">Añadir rutina</button>
+    <button class="btn-sm btn-danger sep-peligro" onclick="borrarRutinaActiva()">Borrar rutina</button>
   </div>
 
   <button class="hoy" id="home-hoy" onclick="irAProximaSesion()">
@@ -2883,7 +2899,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-22 22:10';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-22 22:26';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5659,8 +5675,10 @@ function pintarInstalar(){
 }
 
 function pintarSaludo(){
-  const h=new Date().getHours();
-  const saludo=h<6?'Buenas noches':h<13?'¡Buenos días':h<21?'¡Buenas tardes':'¡Buenas noches';
+  /* 22/09/2026: era "¡Buenas tardes, JHON! 👋" y con la franja horaria delante
+     ocupaba toda la cabecera y se cortaba con nombres normales. Un "¡Hola!"
+     dice lo mismo y deja sitio. */
+  const saludo='¡Hola';
   const nombre=(DB.profileName||'').trim();
   /* 22/09/2026: el saludo vive en la cabecera (#cab-saludo), no en Inicio. */
   const el=document.getElementById('cab-saludo');
@@ -5804,6 +5822,22 @@ function pintarChispa(vals){
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '+
     'vector-effect="non-scaling-stroke"/>';
 }
+/* Los tres botones de Inicio (22/09/2026). Añadir y borrar hacen lo mismo que
+   dentro del panel: se reutiliza el código de siempre, avisos incluidos. */
+function anadirRutinaDesdeInicio(){
+  const p=document.getElementById('routine-panel');
+  if(p.classList.contains('hidden'))toggleRoutinePanel();   // deja el listado detrás
+  openNewRoutinePanel();
+}
+
+function borrarRutinaActiva(){
+  const act=getActive();
+  /* Sin rutina en curso no hay nada que borrar: se abre el listado, que es
+     donde se elige, en vez de no hacer nada y dejar al usuario pulsando. */
+  if(!act){ toggleRoutinePanel(); return; }
+  deleteRoutine(act.id);   // pregunta y avisa del historial que se pierde
+}
+
 function toggleRoutinePanel(){
   const p=document.getElementById('routine-panel');
   p.classList.toggle('hidden');
