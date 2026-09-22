@@ -148,7 +148,11 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
    titular grueso, que era el parecido con Basic-Fit que se quitó el
    04/09/2026. */
 .cab-saludo{font-size:17px;font-weight:800;line-height:1.2;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  /* Botón sin pinta de botón: la cabecera ya tiene bastante. */
+  background:none;border:none;padding:0;margin:0;color:inherit;font-family:inherit;
+  cursor:pointer;display:block;max-width:100%;text-align:left;}
+.cab-saludo:active{opacity:.7;}
 .cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:10.5px;
   color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;}
 .cab-ico{background:rgba(255,255,255,0.08);border:none;border-radius:10px;width:36px;height:36px;
@@ -708,12 +712,19 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    rutina (que se puede leer entero en "Mis rutinas") que estos números. */
 .hp-resumen{margin-left:auto;flex-shrink:0;font-size:12px;color:var(--muted);
   font-weight:600;white-space:nowrap;}
-/* Las tres acciones de rutina, debajo de la línea (22/09/2026). Se reparten el
-   ancho para que las tres se lean enteras en 390 px; "Borrar" se separa del
-   resto, como en el listado de rutinas, para no pulsarla sin querer. */
-.hp-acciones{display:flex;gap:6px;margin-bottom:14px;}
-.hp-acciones .btn-sm{flex:1;padding:8px 6px;font-size:12px;white-space:nowrap;text-align:center;}
-.hp-acciones .sep-peligro{margin-left:6px;}
+/* Las tres acciones de rutina (22/09/2026). Empezaron siendo tres botones
+   estirados de lado a lado y desencajaban: esta pantalla es de tarjetas, no de
+   barras de herramientas. Ahora son pastillas del ancho de su texto, con el
+   mismo gris de superficie que el resto, y "Borrar" se va al otro extremo en
+   rojo apagado: se ve, pero no invita. */
+.hp-acciones{display:flex;align-items:center;gap:8px;margin:-4px 0 14px;padding:0 2px;}
+.hp-accion{display:inline-flex;align-items:center;gap:5px;border:none;cursor:pointer;
+  background:var(--surface);color:var(--muted);font-family:inherit;font-size:11.5px;
+  font-weight:600;padding:7px 12px;border-radius:999px;white-space:nowrap;
+  transition:transform .12s ease;}
+.hp-accion:active{transform:scale(.96);}
+.hp-accion .ico-btn{width:13px;height:13px;opacity:.8;}
+.hp-accion-borrar{margin-left:auto;color:var(--danger);background:rgba(var(--danger-rgb),.09);}
 .anillo-fondo{fill:none;stroke:var(--border);stroke-width:7;}
 .anillo-fill{fill:none;stroke:var(--accent);stroke-width:7;stroke-linecap:round;
   transition:stroke-dashoffset .5s ease;}
@@ -1153,7 +1164,11 @@ body:not(.es-admin) #pane-cuentas{display:none;}
            Inicio, que ya decía el nombre: así no sale dos veces. La marca se
            quitó porque ya está en la bienvenida, en el icono y en la pestaña
            del navegador. -->
-      <div class="cab-saludo" id="cab-saludo">¡Hola!</div>
+      <!-- Tocar el saludo abre TU CUENTA, lo mismo que tocar la foto (pedido por
+           Jhon el 22/09/2026): quien busca su perfil va al nombre tanto como a
+           la cara. Es un button de verdad, no un div con onclick, para que
+           funcione también con teclado y lector de pantalla. -->
+      <button class="cab-saludo" id="cab-saludo" onclick="toggleAuthPanel()" title="Tu cuenta">¡Hola!</button>
       <!-- Solo el estado de guardado. Las sesiones y semanas estaban aquí y se
            cortaban a mitad en 390 px, y además la tarjeta de Inicio las dice
            justo debajo ("Semana 1 de 8 · 0/48 sesiones"). Esto no lo dice nadie
@@ -1681,9 +1696,24 @@ body:not(.es-admin) #pane-cuentas{display:none;}
        tres llevan al mismo sitio de siempre —el panel "Mis rutinas"— salvo
        borrar, que pregunta antes y avisa del historial que se pierde. -->
   <div class="hp-acciones">
-    <button class="btn-sm" onclick="toggleRoutinePanel()">Cambiar rutina</button>
-    <button class="btn-sm" onclick="anadirRutinaDesdeInicio()">Añadir rutina</button>
-    <button class="btn-sm btn-danger sep-peligro" onclick="borrarRutinaActiva()">Borrar rutina</button>
+    <button class="hp-accion" onclick="toggleRoutinePanel()">
+      <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+      </svg>Cambiar
+    </button>
+    <button class="hp-accion" onclick="anadirRutinaDesdeInicio()">
+      <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>Añadir
+    </button>
+    <button class="hp-accion hp-accion-borrar" onclick="borrarRutinaActiva()">
+      <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>Borrar
+    </button>
   </div>
 
   <button class="hoy" id="home-hoy" onclick="irAProximaSesion()">
@@ -2323,6 +2353,7 @@ const ICO={
      tocan aquí, tocarlos allí (es la misma convención que ya tenía `llama`). */
   papelera:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
   lista:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  mas:'<path d="M12 5v14M5 12h14"/>',
   lapiz:'<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
   rejilla:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
   copiar:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
@@ -2899,7 +2930,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-22 22:26';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-22 22:34';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
