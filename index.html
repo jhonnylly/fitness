@@ -86,7 +86,7 @@
 /* Dónde se usan: las cifras que se leen como cifra, no cualquier número suelto
    dentro de una frase. Siempre con la del sistema detrás, que es la que pinta
    las letras que las acompañan. */
-.stat-val,.duo-val,.hp-centro b,.timer-secs,.timer-label,.mos-num,.racha-num{
+.stat-val,.duo-val,.timer-secs,.timer-label,.mos-num,.racha-num{
   font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -694,26 +694,23 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    superficies oscuras propias (la tarjeta de entrenamiento), donde el texto
    es blanco en ambos temas a propósito. */
 
-.hp{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);
-  border-radius:var(--radius);padding:16px 14px;margin-bottom:14px;}
-.hp-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;}
-.hp-nombre{font-size:20px;font-weight:800;color:var(--accent);margin-top:4px;line-height:1.2;
-  overflow-wrap:anywhere;}
-/* El nombre es un botón, pero tiene que verse igual que cuando era un div:
-   sin fondo, sin borde y alineado a la izquierda. El chevron avisa de que se
-   puede cambiar de rutina (22/09/2026). */
+/* La rutina en una línea, sin tarjeta: a la izquierda el nombre (botón que
+   abre "Mis rutinas", con chevron como única pista) y a la derecha el resumen
+   apretado. Sin fondo ni borde, para que no compita con la tarjeta de hoy, que
+   es la que manda (22/09/2026). */
+.hp-linea{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;padding:0 2px;}
 .hp-rutina{background:none;border:none;padding:0;font-family:inherit;text-align:left;
-  cursor:pointer;display:flex;align-items:center;gap:6px;max-width:100%;}
-.hp-chevron{color:var(--accent);font-size:14px;flex-shrink:0;}
-.hp-meta{font-size:13px;color:var(--muted);margin-top:4px;}
-.hp-anillo{position:relative;width:88px;height:88px;flex-shrink:0;margin-left:auto;}
-.hp-anillo svg{width:88px;height:88px;transform:rotate(-90deg);}
+  cursor:pointer;display:flex;align-items:center;gap:6px;min-width:0;
+  font-size:17px;font-weight:800;color:var(--accent);line-height:1.2;}
+.hp-rutina>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hp-chevron{color:var(--accent);font-size:13px;flex-shrink:0;}
+/* A la derecha y sin envolver: si no cabe, antes se corta el nombre de la
+   rutina (que se puede leer entero en "Mis rutinas") que estos números. */
+.hp-resumen{margin-left:auto;flex-shrink:0;font-size:12px;color:var(--muted);
+  font-weight:600;white-space:nowrap;}
 .anillo-fondo{fill:none;stroke:var(--border);stroke-width:7;}
 .anillo-fill{fill:none;stroke:var(--accent);stroke-width:7;stroke-linecap:round;
   transition:stroke-dashoffset .5s ease;}
-.hp-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-.hp-centro b{font-size:19px;font-weight:800;}
-.hp-centro span{font-size:7px;letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin-top:1px;}
 
 .home-sec{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
   font-weight:700;margin:0 0 8px 2px;}
@@ -785,9 +782,16 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .duo .card{margin-bottom:0;}
-.duo-label{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.duo-label{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:700;
+  display:flex;align-items:center;gap:5px;}
+.duo-label .ico-txt{width:13px;height:13px;flex-shrink:0;opacity:.75;}
 .duo-val{font-size:24px;font-weight:800;margin-top:5px;line-height:1.1;}
 .duo-sub{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4;}
+/* Tarjetas bajas (22/09/2026): menos aire y la gráfica más fina, para que
+   debajo quepa el aviso del entrenador sin tener que bajar. */
+.duo-mini{padding:11px 12px;}
+.duo-mini .duo-val{font-size:22px;margin-top:3px;}
+.duo-mini .chispa,.duo-mini .adh-barras{height:20px;margin-top:5px;}
 .chispa{width:100%;height:30px;margin-top:6px;display:block;overflow:visible;}
 .adh-barras{display:flex;align-items:flex-end;gap:3px;height:30px;margin-top:6px;}
 .adh-barras i{flex:1;border-radius:2px;background:var(--border);min-height:3px;}
@@ -1642,26 +1646,6 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     </p>
   </div>
 
-  <div class="hp">
-    <div style="min-width:0;">
-      <div class="hp-label">Programa actual</div>
-      <!-- Tocar el nombre abre "Mis rutinas": es el selector que antes estaba
-           en la cabecera (22/09/2026). El chevron es la única pista de que se
-           puede cambiar, igual que lo era arriba. -->
-      <button class="hp-nombre hp-rutina" onclick="toggleRoutinePanel()" title="Cambiar de rutina">
-        <span id="home-prog-name">—</span><span class="hp-chevron">⌄</span>
-      </button>
-      <div class="hp-meta" id="home-prog-meta">—</div>
-    </div>
-    <div class="hp-anillo">
-      <svg viewBox="0 0 88 88" aria-hidden="true">
-        <circle class="anillo-fondo" cx="44" cy="44" r="37"/>
-        <circle class="anillo-fill" id="home-anillo" cx="44" cy="44" r="37"
-                stroke-dasharray="232.5" stroke-dashoffset="232.5"/>
-      </svg>
-      <div class="hp-centro"><b id="home-prog-pct">0%</b><span>Completado</span></div>
-    </div>
-  </div>
 
   <!-- Reto del entrenador: invitación mientras no se ha contestado, y marcador
        cuando ya se participa. Lo pinta pintarAvisoReto(). -->
@@ -1673,6 +1657,19 @@ body:not(.es-admin) #pane-cuentas{display:none;}
        racha con tarjeta propia desde 2cf25cf— y el peso está en "Peso actual",
        dos dedos más abajo. Se fue para dejarle el hueco al reto. -->
 
+  <!-- La rutina, en una línea (22/09/2026, propuesta de v0 que eligió Jhon):
+       nombre a la izquierda —tocándolo se cambia de rutina— y a la derecha el
+       resumen apretado "Sem 1/8 · 0/48 · 0%". Antes era una tarjeta con anillo
+       de progreso; ocupaba el sitio de lo único que se viene a hacer aquí, que
+       es empezar a entrenar. El porcentaje no se pierde: va al final de la
+       línea. -->
+  <div class="hp-linea">
+    <button class="hp-rutina" onclick="toggleRoutinePanel()" title="Cambiar de rutina">
+      <span id="home-prog-name">—</span><span class="hp-chevron">⌄</span>
+    </button>
+    <div class="hp-resumen" id="home-prog-meta">—</div>
+  </div>
+
   <button class="hoy" id="home-hoy" onclick="irAProximaSesion()">
     <span class="hoy-tag" id="hoy-tag">Entrenamiento de hoy</span>
     <span class="hoy-tit" id="hoy-tit">—</span>
@@ -1680,17 +1677,34 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <span class="hoy-cta" id="hoy-cta">Comenzar entrenamiento →</span>
   </button>
 
+  <!-- 22/09/2026: tarjetas bajas y con icono (propuesta de v0). Antes tenían
+       el doble de alto y empujaban el aviso del entrenador fuera de la
+       pantalla. La minigráfica de peso y las barras de adherencia se quedan:
+       son la única pista de la tendencia, y ahora van debajo del número, más
+       finas. El texto largo ("0 de 6 de la semana 1") se fue: lo dice el
+       propio "0/6". -->
   <div class="duo">
-    <div class="card">
-      <div class="duo-label">Peso actual</div>
+    <div class="card duo-mini">
+      <div class="duo-label">
+        <svg class="ico-txt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 20a8 8 0 1 1 16 0z"/><path d="M12 12l3-4"/>
+        </svg>
+        Peso
+      </div>
       <div class="duo-val" id="duo-peso">—</div>
       <div class="duo-sub" id="duo-peso-sub">Sin medidas aún</div>
       <svg class="chispa" id="duo-chispa" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"></svg>
     </div>
-    <div class="card">
-      <div class="duo-label">Adherencia</div>
+    <div class="card duo-mini">
+      <div class="duo-label">
+        <svg class="ico-txt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+        Adherencia
+      </div>
       <div class="duo-val" id="duo-adh">—</div>
-      <div class="duo-sub" id="duo-adh-sub"></div>
       <div class="adh-barras" id="duo-adh-barras"></div>
     </div>
   </div>
@@ -2869,7 +2883,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-22 21:46';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-22 22:10';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5707,22 +5721,12 @@ function updateHome(){
   pintarSaludo();
 
   set('home-prog-name',act?act.name:'Sin rutina activa');
+  /* Apretado a propósito: cabe en una línea al lado del nombre de la rutina.
+     "Sem 1/8 · 0/48 · 0%" = semana en curso / semanas, sesiones hechas / total
+     y porcentaje. Sustituye al anillo de progreso (22/09/2026). */
   set('home-prog-meta',act
-    ?('Semana '+(semanaEnCurso(act)||1)+' de '+act.plan.length+' · '+done+'/'+total+' sesiones')
-    :'Elige una rutina para empezar');
-  set('home-prog-pct',pct+'%');
-  const anillo=document.getElementById('home-anillo');
-  if(anillo){
-    const C=2*Math.PI*37;                       // r=37 en el viewBox de 88
-    anillo.setAttribute('stroke-dasharray',C.toFixed(1));
-    /* Se vacía y se rellena en el siguiente fotograma, así se ve crecer cada vez
-       que entras en Inicio y no solo la primera. Sin el salto de fotograma el
-       navegador junta las dos escrituras y no hay transición que animar. */
-    anillo.setAttribute('stroke-dashoffset',C.toFixed(1));
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      anillo.setAttribute('stroke-dashoffset',(C*(1-pct/100)).toFixed(1));
-    }));
-  }
+    ?('Sem '+(semanaEnCurso(act)||1)+'/'+act.plan.length+' · '+done+'/'+total+' · '+pct+'%')
+    :'Elige una rutina');
 
   // Entrenamiento de hoy
   const tag=document.getElementById('hoy-tag');
@@ -5771,7 +5775,10 @@ function updateHome(){
 
   // Adherencia
   const a=act?adherenciaSemana(act):null;
-  set('duo-adh',a?a.pct+'%':'—');
+  /* "0/6" en vez de "0%": dice lo mismo y además cuántas sesiones quedan, que
+     es lo que se mira al empezar la semana (22/09/2026). El subtítulo largo se
+     quitó con el rediseño. */
+  set('duo-adh',a?(a.hechas+'/'+a.previstas):'—');
   set('duo-adh-sub',a?(a.hechas+' de '+a.previstas+' de la semana '+a.num):'Sin plan activo');
   const barras=document.getElementById('duo-adh-barras');
   if(barras){
