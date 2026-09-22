@@ -21,6 +21,17 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="My Fitness Tracker">
 <title>My Fitness Tracker</title>
+<!-- Vista previa al compartir el enlace (LinkedIn, WhatsApp...). Sin estas
+     etiquetas LinkedIn no deja añadir la app a "Destacados". -->
+<meta name="description" content="Tu entrenamiento: rutinas, series y progreso.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_ES">
+<meta property="og:title" content="My Fitness Tracker">
+<meta property="og:description" content="Tu entrenamiento: rutinas, series y progreso.">
+<meta property="og:url" content="https://jhonnylly.github.io/fitness/">
+<meta property="og:image" content="https://jhonnylly.github.io/fitness/icons/icono-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
 <style>
   /* Avisos propios en vez de aviso(). El del sistema bloquea la app, obliga a
    pulsar "Aceptar" y sale con la cara del navegador: justo después de terminar
@@ -2861,7 +2872,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-17 19:20';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-22 18:36';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
