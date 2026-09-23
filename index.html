@@ -810,6 +810,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   background:linear-gradient(135deg,#251f33 0%,#14121b 60%),var(--dark);
   box-shadow:0 6px 20px rgba(0,0,0,.2);transition:transform .15s ease;}
 .hoy:active{transform:scale(.985);}
+/* La semana en curso vive DENTRO del mosaico y ocupa la fila entera
+   (23/09/2026). Estaba arriba del todo, fuera de la lista, y varias personas se
+   la saltaban, bajaban al mosaico y decían que les faltaba una semana: la
+   destacada no se leía como "una de las semanas", sino como otra cosa. En su
+   sitio y con el mismo trato, no hay forma de confundirse. */
+.hoy.sem-actual{grid-column:1/-1;margin-bottom:0;}
 .hoy::after{content:"";position:absolute;right:-30px;top:-30px;width:170px;height:170px;border-radius:50%;
   background:radial-gradient(circle,var(--accent) 0%,transparent 70%);opacity:.28;pointer-events:none;}
 /* display:block obligatorio: son <span> dentro de un <button>, y sin esto
@@ -949,7 +955,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    - Se pide con una clase en la rejilla, no siempre: tras soltar una tarjeta al
      reordenar se repinta todo, y ver la cuadrícula entera reaparecer cada vez
      que mueves algo cansa. */
-.mos-grid.escalonado .mos-card{animation:entrar .28s ease backwards;
+.mos-grid.escalonado .mos-card,.mos-grid.escalonado .hoy{animation:entrar .28s ease backwards;
   animation-delay:calc(var(--i,0) * 35ms);}
 .mos-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:11px 12px;cursor:pointer;text-align:left;font-family:inherit;color:inherit;
@@ -1673,9 +1679,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
      que estaba arriba —con su punto de "hay algo que mirar"— solo que ahora al
      alcance del pulgar. No es una pestaña: abre su panel y no tiene pane. -->
 <div class="tabs">
+  <!-- "Entrenar" y no "Registrar" (23/09/2026): varias personas no daban con
+       esta pestaña para empezar su sesión. "Registrar" nombra lo que hace la
+       app con los datos; nadie piensa "voy a registrar", piensa "voy a
+       entrenar". Además enlaza con el "Comenzar entrenamiento" de Inicio.
+       El id sigue siendo `tab-log` y el pane `pane-log`: son de dentro. -->
   <button class="tab" id="tab-log" onclick="showTab('log',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>
-    <span>Registrar</span>
+    <span>Entrenar</span>
   </button>
   <button class="tab" id="tab-resumen" onclick="showTab('resumen',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19v-6M10 19V9M15 19v-8M20 19V5"/></svg>
@@ -3013,7 +3024,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-23 18:46';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-23 19:03';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3968,16 +3979,17 @@ if(!plan.length){
   return;
 }
 
-  const currentWeek=getCurrentWeekNum();
-  /* La semana en curso sale del mosaico y se pinta arriba en grande. NO se
-     repite abajo: verla dos veces en la misma pantalla la devolvería a ser una
-     tarjeta más, que es justo lo que se quiere evitar. Por eso el mosaico ya no
-     tiene estado "Actual" — el único que quedaba dentro se ha ido arriba. */
-  const resto=plan.filter(w=>w.num!==currentWeek);
+  /* La semana en curso va EN SU SITIO de la lista, ocupando la fila entera y
+     con el trato de "Entrenamiento de hoy" (23/09/2026). Antes salía del
+     mosaico y se pintaba arriba del todo: varias personas se la saltaban,
+     bajaban al mosaico y contaban una semana menos de las que tenían.
+     Si el número de la semana en curso no estuviera en el plan, se destaca la
+     última: si no, no se destacaría ninguna y desaparecería sin avisar. */
+  const curso=getCurrentWeekNum();
+  const currentWeek=plan.some(w=>w.num===curso)?curso:plan[plan.length-1].num;
 
-  c.innerHTML=tarjetaSemanaEnCurso(plan,sessions,currentWeek)
-    +(resto.length?'<div class="home-sec">El resto del plan</div>':'')
-    +'<div class="'+claseCascada()+'">'+resto.map((w,wi)=>{
+  c.innerHTML='<div class="'+claseCascada()+'">'+plan.map((w,wi)=>{
+    if(w.num===currentWeek) return tarjetaSemanaEnCurso(plan,sessions,currentWeek,wi);
     const done=w.days.filter(d=>sessions[d.s]).length;
     const total=w.days.length;
     const isComplete=total>0&&done===total;
@@ -4002,10 +4014,11 @@ if(!plan.length){
 
 /* La protagonista de Registrar: la semana en curso con el trato de
    "Entrenamiento de hoy" (ver el bloque .hoy del CSS). Devuelve HTML porque
-   renderWeekButtons pinta toda la pantalla de una vez.
+   renderWeekButtons pinta toda la pantalla de una vez, y es UNA CELDA MÁS del
+   mosaico (la que ocupa la fila entera), no una tarjeta aparte.
    El botón entero lleva a la sesión que toca, no a la lista: en esta pestaña se
    viene a registrar, y la lista de la semana está a un toque en el mosaico. */
-function tarjetaSemanaEnCurso(plan,sessions,num){
+function tarjetaSemanaEnCurso(plan,sessions,num,wi){
   const w=plan.find(x=>x.num===num)||plan[plan.length-1];
   const dias=w.days||[];
   const total=dias.length;
@@ -4046,7 +4059,8 @@ function tarjetaSemanaEnCurso(plan,sessions,num){
     cta='Continuar: <span class="cta-txt">'+escaparHTML(pendiente.name)+'</span> →';
   }
 
-  return`<button class="hoy" onclick="abrirDeSemana(${w.num},${pendiente?pendiente.s:'null'})">
+  return`<button class="hoy sem-actual" style="--i:${Math.min(wi||0,8)}"
+    onclick="abrirDeSemana(${w.num},${pendiente?pendiente.s:'null'})">
     <span class="hoy-tag">${tag}</span>
     <span class="hoy-tit">${tit}</span>
     <span class="hoy-meta">${meta}</span>
@@ -6553,7 +6567,7 @@ function renderRoutineList(){
      perder datos por una sincronización, "¿esto borra algo?" no es una duda
      menor: se contesta antes de que se la haga. */
   c.innerHTML='<div class="msg msg-info" style="margin-bottom:10px;">'+
-    'La rutina <b>en curso</b> es la que ves en Inicio y en Registrar. '+
+    'La rutina <b>en curso</b> es la que ves en Inicio y en Entrenar. '+
     'Cambiar de rutina <b>no borra nada</b>: cada una guarda su propio historial.'+
     '</div>';
 
@@ -7440,7 +7454,7 @@ function cargarPresetsElegidos(){
 function renderElegirActivaPreset(c, intro, pie){
   const n=presetRecienCargadas.length;
   if(intro) intro.textContent=(n===1?'Se ha añadido 1 rutina':'Se han añadido '+n+' rutinas')+
-    ' a tu biblioteca. La activa es la que ves en Inicio y en Registrar; cambiarla no borra nada.';
+    ' a tu biblioteca. La activa es la que ves en Inicio y en Entrenar; cambiarla no borra nada.';
   const opcion=(id, etiqueta, detalle)=>{
     const sel=presetActivaElegida===id;
     return `<button class="preset-opcion${sel?' seleccionada':''}" role="radio" aria-checked="${sel}"

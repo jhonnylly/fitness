@@ -232,9 +232,9 @@ async function appLista(page, url){
     ok(celReto.fondoQuieto, 'el fondo no hace scroll mientras está abierta');
 
     console.log('\n6. Una protagonista por pantalla');
-    /* Registrar: la semana en curso, fuera del mosaico y con el trato de
-       "Entrenamiento de hoy". Se vuelve a la lista de semanas primero: la
-       sección anterior deja abierta una sesión. */
+    /* Registrar: la semana en curso, con el trato de "Entrenamiento de hoy" pero
+       EN SU SITIO dentro de la lista (23/09/2026). Se vuelve a la lista de
+       semanas primero: la sección anterior deja abierta una sesión. */
     const prota = await page.evaluate(()=>{
       closeForm(); closeWeekDetail();
       showTab('log', document.getElementById('tab-log'));
@@ -246,6 +246,15 @@ async function appLista(page, url){
         curso: getCurrentWeekNum(),
         mosaico: [...document.querySelectorAll('#week-buttons-container .mos-num')]
                    .map(e=>e.textContent.trim()),
+        /* La lista entera, en orden y sin huecos: la semana destacada es una
+           celda más. Varias personas se saltaban la de arriba y contaban una
+           semana menos de las que tienen. */
+        lista: [...document.querySelector('#week-buttons-container .mos-grid').children]
+                 .map(h=>parseInt((h.querySelector('.mos-num')||h.querySelector('.hoy-tit'))
+                       .textContent.replace(/\D+/,''), 10)),
+        semanas: getActivePlan().map(w=>w.num),
+        filaEntera: hero ? getComputedStyle(hero).gridColumn : '',
+        dentroDeLaLista: !!(hero && hero.parentElement.classList.contains('mos-grid')),
         puntos: hero ? hero.querySelectorAll('.sem-punto').length : 0,
         hechos: hero ? hero.querySelectorAll('.sem-punto.hecha').length : 0,
         // Lo que dice el plan, para comparar con lo que se ve.
@@ -256,8 +265,12 @@ async function appLista(page, url){
     });
     ok(prota.hay, 'Registrar abre con la semana en curso en grande');
     ok(prota.titulo.includes('Semana '+prota.curso), 'y es la semana en curso: '+prota.titulo);
-    ok(!prota.mosaico.includes('Semana '+prota.curso),
-       'que ya no se repite dentro del mosaico: '+prota.mosaico.join(', '));
+    ok(prota.dentroDeLaLista && prota.filaEntera === '1 / -1',
+       '🔴 y va DENTRO de la lista, ocupando la fila entera');
+    ok(prota.lista.join(',') === prota.semanas.join(','),
+       '🔴 la lista las tiene todas y en orden, sin saltarse la destacada: '+prota.lista.join(', '));
+    ok(prota.lista.indexOf(prota.curso) === prota.semanas.indexOf(prota.curso),
+       'la semana en curso está en su sitio, no arriba del todo');
     ok(prota.puntos === prota.dias && prota.hechos === prota.registradas && prota.hechos > 0,
        'una marca por sesión, encendidas las hechas ('+prota.hechos+'/'+prota.puntos+')');
     ok(/Continuar/.test(prota.cta), 'y el botón nombra la sesión que toca: '+prota.cta);
@@ -2132,8 +2145,11 @@ async function appLista(page, url){
       return r;
     });
     ok(barra.fija && barra.pegadaAbajo, 'la barra va fija al borde de abajo');
-    ok(barra.orden.join(',') === 'Registrar,Resumen,Inicio,Medidas,Ajustes',
+    ok(barra.orden.join(',') === 'Entrenar,Resumen,Inicio,Medidas,Ajustes',
        'en el orden de la propuesta: '+barra.orden.join(' · '));
+    /* 23/09/2026: se llamaba "Registrar" y varias personas no daban con ella
+       para empezar la sesión. Nadie piensa "voy a registrar". */
+    ok(barra.orden[0] === 'Entrenar', '🔴 la pestaña dice lo que vas a hacer, no lo que hace la app');
     ok(barra.centrado && barra.sobresale,
        'Inicio es el círculo del centro y sobresale por encima de la barra');
     ok(barra.contenidoLibre, '🔴 la barra no tapa lo último de la pantalla');
