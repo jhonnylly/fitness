@@ -1914,6 +1914,167 @@ async function appLista(page, url){
     ok(!espera.tras.visible && !espera.tras.fondoQuieto,
        'cuando la nube contesta, el velo se va y la app queda usable');
 
+    console.log('\n13y. El entrenador reordena los ejercicios de una sesión del cliente');
+    /* Pedido por un entrenador (23/09/2026) montando la rutina de un cliente:
+       se podía añadir y quitar, pero no mover, así que para colar un ejercicio
+       en medio había que reescribir la lista entera. */
+    const ordenCliente = await page.evaluate(async ()=>{
+      const r = {};
+      const nombres = () => [...document.querySelectorAll('#editor-ejercicios .fila-ej')]
+        .map(f => f.querySelector('.ej-in-nombre').value);
+      /* Lo mismo que lee guardarEjerciciosCliente() al guardar: si esto sale en
+         el orden nuevo, se guarda en el orden nuevo. */
+      const filas = () => [...document.querySelectorAll('#editor-ejercicios .fila-ej')]
+        .map(f => [f.querySelector('.ej-in-nombre').value,
+                   f.querySelector('.ej-in-esquema').value,
+                   f.querySelector('.ej-in-nota').value]);
+      __pintarDetallePrueba({ nombre:'Laura', rutinas:[{ id:'ro', name:'Orden', sessions:{},
+        plan:[{ num:1, title:'Semana 1', days:[{ s:1, name:'S1 · Torso', type:'Torso',
+          ex:[['Press banca','4×8'], ['Remo','4×10','agarre cerrado'], ['Curl','3×12']] }] }] }] });
+      verRutinaDetalle('ro');
+      editarSesionCliente(1);
+      r.antes = nombres();
+      const fila = i => document.querySelectorAll('#editor-ejercicios .fila-ej')[i];
+      const flecha = (i, d) => fila(i).querySelector('.ej-flecha[data-d="'+d+'"]');
+      r.hayFlechas = !!flecha(0, 1) && !!flecha(0, -1);
+      r.primeraNoSube = getComputedStyle(flecha(0, -1)).pointerEvents === 'none';
+      r.ultimaNoBaja  = getComputedStyle(flecha(2, 1)).pointerEvents === 'none';
+      r.primeraSiBaja = getComputedStyle(flecha(0, 1)).pointerEvents !== 'none';
+
+      flecha(2, -1).click();                       // el Curl sube un puesto
+      r.trasSubir = nombres();
+      flecha(0, 1).click();                        // el press banca baja
+      r.trasBajar = nombres();
+      r.conNota = filas();
+      /* Los extremos se apagan solos tras moverse: el Curl, ahora el primero,
+         ya no puede subir. */
+      r.nuevaPrimeraNoSube = getComputedStyle(flecha(0, -1)).pointerEvents === 'none';
+
+      cancelarEdicionCliente();
+      // Lo que se ve del plan del día: el orden de verdad, sin el editor abierto.
+      const plan = [...document.querySelectorAll('#rutina-cliente .plan-linea span:first-child')]
+        .map(e => e.textContent.trim());
+      cerrarDetalleCliente();
+      r.planTrasCancelar = plan;
+      return r;
+    });
+    ok(ordenCliente.hayFlechas, 'cada ejercicio del editor lleva sus flechas de subir y bajar');
+    ok(ordenCliente.primeraNoSube && ordenCliente.ultimaNoBaja && ordenCliente.primeraSiBaja,
+       'el primero no sube y el último no baja: las flechas que no llevan a ningún sitio se apagan');
+    ok(ordenCliente.trasSubir.join(',') === 'Press banca,Curl,Remo',
+       '🔴 subir mueve el ejercicio un puesto: '+ordenCliente.trasSubir.join(', '));
+    ok(ordenCliente.trasBajar.join(',') === 'Curl,Press banca,Remo',
+       'y bajar, al revés: '+ordenCliente.trasBajar.join(', '));
+    ok(ordenCliente.conNota[2][1] === '4×10' && ordenCliente.conNota[2][2] === 'agarre cerrado',
+       'el esquema y la indicación viajan con su ejercicio, no se quedan en la fila');
+    ok(ordenCliente.nuevaPrimeraNoSube, 'y el que pasa a ser primero ya no puede subir');
+    ok(ordenCliente.planTrasCancelar.join(',') === 'Press banca,Remo,Curl',
+       'cancelar deja el plan del cliente como estaba: solo se guarda al Guardar');
+
+    console.log('\n13z. Arrastrar para reordenar, más fino');
+    /* Jhon (23/09): "es muy inexacto y muy difícil, empieza a hacer cosas raras
+       y no van donde quiero colocarlos". Tres causas, tres pruebas. */
+    const finura = await page.evaluate(async ()=>{
+      if(STORAGE.backend.name !== 'local') return { saltado:true };
+      const tic = (ms=30) => new Promise(res => setTimeout(res, ms));
+      const r = {};
+      const act = getActive();
+      showTab('log', document.getElementById('tab-log'));
+      openWeekDetail(1);
+      openSession(act.plan[0].days[0].s);
+      await tic();
+      // Cuatro ejercicios: dos filas de dos, que es donde se lía.
+      curEx = ['Uno','Dos','Tres','Cuatro'].map(n => ({ name:n, sets:[{kg:'',reps:''}] }));
+      renderExButtons();
+      await tic(60);
+      const ev = (el,t,x,y) => el.dispatchEvent(
+        new PointerEvent(t,{bubbles:true, clientX:x, clientY:y, pointerId:1}));
+
+      /* 1) La tarjeta cae DONDE SE VE, no donde está el dedo. Se coge por el
+            borde derecho (el dedo queda media tarjeta a la derecha del centro)
+            y se lleva hasta que la tarjeta tapa la primera casilla. Antes, el
+            dedo caía a la derecha del centro de esa casilla y el ejercicio se
+            colaba DETRÁS: una posición más allá de donde se veía. */
+      let g = document.getElementById('ex-mosaico');
+      let origen = g.children[3];
+      origen.setPointerCapture = () => {};
+      const c3 = origen.getBoundingClientRect(), c0 = g.children[0].getBoundingClientRect();
+      ev(origen, 'pointerdown', c3.left + c3.width - 8, c3.top + c3.height/2);
+      await tic(420);   // la pulsación larga, con margen de sobra
+      const dedo = { x: c0.left + c0.width/2 + 10, y: c0.top + c0.height/2 };
+      ev(g, 'pointermove', dedo.x, dedo.y);
+      await tic();
+      ev(g, 'pointerup', dedo.x, dedo.y);
+      await tic(120);
+      r.dondeSeVe = curEx.map(e => e.name);
+
+      /* 2) Un temblor del dedo no mueve nada. Antes, el hueco saltaba a la
+            casilla de al lado con el primer píxel: se recolocaba la rejilla, y
+            con la rejilla nueva volvía a saltar. Eso era lo de "hacer cosas
+            raras". */
+      curEx = ['Uno','Dos','Tres','Cuatro'].map(n => ({ name:n, sets:[{kg:'',reps:''}] }));
+      renderExButtons();
+      await tic(60);
+      g = document.getElementById('ex-mosaico');
+      origen = g.children[0];
+      origen.setPointerCapture = () => {};
+      const c = origen.getBoundingClientRect();
+      ev(origen, 'pointerdown', c.left + c.width/2, c.top + c.height/2);
+      await tic(420);   // la pulsación larga, con margen de sobra
+      for(const d of [3, -2, 5, 1, -4]) ev(g, 'pointermove', c.left + c.width/2 + d, c.top + c.height/2 + d);
+      await tic();
+      r.huecoQuieto = [...g.children].findIndex(el => el.classList.contains('mos-hueco'));
+      ev(g, 'pointerup', c.left + c.width/2, c.top + c.height/2);
+      await tic(120);
+      r.temblor = curEx.map(e => e.name);
+
+      /* 3) Llevar la tarjeta al borde desplaza la pantalla. Mientras se arrastra
+            el scroll está bloqueado, así que sin esto no había forma de llevar
+            un ejercicio a una fila que no estuviera ya a la vista. */
+      document.body.style.minHeight = '3000px';
+      window.scrollTo(0, 900);
+      await tic();
+      g = document.getElementById('ex-mosaico');
+      origen = g.children[0];
+      origen.setPointerCapture = () => {};
+      const c4 = origen.getBoundingClientRect();
+      ev(origen, 'pointerdown', c4.left + c4.width/2, c4.top + c4.height/2);
+      await tic(420);   // la pulsación larga, con margen de sobra
+      r.scrollAntes = window.scrollY;
+      ev(g, 'pointermove', c4.left + c4.width/2, 20);     // dedo pegado al borde de arriba
+      /* Dos tramos con el dedo QUIETO en el borde: al quitar la tarjeta de la
+         rejilla el navegador ya recoloca el scroll un poco él solo, y con una
+         sola medición eso se confundiría con el desplazamiento automático. Lo
+         que solo puede hacer el nuestro es SEGUIR subiendo sin que el dedo se
+         mueva. */
+      await tic(200);
+      r.scrollMedio = window.scrollY;
+      await tic(200);
+      r.scrollDespues = window.scrollY;
+      ev(g, 'pointerup', c4.left + c4.width/2, 20);
+      await tic(120);
+      document.body.style.minHeight = '';
+      window.scrollTo(0, 0);
+      r.sinTarjetaSuelta = !document.querySelector('.mos-card.arrastrando')
+                        && !document.querySelector('.mos-hueco');
+      r.completos = curEx.length === 4 && new Set(curEx.map(e => e.name)).size === 4;
+      return r;
+    });
+    ok(finura.saltado || finura.dondeSeVe.join(',') === 'Cuatro,Uno,Dos,Tres',
+       '🔴 la tarjeta cae donde SE VE, no donde está el dedo: '+(finura.dondeSeVe||[]).join(', '));
+    ok(finura.saltado || finura.huecoQuieto === 0,
+       '🔴 un temblor de unos píxeles no mueve el hueco de sitio');
+    ok(finura.saltado || finura.temblor.join(',') === 'Uno,Dos,Tres,Cuatro',
+       'y al soltar sin querer, el orden se queda como estaba');
+    ok(finura.saltado || finura.scrollAntes > 880,
+       'coger una tarjeta pegada al borde no mueve la pantalla hasta que mueves el dedo');
+    ok(finura.saltado || (finura.scrollMedio < finura.scrollAntes - 80
+                          && finura.scrollDespues < finura.scrollMedio - 80),
+       '🔴 con la tarjeta en el borde de arriba, la pantalla sigue subiendo sola: '
+       +finura.scrollAntes+' → '+finura.scrollMedio+' → '+finura.scrollDespues);
+    ok(finura.saltado || (finura.sinTarjetaSuelta && finura.completos),
+       'al soltar no queda ninguna tarjeta levantada ni se pierde ningún ejercicio');
+
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')
                                             : 'ni un error de JavaScript');

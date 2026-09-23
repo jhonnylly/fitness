@@ -413,6 +413,29 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
    campo de la fila no cabía nada: aquí se escribe una indicación de verdad
    ("multiserie: 10 con 40, 6 con 32, 4 con 25"), no una palabra. */
 .fila-ej .ej-in-nota{flex-basis:100%;font-size:11.5px;}
+/* Subir/bajar el ejercicio dentro de la sesión (23/09/2026, pedido por un
+   entrenador). Van en columna y pegadas al nombre, ocupando el alto de la fila:
+   en una pantalla estrecha, dos flechas sueltas al final se confundían con la ✕
+   de borrar. */
+.ej-mover{display:flex;flex-direction:column;gap:2px;}
+.ej-flecha{padding:7px 9px;font-size:10px;line-height:1;border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);border-radius:4px;cursor:pointer;font-family:inherit;
+  /* 26 px de alto cada una: con el triángulo justo (9 px de alto real) el botón
+     salía de 22 px y se fallaba el toque con el dedo. */
+  touch-action:manipulation;}
+.ej-flecha:active{transform:scale(.9);}
+/* La primera fila no sube y la última no baja. Se apaga con CSS y no con
+   `disabled`: así sigue siendo cierto después de añadir, quitar o mover una
+   fila, sin tener que acordarse de repasarlas. */
+#editor-ejercicios .fila-ej:first-child .ej-flecha[data-d="-1"],
+#editor-ejercicios .fila-ej:last-child  .ej-flecha[data-d="1"]{opacity:.25;pointer-events:none;}
+/* Al moverse, un destello en la fila: en una lista de campos iguales, el salto
+   de sitio pasa desapercibido. Mismo motivo que en el mosaico. */
+.fila-ej.recien-movido{animation:destello-fila .9s ease-out;border-radius:var(--radius-sm);}
+@keyframes destello-fila{
+  0%{background:rgba(var(--accent-rgb),.22);}
+  100%{background:transparent;}
+}
 .plan-linea{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);padding:3px 0;}
 .plan-esquema{color:var(--text);opacity:.75;white-space:nowrap;}
 /* La indicación del entrenador. Va colgada del ejercicio, con una barrita
@@ -2930,7 +2953,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-22 22:34';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-23 18:14';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -6870,15 +6893,80 @@ function exToque(ei){
    cuarta a la primera posición, y en el mosaico no caben. Con puntero, que
    cubre dedo y ratón con el mismo código.
 
-   Se arranca con PULSACIÓN LARGA (350 ms) y no al primer contacto: si no,
+   Se arranca con PULSACIÓN LARGA (300 ms) y no al primer contacto: si no,
    intentar desplazar la pantalla arrastraría una tarjeta. Un movimiento antes
-   de ese tiempo cancela: eso era scroll, no un arrastre. */
+   de ese tiempo cancela: eso era scroll, no un arrastre. El margen es de 14 px
+   y no de 10: con el dedo quieto la mano baila, y cancelaba arrastres que se
+   estaban pidiendo de verdad ("es muy difícil cogerlas"). */
 function montarArrastre(cont, alSoltar){
   if(!cont)return;
   let temporizador=null, arrastrado=null, hueco=null, inicio=null, caja=null;
+  /* `agarre`: por dónde se cogió la tarjeta, medido desde su esquina.
+     `ultimo`: la última posición del dedo, que hace falta para recolocar el
+     hueco también cuando lo que se mueve es la pantalla y no el dedo. */
+  let agarre=null, ultimo=null, rafId=null, movido=false;
+
+  /* Dónde cae se decide por el CENTRO DE LA TARJETA QUE SE VE, no por dónde
+     está el dedo. Cogiéndola por una esquina el dedo va a media tarjeta de su
+     centro, y el hueco se abría en la casilla de al lado: soltabas donde no
+     era. Este era el motivo de que "no vayan donde quiero colocarlos". */
+  const centroArrastrada=()=>({
+    x: ultimo.x - agarre.x + caja.width/2,
+    y: ultimo.y - agarre.y + caja.height/2,
+  });
+
+  /* El hueco se muda a la casilla de la tarjeta más cercana, pero SOLO si está
+     más cerca que el propio hueco (con 10 px de margen). Antes se mudaba a la
+     más cercana sin más: al mudarse, la rejilla se recolocaba, con la rejilla
+     nueva la más cercana volvía a ser otra, y las tarjetas se ponían a bailar
+     solas. Comparar contra el hueco corta ese ida y vuelta. */
+  const colocar=()=>{
+    if(!arrastrado||!ultimo)return;
+    const c=centroArrastrada();
+    const dist=el=>{
+      const r=el.getBoundingClientRect();
+      return Math.hypot(c.x-(r.left+r.width/2), c.y-(r.top+r.height/2));
+    };
+    let destino=null, cerca=dist(hueco)-10;
+    for(const el of cont.children){
+      if(el===arrastrado||el===hueco)continue;
+      const d=dist(el);
+      if(d<cerca){ cerca=d; destino=el; }
+    }
+    if(!destino)return;
+    /* La tarjeta invadida se aparta al sitio que deja libre el hueco: es lo que
+       se espera al empujar una ficha contra otra. */
+    const hijos=[...cont.children];
+    const antes=hijos.indexOf(destino)<hijos.indexOf(hueco);
+    cont.insertBefore(hueco, antes?destino:destino.nextSibling);
+  };
+
+  /* Llevar la tarjeta al borde desplaza la pantalla. Mientras se arrastra el
+     scroll está bloqueado (el touchmove de abajo), así que sin esto era
+     IMPOSIBLE mover un ejercicio a una fila que no estuviera ya a la vista:
+     con ocho ejercicios en un iPhone, el último no podía llegar al principio. */
+  const autoScroll=()=>{
+    rafId=arrastrado?requestAnimationFrame(autoScroll):null;
+    /* Hasta que el dedo no se mueve, no se desplaza nada: cogiendo una tarjeta
+       que ya estaba pegada al borde, la pantalla salía volando sola nada más
+       engancharla. */
+    if(!arrastrado||!ultimo||!movido)return;
+    const margen=90, alto=window.innerHeight;
+    let v=0;
+    if(ultimo.y<margen) v=-14*(1-ultimo.y/margen);
+    else if(ultimo.y>alto-margen) v=14*(1-(alto-ultimo.y)/margen);
+    if(!v)return;
+    const y0=window.scrollY;
+    window.scrollBy(0,v);
+    /* La tarjeta va en position:fixed: con el dedo quieto se queda donde está,
+       que es lo correcto. Lo que se ha movido debajo es la rejilla, así que hay
+       que volver a mirar en qué casilla cae. */
+    if(window.scrollY!==y0) colocar();
+  };
 
   const soltar=()=>{
     clearTimeout(temporizador);
+    if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
     if(arrastrado){
       /* El orden sale del DOM, con el hueco marcando dónde cae la arrastrada:
          lo que se guarda es exactamente lo que se ha visto.
@@ -6905,18 +6993,20 @@ function montarArrastre(cont, alSoltar){
       if(nueva) nueva.classList.add('recien-movido');
       setTimeout(()=>{ exArrastrando=false; },0);
     }
-    arrastrado=null; hueco=null; inicio=null; caja=null;
+    arrastrado=null; hueco=null; inicio=null; caja=null; agarre=null; ultimo=null; movido=false;
   };
 
   cont.addEventListener('pointerdown', e=>{
     const card=e.target.closest('.mos-card');
     if(!card)return;
     inicio={x:e.clientX,y:e.clientY};
+    ultimo={x:e.clientX,y:e.clientY};
     temporizador=setTimeout(()=>{
       arrastrado=card; exArrastrando=true;
       const sel=document.getSelection && document.getSelection();
       if(sel && sel.removeAllRanges) sel.removeAllRanges();
       caja=card.getBoundingClientRect();
+      agarre={x:inicio.x-caja.left, y:inicio.y-caja.top};
       /* Un hueco del mismo tamaño ocupa su sitio en la rejilla, y la tarjeta
          sale del flujo para poder seguir al dedo sin descolocar a las demás. */
       hueco=document.createElement('div');
@@ -6934,36 +7024,21 @@ function montarArrastre(cont, alSoltar){
       cont.classList.add('reordenando');
       try{ card.setPointerCapture(e.pointerId); }catch(err){}
       if(navigator.vibrate)navigator.vibrate(15);
-    },350);
+      rafId=requestAnimationFrame(autoScroll);
+    },300);
   });
 
   cont.addEventListener('pointermove', e=>{
     if(!arrastrado){
-      if(inicio && Math.hypot(e.clientX-inicio.x, e.clientY-inicio.y)>10) clearTimeout(temporizador);
+      if(inicio && Math.hypot(e.clientX-inicio.x, e.clientY-inicio.y)>14) clearTimeout(temporizador);
       return;
     }
+    ultimo={x:e.clientX,y:e.clientY};
+    if(Math.hypot(e.clientX-inicio.x, e.clientY-inicio.y)>6) movido=true;
     // La tarjeta va donde va el dedo.
     arrastrado.style.left=(caja.left + e.clientX - inicio.x)+'px';
     arrastrado.style.top =(caja.top  + e.clientY - inicio.y)+'px';
-    /* La tarjeta MÁS CERCANA al dedo, no la que esté justo debajo. Con
-       elementFromPoint, si el dedo caía en el hueco entre dos tarjetas o sobre
-       el sitio que va a dejar libre, no había destino y no pasaba nada: había
-       que acertar la posición exacta. Así siempre hay a dónde ir. */
-    let destino=null, cerca=Infinity;
-    for(const el of cont.children){
-      if(el===arrastrado || el===hueco) continue;
-      const r=el.getBoundingClientRect();
-      const d=Math.hypot(e.clientX-(r.left+r.width/2), e.clientY-(r.top+r.height/2));
-      if(d<cerca){ cerca=d; destino=el; }
-    }
-    if(!destino)return;
-    /* Antes o después, en orden de lectura: primero la fila, y dentro de la
-       misma fila, la columna. */
-    const c=destino.getBoundingClientRect();
-    const mismaFila=Math.abs(e.clientY-(c.top+c.height/2))<=c.height/2;
-    const despues=mismaFila ? e.clientX>c.left+c.width/2 : e.clientY>c.top+c.height/2;
-    const siguiente=despues?destino.nextSibling:destino;
-    if(hueco!==siguiente) cont.insertBefore(hueco, siguiente);
+    colocar();
   });
 
   /* preventDefault en pointermove NO detiene el scroll: el navegador solo
@@ -10716,8 +10791,33 @@ window.quitarEjercicioCliente = function(btn){
   if(fila) fila.remove();
 };
 
+/* Cambiar de orden los ejercicios de la sesión (23/09/2026). Lo pidió un
+   entrenador montando la rutina de un cliente: se podía añadir y quitar, pero
+   no mover, y para colar un ejercicio en medio había que reescribir la lista
+   entera.
+   Se mueve la FILA en la pantalla, sin tocar el plan: guardar ya lee las filas
+   de arriba abajo, así que el orden que se ve es el que se guarda... y
+   cancelar lo deja todo como estaba, igual que con el resto de campos. */
+window.moverEjercicioCliente = function(btn, dir){
+  const fila = btn.closest('.fila-ej');
+  const cont = fila && fila.parentNode;
+  if(!cont) return;
+  const vecina = dir < 0 ? fila.previousElementSibling : fila.nextElementSibling;
+  if(!vecina) return;                     // ya está arriba del todo o abajo del todo
+  cont.insertBefore(dir < 0 ? fila : vecina, dir < 0 ? vecina : fila);
+  fila.classList.remove('recien-movido');
+  void fila.offsetWidth;                  // reiniciar la animación si se pulsa varias veces seguidas
+  fila.classList.add('recien-movido');
+};
+
 function filaEditorEjercicio(nombre, esquema, nota){
   return `<div class="fila-ej">
+    <div class="ej-mover">
+      <button type="button" class="ej-flecha" data-d="-1" title="Subir"
+              onclick="moverEjercicioCliente(this,-1)">▲</button>
+      <button type="button" class="ej-flecha" data-d="1" title="Bajar"
+              onclick="moverEjercicioCliente(this,1)">▼</button>
+    </div>
     <input type="text" class="ej-in-nombre" value="${escaparHTML(nombre)}" placeholder="Nombre del ejercicio">
     <input type="text" class="ej-in-esquema" value="${escaparHTML(esquema)}" placeholder="4×10">
     <button class="btn-sm btn-danger" onclick="quitarEjercicioCliente(this)">✕</button>
