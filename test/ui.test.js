@@ -2102,6 +2102,33 @@ async function appLista(page, url){
       r.fija = cs.position === 'fixed';
       r.pegadaAbajo = Math.abs(caja.bottom - window.innerHeight) < 2;
       r.orden = [...tabs.children].map(b => b.querySelector('span').textContent);
+
+      /* Las esquinas de la pantalla son REDONDEADAS (Jhon, en un iPhone 17 Pro):
+         "Entrenar" y "Ajustes" quedaban debajo de la curva y se leían a medias.
+         Se comprueba que las dos etiquetas de los extremos caen DENTRO de un
+         rectángulo redondeado de 70 px de radio: más de lo que curva ningún
+         iPhone actual (rondan los 55-62), así que si pasa aquí pasa allí. */
+      const R = 70, W = window.innerWidth, H = window.innerHeight;
+      const dentroDeLaCurva = (x, y) => {
+        if(y <= H - R) return true;                       // por encima de la curva
+        if(x < R)      return Math.hypot(R - x, y - (H - R)) <= R;
+        if(x > W - R)  return Math.hypot(x - (W - R), y - (H - R)) <= R;
+        return true;
+      };
+      const eti = i => [...tabs.children][i].querySelector('span').getBoundingClientRect();
+      const izq = eti(0), der = eti(tabs.children.length - 1);
+      r.esquinas = {
+        izquierda: dentroDeLaCurva(izq.left, izq.bottom),
+        derecha:   dentroDeLaCurva(der.right, der.bottom),
+        // Y que ninguna etiqueta se salga de su hueco ni parta en dos líneas.
+        cabenEnteras: [...tabs.children].every(b => {
+          const e = b.querySelector('span');
+          return e.scrollWidth <= b.clientWidth + 1 && e.getBoundingClientRect().height <= 16;
+        }),
+        // Para poder afinar si algún día cambia el alto de la barra.
+        holguraIzq: Math.round(R - Math.hypot(R - izq.left, izq.bottom - (H - R))),
+        holguraDer: Math.round(R - Math.hypot(der.right - (W - R), der.bottom - (H - R))),
+      };
       const circulo = tabs.querySelector('.tab-centro svg').getBoundingClientRect();
       r.centrado = Math.abs((circulo.left + circulo.width/2) - window.innerWidth/2) < 6;
       r.sobresale = circulo.top < caja.top - 8;
@@ -2139,8 +2166,12 @@ async function appLista(page, url){
       r.cronoEncima = crono.bottom <= caja.top + 1;
       r.huecoCrece = parseFloat(getComputedStyle(document.body).paddingBottom) > huecoAntes;
       skipTimer();
-      await tic();
+      await tic(500);                   // baja deslizándose
       r.huecoVuelve = parseFloat(getComputedStyle(document.body).paddingBottom) === huecoAntes;
+      /* Escondido tiene que salir ENTERO: con la barra más alta se quedaba
+         corto y asomaba su borde violeta por debajo de las etiquetas. */
+      r.cronoFuera = document.getElementById('rest-timer').getBoundingClientRect().top
+                     >= window.innerHeight - 1;
       showTab('inicio', document.getElementById('tab-inicio'));
       return r;
     });
@@ -2150,6 +2181,11 @@ async function appLista(page, url){
     /* 23/09/2026: se llamaba "Registrar" y varias personas no daban con ella
        para empezar la sesión. Nadie piensa "voy a registrar". */
     ok(barra.orden[0] === 'Entrenar', '🔴 la pestaña dice lo que vas a hacer, no lo que hace la app');
+    ok(barra.esquinas.izquierda && barra.esquinas.derecha,
+       '🔴 las etiquetas de los extremos se libran de la curva de la pantalla (holgura: '
+       +barra.esquinas.holguraIzq+' y '+barra.esquinas.holguraDer+' px sobre un radio de 70)');
+    ok(barra.esquinas.cabenEnteras,
+       'y ninguna se sale de su hueco ni parte en dos líneas');
     ok(barra.centrado && barra.sobresale,
        'Inicio es el círculo del centro y sobresale por encima de la barra');
     ok(barra.contenidoLibre, '🔴 la barra no tapa lo último de la pantalla');
@@ -2158,6 +2194,7 @@ async function appLista(page, url){
     ok(barra.abreAjustes && barra.inicioSigueActivo,
        'Ajustes abre su panel sin cambiar de pestaña: no es una pestaña');
     ok(barra.cronoEncima, '🔴 el cronómetro de descanso queda encima de la barra, no sobre ella');
+    ok(barra.cronoFuera, '🔴 y escondido sale entero de la pantalla, sin asomar por debajo de la barra');
     ok(barra.huecoCrece && barra.huecoVuelve,
        'y mientras descansas el contenido gana hueco, para que el botón de guardar no se esconda');
 
