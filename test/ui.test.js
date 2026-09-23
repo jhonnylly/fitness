@@ -94,7 +94,7 @@ async function appLista(page, url){
     }));
     ok(arranque.backend === 'local', 'sin sesión iniciada, se guarda en el dispositivo');
     ok(!!arranque.rutina, 'el onboarding deja una rutina activa: '+arranque.rutina);
-    ok(arranque.pestanas === 4, 'la barra tiene 4 pestañas');
+    ok(arranque.pestanas === 5, 'la barra tiene 5 huecos: 4 pestañas y Ajustes');
 
     console.log('\n2. El asistente crea la rutina que se le pide');
     const creada = await page.evaluate(()=>{
@@ -613,7 +613,7 @@ async function appLista(page, url){
               pestanas: document.querySelectorAll('.tab').length};
     });
     ok(!!offline.rutina, 'abre y encuentra la rutina: '+offline.rutina);
-    ok(offline.pestanas === 4, 'la interfaz está entera');
+    ok(offline.pestanas === 5, 'la interfaz está entera');
     await page.evaluate(()=>{
       const r = getActive();
       showTab('log', document.getElementById('tab-log'));
@@ -2074,6 +2074,109 @@ async function appLista(page, url){
        +finura.scrollAntes+' → '+finura.scrollMedio+' → '+finura.scrollDespues);
     ok(finura.saltado || (finura.sinTarjetaSuelta && finura.completos),
        'al soltar no queda ninguna tarjeta levantada ni se pierde ningún ejercicio');
+
+    console.log('\n13aa. La barra de pestañas, abajo');
+    /* Rediseño del 23/09 (propuesta de v0 que eligió Jhon): con el móvil en una
+       mano, arriba no llega el pulgar. */
+    const barra = await page.evaluate(async ()=>{
+      const tic = (ms=60) => new Promise(res => setTimeout(res, ms));
+      const r = {};
+      showTab('inicio', document.getElementById('tab-inicio'));
+      await tic();
+      const tabs = document.querySelector('.tabs');
+      const cs = getComputedStyle(tabs);
+      const caja = tabs.getBoundingClientRect();
+      r.fija = cs.position === 'fixed';
+      r.pegadaAbajo = Math.abs(caja.bottom - window.innerHeight) < 2;
+      r.orden = [...tabs.children].map(b => b.querySelector('span').textContent);
+      const circulo = tabs.querySelector('.tab-centro svg').getBoundingClientRect();
+      r.centrado = Math.abs((circulo.left + circulo.width/2) - window.innerWidth/2) < 6;
+      r.sobresale = circulo.top < caja.top - 8;
+
+      // Lo último de la pantalla no puede quedar debajo de la barra.
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      await tic();
+      const ultimo = [...document.querySelectorAll('#pane-inicio > *')]
+        .filter(e => e.getBoundingClientRect().height > 0).pop();
+      r.contenidoLibre = ultimo.getBoundingClientRect().bottom <= caja.top + 1;
+
+      // Ajustes: abre su panel y NO cambia de pestaña.
+      r.engranajeFueraDeLaCabecera = !document.querySelector('header #config-btn');
+      const ajustes = document.getElementById('config-btn');
+      r.ajustesEnLaBarra = ajustes.classList.contains('tab');
+      ajustes.click();
+      await tic(400);
+      const panel = document.getElementById('config-panel');
+      r.abreAjustes = !panel.classList.contains('hidden');
+      r.inicioSigueActivo = document.getElementById('tab-inicio').classList.contains('active')
+                         && !ajustes.classList.contains('active');
+      toggleConfigPanel();
+      await tic(400);
+
+      /* El cronómetro de descanso también vive abajo: tiene que quedar ENCIMA de
+         la barra, y el contenido tiene que ganar hueco mientras corre. */
+      const act = getActive();
+      showTab('log', document.getElementById('tab-log'));
+      openWeekDetail(1); openSession(act.plan[0].days[0].s);
+      await tic();
+      const huecoAntes = parseFloat(getComputedStyle(document.body).paddingBottom);
+      startTimer(90);
+      await tic(400);                    // sube deslizándose: hay que dejarle llegar
+      const crono = document.getElementById('rest-timer').getBoundingClientRect();
+      r.cronoEncima = crono.bottom <= caja.top + 1;
+      r.huecoCrece = parseFloat(getComputedStyle(document.body).paddingBottom) > huecoAntes;
+      skipTimer();
+      await tic();
+      r.huecoVuelve = parseFloat(getComputedStyle(document.body).paddingBottom) === huecoAntes;
+      showTab('inicio', document.getElementById('tab-inicio'));
+      return r;
+    });
+    ok(barra.fija && barra.pegadaAbajo, 'la barra va fija al borde de abajo');
+    ok(barra.orden.join(',') === 'Registrar,Resumen,Inicio,Medidas,Ajustes',
+       'en el orden de la propuesta: '+barra.orden.join(' · '));
+    ok(barra.centrado && barra.sobresale,
+       'Inicio es el círculo del centro y sobresale por encima de la barra');
+    ok(barra.contenidoLibre, '🔴 la barra no tapa lo último de la pantalla');
+    ok(barra.engranajeFueraDeLaCabecera && barra.ajustesEnLaBarra,
+       'el engranaje ya no está en la cabecera: bajó a la barra');
+    ok(barra.abreAjustes && barra.inicioSigueActivo,
+       'Ajustes abre su panel sin cambiar de pestaña: no es una pestaña');
+    ok(barra.cronoEncima, '🔴 el cronómetro de descanso queda encima de la barra, no sobre ella');
+    ok(barra.huecoCrece && barra.huecoVuelve,
+       'y mientras descansas el contenido gana hueco, para que el botón de guardar no se esconda');
+
+    console.log('\n13ab. El anillo de progreso vuelve a Inicio');
+    const anillo = await page.evaluate(async ()=>{
+      const tic = (ms=80) => new Promise(res => setTimeout(res, ms));
+      const act = getActive();
+      const ses = getActiveSessions();
+      // Tres sesiones dadas por hechas, para que el anillo tenga algo que pintar.
+      act.plan.flatMap(w => w.days.map(d => d.s)).slice(0, 3)
+        .forEach(id => { if(!ses[id]) ses[id] = { date:'01/09', exercises:[] }; });
+      showTab('inicio', document.getElementById('tab-inicio'));
+      updateHome();
+      await tic(160);                                  // los dos fotogramas de la animación
+      const c = document.getElementById('home-anillo');
+      const C = 2 * Math.PI * 37;
+      const pct = parseInt(document.getElementById('home-prog-pct').textContent, 10);
+      return { hay: !!c,
+               pct,
+               offset: parseFloat(c.getAttribute('stroke-dashoffset')),
+               esperado: C * (1 - pct/100),
+               vacio: C,
+               nombre: document.getElementById('home-prog-name').textContent,
+               meta: document.getElementById('home-prog-meta').textContent,
+               abreRutinas: !!document.querySelector('.hp-rutina[onclick^="toggleRoutinePanel"]'),
+               pastillas: document.querySelectorAll('.hp-acciones .hp-accion').length };
+    });
+    ok(anillo.hay, 'la tarjeta del programa vuelve a tener su anillo');
+    ok(anillo.pct > 0 && Math.abs(anillo.offset - anillo.esperado) < 1,
+       'y se rellena con el porcentaje de verdad ('+anillo.pct+'%)');
+    ok(anillo.offset < anillo.vacio - 1, 'no se queda vacío: se ve el avance');
+    ok(/sesiones/.test(anillo.meta) && /Semana/.test(anillo.meta),
+       'debajo del nombre, las semanas y las sesiones: '+anillo.meta);
+    ok(anillo.abreRutinas, 'tocar el nombre de la rutina sigue abriendo "Mis rutinas"');
+    ok(anillo.pastillas === 3, 'y las tres pastillas de cambiar, añadir y borrar siguen ahí');
 
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')

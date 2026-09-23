@@ -44,7 +44,7 @@
 /* Abajo y no arriba: arriba tapaba la cabecera justo cuando dice qué rutina
    llevas. A 88 px del borde queda por encima del cronómetro de descanso, que
    es fijo abajo y puede estar corriendo cuando guardas. */
-#aviso-flotante{position:fixed;bottom:88px;left:50%;transform:translate(-50%,14px);
+#aviso-flotante{position:fixed;bottom:calc(88px + var(--nav-h));left:50%;transform:translate(-50%,14px);
   z-index:600;max-width:min(92vw,420px);padding:12px 16px;border-radius:var(--radius);
   background:var(--dark);color:#f2f0f7;font-size:13.5px;font-weight:600;line-height:1.45;
   box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;
@@ -52,8 +52,15 @@
 #aviso-flotante.visible{opacity:1;transform:translate(-50%,0);}
 #aviso-flotante.bien{border-left:4px solid var(--green);}
 #aviso-flotante.mal{border-left:4px solid var(--danger);}
-#rest-timer{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:var(--dark);color:#f2f0f7;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:200;border-top:2px solid var(--accent);transition:transform .3s ease;}
-#rest-timer.hidden{transform:translate(-50%,110%);}
+/* Mientras corre el descanso hay DOS barras abajo. Sin este hueco de más, lo
+   último de Registrar —que es justo el botón de guardar— se queda debajo del
+   cronómetro (23/09/2026). */
+body.con-descanso{padding-bottom:calc(var(--nav-h) + 84px + env(safe-area-inset-bottom,0px));}
+/* Encima de la barra de pestañas, no debajo: las dos viven abajo y la barra no
+   puede quedar tapada mientras descansas (23/09/2026). */
+#rest-timer{position:fixed;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:var(--dark);color:#f2f0f7;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:200;border-top:2px solid var(--accent);transition:transform .3s ease;}
+/* 200% y no 110%: tiene que salir de la pantalla por debajo de la barra. */
+#rest-timer.hidden{transform:translate(-50%,200%);}
 .timer-ring{position:relative;width:48px;height:48px;flex-shrink:0;}
 .timer-ring svg{transform:rotate(-90deg);}
 .timer-ring circle{transition:stroke-dashoffset .9s linear;}
@@ -86,7 +93,7 @@
 /* Dónde se usan: las cifras que se leen como cifra, no cualquier número suelto
    dentro de una frase. Siempre con la del sistema detrás, que es la que pinta
    las letras que las acompañan. */
-.stat-val,.duo-val,.timer-secs,.timer-label,.mos-num,.racha-num{
+.stat-val,.duo-val,.hp-centro b,.timer-secs,.timer-label,.mos-num,.racha-num{
   font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -112,7 +119,10 @@
 @media(prefers-color-scheme:dark){
   :root{--bg:#0f0f14;--card:#1a1a22;--surface:#232330;--border:#343446;--text:#f0f0f0;--muted:#8a8794;}
 }
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;max-width:600px;margin:0 auto;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;max-width:600px;margin:0 auto;
+  /* La barra de pestañas es fija: sin este hueco taparía lo último de cada
+     pantalla (23/09/2026). */
+  padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 12px);}
 /* Mientras hay una capa abierta (onboarding, paneles, comparador) la página
    de detrás no debe tener scroll. En el móvil, arrastrar dentro de un panel
    fijo se lo llevaba el documento, y como el panel es position:fixed no se
@@ -162,10 +172,34 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
      tema claro. Con el emoji no se notaba porque tenía color propio. */
   color:inherit;display:flex;align-items:center;justify-content:center;}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#888;flex-shrink:0;}
-.tabs{display:flex;background:var(--dark);padding:8px;gap:6px;overflow-x:auto;scrollbar-width:none;}
-.tabs::-webkit-scrollbar{display:none;}
-.tab{flex:1;min-width:56px;padding:8px 4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:9px;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .25s ease;overflow:hidden;}
-.tab svg{width:20px;height:20px;}
+/* ── La barra de pestañas, ABAJO (23/09/2026, propuesta de v0 que eligió Jhon) ──
+   Con el móvil en una mano el pulgar no llega arriba, y esta barra se toca todo
+   el rato. Inicio va en el centro y levantado, que es a donde más se vuelve.
+   Ajustes baja aquí desde la esquina de arriba a la derecha (la más lejos del
+   pulgar); no es una pestaña —no tiene pane—, solo abre su panel.
+   `--nav-h` la mide para todo lo demás que vive abajo: el cronómetro de
+   descanso, el aviso flotante y el hueco que se le deja al final del contenido.
+   La franja del iPhone se respeta con `env(safe-area-inset-bottom)`. */
+/* El alto de la barra se FIJA, no se estima: el círculo de Inicio la hacía 10 px
+   más alta que el `min-height` y el cronómetro de descanso, que se coloca a
+   `--nav-h` del suelo, se le montaba encima. */
+:root{--nav-h:68px;}
+.tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;
+  z-index:150;display:flex;align-items:flex-end;gap:2px;background:var(--dark);
+  border-top:1px solid rgba(255,255,255,0.08);
+  height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));}
+.tab{flex:1;min-width:0;padding:4px 2px;border:none;background:none;color:rgba(255,255,255,0.45);
+  font-size:9px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;
+  border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  transition:color .2s ease;}
+.tab svg{width:21px;height:21px;}
+/* El círculo de Inicio sobresale por arriba: el borde del color de la barra lo
+   recorta contra ella y es lo que le da el relieve. */
+.tab.tab-centro{flex:0 0 auto;width:78px;}
+.tab.tab-centro svg{width:60px;height:60px;padding:17px;border:3px solid var(--dark);
+  border-radius:50%;background:var(--accent);color:#fff;margin-top:-26px;
+  box-shadow:0 8px 20px rgba(var(--accent-rgb),0.45);}
 /* Iconos de trazo, el mismo juego que estas pestañas. Sustituyen a los emoji
    que había (🏋️ 🔥 ❤️ 📏 ⚡ 🏆): un emoji lo dibuja cada sistema a su manera
    —en el iPhone salen los de Apple, aquí los de Google— y trae sus propios
@@ -185,7 +219,7 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
   fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 /* En los dos botones cuadrados de la cabecera manda la caja, no el texto. */
 .cab-ico .ico-btn{width:19px;height:19px;vertical-align:middle;}
-.tab.active{color:var(--accent);border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
+.tab.active{color:var(--accent);}
 .tab:active{transform:scale(0.95);}
 .pane{display:none;padding:12px;} .pane.active{display:block;animation:entrar .24s ease both;}
 /* Entrada suave al cambiar de pestaña o de vista. Antes el cambio era seco
@@ -203,6 +237,8 @@ body.es-entrenador .modo-sel{display:flex;}
 .modo-sel button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 body.modo-clientes .tabs,body.modo-clientes .pane,
 body.modo-coaches .tabs,body.modo-coaches .pane{display:none;}
+/* Sin barra abajo no hace falta guardarle sitio (23/09/2026). */
+body.modo-clientes,body.modo-coaches{padding-bottom:12px;}
 #pane-clientes,#pane-coaches{display:none;padding:12px;}
 body.modo-clientes #pane-clientes{display:block;}
 body.modo-coaches #pane-coaches{display:block;}
@@ -307,7 +343,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
    propósito: .tab lleva overflow:hidden y cualquier cosa que se salga se
    recorta sin avisar. */
 .tab{position:relative;}
-.tab.con-aviso::after{content:'';position:absolute;top:6px;right:8px;
+.tab.con-aviso::after,.tab.con-punto::after{content:'';position:absolute;top:2px;right:18px;
   width:7px;height:7px;border-radius:50%;background:var(--accent);
   box-shadow:0 0 0 2px rgba(0,0,0,.35);}
 .reto-aviso.pendiente{background:var(--accent);border:none;border-radius:18px;padding:18px;
@@ -721,20 +757,28 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    superficies oscuras propias (la tarjeta de entrenamiento), donde el texto
    es blanco en ambos temas a propósito. */
 
-/* La rutina en una línea, sin tarjeta: a la izquierda el nombre (botón que
-   abre "Mis rutinas", con chevron como única pista) y a la derecha el resumen
-   apretado. Sin fondo ni borde, para que no compita con la tarjeta de hoy, que
-   es la que manda (22/09/2026). */
-.hp-linea{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;padding:0 2px;}
+/* La tarjeta del programa, con su anillo de progreso. La quitamos el 22/09 por
+   la altura que ocupaba y Jhon la recuperó el 23/09 con el rediseño de v0: ver
+   el avance de un vistazo pesa más que los 90 px. Dos cambios respecto a la de
+   antes: el anillo va a la IZQUIERDA (así lo pone la propuesta, y es lo primero
+   que se mira) y mide 76 px en vez de 88, para devolverle a la tarjeta de hoy
+   parte de lo que le quita. */
+.hp{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;margin-bottom:12px;}
+.hp-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.hp-nombre{font-size:20px;font-weight:800;color:var(--accent);margin-top:4px;line-height:1.2;
+  overflow-wrap:anywhere;}
+/* El nombre es un botón, pero se ve como un título: sin fondo, sin borde y
+   alineado a la izquierda. El chevron es la pista de que ahí se cambia. */
 .hp-rutina{background:none;border:none;padding:0;font-family:inherit;text-align:left;
-  cursor:pointer;display:flex;align-items:center;gap:6px;min-width:0;
-  font-size:17px;font-weight:800;color:var(--accent);line-height:1.2;}
-.hp-rutina>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hp-chevron{color:var(--accent);font-size:13px;flex-shrink:0;}
-/* A la derecha y sin envolver: si no cabe, antes se corta el nombre de la
-   rutina (que se puede leer entero en "Mis rutinas") que estos números. */
-.hp-resumen{margin-left:auto;flex-shrink:0;font-size:12px;color:var(--muted);
-  font-weight:600;white-space:nowrap;}
+  cursor:pointer;display:flex;align-items:center;gap:6px;max-width:100%;}
+.hp-chevron{color:var(--accent);font-size:14px;flex-shrink:0;}
+.hp-meta{font-size:13px;color:var(--muted);margin-top:4px;}
+.hp-anillo{position:relative;width:76px;height:76px;flex-shrink:0;}
+.hp-anillo svg{width:76px;height:76px;transform:rotate(-90deg);}
+.hp-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.hp-centro b{font-size:17px;font-weight:800;}
+.hp-centro span{font-size:7px;letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin-top:1px;}
 /* Las tres acciones de rutina (22/09/2026). Empezaron siendo tres botones
    estirados de lado a lado y desencajaban: esta pantalla es de tarjetas, no de
    barras de herramientas. Ahora son pastillas del ancho de su texto, con el
@@ -1202,10 +1246,9 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       </div>
     </div>
 
-    <!-- Icono sin etiqueta: en 390 px no cabe con texto. El title es para el
-         escritorio. El de la nube (cuenta) se fue: la cuenta se abre tocando
-         tu foto, que es donde uno busca lo suyo. -->
-    <button id="config-btn" class="cab-ico" onclick="toggleConfigPanel()" title="Ajustes"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></button>
+    <!-- El engranaje de Ajustes se fue a la barra de abajo el 23/09/2026: en la
+         esquina de arriba a la derecha es donde peor llega el pulgar. La
+         cuenta se sigue abriendo tocando tu foto o el saludo. -->
   </div>
 </header>
 
@@ -1624,11 +1667,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   <button id="modo-btn-coaches" onclick="setModo('coaches')">Entrenadores</button>
 </div>
 
+<!-- La barra vive ABAJO desde el 23/09/2026 (propuesta de v0 que eligió Jhon).
+     El orden es el de la pantalla: Inicio va en medio y levantado. Ajustes
+     cierra por la derecha; conserva el id `config-btn` porque es el mismo botón
+     que estaba arriba —con su punto de "hay algo que mirar"— solo que ahora al
+     alcance del pulgar. No es una pestaña: abre su panel y no tiene pane. -->
 <div class="tabs">
-  <button class="tab active" id="tab-inicio" onclick="showTab('inicio',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/></svg>
-    <span>Inicio</span>
-  </button>
   <button class="tab" id="tab-log" onclick="showTab('log',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>
     <span>Registrar</span>
@@ -1637,9 +1681,17 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19v-6M10 19V9M15 19v-8M20 19V5"/></svg>
     <span>Resumen</span>
   </button>
+  <button class="tab tab-centro active" id="tab-inicio" onclick="showTab('inicio',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/></svg>
+    <span>Inicio</span>
+  </button>
   <button class="tab" id="tab-medidas" onclick="showTab('medidas',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="9" width="18" height="7" rx="1.5"/><path d="M7 9v3M11 9v2.3M15 9v3M19 9v2.3"/></svg>
     <span>Medidas</span>
+  </button>
+  <button class="tab" id="config-btn" onclick="toggleConfigPanel()" title="Ajustes">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+    <span>Ajustes</span>
   </button>
 </div>
 
@@ -1701,17 +1753,25 @@ body:not(.es-admin) #pane-cuentas{display:none;}
        racha con tarjeta propia desde 2cf25cf— y el peso está en "Peso actual",
        dos dedos más abajo. Se fue para dejarle el hueco al reto. -->
 
-  <!-- La rutina, en una línea (22/09/2026, propuesta de v0 que eligió Jhon):
-       nombre a la izquierda —tocándolo se cambia de rutina— y a la derecha el
-       resumen apretado "Sem 1/8 · 0/48 · 0%". Antes era una tarjeta con anillo
-       de progreso; ocupaba el sitio de lo único que se viene a hacer aquí, que
-       es empezar a entrenar. El porcentaje no se pierde: va al final de la
-       línea. -->
-  <div class="hp-linea">
-    <button class="hp-rutina" onclick="toggleRoutinePanel()" title="Cambiar de rutina">
-      <span id="home-prog-name">—</span><span class="hp-chevron">⌄</span>
-    </button>
-    <div class="hp-resumen" id="home-prog-meta">—</div>
+  <!-- El programa actual, otra vez con su anillo (23/09/2026, propuesta de v0
+       que eligió Jhon). Tocar el nombre abre "Mis rutinas"; el chevron es la
+       pista, y debajo van las tres acciones escritas por si no basta. -->
+  <div class="hp">
+    <div class="hp-anillo">
+      <svg viewBox="0 0 88 88" aria-hidden="true">
+        <circle class="anillo-fondo" cx="44" cy="44" r="37"/>
+        <circle class="anillo-fill" id="home-anillo" cx="44" cy="44" r="37"
+                stroke-dasharray="232.5" stroke-dashoffset="232.5"/>
+      </svg>
+      <div class="hp-centro"><b id="home-prog-pct">0%</b><span>Completado</span></div>
+    </div>
+    <div style="min-width:0;">
+      <div class="hp-label">Programa actual</div>
+      <button class="hp-nombre hp-rutina" onclick="toggleRoutinePanel()" title="Cambiar de rutina">
+        <span id="home-prog-name">—</span><span class="hp-chevron">⌄</span>
+      </button>
+      <div class="hp-meta" id="home-prog-meta">—</div>
+    </div>
   </div>
 
   <!-- 22/09/2026, pedido por Jhon: el chevron solo no bastaba, nadie adivina
@@ -2953,7 +3013,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-23 18:14';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-23 18:46';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3477,13 +3537,21 @@ let timerInterval=null;
   let timerEnd=null;
   const CIRC=125.66;
 
+  /* Enseñar y esconder el cronómetro por un solo sitio: además de la barra hay
+     que mover el hueco del final del contenido, y se escondía desde tres
+     sitios distintos. */
+  function verDescanso(visible){
+    const el=document.getElementById('rest-timer');
+    if(el)el.classList.toggle('hidden',!visible);
+    document.body.classList.toggle('con-descanso',!!visible);
+  }
+
   function startTimer(secs){
     if(timerInterval)clearInterval(timerInterval);
     timerTotal=secs||90;
     timerLeft=timerTotal;
     timerEnd=Date.now()+timerTotal*1000;
-    const el=document.getElementById('rest-timer');
-    el.classList.remove('hidden');
+    verDescanso(true);
     updateTimerUI();
     timerInterval=setInterval(()=>{
       timerLeft=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));
@@ -3494,7 +3562,7 @@ let timerInterval=null;
         document.getElementById('timer-secs').textContent='0';
         document.getElementById('timer-arc').style.strokeDashoffset=CIRC;
         vibrateEnd();
-        setTimeout(()=>document.getElementById('rest-timer').classList.add('hidden'),2500);
+        setTimeout(()=>verDescanso(false),2500);
       }
     },500);
   }
@@ -3518,13 +3586,13 @@ document.addEventListener('visibilitychange',()=>{
         document.getElementById('timer-secs').textContent='0';
         document.getElementById('timer-arc').style.strokeDashoffset=CIRC;
         vibrateEnd();
-        setTimeout(()=>document.getElementById('rest-timer').classList.add('hidden'),2500);
+        setTimeout(()=>verDescanso(false),2500);
       }
     }
   });
 function skipTimer(){
   if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
-  document.getElementById('rest-timer').classList.add('hidden');
+  verDescanso(false);
 }
 
 function vibrateEnd(){
@@ -5793,12 +5861,22 @@ function updateHome(){
   pintarSaludo();
 
   set('home-prog-name',act?act.name:'Sin rutina activa');
-  /* Apretado a propósito: cabe en una línea al lado del nombre de la rutina.
-     "Sem 1/8 · 0/48 · 0%" = semana en curso / semanas, sesiones hechas / total
-     y porcentaje. Sustituye al anillo de progreso (22/09/2026). */
   set('home-prog-meta',act
-    ?('Sem '+(semanaEnCurso(act)||1)+'/'+act.plan.length+' · '+done+'/'+total+' · '+pct+'%')
-    :'Elige una rutina');
+    ?('Semana '+(semanaEnCurso(act)||1)+' de '+act.plan.length+' · '+done+'/'+total+' sesiones')
+    :'Elige una rutina para empezar');
+  set('home-prog-pct',pct+'%');
+  const anillo=document.getElementById('home-anillo');
+  if(anillo){
+    const C=2*Math.PI*37;                       // r=37 en el viewBox de 88
+    anillo.setAttribute('stroke-dasharray',C.toFixed(1));
+    /* Se vacía y se rellena en el siguiente fotograma, así se ve crecer cada vez
+       que entras en Inicio y no solo la primera. Sin el salto de fotograma el
+       navegador junta las dos escrituras y no hay transición que animar. */
+    anillo.setAttribute('stroke-dashoffset',C.toFixed(1));
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      anillo.setAttribute('stroke-dashoffset',(C*(1-pct/100)).toFixed(1));
+    }));
+  }
 
   // Entrenamiento de hoy
   const tag=document.getElementById('hoy-tag');
