@@ -44,7 +44,7 @@
 /* Abajo y no arriba: arriba tapaba la cabecera justo cuando dice qué rutina
    llevas. A 88 px del borde queda por encima del cronómetro de descanso, que
    es fijo abajo y puede estar corriendo cuando guardas. */
-#aviso-flotante{position:fixed;bottom:calc(88px + var(--nav-h));left:50%;transform:translate(-50%,14px);
+#aviso-flotante{position:fixed;bottom:calc(100px + var(--nav-h) + var(--crono-hueco));left:50%;transform:translate(-50%,14px);
   z-index:600;max-width:min(92vw,420px);padding:12px 16px;border-radius:var(--radius);
   background:var(--dark);color:#f2f0f7;font-size:13.5px;font-weight:600;line-height:1.45;
   box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;
@@ -55,15 +55,19 @@
 /* Mientras corre el descanso hay DOS barras abajo. Sin este hueco de más, lo
    último de Registrar —que es justo el botón de guardar— se queda debajo del
    cronómetro (23/09/2026). */
-body.con-descanso{padding-bottom:calc(var(--nav-h) + 84px + env(safe-area-inset-bottom,0px));}
+body.con-descanso{padding-bottom:calc(var(--nav-h) + var(--crono-hueco) + 84px + env(safe-area-inset-bottom,0px));}
 /* Encima de la barra de pestañas, no debajo: las dos viven abajo y la barra no
-   puede quedar tapada mientras descansas (23/09/2026). */
-#rest-timer{position:fixed;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:var(--dark);color:#f2f0f7;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:200;border-top:2px solid var(--accent);transition:transform .3s ease;}
+   puede quedar tapada mientras descansas (23/09/2026). Y despegado de ella, en
+   forma de tarjeta: pegado abajo tapaba el círculo de Inicio, que sobresale.
+   Ganar sitio por arriba no valía —el cronómetro se lee mejor cerca del
+   pulgar—, así que flota, como los reproductores que conviven con una barra de
+   pestañas. */
+#rest-timer{position:fixed;bottom:calc(var(--nav-h) + var(--crono-hueco) + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:576px;background:var(--dark);color:#f2f0f7;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:200;border:1px solid rgba(255,255,255,0.09);border-top:2px solid var(--accent);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);transition:transform .3s ease;}
 /* Escondido tiene que salir ENTERO de la pantalla, y está colocado a la altura
    de la barra: hay que bajarlo su propio alto MÁS lo que mide la barra. Con un
    porcentaje fijo (200%) se quedaba corto en cuanto la barra creció, y asomaba
    su borde violeta por debajo de las etiquetas. */
-#rest-timer.hidden{transform:translate(-50%,calc(110% + var(--nav-h) + env(safe-area-inset-bottom,0px)));}
+#rest-timer.hidden{transform:translate(-50%,calc(110% + var(--nav-h) + var(--crono-hueco) + env(safe-area-inset-bottom,0px)));}
 .timer-ring{position:relative;width:48px;height:48px;flex-shrink:0;}
 .timer-ring svg{transform:rotate(-90deg);}
 .timer-ring circle{transition:stroke-dashoffset .9s linear;}
@@ -187,8 +191,11 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
    más alta que el `min-height` y el cronómetro de descanso, que se coloca a
    `--nav-h` del suelo, se le montaba encima. */
 /* 80 px y no 68: las etiquetas de los extremos tienen que quedar por encima de
-   la curva de la pantalla (ver el padding de abajo). */
-:root{--nav-h:80px;}
+   la curva de la pantalla (ver el padding de abajo).
+   `--crono-hueco`: lo que el cronómetro de descanso se despega de la barra. El
+   círculo de Inicio sobresale por encima de ella, y apoyado en la barra el
+   cronómetro le tapaba la coronilla (Jhon, 23/09, en el iPhone). */
+:root{--nav-h:80px;--crono-hueco:28px;}
 .tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;
   z-index:150;display:flex;align-items:flex-end;gap:2px;background:var(--dark);
   border-top:1px solid rgba(255,255,255,0.08);
@@ -3040,7 +3047,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-23 19:24';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-23 19:51';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 

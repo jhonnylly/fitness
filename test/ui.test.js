@@ -2164,6 +2164,10 @@ async function appLista(page, url){
       await tic(400);                    // sube deslizándose: hay que dejarle llegar
       const crono = document.getElementById('rest-timer').getBoundingClientRect();
       r.cronoEncima = crono.bottom <= caja.top + 1;
+      /* Y por encima del CÍRCULO, que sobresale de la barra: apoyado en ella le
+         tapaba la coronilla (Jhon, 23/09, en el iPhone). */
+      r.cronoLibraElCirculo = crono.bottom <= circulo.top;
+      r.huecoCrono = Math.round(circulo.top - crono.bottom);
       r.huecoCrece = parseFloat(getComputedStyle(document.body).paddingBottom) > huecoAntes;
       skipTimer();
       await tic(500);                   // baja deslizándose
@@ -2194,6 +2198,8 @@ async function appLista(page, url){
     ok(barra.abreAjustes && barra.inicioSigueActivo,
        'Ajustes abre su panel sin cambiar de pestaña: no es una pestaña');
     ok(barra.cronoEncima, '🔴 el cronómetro de descanso queda encima de la barra, no sobre ella');
+    ok(barra.cronoLibraElCirculo,
+       '🔴 y sin tocar el círculo de Inicio, que sobresale (le deja '+barra.huecoCrono+' px)');
     ok(barra.cronoFuera, '🔴 y escondido sale entero de la pantalla, sin asomar por debajo de la barra');
     ok(barra.huecoCrece && barra.huecoVuelve,
        'y mientras descansas el contenido gana hueco, para que el botón de guardar no se esconda');
