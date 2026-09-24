@@ -2410,7 +2410,11 @@ async function appLista(page, url){
                nombre: document.getElementById('home-prog-name').textContent,
                meta: document.getElementById('home-prog-meta').textContent,
                abreRutinas: !!document.querySelector('.hp-rutina[onclick^="toggleRoutinePanel"]'),
-               pastillas: document.querySelectorAll('.hp-acciones .hp-accion').length };
+               pastillas: document.querySelectorAll('.hp-acciones .hp-accion').length,
+               // 24/09/2026: iban fuera de la tarjeta y parecían de otra sección.
+               dentro: (()=>{ const t = document.querySelector('.hp').getBoundingClientRect();
+                              const a = document.querySelector('.hp-acciones').getBoundingClientRect();
+                              return a.top >= t.top && a.bottom <= t.bottom && a.left >= t.left && a.right <= t.right; })() };
     });
     ok(anillo.hay, 'la tarjeta del programa vuelve a tener su anillo');
     ok(anillo.pct > 0 && Math.abs(anillo.offset - anillo.esperado) < 1,
@@ -2420,6 +2424,7 @@ async function appLista(page, url){
        'debajo del nombre, las semanas y las sesiones: '+anillo.meta);
     ok(anillo.abreRutinas, 'tocar el nombre de la rutina sigue abriendo "Mis rutinas"');
     ok(anillo.pastillas === 3, 'y las tres pastillas de cambiar, añadir y borrar siguen ahí');
+    ok(anillo.dentro, 'y van DENTRO del borde de la tarjeta de la rutina, no sueltas debajo');
 
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')

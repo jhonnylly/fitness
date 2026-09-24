@@ -807,8 +807,11 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    antes: el anillo va a la IZQUIERDA (así lo pone la propuesta, y es lo primero
    que se mira) y mide 76 px en vez de 88, para devolverle a la tarjeta de hoy
    parte de lo que le quita. */
-.hp{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);
+/* 24/09/2026: la tarjeta es un bloque y la fila de anillo + nombre va en
+   .hp-fila, para que las acciones quepan DENTRO, al pie (ver .hp-acciones). */
+.hp{background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius);padding:14px;margin-bottom:12px;}
+.hp-fila{display:flex;align-items:center;gap:14px;}
 .hp-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;}
 .hp-nombre{font-size:20px;font-weight:800;color:var(--accent);margin-top:4px;line-height:1.2;
   overflow-wrap:anywhere;}
@@ -827,8 +830,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    estirados de lado a lado y desencajaban: esta pantalla es de tarjetas, no de
    barras de herramientas. Ahora son pastillas del ancho de su texto, con el
    mismo gris de superficie que el resto, y "Borrar" se va al otro extremo en
-   rojo apagado: se ve, pero no invita. */
-.hp-acciones{display:flex;align-items:center;gap:8px;margin:-4px 0 14px;padding:0 2px;}
+   rojo apagado: se ve, pero no invita.
+   24/09/2026, pedido por Jhon: iban DEBAJO de la tarjeta, fuera de su borde, y
+   parecían de otra sección. Ahora son el pie de la propia tarjeta, separadas
+   del anillo por una línea fina, como en cualquier tarjeta con acciones. */
+.hp-acciones{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--border);}
 .hp-accion{display:inline-flex;align-items:center;gap:5px;border:none;cursor:pointer;
   background:var(--surface);color:var(--muted);font-family:inherit;font-size:11.5px;
   font-weight:600;padding:7px 12px;border-radius:999px;white-space:nowrap;
@@ -1812,46 +1819,49 @@ body:not(.es-admin) #pane-cuentas{display:none;}
        que eligió Jhon). Tocar el nombre abre "Mis rutinas"; el chevron es la
        pista, y debajo van las tres acciones escritas por si no basta. -->
   <div class="hp">
-    <div class="hp-anillo">
-      <svg viewBox="0 0 88 88" aria-hidden="true">
-        <circle class="anillo-fondo" cx="44" cy="44" r="37"/>
-        <circle class="anillo-fill" id="home-anillo" cx="44" cy="44" r="37"
-                stroke-dasharray="232.5" stroke-dashoffset="232.5"/>
-      </svg>
-      <div class="hp-centro"><b id="home-prog-pct">0%</b><span>Completado</span></div>
+    <div class="hp-fila">
+      <div class="hp-anillo">
+        <svg viewBox="0 0 88 88" aria-hidden="true">
+          <circle class="anillo-fondo" cx="44" cy="44" r="37"/>
+          <circle class="anillo-fill" id="home-anillo" cx="44" cy="44" r="37"
+                  stroke-dasharray="232.5" stroke-dashoffset="232.5"/>
+        </svg>
+        <div class="hp-centro"><b id="home-prog-pct">0%</b><span>Completado</span></div>
+      </div>
+      <div style="min-width:0;">
+        <div class="hp-label">Programa actual</div>
+        <button class="hp-nombre hp-rutina" onclick="toggleRoutinePanel()" title="Cambiar de rutina">
+          <span id="home-prog-name">—</span><span class="hp-chevron">⌄</span>
+        </button>
+        <div class="hp-meta" id="home-prog-meta">—</div>
+      </div>
     </div>
-    <div style="min-width:0;">
-      <div class="hp-label">Programa actual</div>
-      <button class="hp-nombre hp-rutina" onclick="toggleRoutinePanel()" title="Cambiar de rutina">
-        <span id="home-prog-name">—</span><span class="hp-chevron">⌄</span>
-      </button>
-      <div class="hp-meta" id="home-prog-meta">—</div>
-    </div>
-  </div>
 
-  <!-- 22/09/2026, pedido por Jhon: el chevron solo no bastaba, nadie adivina
-       que ahí se cambia de rutina. Con las tres acciones escritas se ve. Las
-       tres llevan al mismo sitio de siempre —el panel "Mis rutinas"— salvo
-       borrar, que pregunta antes y avisa del historial que se pierde. -->
-  <div class="hp-acciones">
-    <button class="hp-accion" onclick="toggleRoutinePanel()">
-      <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
-      </svg>Cambiar
-    </button>
-    <button class="hp-accion" onclick="anadirRutinaDesdeInicio()">
-      <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 5v14M5 12h14"/>
-      </svg>Añadir
-    </button>
-    <button class="hp-accion hp-accion-borrar" onclick="borrarRutinaActiva()">
-      <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-      </svg>Borrar
-    </button>
+    <!-- 22/09/2026, pedido por Jhon: el chevron solo no bastaba, nadie adivina
+         que ahí se cambia de rutina. Con las tres acciones escritas se ve. Las
+         tres llevan al mismo sitio de siempre —el panel "Mis rutinas"— salvo
+         borrar, que pregunta antes y avisa del historial que se pierde.
+         24/09/2026: van dentro de la tarjeta, al pie; fuera parecían de otra cosa. -->
+    <div class="hp-acciones">
+      <button class="hp-accion" onclick="toggleRoutinePanel()">
+        <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+        </svg>Cambiar
+      </button>
+      <button class="hp-accion" onclick="anadirRutinaDesdeInicio()">
+        <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>Añadir
+      </button>
+      <button class="hp-accion hp-accion-borrar" onclick="borrarRutinaActiva()">
+        <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>Borrar
+      </button>
+    </div>
   </div>
 
   <button class="hoy" id="home-hoy" onclick="irAProximaSesion()">
@@ -3068,7 +3078,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-24 18:08';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-24 18:18';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
