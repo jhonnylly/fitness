@@ -3068,7 +3068,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-24 16:56';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-24 17:28';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5516,22 +5516,24 @@ const NOMBRE_MUSCULO={
 };
 
 /* Qué foto enseña cada músculo (img/musculos/CLAVE.webp).
-   Dieciséis de dieciocho con imagen propia desde el 04/09/2026: las cinco que
+   Dieciséis con imagen propia desde el 04/09/2026: las cinco que
    faltaban (abductor, oblicuo, romboides, lumbar y deltoides posterior) las
    generó Jhon y sustituyen a las aproximaciones que había.
 
-   Quedan dos casos sin foto propia, y ninguno se llega a ver hoy porque la foto
-   solo se enseña para el músculo PRINCIPAL:
-   - trapecio: nunca es principal en el plan (sí secundario en 5 ejercicios), y
-     si algún día lo fuera, la de dorsal lo resalta también. Se queda de red.
-   - aductor: nunca es principal (secundario en 1). Sin foto → silueta. */
+   El 24/09/2026 se añadieron aductor y trapecio, sacadas de las que había para
+   que sigan la misma serie: la de cuádriceps con los muslos por dentro
+   encendidos y la de romboides con el trapecio encendido. El trapecio sigue sin
+   ser principal en ningún ejercicio, pero ya no presta la de dorsal.
+
+   Queda sin foto el tibial, que no está en ningún ejercicio. Sin foto → 💪 en
+   la rejilla y silueta en la pantalla del ejercicio. */
 const FOTO_MUSCULO={
   pectoral:'pectoral', deltoides:'deltoides', deltoides_post:'deltoides_post',
   biceps:'biceps', triceps:'triceps', antebrazo:'antebrazo',
   abdominal:'abdominal', oblicuo:'oblicuo', lumbar:'lumbar',
   romboides:'romboides', dorsal:'dorsal', gluteo:'gluteo', abductor:'abductor',
   cuadriceps:'cuadriceps', isquios:'isquios', gemelo:'gemelo',
-  trapecio:'dorsal'
+  trapecio:'trapecio', aductor:'aductor'
 };
 
 /* "cuádriceps y glúteos", no "cuádriceps, glúteos". */

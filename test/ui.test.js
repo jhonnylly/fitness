@@ -146,6 +146,13 @@ async function appLista(page, url){
     ok(foto && foto.cargada, 'y carga de verdad (no es un enlace roto)');
     ok(foto && /Principal:/.test(foto.pie), 'con el texto de qué músculo trabaja');
 
+    // Cada foto a la que apunta FOTO_MUSCULO tiene que existir: una clave mal escrita
+    // o un fichero olvidado enseñaría una imagen rota en la rejilla de músculos.
+    const fotosMusculo = await page.evaluate(()=>[...new Set(Object.values(FOTO_MUSCULO))]);
+    const faltan = fotosMusculo.filter(f=>!fs.existsSync(path.join(__dirname,'..','img','musculos',f+'.webp')));
+    ok(faltan.length === 0, 'todas las fotos de músculo existen en img/musculos/'+(faltan.length?': faltan '+faltan.join(', '):''));
+    ok(fotosMusculo.includes('aductor') && fotosMusculo.includes('trapecio'), 'aductor y trapecio tienen foto propia');
+
     console.log('\n4. Reordenar los ejercicios arrastrando');
     await page.evaluate(()=>closeExDetail());
     await esperar(400);
