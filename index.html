@@ -750,6 +750,15 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;}
 .badge-green{background:rgba(45,122,79,0.12);color:var(--green);}
 .badge-accent{background:rgba(var(--accent-rgb),0.12);color:var(--accent);}
+/* "sin guardar": el día que tiene cambios escritos y no guardados. En rojo
+   apagado y no en violeta, que aquí significa "pendiente de hacer": esto no es
+   un estado del plan, es algo que le falta al entrenador (23/09/2026).
+   En un día pendiente SUSTITUYE a su etiqueta en vez de sumarse: las dos juntas
+   partían las palabras en dos líneas y estiraban la fila, y un día con cambios
+   sin guardar ya se sabe que está pendiente. En uno ya hecho sí van las dos: la
+   fecha es un dato que no se puede tapar. */
+.badge-sin-guardar{background:rgba(var(--danger-rgb),0.12);color:var(--danger);font-weight:700;
+  white-space:nowrap;}
 .hist-item{border-bottom:1px solid var(--border);padding:10px 0;}
 .hist-item:last-child{border-bottom:none;}
 .hist-title{font-size:13px;font-weight:700;margin-bottom:4px;}
@@ -2399,7 +2408,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
      llama a save() en ningún momento. -->
 <div id="cliente-detalle" class="routine-panel hidden">
   <div class="routine-panel-header">
-    <button class="btn-volver" onclick="cerrarDetalleCliente()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Mis clientes</span></button>
+    <button class="btn-volver" onclick="salirDeLaFichaCliente()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Mis clientes</span></button>
     <h2 id="detalle-titulo">CLIENTE</h2>
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;" id="detalle-cuerpo">
@@ -3047,7 +3056,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-23 19:51';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-24 15:39';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -10404,10 +10413,14 @@ function vigilarInvitaciones(){
    tocan aquí: son del entrenador y apuntarlos al cliente es como se perdieron
    datos reales el 04/08/2026. */
 
-let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, semana:null, editando:null, unsub:null, activa:null };
+/* `borradores`: lo que el entrenador ha escrito en el editor de una sesión y
+   NO ha guardado, por clave "rutina:sesión". Vive en memoria mientras la ficha
+   del cliente esté abierta (23/09/2026, lo pidió un entrenador: cambió de
+   semana sin guardar y perdió todo lo que había colocado). */
+let detalle = { uid:null, nombre:'', rutinas:[], viendo:null, ejercicio:null, semana:null, editando:null, unsub:null, activa:null, borradores:{} };
 
 window.verDetalleCliente = function(uid, nombre, activeRoutine){
-  detalle = { uid, nombre: nombre || 'Cliente', rutinas:[], viendo:null, ejercicio:null,
+  detalle = { uid, nombre: nombre || 'Cliente', rutinas:[], viendo:null, ejercicio:null, borradores:{},
               semana:null, editando:null, unsub:null, unsubFotos:null, fotos:[],
               activa: activeRoutine || null,
               // El aviso vigente ya vino con la lista de clientes: no hay que releerlo.
@@ -10460,6 +10473,23 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
   });
 };
 
+/* Salir de la ficha es lo único que SÍ tira lo escrito y sin guardar: los
+   borradores viven en memoria, y al abrir otro cliente se empieza de cero. Por
+   eso aquí se pregunta, y solo aquí. `cerrarDetalleCliente` se queda callada:
+   la llaman también el código (al desvincular a un cliente) y las pruebas, y un
+   confirm() en medio de eso bloquearía la página. */
+window.salirDeLaFichaCliente = function(){
+  salirDelEditor();
+  const n = Object.keys(detalle.borradores || {}).length;
+  if(n && !confirm(
+      (n === 1 ? 'Hay una sesión con cambios sin guardar.' : 'Hay '+n+' sesiones con cambios sin guardar.')
+      + '\n\nSi sales de la ficha se pierden. ¿Salir igualmente?')) {
+    pintarDetalle();          // por si el aviso lo dejó a medias
+    return;
+  }
+  cerrarDetalleCliente();
+};
+
 window.cerrarDetalleCliente = function(){
   if(detalle.unsub){ detalle.unsub(); detalle.unsub = null; }
   // Sin esto seguiría gastando lecturas de la colección de fotos del cliente
@@ -10483,22 +10513,23 @@ function esRutinaActiva(r){
 window.marcarPlanAbierto = function(abierto){ detalle.planAbierto = !!abierto; };
 window.marcarMedidasAbierto = function(abierto){ detalle.medidasAbierto = !!abierto; };
 
-window.verSemanaDetalle = function(num){ detalle.semana = parseInt(num); detalle.editando = null; pintarDetalle(); };
+window.verSemanaDetalle = function(num){ salirDelEditor(); detalle.semana = parseInt(num); pintarDetalle(); };
 
 window.verRutinaDetalle = function(id){
   /* Tocar una rutina abre SU VENTANA (15/09/2026). Primero se deslizaba hasta
      el plan dentro de la ficha, y Jhon lo vio al probarlo: la ficha se hacía
      larguísima y "podía confundir en un futuro". */
+  salirDelEditor();
   detalle.viendo = id; detalle.ejercicio = null; detalle.semana = null;
-  detalle.editando = null; detalle.dias = null;
+  detalle.dias = null;
   document.getElementById('rutina-cliente').classList.remove('hidden');
   document.getElementById('rutina-cliente-cuerpo').scrollTop = 0;
   pintarDetalle();
 };
 
 window.cerrarRutinaCliente = function(){
+  salirDelEditor();
   detalle.dias = null;
-  detalle.editando = null;
   if(window._detalleChart){ window._detalleChart.destroy(); window._detalleChart = null; }
   document.getElementById('rutina-cliente').classList.add('hidden');
   pintarDetalle();
@@ -10515,7 +10546,7 @@ function puedeRepintarDetalle(){
    entrenador y los onSnapshot del cliente, que en la prueba no hay. */
 window.__pintarDetallePrueba = function(estado){
   detalle = Object.assign({ uid:'prueba', nombre:'Cliente', rutinas:[], viendo:null, ejercicio:null,
-    semana:null, editando:null, unsub:null, unsubFotos:null, fotos:[], activa:null,
+    semana:null, editando:null, unsub:null, unsubFotos:null, fotos:[], activa:null, borradores:{},
     aviso:null, sesionCoach:null, pausado:false }, estado);
   document.getElementById('cliente-detalle').classList.remove('hidden');
   pintarDetalle();
@@ -10641,11 +10672,14 @@ function pintarRutinaCliente(){
       const ses = (r.sessions || {})[d.s];
       const hecha = !!ses;
       const editando = detalle.editando === d.s;
+      const sinGuardar = !editando && !!detalle.borradores[detalle.viendo + ':' + d.s];
       return `<div class="week-row" style="flex-direction:column;align-items:stretch;gap:6px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <span style="font-size:12.5px;">${escaparHTML(d.name || ('S'+d.s))}</span>
           <span style="display:flex;gap:6px;align-items:center;">
-            <span class="badge ${hecha?'badge-green':'badge-accent'}">${hecha ? escaparHTML(ses.date||'hecha') : 'pendiente'}</span>
+            ${sinGuardar ? '<span class="badge badge-sin-guardar">sin guardar</span>' : ''}
+            ${sinGuardar && !hecha ? ''
+              : `<span class="badge ${hecha?'badge-green':'badge-accent'}">${hecha ? escaparHTML(ses.date||'hecha') : 'pendiente'}</span>`}
             ${editando ? '' : `<button class="btn-sm" data-s="${d.s}" onclick="editarSesionCliente(this.dataset.s)">Editar</button>`}
             ${editando || hecha ? '' : `<button class="btn-sm btn-danger" data-s="${d.s}" onclick="quitarDiaCliente(this.dataset.s)">Borrar</button>`}
           </span>
@@ -10892,8 +10926,82 @@ function pintarPlanSesion(dia){
    Cambia el PLAN (qué toca hacer), no lo que el cliente ya registró: son dos
    cosas distintas y mezclarlas sería reescribirle el historial. */
 
-window.editarSesionCliente = function(s){ detalle.editando = parseInt(s); pintarDetalle(); };
-window.cancelarEdicionCliente = function(){ detalle.editando = null; pintarDetalle(); };
+/* ── Lo escrito y sin guardar (23/09/2026) ──
+   Lo contó un entrenador: estaba editando los ejercicios de una sesión, cambió
+   de semana sin guardar y perdió todo lo que había colocado. Ahora lo que hay
+   en el editor se recuerda al salir de él, se devuelve al volver y se avisa con
+   una etiqueta en el día, para que no se pierda en silencio.
+   En MEMORIA, no en el dispositivo: es el plan de otra persona, y un borrador
+   viejo reapareciendo semanas después sería peor que perderlo. Se mantiene
+   mientras la ficha del cliente siga abierta, y al salir de ella se avisa. */
+function claveBorrador(s){ return detalle.viendo + ':' + s; }
+
+/* Las filas tal y como están en pantalla. Es lo mismo que lee guardar: si esto
+   sale en un orden, se guarda en ese orden. */
+function leerFilasEditor(){
+  return [...document.querySelectorAll('#editor-ejercicios .fila-ej')].map(f => {
+    /* Terna solo si hay nota, par si no: un ejercicio sin indicaciones tiene que
+       seguir guardándose EXACTAMENTE como antes, o cada vez que el entrenador
+       abriera y cerrara el editor el plan cambiaría de forma sin motivo. */
+    const ej = [
+      f.querySelector('.ej-in-nombre').value.trim(),
+      f.querySelector('.ej-in-esquema').value.trim()
+    ];
+    const nota = (f.querySelector('.ej-in-nota').value || '').trim();
+    if(nota) ej.push(nota);
+    return ej;
+  }).filter(par => par[0]);           // sin nombre no es un ejercicio
+}
+
+// El día tal y como está en el plan, en el mismo formato que devuelve el editor.
+function filasDelPlan(dia){
+  return (dia.ex || []).map(ex => {
+    const ej = [Array.isArray(ex) ? ex[0] : (ex && ex.name) || '',
+                Array.isArray(ex) ? ex[1] : (ex && ex.scheme) || ''];
+    const nota = notaDeEjercicio(ex);
+    if(nota) ej.push(nota);
+    return ej;
+  }).filter(par => par[0]);
+}
+
+/* Se llama ANTES de cualquier cosa que deshaga el editor. Solo se guarda si lo
+   de la pantalla NO es lo que ya hay en el plan: si no, volver a entrar diría
+   "sin guardar" sin que nadie haya tocado nada. */
+function recordarBorradorEditor(){
+  if(detalle.editando == null || !document.getElementById('editor-ejercicios')) return;
+  const r = detalle.rutinas.find(x => x.id === detalle.viendo);
+  const encontrado = r && buscarDiaEnPlan(r, detalle.editando);
+  if(!encontrado) return;
+  const clave = claveBorrador(detalle.editando);
+  const filas = leerFilasEditor();
+  if(JSON.stringify(filas) === JSON.stringify(filasDelPlan(encontrado.dia))) delete detalle.borradores[clave];
+  else detalle.borradores[clave] = filas;
+}
+
+/* Salir del editor recordando lo escrito. Lo usan TODAS las salidas que no son
+   Guardar ni Cancelar: cambiar de semana, de rutina, de sesión, cerrar la
+   ventana... que es justo por donde se perdía. */
+function salirDelEditor(){
+  recordarBorradorEditor();
+  detalle.editando = null;
+}
+
+function hayBorradores(){ return Object.keys(detalle.borradores || {}).length > 0; }
+
+window.descartarBorradorCliente = function(s){
+  delete detalle.borradores[claveBorrador(s)];
+  detalle.editando = null;
+  pintarDetalle();
+};
+
+window.editarSesionCliente = function(s){ salirDelEditor(); detalle.editando = parseInt(s); pintarDetalle(); };
+/* Cancelar SÍ descarta: es lo que significa. Lo que no puede pasar es perderlo
+   sin haberlo pedido. */
+window.cancelarEdicionCliente = function(){
+  if(detalle.editando != null) delete detalle.borradores[claveBorrador(detalle.editando)];
+  detalle.editando = null;
+  pintarDetalle();
+};
 
 window.anadirEjercicioCliente = function(){
   const cont = document.getElementById('editor-ejercicios');
@@ -10942,12 +11050,21 @@ function filaEditorEjercicio(nombre, esquema, nota){
 }
 
 function pintarEditorEjercicios(dia){
-  const filas = (dia.ex || []).map(ex => {
-    const nombre = Array.isArray(ex) ? ex[0] : (ex && ex.name) || '';
-    const esquema = Array.isArray(ex) ? ex[1] : (ex && ex.scheme) || '';
-    return filaEditorEjercicio(nombre, esquema, notaDeEjercicio(ex));
-  }).join('');
+  /* Si se salió de aquí sin guardar, se vuelve con lo que había escrito, no con
+     lo que hay en el plan. Y se dice, porque si no el entrenador creería que
+     eso ya está guardado. */
+  const borrador = detalle.borradores[claveBorrador(dia.s)];
+  const filas = (borrador || filasDelPlan(dia))
+    .map(ej => filaEditorEjercicio(ej[0], ej[1], ej[2] || '')).join('');
+  const aviso = borrador
+    ? `<div class="msg msg-info" style="margin-bottom:8px;">
+         <div>Esto es lo que dejaste escrito y <b>todavía no está guardado</b>.</div>
+         <button class="btn-sm" style="margin-top:8px;" data-s="${dia.s}"
+                 onclick="descartarBorradorCliente(this.dataset.s)">Descartar y volver al plan</button>
+       </div>`
+    : '';
   return `<div style="border-top:1px solid var(--border);padding-top:8px;">
+    ${aviso}
     <div id="editor-ejercicios">${filas}</div>
     <button class="btn-sm" style="margin-top:6px;" onclick="anadirEjercicioCliente()">+ Añadir ejercicio</button>
     <div id="editor-msg"></div>
@@ -10966,19 +11083,7 @@ function pintarEditorEjercicios(dia){
 window.guardarEjerciciosCliente = async function(s){
   const msg = document.getElementById('editor-msg');
   const btn = document.getElementById('editor-guardar');
-  const filas = [...document.querySelectorAll('#editor-ejercicios .fila-ej')];
-  /* Terna solo si hay nota, par si no: un ejercicio sin indicaciones tiene que
-     seguir guardándose EXACTAMENTE como antes, o cada vez que el entrenador
-     abriera y cerrara el editor el plan cambiaría de forma sin motivo. */
-  const nuevos = filas.map(f => {
-    const ej = [
-      f.querySelector('.ej-in-nombre').value.trim(),
-      f.querySelector('.ej-in-esquema').value.trim()
-    ];
-    const nota = (f.querySelector('.ej-in-nota').value || '').trim();
-    if(nota) ej.push(nota);
-    return ej;
-  }).filter(par => par[0]);           // sin nombre no es un ejercicio
+  const nuevos = leerFilasEditor();
 
   if(!nuevos.length){
     msg.innerHTML = '<div class="msg msg-err">Deja al menos un ejercicio, o cancela.</div>';
@@ -11008,6 +11113,7 @@ window.guardarEjerciciosCliente = async function(s){
     await updateDoc(doc(fdb,'users',detalle.uid,'routines',r.id), {
       plan: window.planParaFirestore(plan)   // Firestore no admite arrays anidados
     });
+    delete detalle.borradores[claveBorrador(s)];   // ya está en el plan
     detalle.editando = null;
     /* Repintar aquí y no fiarlo al onSnapshot: si su notificación llega antes
        de esta línea, el guard la habría descartado y la vista se quedaría con

@@ -1984,6 +1984,99 @@ async function appLista(page, url){
     ok(ordenCliente.planTrasCancelar.join(',') === 'Press banca,Remo,Curl',
        'cancelar deja el plan del cliente como estaba: solo se guarda al Guardar');
 
+    console.log('\n13y2. Lo escrito en el editor del cliente no se pierde al moverse');
+    /* Lo contó un entrenador (23/09): estaba editando los ejercicios de una
+       sesión, cambió de semana sin guardar y perdió todo lo que había puesto. */
+    const borrador = await page.evaluate(async ()=>{
+      const r = {};
+      const dia = (s, n, ex) => ({ s, name:'S'+s+' · '+n, type:'Torso', ex });
+      const plan = [
+        { num:1, title:'Semana 1', days:[ dia(1,'Torso',[['Press banca','4×8']]),
+                                          dia(2,'Pierna',[['Sentadilla','4×8']]) ] },
+        { num:2, title:'Semana 2', days:[ dia(3,'Torso',[['Press banca','4×8']]) ] } ];
+      __pintarDetallePrueba({ nombre:'Laura', rutinas:[
+        { id:'rb1', name:'Fuerza', sessions:{}, plan: JSON.parse(JSON.stringify(plan)) },
+        { id:'rb2', name:'Otra',   sessions:{}, plan: JSON.parse(JSON.stringify(plan)) } ] });
+      verRutinaDetalle('rb1');
+      const nombres = () => [...document.querySelectorAll('#editor-ejercicios .ej-in-nombre')]
+        .map(e => e.value);
+      const escribir = () => {
+        anadirEjercicioCliente();
+        const filas = document.querySelectorAll('#editor-ejercicios .fila-ej');
+        const ultima = filas[filas.length - 1];
+        ultima.querySelector('.ej-in-nombre').value = 'Fondos';
+        ultima.querySelector('.ej-in-esquema').value = '3×12';
+        ultima.querySelector('.ej-in-nota').value = 'lastre 10 kg';
+      };
+
+      // 1) Cambiar de semana con cosas escritas: era lo que lo perdía.
+      editarSesionCliente(1);
+      escribir();
+      r.antesDeIrse = nombres();
+      verSemanaDetalle(2);
+      r.enOtraSemana = !document.getElementById('editor-ejercicios');
+      verSemanaDetalle(1);
+      /* La etiqueta tiene que verse SIN abrir el editor: si no, no hay forma de
+         saber que aquello quedó a medias. */
+      r.etiqueta = !!document.querySelector('.badge-sin-guardar');
+      editarSesionCliente(1);
+      r.alVolver = nombres();
+      r.avisa = /no está guardado/.test(
+        document.getElementById('editor-ejercicios').parentElement.textContent);
+      const ultima = [...document.querySelectorAll('#editor-ejercicios .fila-ej')].pop();
+      r.conservaTodo = ultima.querySelector('.ej-in-esquema').value === '3×12'
+                    && ultima.querySelector('.ej-in-nota').value === 'lastre 10 kg';
+
+      // 2) Cerrar la ventana de la rutina y volver a entrar.
+      cerrarRutinaCliente();
+      verRutinaDetalle('rb1');
+      editarSesionCliente(1);
+      r.trasCerrarLaVentana = nombres();
+
+      // 3) Cada sesión guarda lo suyo: el borrador no se contagia.
+      verSemanaDetalle(1);
+      editarSesionCliente(2);
+      r.otraSesionLimpia = nombres();
+
+      // 4) Descartar: vuelve el plan y se apaga la etiqueta.
+      editarSesionCliente(1);
+      descartarBorradorCliente(1);
+      r.etiquetaTrasDescartar = !!document.querySelector('.badge-sin-guardar');
+      editarSesionCliente(1);
+      r.trasDescartar = nombres();
+
+      // 5) Cancelar también descarta: es lo que significa.
+      escribir();
+      cancelarEdicionCliente();
+      r.etiquetaTrasCancelar = !!document.querySelector('.badge-sin-guardar');
+
+      /* 6) Salir de la ficha es lo único que los tira, y avisa. No se pulsa el
+            botón: abriría un confirm() y bloquearía la página. */
+      editarSesionCliente(1);
+      escribir();
+      verSemanaDetalle(1);                       // sale del editor recordando
+      r.hayQueAvisar = !!document.querySelector('.badge-sin-guardar');
+      r.funcionDeSalida = typeof salirDeLaFichaCliente === 'function';
+      cerrarDetalleCliente();
+      return r;
+    });
+    ok(borrador.antesDeIrse.includes('Fondos') && borrador.enOtraSemana,
+       'se escribe un ejercicio y se cambia de semana sin guardar');
+    ok(borrador.etiqueta, '🔴 el día se marca "sin guardar", y se ve sin abrir el editor');
+    ok(borrador.alVolver.includes('Fondos'),
+       '🔴 al volver sigue ahí lo que se había escrito: '+borrador.alVolver.join(', '));
+    ok(borrador.conservaTodo, 'con su esquema y su indicación, no solo el nombre');
+    ok(borrador.avisa, 'y el editor avisa de que eso TODAVÍA no está guardado');
+    ok(borrador.trasCerrarLaVentana.includes('Fondos'),
+       '🔴 tampoco se pierde al cerrar la ventana de la rutina y volver a entrar');
+    ok(!borrador.otraSesionLimpia.includes('Fondos'),
+       'y no se cuela en otra sesión: cada una guarda lo suyo');
+    ok(!borrador.etiquetaTrasDescartar && !borrador.trasDescartar.includes('Fondos'),
+       '"Descartar" devuelve el plan y apaga la etiqueta');
+    ok(!borrador.etiquetaTrasCancelar, 'y "Cancelar" también descarta: es lo que significa');
+    ok(borrador.hayQueAvisar && borrador.funcionDeSalida,
+       'salir de la ficha es lo único que los tira, y por eso pregunta antes');
+
     console.log('\n13z. Arrastrar para reordenar, más fino');
     /* Jhon (23/09): "es muy inexacto y muy difícil, empieza a hacer cosas raras
        y no van donde quiero colocarlos". Tres causas, tres pruebas. */
