@@ -158,4 +158,22 @@ module.exports = {
   sentadilla_sumo:             [['gluteo', 'aductor'], ['cuadriceps', 'isquios']],
   peso_muerto_sumo:            [['gluteo', 'aductor'], ['isquios', 'cuadriceps', 'lumbar']],
   elevacion_de_gemelo_de_pie:  [['gemelo'], []],
+  /* Tibial, 24/09/2026: tenía foto pero ningún ejercicio, así que no salía en
+     el selector. Los pidió Jhon; los cuatro son el mismo gesto (subir la punta
+     del pie), de pie contra la pared, en máquina, con banda o andando. Solo el
+     andar de talones mete al gemelo, que sujeta el tobillo. */
+  elevacion_de_puntas:         [['tibial'], []],
+  tibial_en_maquina:           [['tibial'], []],
+  dorsiflexion_con_banda:      [['tibial'], []],
+  caminar_de_talones:          [['tibial'], ['gemelo']],
+  /* Trapecio, 24/09/2026: tenía foto pero ningún ejercicio como principal, así
+     que no salía en el selector. Los pidió Jhon.
+     - Encogimientos: trapecio solo, y el antebrazo sujeta el peso.
+     - Remo al mentón: trapecio y deltoides a la par, con el bíceps de apoyo.
+     - Paseo del granjero: el trapecio aguanta los hombros abajo; agarre y
+       abdomen trabajan de verdad. */
+  encogimientos_con_barra:     [['trapecio'], ['antebrazo']],
+  encogimientos_con_mancuernas:[['trapecio'], ['antebrazo']],
+  remo_al_menton:              [['trapecio', 'deltoides'], ['biceps']],
+  paseo_del_granjero:          [['trapecio', 'antebrazo'], ['abdominal', 'gluteo']],
 };

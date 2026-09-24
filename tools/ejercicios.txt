@@ -1,5 +1,5 @@
 # Librería de imágenes de ejercicios
-# 113 ejercicios del catálogo, uno por imagen (los alias comparten la del suyo)
+# 121 ejercicios del catálogo, uno por imagen (los alias comparten la del suyo)
 # Fuente: las 7 rutinas del código + las 45 sesiones registradas de Jhon
 # 24/09/2026: se mudó aquí desde ~/fitness-ejercicios.txt, que vivía fuera del
 # repo y no tenía copia ninguna. Se edita a mano y la lee `npm run imagenes`.
@@ -24,6 +24,7 @@ buenos_dias	Buenos días
 burpees	Burpees
 caminadora	Caminadora
 caminadora_inclinada	Caminadora inclinada
+caminar_de_talones	Caminar de talones
 cruces_polea	Cruces polea
 cruces_polea_alta	Cruces polea alta
 crunch	Crunch
@@ -50,10 +51,14 @@ dead_bug	Dead bug
 dominadas	Dominadas	Dominadas (o jalón al pecho)
 dominadas_agarre_neutro	Dominadas agarre neutro
 dominadas_lastradas	Dominadas lastradas
+dorsiflexion_con_banda	Dorsiflexión con banda
 elevacion_de_gemelo_de_pie	Elevación de gemelo de pie
 elevacion_de_piernas	Elevación de piernas
 elevacion_de_piernas_colgado	Elevación de piernas colgado
+elevacion_de_puntas	Elevación de puntas
 elevaciones_laterales	Elevaciones laterales
+encogimientos_con_barra	Encogimientos con barra
+encogimientos_con_mancuernas	Encogimientos con mancuernas
 extension_de_cadera	Extensión de cadera
 extension_piernas	Extensión piernas	Extensión de piernas
 face_pull	Face pull
@@ -74,6 +79,7 @@ jump_squats	Jump squats
 linear_leg_press	Linear leg press
 mountain_climbers	Mountain climbers
 pallof_press	Pallof press
+paseo_del_granjero	Paseo del granjero
 patada_de_gluteo_en_polea	Patada de glúteo en polea
 perfect_squat_machine	Perfect Squat machine
 peso_muerto	Peso muerto
@@ -101,6 +107,7 @@ press_inclinado_mancuernas	Press inclinado mancuernas	Press inclinado Mancuernas
 puente_de_gluteo_a_una_pierna	Puente de glúteo a una pierna
 pullover_mancuerna	Pullover mancuerna
 pullover_polea	Pullover polea
+remo_al_menton	Remo al mentón
 remo_barra	Remo barra	Remo con barra
 remo_barra_agarre_supino	Remo barra agarre supino
 remo_mancuerna	Remo mancuerna
@@ -114,6 +121,7 @@ sentadilla_hack	Sentadilla hack
 sentadilla_sumo	Sentadilla sumo
 sentadillas_libre	Sentadillas libre
 step_up_con_mancuernas	Step up con mancuernas
+tibial_en_maquina	Tibial en máquina
 triceps	Tríceps
 triceps_cuerda	Tríceps cuerda	Triceps cuerda
 triceps_polea	Tríceps polea	Tríceps en polea | Tríceps en poleas
