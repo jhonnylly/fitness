@@ -133,5 +133,16 @@ module.exports = {
   abductores_en_maquina:       [['abductor'], ['gluteo']],
   abductores_en_polea:         [['abductor'], ['gluteo']],
   abduccion_de_cadera:         [['abductor'], ['gluteo']],
+  /* Aductores, 24/09/2026. Hasta hoy el músculo existía en la app pero NO tenía
+     un solo ejercicio que lo trabajara como principal, así que ni salía en el
+     selector de músculos. Lo vio Jhon. Los cuatro los eligió él; el reparto de
+     músculos es criterio mío y se cambia en una línea:
+     - Las dos máquinas de aislamiento van al aductor y a nada más.
+     - En sumo, la apertura de piernas mete al aductor de lleno junto al glúteo,
+       y el cuádriceps (sentadilla) o los femorales (peso muerto) acompañan. */
+  aductores_en_maquina:        [['aductor'], []],
+  aductores_en_polea:          [['aductor'], ['gluteo']],
+  sentadilla_sumo:             [['gluteo', 'aductor'], ['cuadriceps', 'isquios']],
+  peso_muerto_sumo:            [['gluteo', 'aductor'], ['isquios', 'cuadriceps', 'lumbar']],
   elevacion_de_gemelo_de_pie:  [['gemelo'], []],
 };
