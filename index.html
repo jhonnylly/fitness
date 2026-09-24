@@ -472,6 +472,18 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
    campo de la fila no cabía nada: aquí se escribe una indicación de verdad
    ("multiserie: 10 con 40, 6 con 32, 4 con 25"), no una palabra. */
 .fila-ej .ej-in-nota{flex-basis:100%;font-size:11.5px;}
+/* Debajo del nombre: qué músculo trabaja ese ejercicio o, si no lo conocemos,
+   los parecidos del catálogo (24/09/2026). Lo pidió Jhon por los entrenadores
+   que no son profesionales: "algunos no recuerdan los ejercicios o tienen otros
+   nombres que no están en la app". Ocupa la línea entera y va antes de la nota,
+   pegado a su campo. */
+.fila-ej .ej-pista{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:5px;
+  font-size:11px;line-height:1.5;padding:0 2px;}
+.ej-musculo{color:var(--accent);font-weight:700;}
+.ej-pista-txt{color:var(--muted);}
+.ej-sug{padding:3px 8px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;
+  color:var(--accent);background:rgba(var(--accent-rgb),0.10);border:1px solid var(--accent);
+  border-radius:var(--radius-sm);}
 /* Subir/bajar el ejercicio dentro de la sesión (23/09/2026, pedido por un
    entrenador). Van en columna y pegadas al nombre, ocupando el alto de la fila:
    en una pantalla estrecha, dos flechas sueltas al final se confundían con la ✕
@@ -3056,7 +3068,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-24 15:39';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-24 16:06';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7976,7 +7988,21 @@ function nrEsquema(i,j){
 }
 
 /* ── El selector ── */
+/* A dónde va lo que se elija en el selector. null = el asistente de rutinas,
+   que es para quien se hizo. Desde el 24/09/2026 lo usa también el editor de la
+   ficha del cliente: quien monta la rutina de OTRO es el que más lo necesita,
+   porque teclea nombres a ciegas y muchos entrenadores no son profesionales.
+   Un destino es {titulo, volver, puestos(), anadir(nombre), cerrar()}. */
+let selDestino = null;
+
+function abrirSelectorPara(destino){
+  selDestino = destino;
+  document.getElementById('selector-ejercicio').classList.remove('hidden');
+  nrVolverAMusculos();
+}
+
 function nrAbrirSelector(i){
+  selDestino = null;
   nrDiaActivo = i;
   document.getElementById('selector-ejercicio').classList.remove('hidden');
   nrVolverAMusculos();
@@ -7985,6 +8011,7 @@ function nrAbrirSelector(i){
 function nrCerrarSelector(){
   document.getElementById('selector-ejercicio').classList.add('hidden');
   document.getElementById('sel-cuerpo').innerHTML = '';
+  if(selDestino){ const d = selDestino; selDestino = null; d.cerrar(); return; }
   nrPintarPaso();
 }
 
@@ -8003,9 +8030,10 @@ function nrVolverAMusculos(){
   nrVista = null;
   const buscador = document.getElementById('sel-buscar');
   if(buscador && buscador.value.trim()) buscador.value = '';
-  nrEtiquetaVolver('Volver a la rutina');
-  document.getElementById('sel-titulo').textContent =
-    'Día ' + (nrDiaActivo + 1) + ' · ¿qué trabajas?';
+  nrEtiquetaVolver(selDestino ? selDestino.volver : 'Volver a la rutina');
+  document.getElementById('sel-titulo').textContent = selDestino
+    ? selDestino.titulo
+    : 'Día ' + (nrDiaActivo + 1) + ' · ¿qué trabajas?';
   document.getElementById('sel-cuerpo').innerHTML =
     '<div class="mus-grid">' + nrMusculosConEjercicios().map(m => `
       <button class="mus-btn" onclick="nrAbrirMusculo('${m.clave}')">
@@ -8064,7 +8092,9 @@ function nrBuscar(texto){
    resultados de búsqueda; en la búsqueda además se dice qué músculo trabaja,
    que es lo que no se sabe cuando no vienes de la cuadrícula. */
 function nrPintarFilas(items){
-  const yaPuestos = new Set((nrDias[nrDiaActivo].ex || []).map(e => e.nombre));
+  const yaPuestos = new Set(selDestino
+    ? selDestino.puestos()
+    : (nrDias[nrDiaActivo].ex || []).map(e => e.nombre));
   return items.map((e, i) => {
     const puesto = yaPuestos.has(e.nombre);
     const musc = e.conMusculo && e.musculo
@@ -8092,8 +8122,12 @@ function nrAbrirMusculo(musculo){
 function nrAnadir(i){
   const nombre = nrListaVisible[i];
   if(!nombre) return;
-  const dia = nrDias[nrDiaActivo];
-  if(!dia.ex.some(e => e.nombre === nombre)) dia.ex.push({ nombre, esquema:'4×10' });
+  if(selDestino){
+    selDestino.anadir(nombre);
+  }else{
+    const dia = nrDias[nrDiaActivo];
+    if(!dia.ex.some(e => e.nombre === nombre)) dia.ex.push({ nombre, esquema:'4×10' });
+  }
   if(nrVista && nrVista.tipo === 'busqueda') nrBuscar(document.getElementById('sel-buscar').value);
   else if(nrVista) nrAbrirMusculo(nrVista.musculo);
 }
@@ -11003,10 +11037,25 @@ window.cancelarEdicionCliente = function(){
   pintarDetalle();
 };
 
-window.anadirEjercicioCliente = function(){
+window.anadirEjercicioCliente = function(nombre, esquema){
   const cont = document.getElementById('editor-ejercicios');
   if(!cont) return;
-  cont.insertAdjacentHTML('beforeend', filaEditorEjercicio('', '', ''));
+  cont.insertAdjacentHTML('beforeend', filaEditorEjercicio(nombre || '', esquema || '', ''));
+};
+
+/* Buscar por músculo con el MISMO selector del asistente de rutinas: foto de
+   cada músculo, sus ejercicios y un buscador. Se queda abierto mientras se
+   añaden varios, y marca los que ya están puestos (24/09/2026). */
+window.buscarEjercicioCliente = function(){
+  const cont = document.getElementById('editor-ejercicios');
+  if(!cont) return;
+  abrirSelectorPara({
+    titulo: '¿Qué va a trabajar?',
+    volver: 'Volver al plan',
+    puestos: () => [...cont.querySelectorAll('.ej-in-nombre')].map(e => e.value.trim()),
+    anadir: nombre => window.anadirEjercicioCliente(nombre, '4×10'),
+    cerrar: () => {},
+  });
 };
 
 window.quitarEjercicioCliente = function(btn){
@@ -11041,13 +11090,58 @@ function filaEditorEjercicio(nombre, esquema, nota){
       <button type="button" class="ej-flecha" data-d="1" title="Bajar"
               onclick="moverEjercicioCliente(this,1)">▼</button>
     </div>
-    <input type="text" class="ej-in-nombre" value="${escaparHTML(nombre)}" placeholder="Nombre del ejercicio">
+    <input type="text" class="ej-in-nombre" value="${escaparHTML(nombre)}" placeholder="Nombre del ejercicio"
+           oninput="pistaEjercicioCliente(this)">
     <input type="text" class="ej-in-esquema" value="${escaparHTML(esquema)}" placeholder="4×10">
     <button class="btn-sm btn-danger" onclick="quitarEjercicioCliente(this)">✕</button>
+    <div class="ej-pista">${pistaEjercicioHTML(nombre)}</div>
     <input type="text" class="ej-in-nota" value="${escaparHTML(nota || '')}"
            placeholder="Cómo hacerlo (opcional): multiserie, tempo, descanso...">
   </div>`;
 }
+
+/* Qué enseñar debajo del nombre (24/09/2026). Tres casos, y ninguno estorba:
+   - Lo conocemos: los músculos que trabaja, que es lo que no se sabe de
+     memoria cuando montas la rutina de otra persona.
+   - No lo conocemos pero se parece a algo: los nombres del catálogo, para
+     tocarlos. Es el caso de "tienen otros nombres que no están en la app".
+   - No se parece a nada: se dice que se guarda igual, que es verdad. Nadie
+     tiene que renunciar a su ejercicio por no estar en una lista.
+   Mismo catálogo y mismas funciones que la pantalla del ejercicio del cliente:
+   si mejora uno, mejoran los dos. */
+function pistaEjercicioHTML(nombre){
+  const n = (nombre || '').trim();
+  if(!n) return '';
+  const m = musculosDeEjercicio(n);
+  if(m && m.primarios.length){
+    const primarios = listaEnEspanol(m.primarios.map(x => NOMBRE_MUSCULO[x] || x));
+    const secundarios = m.secundarios.length
+      ? ' · también ' + listaEnEspanol(m.secundarios.map(x => NOMBRE_MUSCULO[x] || x)) : '';
+    return `<span class="ej-musculo">${escaparHTML(primarios)}</span>`
+         + `<span class="ej-pista-txt">${escaparHTML(secundarios)}</span>`;
+  }
+  const parecidos = sugerenciasEjercicio(n, 4);
+  if(!parecidos.length){
+    return '<span class="ej-pista-txt">No está en nuestro catálogo: se guarda igual, '
+         + 'pero su cliente no verá foto ni músculos.</span>';
+  }
+  return '<span class="ej-pista-txt">¿Quieres decir?</span>'
+       + parecidos.map(x => `<button type="button" class="ej-sug" data-n="${escaparHTML(x)}"
+           onclick="usarSugerenciaCliente(this)">${escaparHTML(x)}</button>`).join('');
+}
+
+window.pistaEjercicioCliente = function(input){
+  const fila = input.closest('.fila-ej');
+  const pista = fila && fila.querySelector('.ej-pista');
+  if(pista) pista.innerHTML = pistaEjercicioHTML(input.value);
+};
+
+window.usarSugerenciaCliente = function(btn){
+  const fila = btn.closest('.fila-ej');
+  const campo = fila.querySelector('.ej-in-nombre');
+  campo.value = btn.dataset.n;
+  window.pistaEjercicioCliente(campo);
+};
 
 function pintarEditorEjercicios(dia){
   /* Si se salió de aquí sin guardar, se vuelve con lo que había escrito, no con
@@ -11066,7 +11160,10 @@ function pintarEditorEjercicios(dia){
   return `<div style="border-top:1px solid var(--border);padding-top:8px;">
     ${aviso}
     <div id="editor-ejercicios">${filas}</div>
-    <button class="btn-sm" style="margin-top:6px;" onclick="anadirEjercicioCliente()">+ Añadir ejercicio</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+      <button class="btn-sm" onclick="buscarEjercicioCliente()">🔍 Buscar por músculo</button>
+      <button class="btn-sm" onclick="anadirEjercicioCliente()">+ Escribirlo yo</button>
+    </div>
     <div id="editor-msg"></div>
     <div class="msg msg-info" style="margin-top:8px;">
       Cambias lo que tiene que hacer, no lo que ya registró. Lo verá al abrir la

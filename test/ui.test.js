@@ -2077,6 +2077,90 @@ async function appLista(page, url){
     ok(borrador.hayQueAvisar && borrador.funcionDeSalida,
        'salir de la ficha es lo único que los tira, y por eso pregunta antes');
 
+    console.log('\n13y3. Ayuda para poner ejercicios en la rutina del cliente');
+    /* Jhon (24/09): "no todos los que entrenan a otros son profesionales;
+       algunos no recuerdan los ejercicios o los llaman de otra forma". */
+    const ayuda = await page.evaluate(async ()=>{
+      const r = {};
+      const tic = (ms=60) => new Promise(res => setTimeout(res, ms));
+      const dia = (s, n, ex) => ({ s, name:'S'+s+' · '+n, type:'Torso', ex });
+      __pintarDetallePrueba({ nombre:'Laura', rutinas:[{ id:'ra1', name:'Fuerza', sessions:{},
+        plan:[{ num:1, title:'Semana 1', days:[ dia(1,'Torso',[['Press banca','4×8']]) ] }] }] });
+      verRutinaDetalle('ra1');
+      editarSesionCliente(1);
+      const filas = () => [...document.querySelectorAll('#editor-ejercicios .fila-ej')];
+      const ultima = () => filas()[filas().length - 1];
+      const pistaDe = f => f.querySelector('.ej-pista').textContent.replace(/\s+/g,' ').trim();
+
+      // 1) Lo que ya está puesto dice qué músculo trabaja, sin tocar nada.
+      r.conocido = pistaDe(filas()[0]);
+
+      // 2) Un nombre a medias ofrece los del catálogo, y se ponen tocándolos.
+      anadirEjercicioCliente();
+      let f = ultima();
+      f.querySelector('.ej-in-nombre').value = 'jalon';
+      pistaEjercicioCliente(f.querySelector('.ej-in-nombre'));
+      r.sugerencias = [...f.querySelectorAll('.ej-sug')].map(b => b.textContent);
+      f.querySelector('.ej-sug').click();
+      r.trasElegir = f.querySelector('.ej-in-nombre').value;
+      r.trasElegirPista = pistaDe(f);
+
+      /* 3) Un ejercicio que no conocemos de nada no se bloquea: se dice y ya.
+            Ojo al elegir el nombre de la prueba: "zancada marciana" SÍ encuentra
+            parecidos (busca por la primera palabra), y eso está bien. */
+      f.querySelector('.ej-in-nombre').value = 'xilofonia kruger';
+      pistaEjercicioCliente(f.querySelector('.ej-in-nombre'));
+      r.desconocido = pistaDe(f);
+      quitarEjercicioCliente(f.querySelector('.btn-danger'));
+
+      // 4) Buscar por músculo: el MISMO selector del asistente de rutinas.
+      const antesDias = JSON.stringify(nrDias);
+      buscarEjercicioCliente();
+      await tic();
+      r.selectorAbierto = !document.getElementById('selector-ejercicio').classList.contains('hidden');
+      r.titulo = document.getElementById('sel-titulo').textContent;
+      r.volver = document.querySelector('#sel-volver span').textContent;
+      r.musculos = document.querySelectorAll('#sel-cuerpo .mus-btn').length;
+      nrAbrirMusculo('pectoral');
+      const cuantas = filas().length;
+      const elegido = nrListaVisible[0];
+      nrAnadir(0);
+      await tic();
+      r.filaNueva = filas().length === cuantas + 1;
+      r.nombrePuesto = ultima().querySelector('.ej-in-nombre').value === elegido;
+      r.conEsquema = ultima().querySelector('.ej-in-esquema').value === '4×10';
+      r.conMusculo = /\w/.test(pistaDe(ultima()));
+      r.marcaLoPuesto = /añadido/.test(document.getElementById('sel-cuerpo').textContent);
+      nrCerrarSelector();
+      await tic();
+      r.selectorCerrado = document.getElementById('selector-ejercicio').classList.contains('hidden');
+      r.editorSigue = !!document.getElementById('editor-ejercicios');
+      /* Y el asistente de rutinas NO se entera: es el mismo selector, pero lo
+         elegido va a donde se abrió. */
+      r.asistenteIntacto = JSON.stringify(nrDias) === antesDias;
+      cancelarEdicionCliente();
+      cerrarDetalleCliente();
+      return r;
+    });
+    ok(/pectoral/i.test(ayuda.conocido),
+       '🔴 cada ejercicio dice qué músculo trabaja: '+ayuda.conocido);
+    ok(ayuda.sugerencias.length > 0,
+       '🔴 un nombre a medias ofrece los del catálogo: '+ayuda.sugerencias.join(', '));
+    ok(ayuda.trasElegir === 'Jalón al pecho' && /dorsal/i.test(ayuda.trasElegirPista),
+       'y al tocar uno se pone entero, con su músculo: '+ayuda.trasElegir);
+    ok(/se guarda igual/.test(ayuda.desconocido),
+       'lo que no conocemos no se bloquea, se avisa: '+ayuda.desconocido);
+    ok(ayuda.selectorAbierto && ayuda.musculos > 5,
+       '🔴 "Buscar por músculo" abre el selector del asistente, con sus '+ayuda.musculos+' músculos');
+    ok(ayuda.titulo === '¿Qué va a trabajar?' && ayuda.volver === 'Volver al plan',
+       'con el título y el "volver" de esta pantalla, no los del asistente');
+    ok(ayuda.filaNueva && ayuda.nombrePuesto && ayuda.conEsquema && ayuda.conMusculo,
+       '🔴 lo elegido cae en el editor como una fila más, con esquema y músculo');
+    ok(ayuda.marcaLoPuesto, 'y el selector marca lo que ya está puesto, para no repetirlo');
+    ok(ayuda.selectorCerrado && ayuda.editorSigue,
+       'al cerrarlo se vuelve al plan con lo escrito intacto');
+    ok(ayuda.asistenteIntacto, '🔴 y el asistente de rutinas no se entera: cada uno a lo suyo');
+
     console.log('\n13z. Arrastrar para reordenar, más fino');
     /* Jhon (23/09): "es muy inexacto y muy difícil, empieza a hacer cosas raras
        y no van donde quiero colocarlos". Tres causas, tres pruebas. */
