@@ -4,7 +4,7 @@
      node tools/generar-imagenes.js
 
    Lee:
-     ~/fitness-ejercicios.txt   la lista (clave <TAB> nombre <TAB> alias)
+     tools/ejercicios.txt       la lista (clave <TAB> nombre <TAB> alias)
      tools/musculos.js          qué músculos trabaja cada ejercicio
      tools/cuerpo.js            la silueta y el dibujo
    Escribe:
@@ -16,11 +16,13 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { svgEjercicio } = require('./cuerpo.js');
 const MUSCULOS_POR_EJERCICIO = require('./musculos.js');
 
-const LISTA = path.join(os.homedir(), 'fitness-ejercicios.txt');
+/* La lista vivía en ~/fitness-ejercicios.txt, fuera del repo y sin copia de
+   nada: si se perdía el portátil, se perdía. Desde el 24/09/2026 va aquí
+   dentro, versionada con el resto. */
+const LISTA = path.join(__dirname, 'ejercicios.txt');
 const SALIDA = path.join(__dirname, '..', 'img', 'ejercicios');
 
 /* Ejercicios cuyo mapa está a la espera de que Jhon lo confirme: salen

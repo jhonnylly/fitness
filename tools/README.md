@@ -9,7 +9,7 @@ el principal, apagado el secundario). **No** son ilustraciones del movimiento.
 node tools/generar-imagenes.js
 ```
 
-Lee `~/fitness-ejercicios.txt` + `tools/musculos.js` y escribe
+Lee `tools/ejercicios.txt` + `tools/musculos.js` y escribe
 `img/ejercicios/*.svg` y una hoja de contacto en `img/ejercicios/index.html`.
 Aborta si algún ejercicio se quedó sin músculos asignados, para que no aparezca
 una silueta en gris sin avisar.
@@ -25,9 +25,16 @@ Edita `tools/musculos.js` (`clave: [[primarios], [secundarios]]`) y vuelve a
 lanzar el generador. Los nombres válidos de músculo son las claves de
 `MUSCULOS` en `tools/cuerpo.js`.
 
-## Regenerar la LISTA de ejercicios
+## La LISTA de ejercicios
 
-La lista sale de dos sitios y por eso no se genera aquí sin más:
+Es `tools/ejercicios.txt`: `clave <TAB> nombre <TAB> alias`, una línea por
+ejercicio. Se edita a mano —añadir un ejercicio es una línea aquí y otra en
+`musculos.js`— y luego `npm run imagenes`.
+
+Hasta el 24/09/2026 vivía en `~/fitness-ejercicios.txt`, fuera del repo y sin
+copia de seguridad ninguna.
+
+De dónde salió, que no se genera sola:
 
 1. las rutinas del código (`PLAN` y `PRESET_ROUTINES` de `index.html`), y
 2. **los ejercicios que solo existen dentro de sesiones ya registradas**
@@ -40,4 +47,4 @@ misma función con la que la app busca la imagen: no se pueden desincronizar.
 ## Publicar
 
 Son ficheros estáticos: van en el repo y los sirve GitHub Pages. No ocupan
-nada en Firestore y se cachean. 102 SVG ≈ 850 KB, unos 8 KB cada uno.
+nada en Firestore y se cachean. 106 SVG ≈ 880 KB, unos 8 KB cada uno.
