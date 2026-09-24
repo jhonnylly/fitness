@@ -1,5 +1,5 @@
 # Librería de imágenes de ejercicios
-# 106 ejercicios del catálogo, uno por imagen (los alias comparten la del suyo)
+# 113 ejercicios del catálogo, uno por imagen (los alias comparten la del suyo)
 # Fuente: las 7 rutinas del código + las 45 sesiones registradas de Jhon
 # 24/09/2026: se mudó aquí desde ~/fitness-ejercicios.txt, que vivía fuera del
 # repo y no tenía copia ninguna. Se edita a mano y la lee `npm run imagenes`.
@@ -20,6 +20,7 @@ aductores_en_maquina	Aductores en máquina
 aductores_en_polea	Aductores en polea
 apertura_horizontal_maquina	Apertura horizontal máquina
 belt_squat	Belt squat
+buenos_dias	Buenos días
 burpees	Burpees
 caminadora	Caminadora
 caminadora_inclinada	Caminadora inclinada
@@ -37,10 +38,14 @@ curl_biceps_maquina	Curl bíceps máquina
 curl_concentrado	Curl concentrado
 curl_femoral	Curl femoral
 curl_femoral_acostado	Curl femoral acostado
+curl_femoral_con_fitball	Curl femoral con fitball
+curl_femoral_de_pie	Curl femoral de pie
+curl_femoral_sentado	Curl femoral sentado
 curl_femoral_tumbado	Curl femoral tumbado
 curl_maquina	Curl máquina
 curl_martillo	Curl martillo
 curl_martillo_alternado	Curl martillo alternado
+curl_nordico	Curl nórdico
 dead_bug	Dead bug
 dominadas	Dominadas	Dominadas (o jalón al pecho)
 dominadas_agarre_neutro	Dominadas agarre neutro
@@ -72,7 +77,9 @@ pallof_press	Pallof press
 patada_de_gluteo_en_polea	Patada de glúteo en polea
 perfect_squat_machine	Perfect Squat machine
 peso_muerto	Peso muerto
+peso_muerto_piernas_rigidas	Peso muerto piernas rígidas
 peso_muerto_rumano	Peso muerto rumano
+peso_muerto_rumano_con_mancuernas	Peso muerto rumano con mancuernas
 peso_muerto_sumo	Peso muerto sumo
 plancha	Plancha
 plancha_lateral	Plancha lateral

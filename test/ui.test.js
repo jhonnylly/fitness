@@ -151,7 +151,7 @@ async function appLista(page, url){
     const fotosMusculo = await page.evaluate(()=>[...new Set(Object.values(FOTO_MUSCULO))]);
     const faltan = fotosMusculo.filter(f=>!fs.existsSync(path.join(__dirname,'..','img','musculos',f+'.webp')));
     ok(faltan.length === 0, 'todas las fotos de músculo existen en img/musculos/'+(faltan.length?': faltan '+faltan.join(', '):''));
-    ok(fotosMusculo.includes('aductor') && fotosMusculo.includes('trapecio'), 'aductor y trapecio tienen foto propia');
+    ok(['aductor','trapecio','tibial'].every(f=>fotosMusculo.includes(f)), 'aductor, trapecio y tibial tienen foto propia');
 
     console.log('\n4. Reordenar los ejercicios arrastrando');
     await page.evaluate(()=>closeExDetail());

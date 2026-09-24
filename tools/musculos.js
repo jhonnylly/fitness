@@ -127,6 +127,19 @@ module.exports = {
   curl_femoral:                [['isquios'], ['gemelo']],
   curl_femoral_acostado:       [['isquios'], ['gemelo']],
   curl_femoral_tumbado:        [['isquios'], ['gemelo']],
+  /* Isquiotibiales, 24/09/2026: los pidió Jhon (solo había los tres curl
+     femorales, el peso muerto y el rumano). Reparto de músculos, criterio mío:
+     - Los curl (sentado, de pie, fitball, nórdico) flexionan la rodilla: isquios
+       de lleno y el gemelo ayuda; en fitball y nórdico sujetan glúteo y abdomen.
+     - Buenos días y piernas rígidas bisagra de cadera: isquios arriba, con la
+       lumbar trabajando de verdad en el buenos días. */
+  curl_femoral_sentado:        [['isquios'], ['gemelo']],
+  curl_femoral_de_pie:         [['isquios'], ['gemelo']],
+  curl_femoral_con_fitball:    [['isquios'], ['gluteo', 'abdominal']],
+  curl_nordico:                [['isquios'], ['gemelo', 'gluteo']],
+  buenos_dias:                 [['isquios', 'lumbar'], ['gluteo', 'abdominal']],
+  peso_muerto_piernas_rigidas: [['isquios', 'gluteo'], ['lumbar', 'antebrazo']],
+  peso_muerto_rumano_con_mancuernas:[['isquios', 'gluteo'], ['lumbar', 'antebrazo']],
 
   // ── Abductores / aductores / gemelo ──
   abductores:                  [['abductor'], ['gluteo']],
