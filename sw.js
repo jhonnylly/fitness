@@ -16,8 +16,8 @@
 const CACHE = 'fitness-v1';
 
 /* Lo imprescindible para arrancar sin red. Las fotos de músculo entran porque
-   son el contenido pesado que se mira en mitad de una serie; los 102 SVG de
-   siluetas no, porque solo se usan de reserva y son 850 KB. Esos se guardan
+   son el contenido pesado que se mira en mitad de una serie; los 121 SVG de
+   siluetas no, porque solo se usan de reserva y son ~1 MB. Esos se guardan
    solos la primera vez que se ven. */
 const ESENCIALES = [
   './',
@@ -31,10 +31,10 @@ const ESENCIALES = [
   './fuentes/oswald-cifras.woff2',
   './icons/icono-192.png',
   './icons/icono-512.png',
-  /* Las 16 fotos de músculo entran de entrada (~1,1 MB) y no bajo demanda: son
+  /* Las 19 fotos de músculo entran de entrada (~1,3 MB) y no bajo demanda: son
      lo que miras al abrir un ejercicio, y sin cobertura no da tiempo a que se
-     guarden solas la primera vez. Los 102 SVG de siluetas NO: solo se usan de
-     reserva para los músculos sin foto y son otros 850 KB. */
+     guarden solas la primera vez. Los 121 SVG de siluetas NO: solo se usan de
+     reserva para los músculos sin foto y son otros ~1 MB. */
   './img/musculos/abdominal.webp',
   './img/musculos/abductor.webp',
   './img/musculos/antebrazo.webp',
@@ -51,6 +51,10 @@ const ESENCIALES = [
   './img/musculos/pectoral.webp',
   './img/musculos/romboides.webp',
   './img/musculos/triceps.webp',
+  // 24/09/2026: las tres que faltaban.
+  './img/musculos/aductor.webp',
+  './img/musculos/trapecio.webp',
+  './img/musculos/tibial.webp',
 ];
 
 self.addEventListener('install', e => {
@@ -69,6 +73,10 @@ self.addEventListener('activate', e => {
     await self.clients.claim();
   })());
 });
+
+/* Ficheros que cambian con cada ejercicio nuevo: van a la red primero (ver el
+   fetch). Mismas rutas que en ESENCIALES. */
+const CATALOGO = ['/img/ejercicios/lista.js', '/img/ejercicios/musculos.js'];
 
 /* Dominios que NUNCA se interceptan: son datos vivos o autenticación. */
 const FUERA = ['firestore.googleapis.com', 'identitytoolkit.googleapis.com',
@@ -94,6 +102,28 @@ self.addEventListener('fetch', e => {
       } catch (err) {
         const c = await caches.open(CACHE);
         return (await c.match('./index.html')) || (await c.match('./')) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  /* El catálogo de ejercicios, también red primero. Antes iba con el resto
+     (caché al instante y refresco por detrás) y el 24/09/2026 lo pilló Jhon: tras
+     añadir ejercicios, el iPhone abría la versión nueva del HTML con el catálogo
+     VIEJO, y los nuevos no salían hasta la siguiente vez que se abría la app.
+     `no-cache` obliga a preguntar al servidor si ha cambiado: GitHub Pages manda
+     max-age=600 y sin esto el navegador podría dar por bueno, durante diez
+     minutos, el fichero que tiene sin preguntar. Si no ha cambiado, la respuesta
+     es un 304 de nada. Sin red, el del caché. */
+  if (CATALOGO.some(f => url.pathname.endsWith(f))) {
+    e.respondWith((async () => {
+      const c = await caches.open(CACHE);
+      try {
+        const res = await fetch(req, { cache: 'no-cache' });
+        if (res.ok) c.put(req, res.clone()).catch(() => {});
+        return res;
+      } catch (err) {
+        return (await c.match(req, { ignoreSearch: true })) || Response.error();
       }
     })());
     return;

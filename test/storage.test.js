@@ -1081,6 +1081,62 @@ const ok = (cond, msg) => {
   ok(app.buscarImagenEjercicio('Sentadilla', null) === null, 'sin librería cargada no revienta');
   ok(app.buscarImagenEjercicio('', mapa) === null, 'un nombre vacío no casa con nada');
 
+  console.log('\nService Worker: el catálogo de ejercicios nunca llega viejo');
+  {
+    /* sw.js se carga tal cual con una caché y una red de mentira. El fallo real
+       (24/09/2026): el catálogo se servía del caché y se refrescaba por detrás,
+       así que tras añadir ejercicios el iPhone abría la versión nueva sin ellos. */
+    const swSrc = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
+    const guardado = new Map();
+    const cache = {
+      match: async (req) => guardado.get(typeof req === 'string' ? req : req.url) || null,
+      put: async (req, res) => { guardado.set(typeof req === 'string' ? req : req.url, res); },
+      add: async () => {},
+    };
+    let hayRed = true, pedidas = [];
+    const respuesta = (texto) => ({ ok: true, texto, clone(){ return this; } });
+    const oyentes = {};
+    const sandbox = {
+      self: { addEventListener: (t, f) => { oyentes[t] = f; }, skipWaiting(){}, clients: { claim(){} } },
+      caches: { open: async () => cache, keys: async () => [] },
+      fetch: async (req, opts) => {
+        pedidas.push({ url: req.url, opts });
+        if (!hayRed) throw new Error('sin red');
+        return respuesta('NUEVO');
+      },
+      URL, Response: { error: () => ({ ok: false, texto: 'ERROR' }) },
+    };
+    vm.runInNewContext(swSrc, sandbox);
+    const pedir = async (url) => {
+      let promesa = null;
+      oyentes.fetch({ request: { url, method: 'GET', mode: 'cors', headers: { get: () => '' } },
+                      respondWith: (p) => { promesa = p; } });
+      return promesa ? (await promesa).texto : '(no interceptado)';
+    };
+    const CAT = 'https://jhonnylly.github.io/fitness/img/ejercicios/musculos.js';
+    const LISTA = 'https://jhonnylly.github.io/fitness/img/ejercicios/lista.js';
+    const FOTO = 'https://jhonnylly.github.io/fitness/img/musculos/gluteo.webp';
+    guardado.set(CAT, respuesta('VIEJO')); guardado.set(LISTA, respuesta('VIEJO'));
+    guardado.set(FOTO, respuesta('VIEJO'));
+
+    ok(await pedir(CAT) === 'NUEVO', 'con red, el catálogo de músculos llega nuevo aunque haya uno viejo guardado');
+    ok(await pedir(LISTA) === 'NUEVO', 'y la lista de ejercicios también');
+    ok(pedidas.every(p => p.opts && p.opts.cache === 'no-cache'),
+       'preguntando al servidor (no-cache), sin fiarse de los 10 minutos de GitHub Pages');
+    ok(guardado.get(CAT).texto === 'NUEVO', 'y deja guardado el nuevo para cuando no haya red');
+    hayRed = false;
+    ok(await pedir(CAT) === 'NUEVO', 'sin red, sirve el guardado');
+    hayRed = true;
+    ok(await pedir(FOTO) === 'VIEJO', 'las fotos siguen saliendo del caché al instante (no cambia lo demás)');
+
+    // Lo que se guarda para abrir sin cobertura tiene que existir de verdad.
+    const esenciales = [...swSrc.matchAll(/'\.\/([^']+)'/g)].map(m => m[1]).filter(f => f.includes('.'));
+    const faltan = esenciales.filter(f => !fs.existsSync(path.join(__dirname, '..', f)));
+    ok(faltan.length === 0, 'todos los ficheros de ESENCIALES existen' + (faltan.length ? ': faltan ' + faltan.join(', ') : ''));
+    ok(['aductor', 'trapecio', 'tibial'].every(m => esenciales.includes('img/musculos/' + m + '.webp')),
+       'y entran las tres fotos nuevas');
+  }
+
   console.log(fallos === 0 ? '\n✅ TODO OK\n' : `\n❌ ${fallos} fallo(s)\n`);
   process.exit(fallos === 0 ? 0 : 1);
 })();
