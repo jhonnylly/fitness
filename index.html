@@ -170,6 +170,9 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
   background:none;border:none;padding:0;margin:0;color:inherit;font-family:inherit;
   cursor:pointer;display:block;max-width:100%;text-align:left;}
 .cab-saludo:active{opacity:.7;}
+.recordatorio-guardar{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);
+  margin:-4px 0 10px;}
+.recordatorio-guardar b{color:var(--text);}
 .cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:10.5px;
   color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;}
 .cab-ico{background:rgba(255,255,255,0.08);border:none;border-radius:10px;width:36px;height:36px;
@@ -1946,6 +1949,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
         <div style="font-size:16px;font-weight:800;" id="form-title"></div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="form-type"></div>
       </div>
+      <!-- 26/09/2026, pedido por Jhon: recordatorio fijo de que la sesión no se
+           da por hecha hasta pulsar el botón, que queda abajo del todo, debajo
+           de los ejercicios y del "¿Cómo te has sentido?". -->
+      <div class="recordatorio-guardar"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Al terminar, pulsa <b>Guardar sesión</b> (abajo del todo)</span></div>
       <div id="aviso-borrador" class="msg msg-info" style="display:none;"></div>
       <!-- El descanso ocupaba una etiqueta y un campo enteros ARRIBA DEL TODO,
            por encima de los ejercicios: el valor que menos se toca en el sitio
@@ -3078,7 +3085,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-24 18:18';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-26 17:14';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5074,6 +5081,20 @@ function importJSON(e){
   r.readAsText(file);
 }
 
+/* 26/09/2026, pedido por Jhon: el "¡Hola, NOMBRE!" se quedaba fijo toda la
+   sesión. Ahora saluda solo al abrir la app; en cuanto sales de Inicio, la
+   cabecera dice qué se hace en la pestaña en la que estás, y al volver a
+   Inicio ya no repite el saludo. Frases cortas: la línea no parte y a 390 px
+   caben ~25 caracteres antes de los puntos suspensivos. */
+const TEXTO_SECCION={
+  inicio:'Tu día de hoy',
+  log:'Registra tu sesión de hoy',
+  resumen:'Tu progreso y tus fotos',
+  medidas:'Apunta tu peso y medidas'
+};
+let seccionCab='inicio';
+let saludoHecho=false;
+
 /* Las cinco pestañas están SIEMPRE visibles.
    Antes, al salir de Inicio, las no activas se colapsaban a 0 de ancho
    (`tab-hidden`): desde Registrar solo quedaban Inicio y la activa, así que
@@ -5087,6 +5108,9 @@ function showTab(id,el){
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('pane-'+id).classList.add('active');
   el.classList.add('active');
+  if(id!=='inicio')saludoHecho=true;
+  seccionCab=id;
+  pintarSaludo();
   if(id==='inicio')updateHome();
   /* Registrar se repintaba solo al guardar o al volver de una semana, así que
      al entrar en la pestaña podía enseñar cuentas viejas: sincronizar desde la
@@ -5871,11 +5895,16 @@ function pintarSaludo(){
   /* 22/09/2026: era "¡Buenas tardes, JHON! 👋" y con la franja horaria delante
      ocupaba toda la cabecera y se cortaba con nombres normales. Un "¡Hola!"
      dice lo mismo y deja sitio. */
-  const saludo='¡Hola';
   const nombre=(DB.profileName||'').trim();
   /* 22/09/2026: el saludo vive en la cabecera (#cab-saludo), no en Inicio. */
   const el=document.getElementById('cab-saludo');
-  if(el)el.textContent=saludo+(nombre?', '+nombre:'')+'! 👋';
+  if(!el)return;
+  /* Se llama también al llegar el perfil de la nube, que puede ser con la
+     persona ya en otra pestaña: por eso decide por la pestaña, no por quién
+     la llama. */
+  el.textContent = (seccionCab==='inicio' && !saludoHecho)
+    ? '¡Hola'+(nombre?', '+nombre:'')+'! 👋'
+    : (TEXTO_SECCION[seccionCab]||'');
 }
 
 window.irAProximaSesion=function(){

@@ -96,6 +96,29 @@ async function appLista(page, url){
     ok(!!arranque.rutina, 'el onboarding deja una rutina activa: '+arranque.rutina);
     ok(arranque.pestanas === 5, 'la barra tiene 5 huecos: 4 pestañas y Ajustes');
 
+    console.log('\n1b. La cabecera saluda al abrir y luego dice dónde estás');
+    // 26/09/2026: el "¡Hola, NOMBRE!" se quedaba fijo toda la sesión.
+    const cab = await page.evaluate(()=>{
+      const el = document.getElementById('cab-saludo');
+      const cabe = ()=> el.scrollWidth <= el.clientWidth;
+      const r = { inicial: el.textContent, cabe: {} };
+      for(const id of ['log','resumen','medidas','inicio']){
+        goTo(id); r[id] = el.textContent; r.cabe[id] = cabe();
+      }
+      goTo('resumen'); pintarSaludo(); r.repintado = el.textContent;   // el perfil llega de la nube estando en otra pestaña
+      goTo('inicio');
+      r.recordatorio = (document.querySelector('#session-form .recordatorio-guardar')||{}).textContent || '';
+      return r;
+    });
+    ok(/^¡Hola, prueba! 👋$/i.test(cab.inicial), 'al abrir, saluda con el nombre: '+cab.inicial);
+    ok(cab.log === 'Registra tu sesión de hoy', 'en Entrenar dice qué hacer: '+cab.log);
+    ok(cab.resumen !== cab.log && cab.medidas !== cab.log && !/Hola/.test(cab.resumen+cab.medidas),
+       'cada pestaña tiene su frase: '+cab.resumen+' / '+cab.medidas);
+    ok(cab.inicio === 'Tu día de hoy', 'al volver a Inicio ya no repite el saludo: '+cab.inicio);
+    ok(cab.repintado === cab.resumen, 'si se repinta estando en otra pestaña, no vuelve el "¡Hola!"');
+    ok(Object.values(cab.cabe).every(Boolean), 'ninguna frase se corta a 390 px');
+    ok(/Guardar sesión/.test(cab.recordatorio), 'la sesión recuerda pulsar Guardar sesión al terminar');
+
     console.log('\n2. El asistente crea la rutina que se le pide');
     const creada = await page.evaluate(()=>{
       openNewRoutinePanel();
