@@ -996,6 +996,22 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ex-musculos .ex-mus-reducir{display:none;}
 .ex-musculos.grande .ex-mus-ampliar{display:none;}
 .ex-musculos.grande .ex-mus-reducir{display:inline;}
+/* Vídeo de cómo se hace el ejercicio (26/09/2026, pedido por Jhon): se toca y
+   se reproduce AHÍ MISMO, sin pantalla completa, sin sonido y en bucle; otro
+   toque lo pausa. Pequeño en reposo para no empujar las series hacia abajo;
+   al reproducirse crece, que es cuando lo estás mirando. */
+.ex-video{position:relative;display:block;width:150px;aspect-ratio:9/16;margin:2px auto 4px;padding:0;
+  border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#000;cursor:pointer;
+  transition:width .2s ease;}
+.ex-video.reproduciendo{width:230px;}
+.ex-video video{display:block;width:100%;height:100%;object-fit:cover;}
+.ex-video-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.25);transition:opacity .15s ease;pointer-events:none;}
+.ex-video-play span{width:54px;height:54px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.4);}
+.ex-video-play svg{width:22px;height:22px;fill:#fff;margin-left:3px;}
+.ex-video.reproduciendo .ex-video-play{opacity:0;}
+.ex-video-pie{font-size:11.5px;color:var(--muted);text-align:center;margin:0 0 12px;}
 /* Las semanas, en mosaico de dos columnas: en lista, un plan de 12 semanas eran
    doce filas y mucho scroll para llegar a la que entrenas. Las acciones de cada
    semana (duplicar, borrar) se fueron DENTRO de la semana: en una celda de
@@ -3085,7 +3101,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-26 19:16';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-26 20:54';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5586,6 +5602,48 @@ function musculosDeEjercicio(nombre){
   return { primarios: par[0]||[], secundarios: par[1]||[] };
 }
 
+/* Vídeos de cómo se hace cada ejercicio, grabados por el entrenador y montados
+   con la plantilla de ~/Documentos/v0_fitness/video_ejercicios (fuera del repo).
+   Clave del catálogo → nombre del fichero en videos/ejercicios/ (.mp4 y la
+   portada .jpg). Se busca con buscarImagenEjercicio, con la misma cortesía que
+   las fotos. "Curl bíceps" a secas es el de las rutinas prehechas y se hace con
+   mancuernas: comparte vídeo. Sin conexión el vídeo no carga (el Service Worker
+   no guarda vídeos), pero el resto de la ficha sí. */
+const VIDEO_EJERCICIO={
+  curl_biceps_mancuerna:'curl_biceps_mancuerna',
+  curl_biceps:'curl_biceps_mancuerna'
+};
+
+function videoEjercicioHTML(nombre){
+  const v=buscarImagenEjercicio(nombre, VIDEO_EJERCICIO);
+  if(!v) return '';
+  const base='videos/ejercicios/'+v;
+  /* muted + playsinline: sin eso el iPhone no deja reproducir sin abrir su
+     reproductor a pantalla completa. preload="none": nada se descarga hasta
+     tocarlo, que es lo que cuida los datos móviles. */
+  return `<button type="button" class="ex-video" onclick="alternarVideoEjercicio(this)"
+      aria-label="Ver cómo se hace ${escaparHTML(nombre)}">
+      <video src="${base}.mp4" poster="${base}.jpg" muted loop playsinline preload="none"
+             disablepictureinpicture disableremoteplayback></video>
+      <span class="ex-video-play"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg></span></span>
+    </button>
+    <div class="ex-video-pie">Cómo se hace · toca para ver o pausar</div>`;
+}
+
+function alternarVideoEjercicio(boton){
+  const v=boton.querySelector('video');
+  if(!v) return;
+  if(v.paused){
+    boton.classList.add('reproduciendo');
+    const p=v.play();
+    // Si el navegador lo rechaza (sin red, por ejemplo), que vuelva el botón de play.
+    if(p && p.catch) p.catch(()=>boton.classList.remove('reproduciendo'));
+  }else{
+    v.pause();
+    boton.classList.remove('reproduciendo');
+  }
+}
+
 /* Foto del músculo que trabaja el ejercicio abierto, con los nombres escritos
    debajo. Una foto por músculo principal (65 ejercicios tienen uno, 36 tienen
    dos) y los secundarios en texto: son cinco palabras y una foto por cada uno
@@ -5615,7 +5673,7 @@ function pintarImagenEjercicio(){
         <div class="ex-mus-fotos">${unicas.map(f=>
           `<img src="img/musculos/${f}.webp" alt="Músculo: ${escaparHTML(f)}" loading="lazy">`).join('')}</div>
         <figcaption>${pie}</figcaption>
-      </figure>`;
+      </figure>`+videoEjercicioHTML(ex.name);
     return;
   }
 
@@ -5624,11 +5682,11 @@ function pintarImagenEjercicio(){
   /* Ni músculos ni silueta: aquí no se pinta nada, pero no se deja el hueco
      mudo: lo explica pintarSugerenciasEjercicio(), justo bajo el nombre, que es
      donde está el campo que acaba de cambiar (17/09/2026). */
-  if(!url){ c.innerHTML=''; return; }
+  if(!url){ c.innerHTML=videoEjercicioHTML(ex.name); return; }
   c.innerHTML=`<figure class="ex-musculos silueta" onclick="this.classList.toggle('grande')">
       <img src="${url}" alt="Músculos que trabaja: ${escaparHTML(ex.name||'')}" loading="lazy">
       <figcaption>Músculos que trabaja · <span class="ex-mus-ampliar">toca para ampliar</span><span class="ex-mus-reducir">toca para reducir</span></figcaption>
-    </figure>`;
+    </figure>`+videoEjercicioHTML(ex.name);
 }
 
 /* Progresión de cargas del ejercicio abierto: el peso máximo de cada sesión

@@ -21,7 +21,7 @@ const PUERTO = 8791;
 
 const TIPOS = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
   '.json':'application/json; charset=utf-8', '.webp':'image/webp', '.svg':'image/svg+xml',
-  '.png':'image/png', '.jpeg':'image/jpeg', '.jpg':'image/jpeg', '.woff2':'font/woff2' };
+  '.png':'image/png', '.jpeg':'image/jpeg', '.jpg':'image/jpeg', '.woff2':'font/woff2', '.mp4':'video/mp4' };
 
 function servidor(){
   return http.createServer((req,res)=>{
@@ -175,6 +175,40 @@ async function appLista(page, url){
     const faltan = fotosMusculo.filter(f=>!fs.existsSync(path.join(__dirname,'..','img','musculos',f+'.webp')));
     ok(faltan.length === 0, 'todas las fotos de músculo existen en img/musculos/'+(faltan.length?': faltan '+faltan.join(', '):''));
     ok(['aductor','trapecio','tibial'].every(f=>fotosMusculo.includes(f)), 'aductor, trapecio y tibial tienen foto propia');
+
+    console.log('\n3b. El vídeo del ejercicio se reproduce ahí mismo');
+    // 26/09/2026: tocar la miniatura lo reproduce dentro de la ficha, sin
+    // pantalla completa, sin sonido y en bucle; otro toque lo pausa.
+    const nombreAntes = await page.evaluate(()=>curEx[0].name);
+    await page.evaluate(()=>{ curEx[0].name = 'Curl bíceps mancuerna'; pintarImagenEjercicio(); });
+    const vid = await page.evaluate(()=>{
+      const b = document.querySelector('#ex-musculos .ex-video'), v = b && b.querySelector('video');
+      return v ? { src: v.getAttribute('src'), poster: v.getAttribute('poster'), muted: v.muted,
+                   inline: v.hasAttribute('playsinline'), bucle: v.loop, preload: v.getAttribute('preload'),
+                   controles: v.controls, trasFoto: !!document.querySelector('#ex-musculos figure + .ex-video') } : null;
+    });
+    ok(!!vid, 'un ejercicio con vídeo enseña su miniatura en la ficha');
+    ok(vid && vid.inline && vid.muted && vid.bucle && !vid.controles,
+       'sin sonido, en bucle, sin controles y con playsinline (en el iPhone no se abre a pantalla completa)');
+    ok(vid && vid.preload === 'none', 'y no descarga nada hasta que lo tocas (datos móviles)');
+    ok(vid && vid.trasFoto, 'va justo debajo de la foto del músculo');
+    await page.evaluate(()=>document.querySelector('#ex-musculos .ex-video').click());
+    await esperar(1500);
+    const suena = await page.evaluate(()=>{ const b = document.querySelector('#ex-musculos .ex-video');
+      return { rep: b.classList.contains('reproduciendo'), t: b.querySelector('video').currentTime,
+               pausado: b.querySelector('video').paused }; });
+    ok(suena.rep && !suena.pausado && suena.t > 0, 'al tocarlo se reproduce dentro de la ficha ('+suena.t.toFixed(1)+' s)');
+    await page.evaluate(()=>document.querySelector('#ex-musculos .ex-video').click());
+    const parado = await page.evaluate(()=>{ const b = document.querySelector('#ex-musculos .ex-video');
+      return { rep: b.classList.contains('reproduciendo'), pausado: b.querySelector('video').paused }; });
+    ok(!parado.rep && parado.pausado, 'y otro toque lo pausa');
+    await page.evaluate(()=>{ curEx[0].name = 'Sentadilla goblet'; pintarImagenEjercicio(); });
+    ok(await page.evaluate(()=>!document.querySelector('#ex-musculos .ex-video')),
+       'un ejercicio sin vídeo no enseña ningún hueco');
+    await page.evaluate(n=>{ curEx[0].name = n; pintarImagenEjercicio(); }, nombreAntes);
+    const videos = await page.evaluate(()=>[...new Set(Object.values(VIDEO_EJERCICIO))]);
+    const sinFichero = videos.filter(v=>['.mp4','.jpg'].some(e=>!fs.existsSync(path.join(__dirname,'..','videos','ejercicios',v+e))));
+    ok(sinFichero.length === 0, 'cada vídeo del mapa tiene su .mp4 y su portada .jpg'+(sinFichero.length?': faltan '+sinFichero.join(', '):''));
 
     console.log('\n4. Reordenar los ejercicios arrastrando');
     await page.evaluate(()=>closeExDetail());
