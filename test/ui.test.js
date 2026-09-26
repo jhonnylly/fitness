@@ -176,44 +176,44 @@ async function appLista(page, url){
     ok(faltan.length === 0, 'todas las fotos de músculo existen en img/musculos/'+(faltan.length?': faltan '+faltan.join(', '):''));
     ok(['aductor','trapecio','tibial'].every(f=>fotosMusculo.includes(f)), 'aductor, trapecio y tibial tienen foto propia');
 
-    console.log('\n3b. El vídeo del ejercicio: miniatura junto al nombre y en grande al tocarla');
-    /* 26/09/2026, propuesta 2 elegida por Jhon: una miniatura junto al nombre;
-       al tocarla, el vídeo en grande DENTRO de la tarjeta, sin pantalla
-       completa, sin sonido y en bucle. Y lo principal: las series se ven al
-       entrar, sin scroll (antes la foto y el vídeo las empujaban abajo). */
+    console.log('\n3b. El vídeo explicativo: una fila bajo el nombre y en grande al tocarla');
+    /* 26/09/2026: la fila lleva la miniatura y "Vídeo explicativo · Cómo hacer
+       este ejercicio" (sin texto no se entendía qué era); al tocarla, el vídeo
+       en grande DENTRO de la tarjeta, sin pantalla completa, sin sonido y en
+       bucle. La foto del músculo sigue en grande, como antes. */
     const nombreAntes = await page.evaluate(()=>curEx[0].name);
     await page.evaluate(()=>{ curEx[0].name = 'Curl bíceps mancuerna'; pintarImagenEjercicio(); window.scrollTo(0,0); });
     const vid = await page.evaluate(()=>{
-      const mini = document.querySelector('.ex-detail-header #ex-video-mini .ex-video-mini');
+      const fila = document.querySelector('#ex-video-mini .ex-video-fila');
       const grande = document.getElementById('ex-video-grande'), v = grande.querySelector('video');
-      const input = document.getElementById('ex-detail-title').getBoundingClientRect(), rm = mini && mini.getBoundingClientRect();
-      const barra = document.querySelector('.tabs').getBoundingClientRect().top;
-      const series = [...document.querySelectorAll('#exercises-container input')];
-      const chip = document.querySelector('#ex-musculos figure');
-      return { mini: !!mini, alLado: !!rm && Math.abs((rm.top+rm.bottom)/2 - (input.top+input.bottom)/2) < 4 && rm.right <= input.left,
+      const input = document.getElementById('ex-detail-title').getBoundingClientRect(), rf = fila && fila.getBoundingClientRect();
+      const foto = document.querySelector('#ex-musculos img');
+      return { fila: !!fila, debajo: !!rf && rf.top >= input.bottom, texto: fila ? fila.innerText.replace(/\s+/g,' ') : '',
+               enTarjeta: !!(fila && fila.closest('#ex-detail-view .card')),
                cerrado: getComputedStyle(grande).display === 'none',
                v: v ? { muted: v.muted, inline: v.hasAttribute('playsinline'), bucle: v.loop, controles: v.controls, preload: v.getAttribute('preload') } : null,
-               chipAlto: chip ? chip.getBoundingClientRect().height : 999, chipEnTarjeta: !!(chip && chip.closest('#ex-detail-view .card')),
-               seriesVisibles: series.length >= 8 && series.slice(0, 8).every(e => e.getBoundingClientRect().bottom <= barra) };
+               fotoAlto: foto ? foto.getBoundingClientRect().height : 0 };
     });
-    ok(vid.mini && vid.alLado, 'un ejercicio con vídeo enseña su miniatura junto al nombre');
+    ok(vid.fila && vid.debajo && vid.enTarjeta, 'un ejercicio con vídeo enseña su fila bajo el nombre, en la misma tarjeta');
+    ok(/Vídeo explicativo/.test(vid.texto) && /Cómo hacer este ejercicio/.test(vid.texto),
+       'y dice lo que es: '+vid.texto);
     ok(vid.cerrado, 'el vídeo grande empieza cerrado: no ocupa nada');
     ok(vid.v && vid.v.inline && vid.v.muted && vid.v.bucle && !vid.v.controles,
        'sin sonido, en bucle, sin controles y con playsinline (en el iPhone no se abre a pantalla completa)');
     ok(vid.v && vid.v.preload === 'none', 'y no descarga nada hasta que lo abres (datos móviles)');
-    ok(vid.chipEnTarjeta && vid.chipAlto < 70, 'el músculo es una línea compacta dentro de la tarjeta del nombre ('+Math.round(vid.chipAlto)+' px)');
-    ok(vid.seriesVisibles, '🔴 las 4 series se ven al entrar, sin hacer scroll');
+    ok(vid.fotoAlto >= 140, 'la foto del músculo sigue en grande, como antes ('+Math.round(vid.fotoAlto)+' px)');
 
-    await page.evaluate(()=>document.querySelector('#ex-video-mini .ex-video-mini').click());
+    await page.evaluate(()=>document.querySelector('#ex-video-mini .ex-video-fila').click());
     await esperar(1500);
     const abierto = await page.evaluate(()=>{ const g = document.getElementById('ex-video-grande'), v = g.querySelector('video'),
       r = g.getBoundingClientRect(), card = g.closest('.card').getBoundingClientRect();
       return { visible: getComputedStyle(g).display !== 'none', t: v.currentTime, pausado: v.paused,
                cuadrado: Math.abs(r.width - r.height) < 4, ancho: r.width >= card.width - 40,
-               activa: document.querySelector('.ex-video-mini').classList.contains('activo') }; });
+               activa: document.querySelector('.ex-video-fila').classList.contains('activo'),
+               dice: document.querySelector('.ex-video-flecha').textContent }; });
     ok(abierto.visible && !abierto.pausado && abierto.t > 0, 'al tocar la miniatura se abre y se reproduce ahí mismo ('+abierto.t.toFixed(1)+' s)');
     ok(abierto.cuadrado && abierto.ancho, 'en grande: cuadrado y a todo el ancho de la tarjeta');
-    ok(abierto.activa, 'y la miniatura se marca mientras está abierto');
+    ok(abierto.activa && abierto.dice === 'Cerrar', 'y la fila se marca y pasa a decir "Cerrar" mientras está abierto');
     await page.evaluate(()=>document.querySelector('#ex-video-grande .ex-video').click());
     ok(await page.evaluate(()=>document.querySelector('#ex-video-grande video').paused), 'tocar el vídeo lo pausa');
     await page.evaluate(()=>document.querySelector('#ex-video-grande .ex-video').click());
@@ -221,18 +221,18 @@ async function appLista(page, url){
     ok(await page.evaluate(()=>!document.querySelector('#ex-video-grande video').paused), 'y otro toque lo sigue');
     await page.evaluate(()=>document.querySelector('.ex-video-cerrar').click());
     const cerrado = await page.evaluate(()=>({ oculto: getComputedStyle(document.getElementById('ex-video-grande')).display === 'none',
-      pausado: document.querySelector('#ex-video-grande video').paused, activa: document.querySelector('.ex-video-mini').classList.contains('activo') }));
+      pausado: document.querySelector('#ex-video-grande video').paused, activa: document.querySelector('.ex-video-fila').classList.contains('activo') }));
     ok(cerrado.oculto && cerrado.pausado && !cerrado.activa, '"Cerrar" lo recoge y lo para');
 
     await page.evaluate(()=>document.querySelector('#ex-musculos figure').click());
     await esperar(400);   // la foto crece con una transición de 0,2 s
     const grandeFoto = await page.evaluate(()=>document.querySelector('#ex-musculos img').getBoundingClientRect().height);
-    ok(grandeFoto > 150, 'tocar la línea del músculo abre la foto en grande ('+Math.round(grandeFoto)+' px)');
+    ok(grandeFoto > 250, 'tocar la foto del músculo la amplía, como siempre ('+Math.round(grandeFoto)+' px)');
     await page.evaluate(()=>document.querySelector('#ex-musculos figure').click());
 
     await page.evaluate(()=>{ curEx[0].name = 'Sentadilla goblet'; pintarImagenEjercicio(); });
     ok(await page.evaluate(()=>document.getElementById('ex-video-mini').innerHTML === '' && document.getElementById('ex-video-grande').innerHTML === ''),
-       'un ejercicio sin vídeo no enseña miniatura ni hueco');
+       'un ejercicio sin vídeo no enseña la fila ni ningún hueco');
     await page.evaluate(n=>{ curEx[0].name = n; pintarImagenEjercicio(); }, nombreAntes);
     const videos = await page.evaluate(()=>[...new Set(Object.values(VIDEO_EJERCICIO))]);
     const sinFichero = videos.filter(v=>['.mp4','.jpg'].some(e=>!fs.existsSync(path.join(__dirname,'..','videos','ejercicios',v+e))));
