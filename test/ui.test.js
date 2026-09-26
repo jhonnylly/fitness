@@ -185,19 +185,27 @@ async function appLista(page, url){
       const b = document.querySelector('#ex-musculos .ex-video'), v = b && b.querySelector('video');
       return v ? { src: v.getAttribute('src'), poster: v.getAttribute('poster'), muted: v.muted,
                    inline: v.hasAttribute('playsinline'), bucle: v.loop, preload: v.getAttribute('preload'),
-                   controles: v.controls, trasFoto: !!document.querySelector('#ex-musculos figure + .ex-video') } : null;
+                   controles: v.controls,
+                   // 26/09/2026: cuadrado y en la MISMA fila que la foto, a su misma altura.
+                   fila: (()=>{ const img = document.querySelector('#ex-musculos .ex-mus-fotos img'), r = b.getBoundingClientRect(),
+                                      ri = img.getBoundingClientRect();
+                                return { dentro: !!b.closest('.ex-mus-fotos'), cuadrado: Math.abs(r.width - r.height) < 2,
+                                         mismaAltura: Math.abs(r.height - ri.height) < 2, mismaLinea: Math.abs(r.bottom - ri.bottom) < 2 }; })() } : null;
     });
     ok(!!vid, 'un ejercicio con vídeo enseña su miniatura en la ficha');
     ok(vid && vid.inline && vid.muted && vid.bucle && !vid.controles,
        'sin sonido, en bucle, sin controles y con playsinline (en el iPhone no se abre a pantalla completa)');
     ok(vid && vid.preload === 'none', 'y no descarga nada hasta que lo tocas (datos móviles)');
-    ok(vid && vid.trasFoto, 'va justo debajo de la foto del músculo');
+    ok(vid && vid.fila.dentro && vid.fila.mismaLinea, 'va AL LADO de la foto del músculo, en su misma fila (debajo empujaba las series)');
+    ok(vid && vid.fila.cuadrado && vid.fila.mismaAltura, 'cuadrado y de la misma altura que la foto');
     await page.evaluate(()=>document.querySelector('#ex-musculos .ex-video').click());
     await esperar(1500);
     const suena = await page.evaluate(()=>{ const b = document.querySelector('#ex-musculos .ex-video');
       return { rep: b.classList.contains('reproduciendo'), t: b.querySelector('video').currentTime,
                pausado: b.querySelector('video').paused }; });
     ok(suena.rep && !suena.pausado && suena.t > 0, 'al tocarlo se reproduce dentro de la ficha ('+suena.t.toFixed(1)+' s)');
+    ok(await page.evaluate(()=>!document.querySelector('#ex-musculos figure').classList.contains('grande')),
+       'tocar el vídeo no amplía la foto de al lado');
     await page.evaluate(()=>document.querySelector('#ex-musculos .ex-video').click());
     const parado = await page.evaluate(()=>{ const b = document.querySelector('#ex-musculos .ex-video');
       return { rep: b.classList.contains('reproduciendo'), pausado: b.querySelector('video').paused }; });
