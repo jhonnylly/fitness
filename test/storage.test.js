@@ -1129,6 +1129,27 @@ const ok = (cond, msg) => {
     hayRed = true;
     ok(await pedir(FOTO) === 'VIEJO', 'las fotos siguen saliendo del caché al instante (no cambia lo demás)');
 
+    /* 26/09/2026: cualquier página se guardaba ENCIMA de index.html, así que
+       tras mirar legal.html o demo.html la app sin red enseñaba esa página. */
+    const navegar = async (url) => {
+      let promesa = null;
+      oyentes.fetch({ request: { url, method: 'GET', mode: 'navigate', headers: { get: () => 'text/html' } },
+                      respondWith: (p) => { promesa = p; } });
+      return promesa ? (await promesa).texto : '(no interceptado)';
+    };
+    const BASE = 'https://jhonnylly.github.io/fitness/';
+    guardado.set('./index.html', respuesta('APP'));
+    ok(await navegar(BASE + 'demo.html') === 'NUEVO', 'otra página de la web se sirve de la red');
+    ok(guardado.get('./index.html').texto === 'APP', '🔴 y NO pisa la copia de la app para abrir sin red');
+    hayRed = false;
+    ok(await navegar(BASE) === 'APP', 'sin red, la app sigue abriendo la app');
+    ok(await navegar(BASE + 'demo.html') === 'NUEVO', 'y la otra página, su propia copia');
+    hayRed = true;
+    ok(await navegar(BASE + 'index.html') === 'NUEVO' && guardado.get('./index.html').texto === 'NUEVO',
+       'abrir la app con red sí renueva su copia');
+    ok(await pedir(BASE + 'demo/presentacion.mp4') === '(no interceptado)',
+       'los vídeos no pasan por el Service Worker (los pide a trozos)');
+
     // Lo que se guarda para abrir sin cobertura tiene que existir de verdad.
     const esenciales = [...swSrc.matchAll(/'\.\/([^']+)'/g)].map(m => m[1]).filter(f => f.includes('.'));
     const faltan = esenciales.filter(f => !fs.existsSync(path.join(__dirname, '..', f)));

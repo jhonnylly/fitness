@@ -91,16 +91,26 @@ self.addEventListener('fetch', e => {
   const esHTML = req.mode === 'navigate' ||
                  (req.headers.get('accept') || '').includes('text/html');
 
+  /* Los vídeos no se tocan (26/09/2026, al publicar demo.html): el navegador
+     los pide a trozos (Range → 206), el caché no guarda respuestas parciales y
+     Safari puede no reproducir un vídeo que pasa por el Service Worker. */
+  if (/\.(mp4|webm)$/i.test(url.pathname)) return;
+
   if (esHTML) {
+    /* Solo la APP se guarda como la copia para abrir sin red. Hasta el
+       26/09/2026 cualquier página (legal.html, demo.html) se guardaba ENCIMA de
+       index.html: después de mirarlas, abrir la app sin cobertura enseñaba esa
+       página en vez de la app. Las demás se guardan con su propio nombre. */
+    const esApp = url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
     // Red primero, caché como red de seguridad.
     e.respondWith((async () => {
+      const c = await caches.open(CACHE);
       try {
         const res = await fetch(req);
-        const c = await caches.open(CACHE);
-        c.put('./index.html', res.clone()).catch(() => {});
+        c.put(esApp ? './index.html' : req, res.clone()).catch(() => {});
         return res;
       } catch (err) {
-        const c = await caches.open(CACHE);
+        if (!esApp) return (await c.match(req, { ignoreSearch: true })) || Response.error();
         return (await c.match('./index.html')) || (await c.match('./')) || Response.error();
       }
     })());

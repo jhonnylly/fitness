@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presentación · My Fitness Tracker</title>
+<meta name="description" content="Vídeo de presentación de My Fitness Tracker, la app para entrenadores personales y sus clientes. Diseñada y programada por Jhonnylly Mendoza.">
+<!-- 26/09/2026: página para enlazar desde el CV y LinkedIn. La parte del
+     entrenador solo se ve con invitación, así que quien revise la app de
+     fuera no la ve: el vídeo la enseña con datos inventados. Rehacer el vídeo:
+     ~/Documentos/v0_fitness/video_demo/LEEME.md (fuera del repo). -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_ES">
+<meta property="og:title" content="My Fitness Tracker · Presentación">
+<meta property="og:description" content="La app para entrenadores personales y sus clientes, en 47 segundos.">
+<meta property="og:url" content="https://jhonnylly.github.io/fitness/demo.html">
+<meta property="og:image" content="https://jhonnylly.github.io/fitness/demo/vista_previa.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<link rel="icon" href="icons/icono-192.png">
+<style>
+  :root{--bg:#f6f5fa;--surface:#fff;--text:#18161f;--muted:#6b6780;--accent:#8b5cf6;--line:#e4e1ee;}
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#141219;--surface:#1d1a24;--text:#f1eff6;--muted:#a19cb3;--accent:#a78bfa;--line:#2c2836;}
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  main{max-width:880px;margin:0 auto;padding:24px 16px 60px;}
+  a{color:var(--accent);}
+  .volver{font-size:14px;font-weight:700;text-decoration:none;}
+  .marca{font-size:13px;letter-spacing:3px;font-weight:800;margin:22px 0 6px;}
+  .marca b{color:var(--accent);}
+  h1{font-size:30px;line-height:1.15;margin:0 0 8px;}
+  .intro{color:var(--muted);margin:0 0 22px;max-width:560px;}
+  .rejilla{display:grid;grid-template-columns:minmax(0,340px) 1fr;gap:28px;align-items:start;}
+  @media (max-width:720px){ .rejilla{grid-template-columns:1fr;} }
+  video{display:block;width:100%;max-width:340px;margin:0 auto;aspect-ratio:9/16;
+        border-radius:22px;background:#17161f;border:1px solid var(--line);}
+  section{background:var(--surface);border:1px solid var(--line);border-radius:18px;
+          padding:18px;margin-bottom:16px;}
+  h2{font-size:17px;margin:0 0 8px;}
+  ul{margin:0;padding-left:20px;} li{margin:3px 0;}
+  .boton{display:inline-block;background:var(--accent);color:#fff;font-weight:700;
+         text-decoration:none;padding:12px 20px;border-radius:12px;margin-top:4px;}
+  .nota{font-size:13px;color:var(--muted);margin:10px 0 0;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+  .chip{font-size:13px;padding:4px 12px;border-radius:20px;border:1px solid var(--line);color:var(--muted);}
+  footer{margin-top:26px;font-size:14px;color:var(--muted);}
+</style>
+</head>
+<body>
+<main>
+  <a class="volver" href="./">← Ir a la app</a>
+  <div class="marca">MY <b>FITNESS TRACKER</b></div>
+  <h1>La app para entrenadores personales y sus clientes</h1>
+  <p class="intro">Rutinas, registro de entrenamientos, progreso y seguimiento de cada cliente, desde el móvil. Diseñada y programada por Jhonnylly Mendoza.</p>
+
+  <div class="rejilla">
+    <!-- muted + playsinline: sin eso el iPhone no deja que empiece solo ni
+         que se vea dentro de la página. El vídeo no tiene sonido. -->
+    <video src="demo/presentacion.mp4" poster="demo/portada.jpg" controls muted playsinline preload="metadata"
+           aria-label="Vídeo de presentación de la app, 47 segundos, sin sonido"></video>
+
+    <div>
+      <section>
+        <h2>Para quien entrena</h2>
+        <ul>
+          <li>Rutinas listas para usar o creadas con un asistente paso a paso</li>
+          <li>Plan por semanas con la sesión de hoy siempre a mano</li>
+          <li>Series, kilos y repeticiones, con el músculo que trabaja cada ejercicio</li>
+          <li>Rachas, progreso, peso y medidas con gráficas</li>
+        </ul>
+      </section>
+      <section>
+        <h2>Para el entrenador</h2>
+        <ul>
+          <li>Invita a sus clientes con un enlace y los ve a todos de un vistazo</li>
+          <li>Ficha de cada cliente: mensajes, rutinas asignadas y progresión de cargas</li>
+          <li>Ajusta el plan de cada uno: días por semana, sesiones y ejercicios</li>
+          <li>Retos de grupo para motivar</li>
+        </ul>
+      </section>
+      <section>
+        <h2>Pruébala</h2>
+        <a class="boton" href="./">Abrir la app</a>
+        <p class="nota">La parte personal funciona sin crear cuenta y los datos se quedan en tu dispositivo. La parte del entrenador funciona por invitación.</p>
+      </section>
+      <section>
+        <h2>Cómo está hecha</h2>
+        <div class="chips">
+          <span class="chip">HTML, CSS y JavaScript</span>
+          <span class="chip">Firebase: cuentas y base de datos con reglas de seguridad</span>
+          <span class="chip">Funciona sin conexión</span>
+          <span class="chip">GitHub Pages</span>
+          <span class="chip">Más de 700 pruebas automáticas</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    Jhonnylly Mendoza ·
+    <a href="https://www.linkedin.com/in/jhonnylly-mendoza-rodr%C3%ADguez-70914911">LinkedIn</a> ·
+    <a href="https://github.com/jhonnylly">GitHub</a>
+  </footer>
+</main>
+</body>
+</html>
