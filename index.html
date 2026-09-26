@@ -742,6 +742,27 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .set-label{font-size:11px;color:var(--muted);min-width:24px;text-align:center;}
 .set-inp{flex:1;padding:8px 6px;text-align:center;font-size:14px;font-weight:600;}
 .set-unit{font-size:11px;color:var(--muted);min-width:26px;}
+/* Series en COLUMNAS (27/09/2026, idea de Jhon a partir de la app de Synergym):
+   una columna por serie y, de arriba abajo, repeticiones, peso, descanso y RIR
+   (si está activo). En gris, lo que toca: las repeticiones del plan y el
+   descanso general; se escribe encima. Con más de 4 series se desliza de lado
+   y la columna de etiquetas se queda fija. La columna "+" añade una serie. */
+.sc-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:-2px;padding:2px;}
+.sc-scroll::-webkit-scrollbar{display:none;}
+.sc-grid{display:grid;gap:6px 5px;align-items:center;}
+.sc-lab{position:sticky;left:0;z-index:1;align-self:stretch;display:flex;align-items:center;
+  background:var(--surface);font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);
+  box-shadow:6px 0 6px -4px var(--surface);}
+.sc-cab{display:flex;align-items:center;justify-content:center;gap:2px;height:26px;font-size:12px;font-weight:800;color:var(--muted);}
+.sc-quitar{border:none;background:transparent;color:var(--muted);font-size:15px;line-height:1;padding:4px 6px;cursor:pointer;}
+.sc-grid input{width:100%;min-width:0;height:44px;padding:0 2px;border-radius:12px;text-align:center;
+  font-size:16px;font-weight:800;}
+.sc-grid input::placeholder{color:var(--muted);font-weight:600;opacity:.75;}
+.sc-desc{position:relative;}
+.sc-desc input{height:36px;font-size:13px;font-weight:700;padding-right:12px;}
+.sc-desc::after{content:'s';position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none;}
+.sc-mas{align-self:stretch;min-height:44px;border:1px dashed var(--border);border-radius:12px;background:transparent;
+  color:var(--accent);font-size:22px;font-weight:800;cursor:pointer;}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
 .stat{background:var(--surface);border-radius:var(--radius-sm);padding:12px;text-align:center;}
 .stat-val{font-size:24px;font-weight:800;color:var(--accent);
@@ -2079,7 +2100,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
         </select>
       </div>
       <div id="exercises-container"></div>
-      <button class="btn btn-secondary" onclick="addSetToCurrentEx()">+ Serie</button>
+      <!-- "+ Serie" se fue el 27/09/2026: ahora es la columna "+" de las series. -->
       <!-- La progresión va DEBAJO de las series: primero registrar, que es a lo
            que vienes al gimnasio, y luego mirar el histórico si te interesa. -->
       <div id="ex-grafica" style="margin-top:14px;"></div>
@@ -3127,7 +3148,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-26 23:45';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 00:29';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4360,6 +4381,8 @@ function ponDescanso(v){
   const inp=document.getElementById('rest');
   if(inp)inp.value=seg;
   pintarDescanso();
+  // Las series sin descanso propio enseñan el general en gris: que se actualice.
+  document.querySelectorAll('#sets-container .set-desc').forEach(e=>{ e.placeholder=seg; });
   guardarBorrador();
 }
 
@@ -4557,27 +4580,74 @@ function renderEx(){
   c.innerHTML=`
     ${nota?`<div class="ex-nota-coach"><span class="ex-nota-tag">Tu entrenador</span>${escaparHTML(nota)}</div>`:''}
     <div class="ex-card">
-      <div id="sets-container">
-        ${ex.sets.map((set,si)=>{
-          const mostrado=set.kg===''||set.kg==null?'':deKg(set.kg,u);
-          return `
-          <div class="set-row">
-            <span class="set-label">S${si+1}</span>
-            <input type="text" inputmode="decimal" class="set-inp" value="${mostrado===''?'':escaparHTML(String(mostrado))}" placeholder="${u}" onchange="anotarPeso(${si},this.value)">
-            <span class="set-unit">${u}</span>
-            <input type="text" inputmode="numeric" class="set-inp" value="${set.reps||''}" placeholder="reps" onchange="curEx[${curExIndex}].sets[${si}].reps=this.value;if(this.value)startTimer(parseInt(document.getElementById('rest').value)||90)">
-            <span class="set-unit">reps</span>
-            ${DB.rirActivo?`
-            <input type="text" inputmode="numeric" class="set-inp" value="${set.rir!=null?set.rir:''}" placeholder="RIR" onchange="curEx[${curExIndex}].sets[${si}].rir=this.value">
-            <span class="set-unit">rir</span>`:''}
-            <button class="btn-sm" onclick="removeSetFromCurrent(${si})" style="padding:6px 8px;">−</button>
-          </div>
-        `;}).join('')}
-      </div>
+      <div id="sets-container" class="sc-scroll">${columnasSeries(ex,u)}</div>
     </div>
   `;
   pintarImagenEjercicio();
   pintarGraficaCargasEjercicio();
+}
+
+/* Las series en columnas. Filas: repeticiones (en gris, lo que pide el plan),
+   peso en la unidad del ejercicio, descanso de ESA serie (en gris, el general
+   de la sesión) y RIR si está activo. La primera columna son las etiquetas y
+   la última, el "+" que añade una serie. */
+function columnasSeries(ex,u){
+  const n=ex.sets.length;
+  const obj=objetivoReps(ex.name)||'reps';
+  const descGeneral=parseInt(document.getElementById('rest').value)||90;
+  const col=(si,html)=>`<div style="grid-column:${si+2}">${html}</div>`;
+  const filas=[
+    ['Reps', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp set-reps" value="${escaparHTML(String(set.reps||''))}" placeholder="${escaparHTML(obj)}"
+        aria-label="Repeticiones de la serie ${si+1}" onchange="anotarReps(${si},this.value)">`],
+    [u, (set,si)=>{ const m=set.kg===''||set.kg==null?'':deKg(set.kg,u);
+        return `<input type="text" inputmode="decimal" class="set-inp set-kg" value="${m===''?'':escaparHTML(String(m))}" placeholder="${u}"
+        aria-label="Peso de la serie ${si+1} en ${u}" onchange="anotarPeso(${si},this.value)">`; }, 'set-unit'],
+    ['Desc.', (set,si)=>`<div class="sc-desc"><input type="text" inputmode="numeric" class="set-desc" value="${set.desc?escaparHTML(String(set.desc)):''}" placeholder="${descGeneral}"
+        aria-label="Descanso tras la serie ${si+1}, en segundos" onchange="anotarDescanso(${si},this.value)"></div>`]
+  ];
+  if(DB.rirActivo) filas.push(['RIR', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp" value="${set.rir!=null?escaparHTML(String(set.rir)):''}" placeholder="RIR"
+        aria-label="RIR de la serie ${si+1}" onchange="curEx[${curExIndex}].sets[${si}].rir=this.value">`]);
+  let h=`<div class="sc-grid" style="grid-template-columns:40px repeat(${n},minmax(58px,1fr)) 38px">`;
+  h+=`<div class="sc-lab"></div>`+ex.sets.map((_,si)=>col(si,`<div class="sc-cab">S${si+1}<button type="button" class="sc-quitar"
+        onclick="removeSetFromCurrent(${si})" aria-label="Quitar la serie ${si+1}">×</button></div>`)).join('');
+  h+=`<button type="button" class="sc-mas" style="grid-column:${n+2};grid-row:1 / span ${filas.length+1}"
+        onclick="addSetToCurrentEx()" aria-label="Añadir una serie">+</button>`;
+  for(const [lab,celda,cls] of filas){
+    h+=`<div class="sc-lab${cls?' '+cls:''}">${lab}</div>`+ex.sets.map((set,si)=>col(si,celda(set,si))).join('');
+  }
+  return h+'</div>';
+}
+
+/* Lo que pide el plan para este ejercicio en esta sesión: "4×15" → "15",
+   "3×10-12" → "10-12", "4×45s" → "45s". Si el ejercicio no está en el plan
+   (añadido a mano), no hay objetivo. */
+function objetivoReps(nombre){
+  const d=buscarDiaEnPlan(getActive(), curSession);
+  if(!d||!nombre) return '';
+  const k=claveEjercicioLaxa(nombre);
+  const e=(d.dia.ex||[]).find(([n])=>claveEjercicioLaxa(n)===k);
+  if(!e||!e[1]) return '';
+  const partes=String(e[1]).split(/[×x]/);
+  return partes.length>1 ? partes[1].trim() : '';
+}
+
+/* Apuntar las repeticiones pone en marcha el descanso de ESA serie; si no se
+   ha tocado, el general de la sesión. */
+function anotarReps(si,valor){
+  if(curExIndex===null)return;
+  const set=curEx[curExIndex].sets[si];
+  set.reps=valor;
+  if(valor) startTimer(parseInt(set.desc)||parseInt(document.getElementById('rest').value)||90);
+}
+
+/* Descanso propio de una serie, en segundos. Vacío = el general de la sesión
+   (no se guarda nada, así cambiar el general sigue valiendo para todas). */
+function anotarDescanso(si,valor){
+  if(curExIndex===null)return;
+  const n=parseInt(String(valor).replace(/[^0-9]/g,''));
+  const set=curEx[curExIndex].sets[si];
+  if(n>0) set.desc=n; else delete set.desc;
+  guardarBorrador();
 }
 
 /* Lo tecleado entra convertido a kilos. Vacío se guarda como '' y no como 0:

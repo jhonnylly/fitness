@@ -238,6 +238,76 @@ async function appLista(page, url){
     const sinFichero = videos.filter(v=>['.mp4','.jpg'].some(e=>!fs.existsSync(path.join(__dirname,'..','videos','ejercicios',v+e))));
     ok(sinFichero.length === 0, 'cada vídeo del mapa tiene su .mp4 y su portada .jpg'+(sinFichero.length?': faltan '+sinFichero.join(', '):''));
 
+    console.log('\n3c. Las series en columnas: reps, peso, descanso por serie y RIR');
+    /* 27/09/2026, idea de Jhon a partir de Synergym: una columna por serie y,
+       de arriba abajo, repeticiones (en gris lo que pide el plan), peso,
+       descanso de ESA serie y RIR. Con más de 4 series se desliza de lado. */
+    const cols = await page.evaluate(async ()=>{
+      const tic = () => new Promise(res => setTimeout(res, 30));
+      const r = {};
+      const esquema = buscarDiaEnPlan(getActive(), curSession).dia.ex[0][1];
+      const q = s => [...document.querySelectorAll('#sets-container '+s)];
+      r.esquema = esquema;
+      r.columnas = q('.sc-cab').length; r.series = curEx[0].sets.length;
+      r.etiquetas = q('.sc-lab').map(e => e.textContent.trim()).filter(Boolean).join(',');
+      r.objetivo = q('.set-reps')[0].placeholder;
+      r.descGris = q('.set-desc')[0].placeholder;
+      // Mismo ancho de fila: las celdas de una columna van alineadas.
+      const x = s => Math.round(q(s)[1].getBoundingClientRect().left);
+      r.alineadas = x('.set-reps') === x('.set-kg') && x('.set-kg') === x('.set-desc');
+      // Descanso propio en la S2 y apuntar sus repeticiones: el cronómetro usa el suyo.
+      const escribir = (el, v) => { el.value = v; el.dispatchEvent(new Event('change')); };
+      escribir(q('.set-desc')[1], '120');
+      escribir(q('.set-reps')[1], '12');
+      r.crono = timerTotal; r.guardadoDesc = curEx[0].sets[1].desc; r.guardadoReps = curEx[0].sets[1].reps;
+      escribir(q('.set-reps')[0], '15');
+      r.cronoGeneral = timerTotal;
+      verDescanso(false);
+      // Vaciar el descanso vuelve al general y no deja nada guardado.
+      escribir(q('.set-desc')[1], '');
+      r.sinDesc = !('desc' in curEx[0].sets[1]);
+      // Cambiar el general actualiza el gris de las series sin descanso propio.
+      ponDescanso(75); r.grisNuevo = q('.set-desc')[0].placeholder; ponDescanso(90);
+      // Peso: se escribe en la fila del medio, en la unidad del ejercicio.
+      escribir(q('.set-kg')[0], '20'); r.kg = curEx[0].sets[0].kg;
+      // Añadir y quitar series desde la propia rejilla.
+      const antes = curEx[0].sets.length;
+      document.querySelector('#sets-container .sc-mas').click(); await tic();
+      r.tras = curEx[0].sets.length;
+      document.querySelector('#sets-container .sc-mas').click(); await tic();
+      const sc = document.getElementById('sets-container');
+      r.desliza = sc.scrollWidth > sc.clientWidth + 10;
+      sc.scrollLeft = 200; await tic();
+      const lab = q('.sc-lab')[1].getBoundingClientRect(), caja = sc.getBoundingClientRect();
+      r.etiquetaFija = Math.abs(lab.left - caja.left) < 6;
+      r.sinBotonSerie = ![...document.querySelectorAll('#ex-detail-view button')].some(b => /\+ Serie/.test(b.textContent));
+      q('.sc-quitar')[q('.sc-quitar').length-1].click(); await tic();
+      q('.sc-quitar')[q('.sc-quitar').length-1].click(); await tic();
+      r.vuelta = curEx[0].sets.length === antes;
+      // El RIR, abajo del todo, solo si está activo.
+      alternarRIR(true); renderEx(); await tic();
+      r.rir = q('.sc-lab').map(e => e.textContent.trim()).filter(Boolean).pop();
+      r.rirCasillas = q('input[placeholder="RIR"]').length === curEx[0].sets.length;
+      alternarRIR(false); renderEx(); await tic();
+      r.sinRir = !q('input[placeholder="RIR"]').length;
+      curEx[0].sets.forEach(st => { st.kg = ''; st.reps = ''; delete st.desc; }); renderEx();
+      return r;
+    });
+    ok(cols.columnas === cols.series, 'una columna por serie ('+cols.columnas+')');
+    ok(/^Reps,(kg|lb),Desc\.$/.test(cols.etiquetas), 'de arriba abajo: repeticiones, peso y descanso ('+cols.etiquetas+')');
+    ok(cols.objetivo === cols.esquema.split('×')[1], 'en gris, las repeticiones que pide el plan ('+cols.esquema+' → '+cols.objetivo+')');
+    ok(cols.descGris === '90' && cols.alineadas, 'y el descanso general; cada columna, alineada');
+    ok(cols.crono === 120 && cols.guardadoDesc === 120 && cols.guardadoReps === '12',
+       '🔴 cada serie tiene su descanso: al apuntar la S2 el cronómetro cuenta sus 120 s');
+    ok(cols.cronoGeneral === 90, 'y una serie sin descanso propio usa el general (90 s)');
+    ok(cols.sinDesc && cols.grisNuevo == 75, 'vaciarlo vuelve al general, y cambiar el general cambia el gris');
+    ok(cols.kg === 20, 'el peso se apunta en su fila, en la unidad del ejercicio');
+    ok(cols.tras === cols.series + 1 && cols.sinBotonSerie, 'la columna "+" añade una serie (y ya no hay botón "+ Serie")');
+    ok(cols.desliza && cols.etiquetaFija, 'con muchas series se desliza de lado y las etiquetas se quedan fijas');
+    ok(cols.vuelta, 'la × de cada serie la quita');
+    ok(cols.rir === 'RIR' && cols.rirCasillas, 'con el RIR activo, su fila va abajo del todo');
+    ok(cols.sinRir, 'y sin RIR no aparece');
+
     console.log('\n4. Reordenar los ejercicios arrastrando');
     await page.evaluate(()=>closeExDetail());
     await esperar(400);
@@ -1859,11 +1929,11 @@ async function appLista(page, url){
       /* Se escribe en el campo y se dispara el change, que es lo que hace el
          dedo: llamar a anotarPeso() a pelo dejaría el cuadro con lo de antes. */
       const escribir = v => {
-        const inp = document.querySelector('#sets-container .set-inp');
+        const inp = document.querySelector('#sets-container .set-kg');
         inp.value = v;
         inp.dispatchEvent(new Event('change'));
       };
-      const campo = () => document.querySelector('#sets-container .set-inp').value;
+      const campo = () => document.querySelector('#sets-container .set-kg').value;
       const etiqueta = () => document.querySelector('#sets-container .set-unit').textContent;
       const selector = () => document.getElementById('ex-unidad');
       // Como se hace con el dedo: elegir en el desplegable y que dispare su change.
