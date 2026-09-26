@@ -3148,7 +3148,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 00:29';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 00:37';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5707,7 +5707,9 @@ function musculosDeEjercicio(nombre){
    no guarda vídeos), pero el resto de la ficha sí. */
 const VIDEO_EJERCICIO={
   curl_biceps_mancuerna:'curl_biceps_mancuerna',
-  curl_biceps:'curl_biceps_mancuerna'
+  curl_biceps:'curl_biceps_mancuerna',
+  // Con barra y cámara fija (27/09/2026). NO vale para el de mancuernas.
+  peso_muerto_rumano:'peso_muerto_rumano'
 };
 
 /* Subirlo cada vez que se rehaga un vídeo o su portada: el mismo nombre de

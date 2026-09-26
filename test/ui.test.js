@@ -233,6 +233,12 @@ async function appLista(page, url){
     await page.evaluate(()=>{ curEx[0].name = 'Sentadilla goblet'; pintarImagenEjercicio(); });
     ok(await page.evaluate(()=>document.getElementById('ex-video-mini').innerHTML === '' && document.getElementById('ex-video-grande').innerHTML === ''),
        'un ejercicio sin vídeo no enseña la fila ni ningún hueco');
+    // Cada vídeo, solo en su ejercicio: el rumano con barra no es el de mancuernas.
+    const rumano = await page.evaluate(()=>{ const hay = n => { curEx[0].name = n; pintarImagenEjercicio();
+        const img = document.querySelector('#ex-video-mini img'); return img ? img.getAttribute('src') : ''; };
+      return { barra: hay('Peso muerto rumano'), mancuernas: hay('Peso muerto rumano con mancuernas'), piernas: hay('Peso muerto piernas rígidas') }; });
+    ok(/peso_muerto_rumano\.jpg/.test(rumano.barra), 'el peso muerto rumano tiene su vídeo');
+    ok(!rumano.mancuernas && !rumano.piernas, 'y no se cuela en el de mancuernas ni en el de piernas rígidas');
     await page.evaluate(n=>{ curEx[0].name = n; pintarImagenEjercicio(); }, nombreAntes);
     const videos = await page.evaluate(()=>[...new Set(Object.values(VIDEO_EJERCICIO))]);
     const sinFichero = videos.filter(v=>['.mp4','.jpg'].some(e=>!fs.existsSync(path.join(__dirname,'..','videos','ejercicios',v+e))));
