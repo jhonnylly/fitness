@@ -974,54 +974,54 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ex-order-btns{display:flex;flex-direction:column;gap:2px;margin-right:8px;}
 .ex-order-btn{background:var(--surface);border:1px solid var(--border);border-radius:4px;width:24px;height:20px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);}
 .ex-detail-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-/* Mapa muscular del ejercicio abierto. Compacto por defecto: encima de las
-   series, en un móvil, a tamaño completo se comería media pantalla. Al tocarlo
-   se agranda, que es cuando de verdad quieres mirarlo. */
-.ex-musculos{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 0 10px;cursor:pointer;}
-.ex-mus-fotos{display:flex;justify-content:center;align-items:flex-end;gap:10px;width:100%;}
-.ex-musculos img{height:150px;width:auto;max-width:100%;transition:height .2s ease;}
-.ex-musculos.grande img{height:280px;}
-/* Varias fotos en fila, cada una con su parte del ancho. El máximo por foto no
-   es adorno: sin él, tres fotos ampliadas pedían más ancho del que hay y se
-   salían de la fila. Tres es el tope real —solo el peso muerto tiene tres
-   músculos principales— pero la regla vale para los que vengan. */
-.ex-musculos.dos img{height:130px;max-width:calc(50% - 5px);object-fit:contain;}
-.ex-musculos.dos.grande img{height:230px;}
-.ex-musculos.tres img{height:110px;max-width:calc(33.33% - 7px);object-fit:contain;}
-.ex-musculos.tres.grande img{height:185px;}
-.ex-musculos figcaption{font-size:11.5px;color:var(--muted);line-height:1.45;text-align:center;}
+/* Mapa muscular del ejercicio abierto (26/09/2026): una LÍNEA compacta dentro
+   de la tarjeta del nombre, con la foto en miniatura y "Principal: bíceps ·
+   también antebrazo". Antes era una foto de 150 px suelta entre el nombre y
+   las series, y había que hacer scroll para empezar a apuntar. Al tocarla se
+   abre en grande, que es cuando de verdad quieres mirarla. */
+.ex-musculos{display:flex;align-items:center;gap:10px;margin:10px 0 0;padding:6px 10px 6px 6px;
+  background:var(--surface);border-radius:12px;cursor:pointer;min-height:52px;}
+.ex-mus-fotos{display:flex;gap:4px;flex:0 0 auto;}
+.ex-musculos img{height:40px;width:40px;object-fit:contain;background:var(--card);border-radius:8px;
+  transition:height .2s ease,width .2s ease;}
+.ex-musculos figcaption{flex:1;min-width:0;font-size:12.5px;color:var(--muted);line-height:1.4;}
 .ex-musculos figcaption b{color:var(--text);font-weight:700;}
-/* El pie del mapa de siluetas sí es una etiqueta, no una frase. */
-.ex-musculos.silueta figcaption{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;}
+.ex-mus-ver{font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap;}
 .ex-musculos .ex-mus-reducir{display:none;}
 .ex-musculos.grande .ex-mus-ampliar{display:none;}
 .ex-musculos.grande .ex-mus-reducir{display:inline;}
-/* Vídeo de cómo se hace el ejercicio (26/09/2026, pedido por Jhon): se toca y
-   se reproduce AHÍ MISMO, sin pantalla completa, sin sonido y en bucle; otro
-   toque lo pausa. CUADRADO y en la MISMA FILA que la foto del músculo, con su
-   misma altura: en vertical y debajo empujaba las series media pantalla hacia
-   abajo, y Jhon tenía que hacer scroll para empezar a apuntar. */
-.ex-video{position:relative;display:block;flex:0 0 auto;height:150px;aspect-ratio:1/1;padding:0;
-  border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#000;cursor:pointer;
-  transition:height .2s ease;}
-.ex-video video{display:block;width:100%;height:100%;object-fit:cover;}
+/* Abierta: las fotos en grande, en fila, y el texto debajo. */
+.ex-musculos.grande{flex-direction:column;padding:10px;}
+.ex-musculos.grande .ex-mus-fotos{justify-content:center;gap:10px;width:100%;}
+.ex-musculos.grande img{height:220px;width:auto;max-width:100%;background:transparent;}
+.ex-musculos.grande.dos img{height:180px;max-width:calc(50% - 5px);}
+.ex-musculos.grande.tres img{height:140px;max-width:calc(33.33% - 7px);}
+.ex-musculos.grande figcaption{text-align:center;}
+/* Vídeo de cómo se hace el ejercicio (26/09/2026, propuesta 2 elegida por
+   Jhon): una miniatura cuadrada junto al nombre y, al tocarla, el vídeo en
+   grande dentro de la misma tarjeta. Se reproduce AHÍ MISMO: sin pantalla
+   completa, sin sonido y en bucle. Tocar el vídeo lo pausa o lo sigue;
+   "Cerrar" lo recoge. Primero fue vertical debajo de la foto y luego cuadrado
+   a su lado: en los dos había que hacer scroll para llegar a las series. */
+#ex-video-mini:empty{display:none;}
+.ex-video-mini{position:relative;display:block;width:56px;height:56px;flex:0 0 56px;padding:0;
+  border:2px solid transparent;border-radius:12px;overflow:hidden;background:#000;cursor:pointer;}
+.ex-video-mini img{display:block;width:100%;height:100%;object-fit:cover;}
+.ex-video-mini.activo{border-color:var(--accent);}
 .ex-video-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   transition:opacity .15s ease;pointer-events:none;}
 .ex-video-play span{width:44px;height:44px;border-radius:50%;background:var(--accent);
   display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.45);}
 .ex-video-play svg{width:18px;height:18px;fill:#fff;margin-left:3px;}
-/* La etiqueta va DENTRO del vídeo, sobre un degradado: una línea de texto
-   debajo era otra fila más que empujaba las series. */
-.ex-video-etq{position:absolute;left:0;right:0;bottom:0;padding:16px 6px 6px;font-size:10.5px;font-weight:700;
-  letter-spacing:.3px;color:#fff;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,.75));
-  pointer-events:none;transition:opacity .15s ease;}
-.ex-video.reproduciendo .ex-video-play,.ex-video.reproduciendo .ex-video-etq{opacity:0;}
-/* Misma altura que las fotos en cada caso: con dos fotos + vídeo son tres en fila. */
-.ex-musculos.grande .ex-video{height:280px;}
-.ex-musculos.dos .ex-video{height:130px;} .ex-musculos.dos.grande .ex-video{height:230px;}
-.ex-musculos.tres .ex-video{height:110px;} .ex-musculos.tres.grande .ex-video{height:185px;}
-/* Sin foto de músculo (silueta o nada), va solo y centrado. */
-.ex-video.suelto{margin:0 auto 12px;}
+.ex-video-mini .ex-video-play span{width:26px;height:26px;box-shadow:0 3px 10px rgba(0,0,0,.45);}
+.ex-video-mini .ex-video-play svg{width:11px;height:11px;margin-left:2px;}
+#ex-video-grande:not(.abierto){display:none;}
+.ex-video{position:relative;display:block;width:100%;aspect-ratio:1/1;margin:0 0 2px;padding:0;
+  border:none;border-radius:14px;overflow:hidden;background:#000;cursor:pointer;}
+.ex-video video{display:block;width:100%;height:100%;object-fit:cover;}
+.ex-video.reproduciendo .ex-video-play{opacity:0;}
+.ex-video-cerrar{position:absolute;top:8px;right:8px;min-height:36px;padding:0 14px;border:none;border-radius:18px;
+  background:rgba(0,0,0,.55);color:#fff;font:700 12.5px inherit;font-family:inherit;cursor:pointer;}
 /* Las semanas, en mosaico de dos columnas: en lista, un plan de 12 semanas eran
    doce filas y mucho scroll para llegar a la que entrenas. Las acciones de cada
    semana (duplicar, borrar) se fueron DENTRO de la semana: en una celda de
@@ -2039,17 +2039,26 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <div id="ex-detail-view" style="display:none;">
       <div class="card">
         <div class="ex-detail-header">
+          <!-- Miniatura del vídeo de cómo se hace (vacía si el ejercicio no
+               tiene). Al tocarla se abre en grande justo debajo. -->
+          <div id="ex-video-mini"></div>
           <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" autocomplete="off" oninput="pintarSugerenciasEjercicio(this.value)" onchange="renombrarEjercicioActual(this.value)">
           <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
         </div>
         <!-- Nombres del catálogo que se parecen a lo que va escribiendo: si
              elige uno, el ejercicio conserva su foto y su historial (17/09/2026,
              a Jhon se le quedó sin imagen al escribir "Remo en máquina"). -->
+        <!-- El vídeo en grande, dentro de la misma tarjeta (26/09/2026, propuesta
+             2 elegida por Jhon). Cerrado no ocupa nada. -->
+        <div id="ex-video-grande"></div>
         <div id="ex-sugerencias"></div>
         <!-- "¿Solo esta sesión o toda la rutina?" tras renombrar. -->
         <div id="ex-renombrar"></div>
+        <!-- El músculo, como una línea compacta dentro de la tarjeta del nombre:
+             en grande, suelto entre el nombre y las series, obligaba a hacer
+             scroll para empezar a apuntar. Se amplía al tocarla. -->
+        <div id="ex-musculos"></div>
       </div>
-      <div id="ex-musculos"></div>
       <!-- La unidad, junto a "Series" y como desplegable (17/09/2026). Era un
            botón gris que ponía "kg" en la cabecera, al lado del de borrar:
            Jhon lo probó y dijo que no se entendía que se pudiera cambiar. Aquí
@@ -3111,7 +3120,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-26 23:05';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-26 23:35';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5629,35 +5638,65 @@ const VIDEO_EJERCICIO={
    Service Worker) y el iPhone seguiría enseñando el viejo. */
 const VIDEOS_REV=2;
 
-function videoEjercicioHTML(nombre, suelto){
-  const v=buscarImagenEjercicio(nombre, VIDEO_EJERCICIO);
-  if(!v) return '';
-  const base='videos/ejercicios/'+v;
+/* El vídeo del ejercicio abierto: la miniatura junto al nombre y el vídeo en
+   grande, cerrado, dentro de la tarjeta. Sin vídeo, los dos huecos vacíos. */
+function pintarVideoEjercicio(nombre){
+  const mini=document.getElementById('ex-video-mini');
+  const grande=document.getElementById('ex-video-grande');
+  if(!mini||!grande) return;
+  grande.classList.remove('abierto');
+  const v=nombre ? buscarImagenEjercicio(nombre, VIDEO_EJERCICIO) : null;
+  if(!v){ mini.innerHTML=''; grande.innerHTML=''; return; }
+  const base='videos/ejercicios/'+v, rev='?v='+VIDEOS_REV;
+  const play='<span class="ex-video-play"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg></span></span>';
+  mini.innerHTML=`<button type="button" class="ex-video-mini" onclick="abrirVideoEjercicio()"
+      aria-label="Ver cómo se hace ${escaparHTML(nombre)}"><img src="${base}.jpg${rev}" alt="">${play}</button>`;
   /* muted + playsinline: sin eso el iPhone no deja reproducir sin abrir su
      reproductor a pantalla completa. preload="none": nada se descarga hasta
-     tocarlo, que es lo que cuida los datos móviles. stopPropagation: va dentro
-     de la figura que se amplía al tocarla, y tocar el vídeo no debe ampliarla. */
-  return `<button type="button" class="ex-video${suelto?' suelto':''}"
-      onclick="event.stopPropagation();alternarVideoEjercicio(this)"
-      aria-label="Ver cómo se hace ${escaparHTML(nombre)}">
-      <video src="${base}.mp4?v=${VIDEOS_REV}" poster="${base}.jpg?v=${VIDEOS_REV}" muted loop playsinline preload="none"
-             disablepictureinpicture disableremoteplayback></video>
-      <span class="ex-video-play"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg></span></span>
-      <span class="ex-video-etq">Cómo se hace</span>
-    </button>`;
+     abrirlo, que es lo que cuida los datos móviles. */
+  grande.innerHTML=`<div class="ex-video" onclick="alternarVideoEjercicio(this)" role="button" tabindex="0"
+      aria-label="Reproducir o pausar el vídeo">
+      <video src="${base}.mp4${rev}" poster="${base}.jpg${rev}" muted loop playsinline preload="none"
+             disablepictureinpicture disableremoteplayback></video>${play}
+      <button type="button" class="ex-video-cerrar" onclick="event.stopPropagation();cerrarVideoEjercicio()">Cerrar ✕</button>
+    </div>`;
 }
 
-function alternarVideoEjercicio(boton){
-  const v=boton.querySelector('video');
+/* La miniatura abre el vídeo y lo pone en marcha; si ya está abierto, lo cierra. */
+function abrirVideoEjercicio(){
+  const grande=document.getElementById('ex-video-grande');
+  if(!grande||!grande.innerHTML) return;
+  if(grande.classList.contains('abierto')){ cerrarVideoEjercicio(); return; }
+  grande.classList.add('abierto');
+  const m=document.querySelector('#ex-video-mini .ex-video-mini');
+  if(m) m.classList.add('activo');
+  const caja=grande.querySelector('.ex-video');
+  if(caja && caja.querySelector('video').paused) alternarVideoEjercicio(caja);
+}
+
+function cerrarVideoEjercicio(){
+  const grande=document.getElementById('ex-video-grande');
+  if(!grande) return;
+  const v=grande.querySelector('video');
+  if(v) v.pause();
+  const caja=grande.querySelector('.ex-video');
+  if(caja) caja.classList.remove('reproduciendo');
+  grande.classList.remove('abierto');
+  const m=document.querySelector('#ex-video-mini .ex-video-mini');
+  if(m) m.classList.remove('activo');
+}
+
+function alternarVideoEjercicio(caja){
+  const v=caja.querySelector('video');
   if(!v) return;
   if(v.paused){
-    boton.classList.add('reproduciendo');
+    caja.classList.add('reproduciendo');
     const p=v.play();
     // Si el navegador lo rechaza (sin red, por ejemplo), que vuelva el botón de play.
-    if(p && p.catch) p.catch(()=>boton.classList.remove('reproduciendo'));
+    if(p && p.catch) p.catch(()=>caja.classList.remove('reproduciendo'));
   }else{
     v.pause();
-    boton.classList.remove('reproduciendo');
+    caja.classList.remove('reproduciendo');
   }
 }
 
@@ -5672,27 +5711,26 @@ function pintarImagenEjercicio(){
   const c=document.getElementById('ex-musculos');
   if(!c)return;
   const ex=curExIndex!==null?curEx[curExIndex]:null;
+  pintarVideoEjercicio(ex && ex.name);
   if(!ex||!ex.name){ c.innerHTML=''; return; }
 
   const m=musculosDeEjercicio(ex.name);
   const fotos=m ? m.primarios.map(x=>FOTO_MUSCULO[x]) : [];
   const todasConFoto = m && m.primarios.length && fotos.every(Boolean);
+  const ver='<span class="ex-mus-ver"><span class="ex-mus-ampliar">Ampliar</span><span class="ex-mus-reducir">Reducir</span></span>';
 
   if(todasConFoto){
     // Sin repetidas: dos principales pueden compartir foto de apoyo.
     const unicas=[...new Set(fotos)];
     const pie='<b>Principal:</b> '+escaparHTML(listaEnEspanol(m.primarios.map(x=>NOMBRE_MUSCULO[x]||x)))
       + (m.secundarios.length
-          ? '<br>También trabaja: '+escaparHTML(listaEnEspanol(m.secundarios.map(x=>NOMBRE_MUSCULO[x]||x)))
+          ? ' · también '+escaparHTML(listaEnEspanol(m.secundarios.map(x=>NOMBRE_MUSCULO[x]||x)))
           : '');
-    const video=videoEjercicioHTML(ex.name);
-    // El vídeo ocupa un hueco más en la fila, igual que una foto.
-    const piezas=unicas.length+(video?1:0);
-    const reparto = piezas>2 ? ' tres' : piezas>1 ? ' dos' : '';
+    const reparto = unicas.length>2 ? ' tres' : unicas.length>1 ? ' dos' : '';
     c.innerHTML=`<figure class="ex-musculos${reparto}" onclick="this.classList.toggle('grande')">
         <div class="ex-mus-fotos">${unicas.map(f=>
-          `<img src="img/musculos/${f}.webp" alt="Músculo: ${escaparHTML(f)}" loading="lazy">`).join('')}${video}</div>
-        <figcaption>${pie}</figcaption>
+          `<img src="img/musculos/${f}.webp" alt="Músculo: ${escaparHTML(f)}" loading="lazy">`).join('')}</div>
+        <figcaption>${pie}</figcaption>${ver}
       </figure>`;
     return;
   }
@@ -5702,11 +5740,11 @@ function pintarImagenEjercicio(){
   /* Ni músculos ni silueta: aquí no se pinta nada, pero no se deja el hueco
      mudo: lo explica pintarSugerenciasEjercicio(), justo bajo el nombre, que es
      donde está el campo que acaba de cambiar (17/09/2026). */
-  if(!url){ c.innerHTML=videoEjercicioHTML(ex.name, true); return; }
+  if(!url){ c.innerHTML=''; return; }
   c.innerHTML=`<figure class="ex-musculos silueta" onclick="this.classList.toggle('grande')">
-      <img src="${url}" alt="Músculos que trabaja: ${escaparHTML(ex.name||'')}" loading="lazy">
-      <figcaption>Músculos que trabaja · <span class="ex-mus-ampliar">toca para ampliar</span><span class="ex-mus-reducir">toca para reducir</span></figcaption>
-    </figure>`+videoEjercicioHTML(ex.name, true);
+      <div class="ex-mus-fotos"><img src="${url}" alt="Músculos que trabaja: ${escaparHTML(ex.name||'')}" loading="lazy"></div>
+      <figcaption>Músculos que trabaja</figcaption>${ver}
+    </figure>`;
 }
 
 /* Progresión de cargas del ejercicio abierto: el peso máximo de cada sesión
