@@ -272,8 +272,11 @@ async function appLista(page, url){
       // Vaciar el descanso vuelve al general y no deja nada guardado.
       escribir(q('.set-desc')[1], '');
       r.sinDesc = !('desc' in curEx[0].sets[1]);
-      // Cambiar el general actualiza el gris de las series sin descanso propio.
-      ponDescanso(75); r.grisNuevo = q('.set-desc')[0].placeholder; ponDescanso(90);
+      /* 27/09/2026 (Jhon): fuera la línea "Descanso entre series" de arriba de
+         la sesión: repetía la columna Desc. El general sigue, oculto, como gris. */
+      r.sinLineaDescanso = !/Descanso entre series/.test(document.getElementById('session-form').textContent)
+                           && document.getElementById('rest').type === 'hidden';
+      r.grisNuevo = q('.set-desc')[0].placeholder;
       // Peso: se escribe en la fila del medio, en la unidad del ejercicio.
       escribir(q('.set-kg')[0], '20'); r.kg = curEx[0].sets[0].kg;
       // Añadir y quitar series desde la propia rejilla.
@@ -306,7 +309,8 @@ async function appLista(page, url){
     ok(cols.crono === 120 && cols.guardadoDesc === 120 && cols.guardadoReps === '12',
        '🔴 cada serie tiene su descanso: al apuntar la S2 el cronómetro cuenta sus 120 s');
     ok(cols.cronoGeneral === 90, 'y una serie sin descanso propio usa el general (90 s)');
-    ok(cols.sinDesc && cols.grisNuevo == 75, 'vaciarlo vuelve al general, y cambiar el general cambia el gris');
+    ok(cols.sinDesc && cols.grisNuevo == 90, 'vaciarlo vuelve al general, que sale en gris');
+    ok(cols.sinLineaDescanso, 'ya no está la línea "Descanso entre series": lo dice la columna Desc.');
     ok(cols.kg === 20, 'el peso se apunta en su fila, en la unidad del ejercicio');
     ok(cols.tras === cols.series + 1 && cols.sinBotonSerie, 'la columna "+" añade una serie (y ya no hay botón "+ Serie")');
     ok(cols.desliza && cols.etiquetaFija, 'con muchas series se desliza de lado y las etiquetas se quedan fijas');

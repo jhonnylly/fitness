@@ -647,17 +647,6 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .acciones-fila{display:flex;align-items:center;gap:4px;margin-left:8px;flex-shrink:0;}
 .acciones-fila .btn-sm{padding:6px 8px;font-size:11px;white-space:nowrap;}
 .acciones-fila .sep-peligro{margin-left:10px;}
-/* Descanso entre series: una línea, no un formulario. */
-.chip-descanso{display:flex;align-items:center;gap:6px;width:100%;text-align:left;font-family:inherit;
-  font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius-sm);padding:9px 12px;cursor:pointer;}
-.chip-descanso b{color:var(--accent);font-size:15px;}
-.chip-lapiz{margin-left:auto;color:var(--muted);font-size:12px;}
-.rest-rapidos{display:flex;gap:6px;margin-top:6px;}
-.rest-rapidos button{flex:1;font-family:inherit;font-size:12px;padding:8px 4px;border-radius:var(--radius-sm);
-  border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;}
-.rest-rapidos button.elegido{border-color:var(--accent);color:var(--accent);
-  background:rgba(var(--accent-rgb),0.1);font-weight:700;}
 
 /* Galería de fotos de progreso. Tira horizontal: van a crecer con el tiempo
    y una rejilla obligaría a hacer scroll de toda la página para ver el
@@ -2022,26 +2011,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
            de los ejercicios y del "¿Cómo te has sentido?". -->
       <div class="recordatorio-guardar"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Al terminar, pulsa <b>Guardar sesión</b> (abajo del todo)</span></div>
       <div id="aviso-borrador" class="msg msg-info" style="display:none;"></div>
-      <!-- El descanso ocupaba una etiqueta y un campo enteros ARRIBA DEL TODO,
-           por encima de los ejercicios: el valor que menos se toca en el sitio
-           más visible. Ahora es una línea que dice cuánto hay, y solo se abre
-           si la tocas. El <input id="rest"> sigue existiendo igual, así que
-           openSession(), saveSession() y startTimer() no cambian.
-           display:none explícito, no class="hidden": aquí no hay regla que la
-           cubra (ver el bloque de CSS de arriba). -->
-      <button type="button" class="chip-descanso" onclick="toggleDescanso()">
-        <svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 6.5V12l3.5 2"/></svg> Descanso entre series: <b id="rest-txt">90</b> s <span class="chip-lapiz"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></span>
-      </button>
-      <div id="rest-editor" style="display:none;margin-top:8px;">
-        <input type="text" inputmode="numeric" id="rest" value="90"
-               onchange="ponDescanso(this.value)">
-        <div class="rest-rapidos">
-          <button type="button" onclick="ponDescanso(60)">60 s</button>
-          <button type="button" onclick="ponDescanso(90)">90 s</button>
-          <button type="button" onclick="ponDescanso(120)">2 min</button>
-          <button type="button" onclick="ponDescanso(180)">3 min</button>
-        </div>
-      </div>
+      <!-- 27/09/2026, Jhon: fuera la línea "Descanso entre series". Repetía lo
+           que ya dice la columna "Desc." de cada serie, al registrar. Queda el
+           campo, oculto, como descanso GENERAL: es el gris de las series sin
+           descanso propio y lo que usa el cronómetro si no hay otro. Se guarda
+           con la sesión (rest) como siempre, así que los datos no cambian. -->
+      <input type="hidden" id="rest" value="90">
     </div>
 
     <!-- Lista de ejercicios -->
@@ -3161,7 +3136,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 18:55';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 19:04';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4377,38 +4352,6 @@ function descartarBorrador(){
   openSession(curSession);   // recargar desde lo guardado (o desde el plan)
 }
 
-function toggleDescanso(){
-  const e=document.getElementById('rest-editor');
-  if(!e)return;
-  e.style.display=e.style.display==='none'?'block':'none';
-}
-
-/* Un solo sitio por donde pasa cualquier cambio del descanso: el campo, los
-   botones rápidos y la carga de la sesión. Los rápidos escriben el valor por
-   código, y eso NO dispara el 'change' delegado de #session-form que guarda el
-   borrador — hay que llamarlo a mano (mismo tropiezo que con añadir/quitar
-   serie cuando se hicieron los borradores). */
-function ponDescanso(v){
-  const seg=Math.max(5,Math.min(600,parseInt(v)||90));
-  const inp=document.getElementById('rest');
-  if(inp)inp.value=seg;
-  pintarDescanso();
-  // Las series sin descanso propio enseñan el general en gris: que se actualice.
-  document.querySelectorAll('#sets-container .set-desc').forEach(e=>{ e.placeholder=seg; });
-  guardarBorrador();
-}
-
-function pintarDescanso(){
-  const inp=document.getElementById('rest');
-  const seg=parseInt(inp&&inp.value)||90;
-  const txt=document.getElementById('rest-txt');
-  if(txt)txt.textContent=seg;
-  document.querySelectorAll('.rest-rapidos button').forEach(b=>{
-    b.classList.toggle('elegido',parseInt(b.textContent)===seg||
-      (b.textContent.includes('min')&&parseInt(b.textContent)*60===seg));
-  });
-}
-
 function openSession(n){
   curSession=n;
   setTimeout(pintarBorrarRegistro,0);   // tras fijar curSession
@@ -4433,10 +4376,6 @@ function openSession(n){
   // El borrador manda si existe; si no, lo guardado; si no, valores por defecto.
   const base=borrador||saved;
   document.getElementById('rest').value=base?base.rest:90;
-  // La línea de descanso arranca cerrada y mostrando el valor de esta sesión.
-  const edDesc=document.getElementById('rest-editor');
-  if(edDesc)edDesc.style.display='none';
-  pintarDescanso();
   document.getElementById('c-tipo').value=base?.cardio?.tipo||'Caminadora';
   document.getElementById('c-time').value=base?.cardio?.tiempo||'';
   document.getElementById('c-kcal').value=base?.cardio?.kcal||'';
