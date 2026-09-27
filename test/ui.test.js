@@ -2254,7 +2254,7 @@ async function appLista(page, url){
                         botones: document.querySelectorAll('#ex-sugerencias .ex-sug-btn').length };
 
       // Confirma un nombre que NO está en el catálogo.
-      campo.value = 'Remo en máquina';
+      campo.value = 'Remo con banda elástica';
       campo.dispatchEvent(new Event('change'));
       await tic();
       r.sinFoto = document.getElementById('ex-sugerencias').textContent.replace(/\s+/g,' ');
@@ -2263,10 +2263,10 @@ async function appLista(page, url){
       r.pregunta = { texto: aviso(),
                      botones: document.querySelectorAll('#ex-renombrar button').length,
                      diasAntes };
-      r.planAntes = diasConEjercicio(getActive(), 'Remo en máquina');
+      r.planAntes = diasConEjercicio(getActive(), 'Remo con banda elástica');
 
       aplicarRenombrado('rutina');
-      r.tras = { enPlan: diasConEjercicio(getActive(), 'Remo en máquina'),
+      r.tras = { enPlan: diasConEjercicio(getActive(), 'Remo con banda elástica'),
                  viejoEnPlan: diasConEjercicio(getActive(), original),
                  avisoCerrado: aviso() === '' };
 
@@ -2284,7 +2284,7 @@ async function appLista(page, url){
     ok(!renom.saltado, 'la prueba corre en local, nunca contra la nube');
     ok(renom.sugerencias.botones > 0 && /Remo/.test(renom.sugerencias.texto),
        'al escribir salen nombres del catálogo parecidos: '+renom.sugerencias.texto.slice(0, 70));
-    ok(/No tenemos foto/.test(renom.sinFoto) && renom.enSesion === 'Remo en máquina',
+    ok(/No tenemos foto/.test(renom.sinFoto) && renom.enSesion === 'Remo con banda elástica',
        '🔴 con un nombre sin foto se avisa en vez de dejar el hueco vacío, y el nombre se respeta');
     ok(renom.pregunta.botones === 2 && /toda la rutina/i.test(renom.pregunta.texto)
        && /Solo en esta sesión/i.test(renom.pregunta.texto) && renom.pregunta.diasAntes > 0,
@@ -2554,7 +2554,8 @@ async function appLista(page, url){
        '🔴 cada ejercicio dice qué músculo trabaja: '+ayuda.conocido);
     ok(ayuda.sugerencias.length > 0,
        '🔴 un nombre a medias ofrece los del catálogo: '+ayuda.sugerencias.join(', '));
-    ok(ayuda.trasElegir === 'Jalón al pecho' && /dorsal/i.test(ayuda.trasElegirPista),
+    // Desde el 27/09 hay dos jalones en el catálogo: vale el primero que se ofrezca.
+    ok(/^Jalón /.test(ayuda.trasElegir) && ayuda.sugerencias.includes(ayuda.trasElegir) && /dorsal/i.test(ayuda.trasElegirPista),
        'y al tocar uno se pone entero, con su músculo: '+ayuda.trasElegir);
     ok(/se guarda igual/.test(ayuda.desconocido),
        'lo que no conocemos no se bloquea, se avisa: '+ayuda.desconocido);

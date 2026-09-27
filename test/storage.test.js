@@ -893,7 +893,10 @@ const ok = (cond, msg) => {
      'funciona a medio escribir');
   ok(app.sugerenciasEjercicio('jalon', 6).some(n => /Jalón/.test(n)), 'y sin tildes también');
   ok(app.tieneFotoEjercicio('Remo polea baja') === true, 'un nombre del catálogo tiene foto');
-  ok(app.tieneFotoEjercicio('Remo en máquina') === false, '🔴 "Remo en máquina" no la tiene: por eso se quedó el hueco vacío');
+  /* Era "Remo en máquina", el nombre real que escribió Jhon; desde el 27/09/2026
+     está en el catálogo, así que el ejemplo de nombre sin foto es otro. */
+  ok(app.tieneFotoEjercicio('Remo en máquina') === true, '"Remo en máquina" ya está en el catálogo (27/09)');
+  ok(app.tieneFotoEjercicio('Remo con banda elástica') === false, '🔴 un nombre fuera del catálogo no tiene foto: por eso se quedaba el hueco vacío');
 
   const rutinaR = {
     plan: [

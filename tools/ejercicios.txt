@@ -1,5 +1,5 @@
 # Librería de imágenes de ejercicios
-# 121 ejercicios del catálogo, uno por imagen (los alias comparten la del suyo)
+# 153 ejercicios del catálogo, uno por imagen (los alias comparten la del suyo)
 # Fuente: las 7 rutinas del código + las 45 sesiones registradas de Jhon
 # 24/09/2026: se mudó aquí desde ~/fitness-ejercicios.txt, que vivía fuera del
 # repo y no tenía copia ninguna. Se edita a mano y la lee `npm run imagenes`.
@@ -19,12 +19,15 @@ abductores_en_polea	Abductores en polea
 aductores_en_maquina	Aductores en máquina
 aductores_en_polea	Aductores en polea
 apertura_horizontal_maquina	Apertura horizontal máquina
+aperturas_con_mancuernas	Aperturas con mancuernas
+aperturas_inversas_en_maquina	Aperturas inversas en máquina	Pec deck inverso
 belt_squat	Belt squat
 buenos_dias	Buenos días
 burpees	Burpees
 caminadora	Caminadora
 caminadora_inclinada	Caminadora inclinada
 caminar_de_talones	Caminar de talones
+cruces_inversos_en_polea	Cruces inversos en polea
 cruces_polea	Cruces polea
 cruces_polea_alta	Cruces polea alta
 crunch	Crunch
@@ -37,50 +40,67 @@ curl_biceps_barra_z	Curl bíceps barra Z
 curl_biceps_mancuerna	Curl bíceps mancuerna
 curl_biceps_maquina	Curl bíceps máquina
 curl_concentrado	Curl concentrado
+curl_de_muneca	Curl de muñeca
+curl_de_muneca_inverso	Curl de muñeca inverso
+curl_en_polea	Curl en polea
 curl_femoral	Curl femoral
 curl_femoral_acostado	Curl femoral acostado
 curl_femoral_con_fitball	Curl femoral con fitball
 curl_femoral_de_pie	Curl femoral de pie
 curl_femoral_sentado	Curl femoral sentado
 curl_femoral_tumbado	Curl femoral tumbado
+curl_invertido	Curl invertido
 curl_maquina	Curl máquina
 curl_martillo	Curl martillo
 curl_martillo_alternado	Curl martillo alternado
 curl_nordico	Curl nórdico
+curl_predicador	Curl predicador	Curl scott
 dead_bug	Dead bug
 dominadas	Dominadas	Dominadas (o jalón al pecho)
 dominadas_agarre_neutro	Dominadas agarre neutro
 dominadas_lastradas	Dominadas lastradas
 dorsiflexion_con_banda	Dorsiflexión con banda
 elevacion_de_gemelo_de_pie	Elevación de gemelo de pie
+elevacion_de_gemelo_en_maquina	Elevación de gemelo en máquina
+elevacion_de_gemelo_sentado	Elevación de gemelo sentado
 elevacion_de_piernas	Elevación de piernas
 elevacion_de_piernas_colgado	Elevación de piernas colgado
 elevacion_de_puntas	Elevación de puntas
+elevaciones_frontales	Elevaciones frontales
 elevaciones_laterales	Elevaciones laterales
+elevaciones_laterales_en_polea	Elevaciones laterales en polea
 encogimientos_con_barra	Encogimientos con barra
 encogimientos_con_mancuernas	Encogimientos con mancuernas
 extension_de_cadera	Extensión de cadera
 extension_piernas	Extensión piernas	Extensión de piernas
 face_pull	Face pull
+flexiones	Flexiones
 fondos	Fondos
 fondos_capitan	Fondos capitán
 fondos_captain_s_chair	Fondos captain's chair
+fondos_en_banco	Fondos en banco
 fondos_en_paralelas	Fondos en paralelas
 fondos_lastrados	Fondos lastrados
 front_pull_down	Front pull down
+gemelo_en_prensa	Gemelo en prensa
 hack_squat	Hack squat
 hiit_caminadora	HIIT caminadora
 hip_thrust	Hip thrust
 hip_thrust_a_una_pierna	Hip thrust a una pierna
 hip_thrust_con_barra	Hip thrust con barra
 hip_thrust_maquina	Hip thrust máquina
+hiperextensiones	Hiperextensiones	Extensiones lumbares
+jalon_agarre_estrecho	Jalón agarre estrecho
 jalon_al_pecho	Jalón al pecho	jalón al pecho
 jump_squats	Jump squats
+lenador_en_polea	Leñador en polea
 linear_leg_press	Linear leg press
 mountain_climbers	Mountain climbers
+pajaros_con_mancuernas	Pájaros con mancuernas	Elevaciones posteriores
 pallof_press	Pallof press
 paseo_del_granjero	Paseo del granjero
 patada_de_gluteo_en_polea	Patada de glúteo en polea
+patada_de_triceps	Patada de tríceps
 perfect_squat_machine	Perfect Squat machine
 peso_muerto	Peso muerto
 peso_muerto_piernas_rigidas	Peso muerto piernas rígidas
@@ -92,35 +112,47 @@ plancha_lateral	Plancha lateral
 prensa_45	Prensa 45°
 press_arnold	Press Arnold
 press_banca	Press banca
+press_banca_agarre_cerrado	Press banca agarre cerrado
 press_banca_barra	Press banca barra	Press banca con barra
 press_banca_inclinado	Press banca inclinado
 press_banca_inclinado_mancuernas	Press banca inclinado mancuernas
 press_banca_mancuernas	Press banca mancuernas	Press banca mancuerna
 press_banca_plano_mancuernas	Press banca plano mancuernas
+press_declinado	Press declinado
 press_frances	Press francés
 press_frances_barra	Press francés barra
 press_hombros	Press hombros
+press_hombros_en_maquina	Press hombros en máquina
 press_hombros_mancuernas	Press hombros mancuernas	Press de hombros mancuernas
 press_inclinado	Press inclinado
 press_inclinado_barra	Press inclinado barra
 press_inclinado_mancuernas	Press inclinado mancuernas	Press inclinado Mancuernas
+press_militar	Press militar	Press militar con barra
+press_pecho_en_maquina	Press pecho en máquina
 puente_de_gluteo_a_una_pierna	Puente de glúteo a una pierna
 pullover_mancuerna	Pullover mancuerna
 pullover_polea	Pullover polea
 remo_al_menton	Remo al mentón
 remo_barra	Remo barra	Remo con barra
 remo_barra_agarre_supino	Remo barra agarre supino
+remo_en_maquina	Remo en máquina
+remo_en_t	Remo en T
+remo_invertido	Remo invertido
 remo_mancuerna	Remo mancuerna
 remo_mancuerna_a_una_mano	Remo mancuerna a una mano
 remo_polea_baja	Remo polea baja
+rueda_abdominal	Rueda abdominal
 sentadilla	Sentadilla
 sentadilla_barra	Sentadilla barra	Sentadilla con barra
 sentadilla_bulgara	Sentadilla búlgara
+sentadilla_en_smith	Sentadilla en Smith
+sentadilla_frontal	Sentadilla frontal
 sentadilla_goblet	Sentadilla goblet
 sentadilla_hack	Sentadilla hack
 sentadilla_sumo	Sentadilla sumo
 sentadillas_libre	Sentadillas libre
 step_up_con_mancuernas	Step up con mancuernas
+superman	Superman
 tibial_en_maquina	Tibial en máquina
 triceps	Tríceps
 triceps_cuerda	Tríceps cuerda	Triceps cuerda

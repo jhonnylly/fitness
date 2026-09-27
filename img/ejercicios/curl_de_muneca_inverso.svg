@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 322" width="200" height="322" role="img" aria-label="Músculos que trabaja: Elevaciones laterales">
-  <title>Elevaciones laterales</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 322" width="200" height="322" role="img" aria-label="Músculos que trabaja: Curl de muñeca inverso">
+  <title>Curl de muñeca inverso</title>
   <defs>
     <clipPath id="cuerpoF">
     <circle cx="50" cy="25" r="14"/>
@@ -102,7 +102,7 @@
              L 55 286 C 55 252, 54 232, 53 212
              C 52 196, 52 176, 52 148 Z"/></g>
   <g class="detalle"><circle cx="45" cy="23" r="2.2"/><circle cx="55" cy="23" r="2.2"/></g>
-  <g class="base">
+  <g class="base apagado">
     <circle cx="150" cy="25" r="14"/>
     <path d="M 144 36 h 12 v 12 h -12 Z"/>
     <path d="M 121 57
@@ -127,9 +127,9 @@
              C 169 232, 168 252, 167 286
              L 155 286 C 155 252, 154 232, 153 212
              C 152 196, 152 176, 152 148 Z"/></g>
-  <g class="detalle"><rect x="148.8" y="46" width="2.4" height="88" rx="1.2"/></g>
-  <g class="sec" clip-path="url(#cuerpoD)"><g transform="translate(100,0)"><circle cx="29" cy="57" r="12"/><circle cx="71" cy="57" r="12"/></g></g><g class="sec" clip-path="url(#cuerpoD)"><g transform="translate(100,0)"><path d="M 34 44 L 66 44 L 58 82 L 42 82 Z"/></g></g>
-  <g class="prim" clip-path="url(#cuerpoF)"><circle cx="29" cy="57" r="12"/><circle cx="71" cy="57" r="12"/></g>
+  <g class="detalle apagado"><rect x="148.8" y="46" width="2.4" height="88" rx="1.2"/></g>
+  
+  <g class="prim" clip-path="url(#cuerpoF)"><ellipse cx="31" cy="115" rx="8" ry="17"/><ellipse cx="69" cy="115" rx="8" ry="17"/></g>
   <text class="et" x="50" y="315">FRENTE</text>
-  <text class="et" x="150" y="315">ESPALDA</text>
+  <text class="et apagado" x="150" y="315">ESPALDA</text>
 </svg>

@@ -3139,24 +3139,24 @@ const PLANTILLAS_RUTINA=[
   {id:'preset_gluteo3',name:'Glúteo & Pierna 3 días',dias:[
     {nombre:'Glúteo + Cuádriceps',tipo:'Lower',ex:[['Hip thrust','4×10'],['Sentadilla goblet','3×12'],['Prensa 45°','3×12'],['Abductores en máquina','3×15'],['Extensión piernas','3×15'],['Plancha','3×30s']]},
     {nombre:'Torso',tipo:'Upper',ex:[['Jalón al pecho','3×12'],['Press banca mancuernas','3×10'],['Remo polea baja','3×12'],['Press hombros mancuernas','3×10'],['Elevaciones laterales','3×15'],['Face pull','2×15']]},
-    {nombre:'Glúteo + Femoral',tipo:'Lower',ex:[['Peso muerto rumano','4×10'],['Sentadilla búlgara','3×10'],['Hip thrust a una pierna','3×10'],['Curl femoral','3×12'],['Patada de glúteo en polea','3×15'],['Elevación de piernas','3×12']]},
+    {nombre:'Glúteo + Femoral',tipo:'Lower',ex:[['Peso muerto rumano','4×10'],['Sentadilla búlgara','3×10'],['Hip thrust a una pierna','3×10'],['Curl femoral','3×12'],['Patada de glúteo en polea','3×15'],['Hiperextensiones','3×12']]},
   ]},
   {id:'preset_tonifica4',name:'Tonificación 4 días',dias:[
     {nombre:'Glúteo & Pierna',tipo:'Lower',ex:[['Sentadilla goblet','4×12'],['Hip thrust','4×12'],['Zancada caminando','3×10'],['Curl femoral','3×12'],['Abductores en máquina','3×15'],['Elevación de gemelo de pie','3×15']]},
     {nombre:'Torso',tipo:'Upper',ex:[['Jalón al pecho','3×12'],['Press banca mancuernas','3×12'],['Remo mancuerna','3×12'],['Elevaciones laterales','3×15'],['Tríceps polea','3×12'],['Curl bíceps mancuerna','3×12']]},
     {nombre:'Glúteo & Femoral',tipo:'Lower',ex:[['Peso muerto rumano','4×10'],['Hip thrust con barra','4×10'],['Step up con mancuernas','3×10'],['Patada de glúteo en polea','3×15'],['Aductores en máquina','3×15'],['Plancha','3×40s']]},
-    {nombre:'Torso + Core',tipo:'Upper',ex:[['Remo polea baja','3×12'],['Press hombros mancuernas','3×12'],['Pullover polea','3×12'],['Face pull','3×15'],['Crunch cable','3×15'],['Plancha lateral','3×30s']]},
+    {nombre:'Torso + Core',tipo:'Upper',ex:[['Remo polea baja','3×12'],['Press hombros mancuernas','3×12'],['Pájaros con mancuernas','3×15'],['Face pull','3×15'],['Rueda abdominal','3×10'],['Plancha lateral','3×30s']]},
   ]},
   {id:'preset_torso_pierna4',name:'Torso / Pierna 4 días',dias:[
     {nombre:'Torso fuerza',tipo:'Upper',ex:[['Press banca barra','4×8'],['Remo barra','4×8'],['Press hombros mancuernas','3×10'],['Jalón al pecho','3×10'],['Curl bíceps barra','3×10'],['Tríceps polea','3×12']]},
-    {nombre:'Pierna fuerza',tipo:'Lower',ex:[['Sentadilla barra','4×8'],['Peso muerto rumano','3×10'],['Prensa 45°','3×12'],['Curl femoral','3×12'],['Elevación de gemelo de pie','4×12'],['Plancha','3×45s']]},
-    {nombre:'Torso volumen',tipo:'Upper',ex:[['Press inclinado mancuernas','4×10'],['Remo polea baja','4×12'],['Cruces polea','3×15'],['Elevaciones laterales','4×15'],['Curl martillo','3×12'],['Press francés','3×12']]},
-    {nombre:'Pierna volumen',tipo:'Lower',ex:[['Sentadilla hack','4×10'],['Hip thrust','3×12'],['Zancada caminando','3×12'],['Extensión piernas','3×15'],['Curl femoral sentado','3×12'],['Elevación de piernas colgado','3×12']]},
+    {nombre:'Pierna fuerza',tipo:'Lower',ex:[['Sentadilla barra','4×8'],['Peso muerto rumano','3×10'],['Prensa 45°','3×12'],['Curl femoral','3×12'],['Elevación de gemelo de pie','4×12'],['Hiperextensiones','3×12']]},
+    {nombre:'Torso volumen',tipo:'Upper',ex:[['Press inclinado mancuernas','4×10'],['Remo en máquina','4×12'],['Cruces polea','3×15'],['Elevaciones laterales','4×15'],['Pájaros con mancuernas','3×15'],['Curl martillo','3×12']]},
+    {nombre:'Pierna volumen',tipo:'Lower',ex:[['Sentadilla hack','4×10'],['Hip thrust','3×12'],['Zancada caminando','3×12'],['Extensión piernas','3×15'],['Curl femoral sentado','3×12'],['Elevación de gemelo sentado','4×15']]},
   ]},
   {id:'preset_ppl3',name:'Empuje / Tirón / Pierna 3 días',dias:[
     {nombre:'Empuje',tipo:'Push',ex:[['Press banca barra','4×8'],['Press inclinado mancuernas','3×10'],['Press hombros mancuernas','3×10'],['Elevaciones laterales','3×15'],['Tríceps cuerda','3×12'],['Fondos','2×10']]},
     {nombre:'Tirón',tipo:'Pull',ex:[['Dominadas','4×6'],['Remo barra','4×8'],['Jalón al pecho','3×12'],['Face pull','3×15'],['Curl bíceps barra','3×10'],['Curl martillo','2×12']]},
-    {nombre:'Pierna',tipo:'Lower',ex:[['Sentadilla barra','4×8'],['Peso muerto rumano','3×10'],['Prensa 45°','3×12'],['Curl femoral','3×12'],['Elevación de gemelo de pie','3×15'],['Plancha','3×45s']]},
+    {nombre:'Pierna',tipo:'Lower',ex:[['Sentadilla barra','4×8'],['Peso muerto rumano','3×10'],['Prensa 45°','3×12'],['Curl femoral','3×12'],['Elevación de gemelo de pie','3×15'],['Hiperextensiones','3×12']]},
   ]},
 ];
 PLANTILLAS_RUTINA.forEach(p=>PRESET_ROUTINES.push({id:p.id,name:p.name,plan:planDesdePlantilla(p.dias)}));
@@ -3274,7 +3274,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 20:24';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 20:40';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4725,6 +4725,16 @@ const PESO_REF={
   abductores:[0.6,'i'], abductores_en_maquina:[0.6,'i'], aductores_en_maquina:[0.6,'i'],
   patada_de_gluteo_en_polea:[0.12,'i'], zancada:[0.15,'i','m'], zancada_caminando:[0.15,'i','m'],
   step_up_con_mancuernas:[0.12,'i','m'], elevacion_de_gemelo_de_pie:[0.8,'i'],
+  // Los que entraron en el repaso del catálogo del 27/09/2026.
+  press_pecho_en_maquina:[0.5,'s'], aperturas_con_mancuernas:[0.1,'s','m'], press_declinado:[0.6,'s'],
+  press_militar:[0.4,'s'], press_hombros_en_maquina:[0.4,'s'], elevaciones_frontales:[0.08,'s','m'],
+  elevaciones_laterales_en_polea:[0.05,'s'], pajaros_con_mancuernas:[0.06,'s','m'],
+  aperturas_inversas_en_maquina:[0.25,'s'], cruces_inversos_en_polea:[0.05,'s'], remo_en_maquina:[0.6,'s'],
+  remo_en_t:[0.5,'s'], jalon_agarre_estrecho:[0.6,'s'], curl_predicador:[0.25,'s'], curl_en_polea:[0.25,'s'],
+  patada_de_triceps:[0.07,'s','m'], press_banca_agarre_cerrado:[0.5,'s'], curl_de_muneca:[0.25,'s'],
+  curl_de_muneca_inverso:[0.12,'s'], curl_invertido:[0.25,'s'], lenador_en_polea:[0.15,'s'],
+  elevacion_de_gemelo_sentado:[0.5,'i'], gemelo_en_prensa:[1.2,'i'], elevacion_de_gemelo_en_maquina:[0.8,'i'],
+  sentadilla_frontal:[0.6,'i'], sentadilla_en_smith:[0.7,'i'],
 };
 /* Mujer: la diferencia de fuerza con un hombre es mucho mayor arriba que abajo.
    "Prefiero no decirlo" va a medio camino, un poco hacia lo prudente. */
@@ -4732,7 +4742,8 @@ const FACTOR_SEXO={h:{s:1,i:1}, m:{s:0.55,i:0.75}, x:{s:0.75,i:0.85}};
 const FACTOR_NIVEL={ini:0.6, med:1, ava:1.25};
 /* Con barra olímpica no se puede coger menos de lo que pesa la barra: 20 kg. */
 const CON_BARRA=new Set(['press_banca_barra','press_banca_inclinado','press_inclinado_barra','remo_barra',
-  'sentadilla_barra','sentadilla','peso_muerto','peso_muerto_rumano','hip_thrust','hip_thrust_con_barra']);
+  'sentadilla_barra','sentadilla','peso_muerto','peso_muerto_rumano','hip_thrust','hip_thrust_con_barra',
+  'press_declinado','press_militar','press_banca_agarre_cerrado','sentadilla_frontal']);
 // Sin peso corporal apuntado, uno de referencia según sexo.
 const PESO_CORPORAL_REF={h:75, m:62, x:68};
 
