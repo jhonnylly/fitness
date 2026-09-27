@@ -1581,6 +1581,76 @@ async function appLista(page, url){
        'con más de un año, una más en el principal del día: '+nuevas.ava.join(' '));
     ok(nuevas.medNoCambia, '"Llevo unos meses" la deja como está');
 
+    console.log('\n13k4. Peso de partida orientativo, en gris y solo la primera vez');
+    /* 27/09/2026, parte 3: sin historial del ejercicio, el campo de kg enseña en
+       gris un peso de partida (peso corporal × ejercicio × sexo × nivel) y
+       debajo una línea que lo explica. Con historial, nada: manda lo real. */
+    const orient = await page.evaluate(async ()=>{
+      if(STORAGE.backend.name !== 'local') return { saltado:true };   // nunca contra la nube
+      const tic = (ms=80) => new Promise(res => setTimeout(res, ms));
+      const copia = JSON.stringify(DB);
+      const r = {};
+      const plan = JSON.parse(JSON.stringify(PRESET_ROUTINES.find(x => x.id === 'preset_full3').plan));
+      DB = { routines:[{ id:'preset_full3', name:'Cuerpo Completo 3 días', plan, sessions:{},
+                         medidas:[{semana:1, peso:62, cintura:null, fecha:'27/09/2026'}] }],
+             activeRoutine:'preset_full3', profileName:'LUCÍA', perfil:{sexo:'m', nivel:'ini', dias:3, peso:62} };
+      const abrir = (s, ei) => { showTab('log', document.getElementById('tab-log')); openWeekDetail(1); openSession(s); openExDetail(ei); };
+      const d1 = plan[0].days[0];                       // Full Body A: Sentadilla goblet, Press banca mancuernas…
+      abrir(d1.s, 1);
+      await tic();
+      const kg = () => [...document.querySelectorAll('#sets-container .set-kg')];
+      const linea = () => (document.querySelector('#exercises-container .peso-orient') || {}).textContent || '';
+      r.press = { gris: kg()[0].placeholder, vacio: kg().every(i => i.value === ''), linea: linea().replace(/\s+/g,' '),
+                  esperado: num(pesoOrientativo('Press banca mancuernas').kg) };
+      // Con el peso ya escrito, la línea sobra.
+      const i0 = kg()[0]; i0.value = '6'; i0.dispatchEvent(new Event('change')); renderEx();
+      r.conPesoSinLinea = linea() === '';
+      closeExDetail();
+      // En libras, la misma sugerencia convertida.
+      DB.unidades = fijarUnidad(DB.unidades, 'Sentadilla goblet', 'lb');
+      openExDetail(0); await tic();
+      r.libras = { gris: kg()[0].placeholder, esperado: num(deKg(pesoOrientativo('Sentadilla goblet').kg, 'lb')), linea: /lb/.test(linea()) };
+      DB.unidades = {};
+      closeExDetail();
+      // Por tiempo o con el propio cuerpo: nada que sugerir.
+      const plancha = d1.ex.findIndex(e => e[0] === 'Plancha');
+      openExDetail(plancha); await tic();
+      r.plancha = { gris: kg()[0].placeholder, linea: linea() };
+      closeExDetail();
+      // Con historial del ejercicio: ni gris ni línea.
+      DB.routines[0].sessions[d1.s] = { date:'22/09/2026', exercises:[{ name:'Press banca mancuernas', sets:[{kg:10, reps:'10'}] }] };
+      const d2 = plan[0].days.find(d => d.ex.some(e => e[0] === 'Press banca mancuernas') && d.s !== d1.s)
+              || plan[1].days[0];
+      openSession(plan[1].days[0].s);
+      openExDetail(plan[1].days[0].ex.findIndex(e => e[0] === 'Press banca mancuernas'));
+      await tic();
+      r.historial = { gris: kg()[0].placeholder, linea: linea(), valor: kg()[0].value, d2: !!d2 };
+      closeExDetail();
+      // Sin perfil (quien se registró antes del paso "Sobre ti"): como siempre.
+      delete DB.perfil;
+      openSession(plan[0].days[1].s); openExDetail(0); await tic();
+      r.sinPerfil = { gris: kg()[0].placeholder, linea: linea() };
+      // La barra olímpica pesa 20 kg: nunca menos.
+      DB.perfil = { sexo:'m', nivel:'ini', peso:45 };
+      r.barra = pesoOrientativo('Press banca barra').kg;
+      volverAtras(); volverAtras(); closeWeekDetail();
+      DB = JSON.parse(copia); save();
+      return r;
+    });
+    ok(!orient.saltado, 'la prueba corre en local, nunca contra la nube');
+    ok(orient.press.esperado && orient.press.gris === orient.press.esperado && orient.press.vacio,
+       'la primera vez, el kg sale EN GRIS con el peso de partida ('+orient.press.gris+' kg) y el campo sigue vacío');
+    ok(/Para empezar, prueba con unos \d+ kg por mancuerna/.test(orient.press.linea) && /orientativo/.test(orient.press.linea),
+       'y debajo lo explica: '+orient.press.linea.slice(0, 90)+'…');
+    ok(orient.conPesoSinLinea, 'en cuanto escribes un peso, la explicación se va');
+    ok(orient.libras.gris === orient.libras.esperado && orient.libras.linea,
+       'en un ejercicio en libras, la sugerencia sale en libras ('+orient.libras.gris+' lb)');
+    ok(orient.plancha.gris === 'kg' && orient.plancha.linea === '', 'en la plancha (por tiempo) no se sugiere nada');
+    ok(orient.historial.gris === 'kg' && orient.historial.linea === '',
+       'con historial del ejercicio no sale: manda lo que moviste');
+    ok(orient.sinPerfil.gris === 'kg' && orient.sinPerfil.linea === '', 'sin perfil, el campo queda como siempre');
+    ok(orient.barra === 20, 'con barra olímpica nunca sugiere menos de 20 kg');
+
     console.log('\n13l. Botones de volver y cómo instalar en iPhone');
     /* Una entrenadora (15/09) no veía que "← Semanas" era volver, y no entendía
        las instrucciones de instalar en su iPhone. */

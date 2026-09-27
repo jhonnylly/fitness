@@ -1051,6 +1051,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ex-mus-tarjeta b:last-child{margin-bottom:0;}
 .ex-mus-fotos{display:flex;gap:4px;flex:none;}
 .ex-mus-fotos img{height:110px;width:auto;max-width:110px;object-fit:contain;}
+/* Explicación del peso orientativo, bajo la tabla de series. */
+.peso-orient{display:flex;gap:8px;align-items:flex-start;margin:8px 2px 0;font-size:12px;color:var(--muted);line-height:1.5;}
+.peso-orient b{color:var(--text);}
+.peso-orient .ico-btn{color:var(--accent);flex:none;margin-top:1px;}
 /* Las semanas, en mosaico de dos columnas: en lista, un plan de 12 semanas eran
    doce filas y mucho scroll para llegar a la que entrenas. Las acciones de cada
    semana (duplicar, borrar) se fueron DENTRO de la semana: en una celda de
@@ -3270,7 +3274,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 20:11';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 20:24';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4652,6 +4656,18 @@ function getCurrentWeekNum(){
   return (act && semanaEnCurso(act)) || 1;
 }
 
+/* La explicación del gris de los kg: solo si hay sugerencia y todavía no has
+   escrito ningún peso en este ejercicio. */
+function lineaPesoOrientativo(ex,u){
+  if(yaTieneHistorial(ex.name)) return '';
+  if((ex.sets||[]).some(s=>s.kg!==''&&s.kg!=null)) return '';
+  const o=pesoOrientativo(ex.name);
+  if(!o) return '';
+  const cifra=num(deKg(o.kg,u));
+  return `<div class="peso-orient">${ico('rayo','ico-btn')}<span>Para empezar, prueba con unos <b>${cifra} ${u}</b>${o.porMancuerna?' por mancuerna':''}.
+    Es orientativo${o.conPesoPropio?'':' (sin tu peso apuntado)'}: si acabas la serie con más de 3 repeticiones de sobra, sube; si no llegas, baja.</span></div>`;
+}
+
 function renderEx(){
   if(curExIndex===null)return;
   const ex=curEx[curExIndex];
@@ -4670,9 +4686,76 @@ function renderEx(){
     <div class="ex-card">
       <div id="sets-container" class="sc-scroll">${columnasSeries(ex,u)}</div>
     </div>
+    ${lineaPesoOrientativo(ex,u)}
   `;
   pintarImagenEjercicio();
   pintarGraficaCargasEjercicio();
+}
+
+/* ── Peso de partida orientativo (27/09/2026, parte 3 de "rutinas por perfil") ──
+   La primera vez que alguien hace un ejercicio, el campo de kg salía vacío y
+   quien empieza no tiene ni idea de qué coger. Ahora sale EN GRIS (placeholder,
+   no valor: no se guarda si no lo escribes) una estimación para series de
+   10-12 con margen, y debajo una línea que lo explica. En cuanto hay historial
+   de ese ejercicio, manda lo que moviste de verdad (getPrevKgs precarga el
+   valor) y esto no sale.
+   Cálculo: peso corporal × coeficiente del ejercicio × factor de sexo (tren
+   superior e inferior por separado) × factor de nivel. El coeficiente es el de
+   un hombre de nivel medio; `m` = el peso es POR MANCUERNA. Los ejercicios con
+   el propio cuerpo o por tiempo no están: no hay nada que sugerir.
+   Son números de partida, deliberadamente prudentes: mejor quedarse corto la
+   primera serie que lesionarse. Conviene que los revise un entrenador. */
+const PESO_REF={
+  // tren superior (s)
+  press_banca_barra:[0.6,'s'], press_banca:[0.22,'s','m'], press_banca_mancuernas:[0.22,'s','m'],
+  press_banca_plano_mancuernas:[0.22,'s','m'], press_inclinado_mancuernas:[0.18,'s','m'],
+  press_banca_inclinado_mancuernas:[0.18,'s','m'], press_banca_inclinado:[0.5,'s'], press_inclinado_barra:[0.5,'s'],
+  press_inclinado:[0.18,'s','m'], press_hombros_mancuernas:[0.15,'s','m'], press_hombros:[0.35,'s'],
+  press_arnold:[0.13,'s','m'], elevaciones_laterales:[0.07,'s','m'], remo_barra:[0.55,'s'],
+  remo_mancuerna:[0.25,'s','m'], remo_mancuerna_a_una_mano:[0.25,'s','m'], remo_polea_baja:[0.6,'s'],
+  jalon_al_pecho:[0.6,'s'], pullover_polea:[0.3,'s'], face_pull:[0.25,'s'], cruces_polea:[0.12,'s'],
+  curl_biceps_barra:[0.3,'s'], curl_biceps:[0.12,'s','m'], curl_biceps_mancuerna:[0.12,'s','m'],
+  curl_martillo:[0.13,'s','m'], curl_concentrado:[0.1,'s','m'], triceps_polea:[0.3,'s'],
+  triceps_cuerda:[0.25,'s'], triceps:[0.3,'s'], press_frances:[0.3,'s'], crunch_cable:[0.4,'s'],
+  // tren inferior (i)
+  sentadilla_barra:[0.8,'i'], sentadilla:[0.8,'i'], sentadilla_goblet:[0.25,'i'], sentadilla_hack:[0.9,'i'],
+  sentadilla_bulgara:[0.15,'i','m'], prensa_45:[1.6,'i'], peso_muerto_rumano:[0.8,'i'], peso_muerto:[1.0,'i'],
+  hip_thrust:[1.0,'i'], hip_thrust_con_barra:[1.0,'i'], hip_thrust_maquina:[1.0,'i'], curl_femoral:[0.45,'i'],
+  curl_femoral_sentado:[0.45,'i'], curl_femoral_tumbado:[0.4,'i'], extension_piernas:[0.6,'i'],
+  abductores:[0.6,'i'], abductores_en_maquina:[0.6,'i'], aductores_en_maquina:[0.6,'i'],
+  patada_de_gluteo_en_polea:[0.12,'i'], zancada:[0.15,'i','m'], zancada_caminando:[0.15,'i','m'],
+  step_up_con_mancuernas:[0.12,'i','m'], elevacion_de_gemelo_de_pie:[0.8,'i'],
+};
+/* Mujer: la diferencia de fuerza con un hombre es mucho mayor arriba que abajo.
+   "Prefiero no decirlo" va a medio camino, un poco hacia lo prudente. */
+const FACTOR_SEXO={h:{s:1,i:1}, m:{s:0.55,i:0.75}, x:{s:0.75,i:0.85}};
+const FACTOR_NIVEL={ini:0.6, med:1, ava:1.25};
+/* Con barra olímpica no se puede coger menos de lo que pesa la barra: 20 kg. */
+const CON_BARRA=new Set(['press_banca_barra','press_banca_inclinado','press_inclinado_barra','remo_barra',
+  'sentadilla_barra','sentadilla','peso_muerto','peso_muerto_rumano','hip_thrust','hip_thrust_con_barra']);
+// Sin peso corporal apuntado, uno de referencia según sexo.
+const PESO_CORPORAL_REF={h:75, m:62, x:68};
+
+function pesoOrientativo(nombre){
+  const pf=DB.perfil;
+  if(!pf||!pf.sexo||!nombre) return null;
+  const ref=PESO_REF[claveEjercicio(nombre)]||PESO_REF[claveEjercicioLaxa(nombre)];
+  if(!ref) return null;
+  const [coef,tren,mancuerna]=ref;
+  const corporal=(ultimoPeso()&&ultimoPeso().peso)||pf.peso||PESO_CORPORAL_REF[pf.sexo]||70;
+  const bruto=corporal*coef*(FACTOR_SEXO[pf.sexo]||FACTOR_SEXO.x)[tren]*(FACTOR_NIVEL[pf.nivel]||0.8);
+  // Mancuernas de 2 en 2 kg (lo habitual en un gimnasio); barras y máquinas, de 2,5 en 2,5.
+  const paso=mancuerna?2:2.5;
+  const clave=PESO_REF[claveEjercicio(nombre)]?claveEjercicio(nombre):claveEjercicioLaxa(nombre);
+  const kg=Math.max(CON_BARRA.has(clave)?20:paso, Math.round(bruto/paso)*paso);
+  return {kg, porMancuerna:!!mancuerna, conPesoPropio:!!((ultimoPeso()&&ultimoPeso().peso)||pf.peso)};
+}
+
+/* ¿Se ha registrado alguna vez este ejercicio con peso en la rutina activa?
+   Si sí, la sugerencia sobra: manda el historial. */
+function yaTieneHistorial(nombre){
+  const r=getActive();
+  return !!(r && serieDeCargas(r,nombre).length);
 }
 
 /* Las series en columnas. Filas: repeticiones (en gris, lo que pide el plan),
@@ -4682,13 +4765,15 @@ function renderEx(){
 function columnasSeries(ex,u){
   const n=ex.sets.length;
   const obj=objetivoReps(ex.name)||'reps';
+  const orient=!yaTieneHistorial(ex.name) ? pesoOrientativo(ex.name) : null;
+  const grisKg=orient ? num(deKg(orient.kg,u)) : u;
   const descGeneral=parseInt(document.getElementById('rest').value)||90;
   const col=(si,html)=>`<div style="grid-column:${si+2}">${html}</div>`;
   const filas=[
     ['Reps', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp set-reps" value="${escaparHTML(String(set.reps||''))}" placeholder="${escaparHTML(obj)}"
         aria-label="Repeticiones de la serie ${si+1}" onchange="anotarReps(${si},this.value)">`],
     [u, (set,si)=>{ const m=set.kg===''||set.kg==null?'':deKg(set.kg,u);
-        return `<input type="text" inputmode="decimal" class="set-inp set-kg" value="${m===''?'':escaparHTML(String(m))}" placeholder="${u}"
+        return `<input type="text" inputmode="decimal" class="set-inp set-kg" value="${m===''?'':escaparHTML(String(m))}" placeholder="${escaparHTML(grisKg)}"
         aria-label="Peso de la serie ${si+1} en ${u}" onchange="anotarPeso(${si},this.value)">`; }, 'set-unit'],
     ['Desc.', (set,si)=>`<div class="sc-desc"><input type="text" inputmode="numeric" class="set-desc" value="${set.desc?escaparHTML(String(set.desc)):''}" placeholder="${descGeneral}"
         aria-label="Descanso tras la serie ${si+1}, en segundos" onchange="anotarDescanso(${si},this.value)"></div>`]
@@ -9061,7 +9146,7 @@ window.cargarConfigAppSiHaceFalta = function(){
 
 /* Versión de la política que acepta quien se registra. Subirla al cambiar el
    texto de legal.html, para saber qué aceptó cada uno. */
-const VERSION_LEGAL = '2026-09-15';
+const VERSION_LEGAL = '2026-09-27';   // + sexo y nivel, y pesos/rutinas orientativos
 function consentimientoAhora(){ return { version: VERSION_LEGAL, ts: Date.now() }; }
 
 async function cargarConfigApp(){
