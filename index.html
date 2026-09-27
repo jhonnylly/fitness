@@ -2615,6 +2615,11 @@ const PRESET_DESC={
   'preset_definicion':'Déficit calórico + cardio. Marca y define el cuerpo.',
   'preset_mantenimiento':'Frecuencia equilibrada. Mantén tu físico actual.',
   'preset_gluteo_pierna':'Glúteo, pierna y abdomen. Lunes a viernes.',
+  'preset_full3':'Todo el cuerpo en cada sesión. Ideal si empiezas.',
+  'preset_gluteo3':'Dos días de glúteo y pierna y uno de torso.',
+  'preset_tonifica4':'Pierna y torso alternos, con glúteo y core.',
+  'preset_torso_pierna4':'Torso y pierna, un día de fuerza y otro de volumen.',
+  'preset_ppl3':'Empuje, tirón y pierna. Gana músculo en 3 días.',
 };
 
 const PRESET_ROUTINES=[
@@ -3074,6 +3079,99 @@ const PRESET_ROUTINES=[
   ]},
 ];
 
+/* ── Rutinas pensadas por días y perfil (27/09/2026, parte 2 de "rutinas por
+   perfil", pedido por Jhon) ──
+   Las siete de arriba son de 5-6 días. Con el paso "Sobre ti" alguien que
+   puede entrenar 3 días recibía una de 6 fundida a 3 ("Piernas + Empuje",
+   ejercicios fuera). Estas nacen ya con 3 o 4 días.
+   No se escriben a mano semana a semana como las de arriba: cada una es una
+   plantilla de UNA semana y PROGRESION_8 la estira a ocho, así un cambio en un
+   ejercicio no hay que repetirlo ocho veces. La progresión es la clásica:
+   adaptación → volumen → intensidad (menos reps, más carga) → pico → descarga.
+   El "principal" de cada día son sus DOS primeros ejercicios: los que más
+   series ganan. Son orientativas: conviene que las revise un entrenador. */
+const PROGRESION_8=[
+  {t:'Adaptación',     principal:0,  resto:0,  reps:0},
+  {t:'Técnica y base', principal:1,  resto:0,  reps:0},
+  {t:'Volumen',        principal:1,  resto:1,  reps:0},
+  {t:'Volumen +',      principal:2,  resto:1,  reps:0},
+  {t:'Intensidad',     principal:1,  resto:0,  reps:-2},
+  {t:'Intensidad +',   principal:2,  resto:1,  reps:-2},
+  {t:'Semana pico',    principal:2,  resto:1,  reps:-2},
+  {t:'Descarga',       principal:-1, resto:-1, reps:0},
+];
+
+/* "3×12" + cambios → "4×10". Las series quedan entre 2 y 6. Las reps solo
+   bajan si son un número de 8 o más: "30s", "6" o "10/pierna" se quedan. */
+function esquemaProgresado(esq,dSeries,dReps){
+  const m=String(esq).match(/^(\d+)×(.+)$/);
+  if(!m) return esq;
+  const series=Math.max(2,Math.min(6,parseInt(m[1])+dSeries));
+  let reps=m[2];
+  if(dReps && /^\d+$/.test(reps) && parseInt(reps)>=8) reps=String(Math.max(6,parseInt(reps)+dReps));
+  return series+'×'+reps;
+}
+
+function planDesdePlantilla(dias){
+  let s=0;
+  return PROGRESION_8.map((w,wi)=>({
+    num:wi+1,
+    title:w.t+(wi===PROGRESION_8.length-1?' 🏆':''),
+    days:dias.map(d=>({
+      s:++s,
+      name:'S'+s+' · '+d.nombre,
+      type:d.tipo,
+      ex:d.ex.map((e,ei)=>[e[0],esquemaProgresado(e[1],ei<2?w.principal:w.resto,w.reps)])
+    }))
+  }));
+}
+
+const PLANTILLAS_RUTINA=[
+  {id:'preset_full3',name:'Cuerpo Completo 3 días',dias:[
+    {nombre:'Full Body A',tipo:'Full',ex:[['Sentadilla goblet','3×12'],['Press banca mancuernas','3×10'],['Jalón al pecho','3×12'],['Hip thrust','3×12'],['Elevaciones laterales','2×15'],['Plancha','3×30s']]},
+    {nombre:'Full Body B',tipo:'Full',ex:[['Peso muerto rumano','3×10'],['Press hombros mancuernas','3×10'],['Remo polea baja','3×12'],['Zancada','2×10'],['Curl bíceps mancuerna','2×12'],['Tríceps polea','2×12']]},
+    {nombre:'Full Body C',tipo:'Full',ex:[['Prensa 45°','3×12'],['Press inclinado mancuernas','3×10'],['Remo mancuerna','3×10'],['Curl femoral','3×12'],['Face pull','2×15'],['Dead bug','3×10']]},
+  ]},
+  {id:'preset_gluteo3',name:'Glúteo & Pierna 3 días',dias:[
+    {nombre:'Glúteo + Cuádriceps',tipo:'Lower',ex:[['Hip thrust','4×10'],['Sentadilla goblet','3×12'],['Prensa 45°','3×12'],['Abductores en máquina','3×15'],['Extensión piernas','3×15'],['Plancha','3×30s']]},
+    {nombre:'Torso',tipo:'Upper',ex:[['Jalón al pecho','3×12'],['Press banca mancuernas','3×10'],['Remo polea baja','3×12'],['Press hombros mancuernas','3×10'],['Elevaciones laterales','3×15'],['Face pull','2×15']]},
+    {nombre:'Glúteo + Femoral',tipo:'Lower',ex:[['Peso muerto rumano','4×10'],['Sentadilla búlgara','3×10'],['Hip thrust a una pierna','3×10'],['Curl femoral','3×12'],['Patada de glúteo en polea','3×15'],['Elevación de piernas','3×12']]},
+  ]},
+  {id:'preset_tonifica4',name:'Tonificación 4 días',dias:[
+    {nombre:'Glúteo & Pierna',tipo:'Lower',ex:[['Sentadilla goblet','4×12'],['Hip thrust','4×12'],['Zancada caminando','3×10'],['Curl femoral','3×12'],['Abductores en máquina','3×15'],['Elevación de gemelo de pie','3×15']]},
+    {nombre:'Torso',tipo:'Upper',ex:[['Jalón al pecho','3×12'],['Press banca mancuernas','3×12'],['Remo mancuerna','3×12'],['Elevaciones laterales','3×15'],['Tríceps polea','3×12'],['Curl bíceps mancuerna','3×12']]},
+    {nombre:'Glúteo & Femoral',tipo:'Lower',ex:[['Peso muerto rumano','4×10'],['Hip thrust con barra','4×10'],['Step up con mancuernas','3×10'],['Patada de glúteo en polea','3×15'],['Aductores en máquina','3×15'],['Plancha','3×40s']]},
+    {nombre:'Torso + Core',tipo:'Upper',ex:[['Remo polea baja','3×12'],['Press hombros mancuernas','3×12'],['Pullover polea','3×12'],['Face pull','3×15'],['Crunch cable','3×15'],['Plancha lateral','3×30s']]},
+  ]},
+  {id:'preset_torso_pierna4',name:'Torso / Pierna 4 días',dias:[
+    {nombre:'Torso fuerza',tipo:'Upper',ex:[['Press banca barra','4×8'],['Remo barra','4×8'],['Press hombros mancuernas','3×10'],['Jalón al pecho','3×10'],['Curl bíceps barra','3×10'],['Tríceps polea','3×12']]},
+    {nombre:'Pierna fuerza',tipo:'Lower',ex:[['Sentadilla barra','4×8'],['Peso muerto rumano','3×10'],['Prensa 45°','3×12'],['Curl femoral','3×12'],['Elevación de gemelo de pie','4×12'],['Plancha','3×45s']]},
+    {nombre:'Torso volumen',tipo:'Upper',ex:[['Press inclinado mancuernas','4×10'],['Remo polea baja','4×12'],['Cruces polea','3×15'],['Elevaciones laterales','4×15'],['Curl martillo','3×12'],['Press francés','3×12']]},
+    {nombre:'Pierna volumen',tipo:'Lower',ex:[['Sentadilla hack','4×10'],['Hip thrust','3×12'],['Zancada caminando','3×12'],['Extensión piernas','3×15'],['Curl femoral sentado','3×12'],['Elevación de piernas colgado','3×12']]},
+  ]},
+  {id:'preset_ppl3',name:'Empuje / Tirón / Pierna 3 días',dias:[
+    {nombre:'Empuje',tipo:'Push',ex:[['Press banca barra','4×8'],['Press inclinado mancuernas','3×10'],['Press hombros mancuernas','3×10'],['Elevaciones laterales','3×15'],['Tríceps cuerda','3×12'],['Fondos','2×10']]},
+    {nombre:'Tirón',tipo:'Pull',ex:[['Dominadas','4×6'],['Remo barra','4×8'],['Jalón al pecho','3×12'],['Face pull','3×15'],['Curl bíceps barra','3×10'],['Curl martillo','2×12']]},
+    {nombre:'Pierna',tipo:'Lower',ex:[['Sentadilla barra','4×8'],['Peso muerto rumano','3×10'],['Prensa 45°','3×12'],['Curl femoral','3×12'],['Elevación de gemelo de pie','3×15'],['Plancha','3×45s']]},
+  ]},
+];
+PLANTILLAS_RUTINA.forEach(p=>PRESET_ROUTINES.push({id:p.id,name:p.name,plan:planDesdePlantilla(p.dias)}));
+
+/* El nivel de "Sobre ti" ajusta las series al crear la rutina en el registro:
+   quien empieza hace una serie menos en todo (mínimo 2) y quien lleva más de
+   un año, una más en el primer ejercicio de cada día (máximo 6). "Llevo unos
+   meses" la deja como está. Devuelve true si ha cambiado algo. */
+function ajustarRutinaANivel(rutina,nivel){
+  if(nivel!=='ini'&&nivel!=='ava') return false;
+  (rutina.plan||[]).forEach(w=>(w.days||[]).forEach(d=>{
+    d.ex=(d.ex||[]).map((e,i)=>{
+      const delta=nivel==='ini'?-1:(i===0?1:0);
+      return delta?[e[0],esquemaProgresado(e[1],delta,0),...e.slice(2)]:e;
+    });
+  }));
+  return true;
+}
+
 const PLAN=[
   {num:1,title:"Adaptación al déficit",days:[
     {s:1,name:"S1 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Remo barra agarre supino","4×10"],["Press inclinado mancuernas","3×12"],["Remo mancuerna","3×12"],["Elevaciones laterales","4×15"],["Curl bíceps barra","3×12"],["Tríceps polea cuerda","3×15"]]},
@@ -3172,7 +3270,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 19:59';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 20:11';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7675,6 +7773,11 @@ const PRESET_DESC_PANEL={
   'preset_definicion':'Déficit calórico + cardio moderado. Para marcar y definir el cuerpo.',
   'preset_mantenimiento':'Frecuencia equilibrada. Para mantener el físico sin perder ni ganar.',
   'preset_gluteo_pierna':'Enfoque en glúteo, pierna y abdomen sin descuidar el resto. Lunes a viernes.',
+  'preset_full3':'Cuerpo completo en cada sesión, tres días a la semana. El mejor punto de partida si empiezas.',
+  'preset_gluteo3':'Dos días de glúteo y pierna (cuádriceps y femoral) y uno de torso. Tres días a la semana.',
+  'preset_tonifica4':'Pierna y torso alternos, con énfasis en glúteo y core. Cuatro días a la semana.',
+  'preset_torso_pierna4':'Torso y pierna dos veces por semana: un día de fuerza y otro de volumen.',
+  'preset_ppl3':'Empuje, tirón y pierna: cada grupo una vez por semana con volumen alto. Tres días.',
 };
 
 function renderPresetList(){
@@ -7684,7 +7787,10 @@ function renderPresetList(){
   if(presetRecienCargadas){ renderElegirActivaPreset(c, intro, pie); return; }
 
   if(intro) intro.textContent='Marca las rutinas que quieras y cárgalas de una vez. Después eliges cuál activar.';
-  c.innerHTML=PRESET_ROUTINES.map(r=>{
+  // Con perfil, las recomendadas primero y con su etiqueta, como en el registro.
+  const reco=rutinasRecomendadas(DB.perfil);
+  const orden=[...reco.map(id=>PRESET_ROUTINES.find(r=>r.id===id)),...PRESET_ROUTINES.filter(r=>!reco.includes(r.id))];
+  c.innerHTML=orden.map(r=>{
     const yaEsta=DB.routines.some(ur=>ur.id===r.id);
     const marcada=presetSeleccion.includes(r.id);
     const totalSess=r.plan.reduce((s,w)=>s+w.days.length,0);
@@ -7693,7 +7799,7 @@ function renderPresetList(){
         aria-pressed="${marcada}" onclick="presetToggle('${r.id}')">
       <span class="marca">${marcada?'✓':''}</span>
       <span style="min-width:0;flex:1;">
-        <span class="routine-item-name">${escaparHTML(r.name)}
+        <span class="routine-item-name">${escaparHTML(r.name)}${reco.includes(r.id)?'<span class="ob-reco">Para ti</span>':''}
           ${yaEsta?'<span style="font-size:11px;color:var(--green);font-weight:700;">✓ Ya en tu biblioteca</span>':''}</span>
         <span class="routine-item-meta">${PRESET_DESC_PANEL[r.id]||''}</span>
         <span class="routine-item-meta">${totalSess} sesiones · ${r.plan.length} semanas · ${diasSemana} días/semana</span>
@@ -7915,22 +8021,34 @@ const OPCIONES_PERFIL={
   dias:[[3,'3'],[4,'4'],[5,'5'],[6,'6']]
 };
 
-/* Qué rutinas se recomiendan, en orden. Es un punto de partida, no un filtro:
-   el resto sigue a un toque debajo (Jhon eligió "recomendadas arriba").
+/* Qué rutinas se recomiendan, en orden (3). Es un punto de partida, no un
+   filtro: el resto sigue a un toque debajo (Jhon eligió "recomendadas arriba").
    Fuerza Máxima (pocas reps, cargas máximas) solo se recomienda con más de un
-   año entrenando, y entonces sube al segundo puesto; quien empieza no la ve
-   entre las recomendadas. */
+   año entrenando, y entonces sube al segundo puesto de su lista. */
 function rutinasRecomendadas(perfil){
   if(!perfil||!perfil.sexo) return [];
   let porSexo={
-    m:['preset_gluteo_pierna','preset_definicion','preset_recomp','preset_quema'],
-    h:['preset_volumen','preset_recomp','preset_definicion'],
-    x:['preset_recomp','preset_quema','preset_volumen','preset_definicion']
+    m:['preset_gluteo3','preset_tonifica4','preset_gluteo_pierna','preset_full3','preset_definicion','preset_recomp','preset_quema'],
+    h:['preset_ppl3','preset_torso_pierna4','preset_volumen','preset_full3','preset_recomp','preset_definicion'],
+    x:['preset_full3','preset_torso_pierna4','preset_recomp','preset_quema','preset_volumen','preset_definicion']
   }[perfil.sexo]||[];
   if(perfil.nivel==='ava') porSexo=[porSexo[0],'preset_fuerza',...porSexo.slice(1)];
+  else porSexo=porSexo.filter(id=>id!=='preset_fuerza');
+  /* Con los días elegidos, primero las que nacen con ESOS días; luego las de
+     menos días (caben de sobra) y al final las de más, que habría que fundir.
+     El orden de la lista desempata: es la preferencia por perfil. */
+  const nativos=id=>{ const p=PRESET_ROUTINES.find(r=>r.id===id); return p&&p.plan[0]?p.plan[0].days.length:0; };
+  const coste=id=>{
+    const d=perfil.dias, n=nativos(id);
+    if(!d||n===d) return 0;
+    return n<d ? d-n : 2*(n-d);
+  };
   return porSexo
     .filter(id=>PRESET_ROUTINES.some(r=>r.id===id))
-    .slice(0,3);
+    .map((id,i)=>({id,k:coste(id)+i/100}))
+    .sort((a,b)=>a.k-b.k)
+    .slice(0,3)
+    .map(x=>x.id);
 }
 
 function renderObPerfil(){
@@ -8080,7 +8198,9 @@ function obNext(step){
       const p=PRESET_ROUTINES.find(r=>r.id===id);
       return p && p.plan.some(w=>w.days.length>dias);
     });
-    const coletilla=adapta?` La dejamos en ${dias} días por semana.`:'';
+    const nivel={ini:' Con una serie menos en cada ejercicio, porque empiezas.',
+                 ava:' Con una serie más en el ejercicio principal de cada día.'}[obPerfil.nivel]||'';
+    const coletilla=(adapta?` La dejamos en ${dias} días por semana.`:'')+nivel;
     if(obSeleccion.length===1){
       const preset=PRESET_ROUTINES.find(r=>r.id===obSeleccion[0]);
       document.getElementById('ob-summary').textContent=
@@ -8114,7 +8234,7 @@ function obFinish(){
         // gráfica y en Ajustes, y no hay dos sitios con el mismo dato.
         medidas:perfil&&perfil.peso!=null?[{semana:1,peso:perfil.peso,cintura:null,fecha:hoy}]:[]
       };
-      if(perfil) adaptarRutinaADias(r,perfil.dias);
+      if(perfil){ adaptarRutinaADias(r,perfil.dias); ajustarRutinaANivel(r,perfil.nivel); }
       return r;
     }),
     activeRoutine:activa,

@@ -1460,7 +1460,7 @@ async function appLista(page, url){
       obPerfilSiguiente();                                    // sin elegir nada: no avanza
       r.noAvanzaVacio = document.getElementById('ob-step-perfil').classList.contains('active');
       const toca = (c, v) => document.querySelector(`#ob-perfil .ob-op[data-campo="${c}"][data-valor="${v}"]`).click();
-      toca('sexo','m'); toca('nivel','ini'); toca('dias','3');
+      toca('sexo','m'); toca('nivel','med'); toca('dias','3');
       r.marcadas = document.querySelectorAll('#ob-perfil .ob-op.elegida').length;
       document.getElementById('ob-peso').value = 'mucho';
       obPerfilSiguiente();
@@ -1473,8 +1473,10 @@ async function appLista(page, url){
       r.primeras = [...lista.querySelectorAll('.ob-routine-btn')].slice(0,3)
         .map(b => b.querySelector('.ob-routine-btn-name').textContent);
       r.conEtiqueta = lista.querySelectorAll('.ob-reco').length;
-      r.todas = lista.querySelectorAll('.ob-routine-btn').length;
+      r.todas = lista.querySelectorAll('.ob-routine-btn').length === PRESET_ROUTINES.length;
       r.recoHombreIni = rutinasRecomendadas({sexo:'h', nivel:'ini'});
+      r.recoHombre4 = rutinasRecomendadas({sexo:'h', nivel:'med', dias:4});
+      r.recoMujer5 = rutinasRecomendadas({sexo:'m', nivel:'med', dias:5});
       r.recoHombreAva = rutinasRecomendadas({sexo:'h', nivel:'ava'});
       obSelectRoutine('preset_gluteo_pierna');
       const semanasAntes = PRESET_ROUTINES.find(x => x.id === 'preset_gluteo_pierna').plan
@@ -1498,7 +1500,7 @@ async function appLista(page, url){
       // Ajustes lo enseña y lo deja cambiar.
       pintarConfig();
       r.ajustes = { sexo: document.getElementById('cfg-sexo').value, nivel: document.getElementById('cfg-nivel').value};
-      guardarSobreTi('nivel', 'med');
+      guardarSobreTi('nivel', 'ava');
       r.nivelCambiado = DB.perfil.nivel;
       DB = JSON.parse(copia); save();
       return r;
@@ -1510,9 +1512,11 @@ async function appLista(page, url){
     ok(perfil.pesoMalNoAvanza && perfil.enRutinas, 'un peso que no es un número no pasa; 62,5 sí');
     ok(perfil.grupos.join('|') === 'Recomendadas para ti|Otras rutinas' && perfil.conEtiqueta === 3,
        'las rutinas salen en dos grupos, con 3 "Para ti" arriba');
-    ok(perfil.primeras[0].startsWith('Glúteo & Pierna'), 'para una mujer, la primera es Glúteo & Pierna: '+perfil.primeras.join(', '));
-    ok(perfil.todas === 7, 'y siguen todas a la vista: no es un filtro');
-    ok(!perfil.recoHombreIni.includes('preset_fuerza') && perfil.recoHombreIni[0] === 'preset_volumen',
+    ok(/^Glúteo & Pierna 3 días/.test(perfil.primeras[0]), 'para una mujer con 3 días, la primera es Glúteo & Pierna 3 días: '+perfil.primeras.join(', '));
+    ok(perfil.todas, 'y siguen todas a la vista: no es un filtro');
+    ok(perfil.recoHombre4[0] === 'preset_torso_pierna4', 'un hombre con 4 días recibe primero Torso / Pierna 4 días: '+perfil.recoHombre4.join(', '));
+    ok(perfil.recoMujer5[0] === 'preset_gluteo_pierna', 'una mujer con 5 días, la de lunes a viernes: '+perfil.recoMujer5.join(', '));
+    ok(!perfil.recoHombreIni.includes('preset_fuerza') && perfil.recoHombreIni[0] === 'preset_ppl3',
        'quien empieza no ve Fuerza Máxima entre las recomendadas: '+perfil.recoHombreIni.join(', '));
     ok(perfil.recoHombreAva.includes('preset_fuerza'), 'con más de un año, sí');
     ok(/3 días por semana/.test(perfil.resumen), 'el resumen dice que se deja en 3 días: '+perfil.resumen);
@@ -1523,12 +1527,59 @@ async function appLista(page, url){
     ok(perfil.semanasDistintas === perfil.semanasOrigenDistintas,
        '🔴 cada semana conserva su progresión ('+perfil.semanasDistintas+' semanas distintas, como el original)');
     ok(perfil.tope, 'ninguna sesión pasa del tope de ejercicios para 3 días');
-    ok(perfil.perfil && perfil.perfil.sexo === 'm' && perfil.perfil.nivel === 'ini' && perfil.perfil.dias === 3 && perfil.perfil.peso === 62.5,
+    ok(perfil.perfil && perfil.perfil.sexo === 'm' && perfil.perfil.nivel === 'med' && perfil.perfil.dias === 3 && perfil.perfil.peso === 62.5,
        'el perfil se guarda: '+JSON.stringify(perfil.perfil));
     ok(perfil.medidas.length === 1 && perfil.medidas[0].peso === 62.5 && perfil.medidas[0].semana === 1,
        'y el peso entra en Medidas como el primero');
-    ok(perfil.ajustes.sexo === 'm' && perfil.ajustes.nivel === 'ini' && perfil.nivelCambiado === 'med',
+    ok(perfil.ajustes.sexo === 'm' && perfil.ajustes.nivel === 'med' && perfil.nivelCambiado === 'ava',
        'Ajustes enseña sexo y nivel y deja cambiarlos');
+
+    console.log('\n13k3. Rutinas nuevas de 3 y 4 días, y el nivel ajusta las series');
+    /* 27/09/2026, parte 2: cinco rutinas que nacen con 3 o 4 días, estiradas a
+       8 semanas por PROGRESION_8, y el nivel del registro quita o pone series. */
+    const nuevas = await page.evaluate(()=>{
+      const ids = ['preset_full3','preset_gluteo3','preset_tonifica4','preset_torso_pierna4','preset_ppl3'];
+      const r = { rutinas: {} };
+      for(const id of ids){
+        const p = PRESET_ROUTINES.find(x => x.id === id);
+        if(!p){ r.rutinas[id] = null; continue; }
+        const nombres = [...new Set(p.plan.flatMap(w => w.days.flatMap(d => d.ex.map(e => e[0]))))];
+        r.rutinas[id] = {
+          semanas: p.plan.length,
+          dias: [...new Set(p.plan.map(w => w.days.length))],
+          ids: p.plan.flatMap(w => w.days.map(d => d.s)),
+          primera: p.plan[0].days[0].ex[0][1], pico: p.plan[6].days[0].ex[0][1], descarga: p.plan[7].days[0].ex[0][1],
+          sinMusculos: nombres.filter(n => !musculosDeEjercicio(n)),
+          conDesc: !!PRESET_DESC[id] && !!PRESET_DESC_PANEL[id]
+        };
+      }
+      r.esquemas = [esquemaProgresado('3×12', 1, -2), esquemaProgresado('2×30s', 2, -2), esquemaProgresado('6×6', 3, -2),
+                    esquemaProgresado('2×15', -1, 0)];
+      const base = () => JSON.parse(JSON.stringify(PRESET_ROUTINES.find(x => x.id === 'preset_full3')));
+      const ini = base(); ajustarRutinaANivel(ini, 'ini');
+      const ava = base(); ajustarRutinaANivel(ava, 'ava');
+      const med = base(); r.medNoCambia = !ajustarRutinaANivel(med, 'med');
+      r.ini = ini.plan[0].days[0].ex.map(e => e[1]);
+      r.ava = ava.plan[0].days[0].ex.map(e => e[1]);
+      r.orig = base().plan[0].days[0].ex.map(e => e[1]);
+      return r;
+    });
+    for(const [id, x] of Object.entries(nuevas.rutinas)){
+      ok(!!x, id+' existe');
+      if(!x) continue;
+      ok(x.semanas === 8 && x.dias.length === 1 && [3,4].includes(x.dias[0]), id+': 8 semanas de '+x.dias[0]+' días');
+      ok(x.ids.every((s, i) => s === i + 1), id+': ids seguidos');
+      ok(x.primera !== x.pico && x.pico !== x.descarga, id+': progresa ('+x.primera+' → '+x.pico+' → descarga '+x.descarga+')');
+      ok(x.sinMusculos.length === 0, id+': todos sus ejercicios tienen foto y músculos'+(x.sinMusculos.length?': faltan '+x.sinMusculos.join(', '):''));
+      ok(x.conDesc, id+': con descripción en el registro y en Explorar rutinas');
+    }
+    ok(nuevas.esquemas.join(' ') === '4×10 4×30s 6×6 2×15',
+       'la progresión sube series con tope 6 y mínimo 2, y solo baja reps numéricas de 8 o más: '+nuevas.esquemas.join(' '));
+    ok(nuevas.ini.every((e, i) => parseInt(e) === Math.max(2, parseInt(nuevas.orig[i]) - 1)),
+       'quien empieza hace una serie menos en todo (mínimo 2): '+nuevas.ini.join(' '));
+    ok(parseInt(nuevas.ava[0]) === parseInt(nuevas.orig[0]) + 1 && nuevas.ava.slice(1).join() === nuevas.orig.slice(1).join(),
+       'con más de un año, una más en el principal del día: '+nuevas.ava.join(' '));
+    ok(nuevas.medNoCambia, '"Llevo unos meses" la deja como está');
 
     console.log('\n13l. Botones de volver y cómo instalar en iPhone');
     /* Una entrenadora (15/09) no veía que "← Semanas" era volver, y no entendía
