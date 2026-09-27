@@ -1211,6 +1211,22 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ob-routine-btn.selected{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
 .ob-routine-btn-name{font-size:14px;font-weight:700;color:var(--text);}
 .ob-routine-btn-desc{font-size:11px;color:var(--muted);margin-top:3px;}
+/* "Sobre ti": cada pregunta es una fila de opciones que se tocan, no un
+   desplegable: se ve todo de un vistazo y es un toque por respuesta. */
+.ob-preg{margin-bottom:18px;text-align:left;}
+.ob-preg-tit{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.ob-preg-tit small{text-transform:none;letter-spacing:0;font-weight:400;}
+.ob-opciones{display:flex;gap:6px;flex-wrap:wrap;}
+.ob-op{flex:1 1 0;min-width:0;padding:11px 6px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  background:var(--card);color:var(--text);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;}
+.ob-op.elegida{border-color:var(--accent);background:rgba(var(--accent-rgb),0.12);color:var(--accent);}
+.ob-peso{display:flex;align-items:center;gap:8px;}
+.ob-peso input{max-width:120px;text-align:center;font-size:16px;font-weight:700;margin:0;}
+.ob-peso span{font-size:13px;color:var(--muted);}
+/* Las rutinas, en dos grupos cuando hay perfil: las recomendadas y el resto. */
+.ob-grupo{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 8px;text-align:left;}
+.ob-reco{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:800;
+  color:var(--accent);background:rgba(var(--accent-rgb),0.14);vertical-align:1px;}
 
 /* ── Elegir VARIAS rutinas (15/09/2026, pedido por quienes la probaron) ──
    Casilla cuadrada = puedes marcar varias; redonda = eliges una. La diferencia
@@ -1705,6 +1721,20 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 
     <div class="card">
       <div class="section-title">Tus datos</div>
+      <!-- Lo de "Sobre ti" del registro (27/09/2026). Los días no están aquí:
+           tienen su tarjeta propia más abajo, que reparte el plan. -->
+      <div class="grid2" style="margin-bottom:10px;">
+        <div><label>Sexo</label>
+          <select id="cfg-sexo" onchange="guardarSobreTi('sexo',this.value)">
+            <option value="">Sin indicar</option><option value="h">Hombre</option>
+            <option value="m">Mujer</option><option value="x">Prefiero no decirlo</option>
+          </select></div>
+        <div><label>Nivel</label>
+          <select id="cfg-nivel" onchange="guardarSobreTi('nivel',this.value)">
+            <option value="">Sin indicar</option><option value="ini">Empiezo</option>
+            <option value="med">Llevo unos meses</option><option value="ava">Más de un año</option>
+          </select></div>
+      </div>
       <label>Altura (cm)</label>
       <input type="text" inputmode="numeric" id="cfg-altura" placeholder="175" onchange="guardarAltura(this.value)">
       <!-- El peso NO se escribe aquí: se registra por semana en Medidas y
@@ -3142,7 +3172,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 19:39';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 19:59';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -6407,7 +6437,17 @@ function alternarRIR(v){
   if(curExIndex!==null)renderEx();
 }
 
+/* Sexo y nivel desde Ajustes. Vacío = sin indicar (se borra el campo). */
+function guardarSobreTi(campo,valor){
+  DB.perfil={...(DB.perfil||{})};
+  if(valor) DB.perfil[campo]=valor; else delete DB.perfil[campo];
+  save();
+}
+
 function pintarConfig(){
+  const pf=DB.perfil||{};
+  const sx=document.getElementById('cfg-sexo'); if(sx)sx.value=pf.sexo||'';
+  const nv=document.getElementById('cfg-nivel'); if(nv)nv.value=pf.nivel||'';
   const alt=document.getElementById('cfg-altura');
   if(alt)alt.value=DB.altura||'';
   const rir=document.getElementById('cfg-rir');
@@ -7859,20 +7899,141 @@ function obSetPhoto(input){
    no se pregunta nada: es esa. */
 let obSeleccion=[];
 
-function renderObRoutineList(){
-  const descriptions=PRESET_DESC;
-  const c=document.getElementById('ob-routine-list');
-  c.innerHTML=PRESET_ROUTINES.map(r=>{
-    const marcada=obSeleccion.includes(r.id);
-    return `
+/* ── "Sobre ti" (27/09/2026, pedido por Jhon) ──
+   Lo que se pregunta al registrarse para recomendar rutinas y dejarlas con los
+   días que puede entrenar. Se guarda en DB.perfil = {sexo, nivel, dias, peso}:
+     sexo  'h' | 'm' | 'x' (prefiero no decirlo)
+     nivel 'ini' | 'med' | 'ava'
+     dias  3..6
+     peso  kg o null (opcional; va además a Medidas como primer peso)
+   Sexo, nivel y días son obligatorios en el paso; el peso no. */
+let obPerfil={sexo:null,nivel:null,dias:null,peso:null};
+
+const OPCIONES_PERFIL={
+  sexo:[['h','Hombre'],['m','Mujer'],['x','Prefiero no decirlo']],
+  nivel:[['ini','Empiezo'],['med','Llevo unos meses'],['ava','Más de un año']],
+  dias:[[3,'3'],[4,'4'],[5,'5'],[6,'6']]
+};
+
+/* Qué rutinas se recomiendan, en orden. Es un punto de partida, no un filtro:
+   el resto sigue a un toque debajo (Jhon eligió "recomendadas arriba").
+   Fuerza Máxima (pocas reps, cargas máximas) solo se recomienda con más de un
+   año entrenando, y entonces sube al segundo puesto; quien empieza no la ve
+   entre las recomendadas. */
+function rutinasRecomendadas(perfil){
+  if(!perfil||!perfil.sexo) return [];
+  let porSexo={
+    m:['preset_gluteo_pierna','preset_definicion','preset_recomp','preset_quema'],
+    h:['preset_volumen','preset_recomp','preset_definicion'],
+    x:['preset_recomp','preset_quema','preset_volumen','preset_definicion']
+  }[perfil.sexo]||[];
+  if(perfil.nivel==='ava') porSexo=[porSexo[0],'preset_fuerza',...porSexo.slice(1)];
+  return porSexo
+    .filter(id=>PRESET_ROUTINES.some(r=>r.id===id))
+    .slice(0,3);
+}
+
+function renderObPerfil(){
+  const c=document.getElementById('ob-perfil');
+  if(!c) return;
+  const fila=(clave,titulo)=>`<div class="ob-preg">
+      <div class="ob-preg-tit">${titulo}</div>
+      <div class="ob-opciones" role="radiogroup">${OPCIONES_PERFIL[clave].map(([v,t])=>{
+        const sel=obPerfil[clave]===v;
+        return `<button type="button" class="ob-op${sel?' elegida':''}" role="radio" aria-checked="${sel}"
+          data-campo="${clave}" data-valor="${v}" onclick="obElegirPerfil('${clave}','${v}')">${t}</button>`;
+      }).join('')}</div>
+    </div>`;
+  c.innerHTML=fila('sexo','Eres')+fila('nivel','Tu nivel')+fila('dias','Días por semana que puedes entrenar')+
+    `<div class="ob-preg">
+      <div class="ob-preg-tit">Tu peso <small>(opcional)</small></div>
+      <div class="ob-peso"><input type="text" inputmode="decimal" id="ob-peso" placeholder="70"
+        value="${obPerfil.peso!=null?obPerfil.peso:''}"><span>kg</span></div>
+    </div>`;
+}
+
+function obElegirPerfil(campo,valor){
+  obPerfil[campo]= campo==='dias' ? parseInt(valor) : valor;
+  renderObPerfil();
+}
+
+function mostrarPasoOb(id,punto){
+  document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.ob-dot').forEach((d,i)=>d.classList.toggle('active',i===punto));
+}
+
+function obIrPerfil(){
+  const name=document.getElementById('ob-name').value.trim();
+  if(!name){aviso('Escribe tu nombre para continuar.');return;}
+  renderObPerfil();
+  mostrarPasoOb('ob-step-perfil',1);
+}
+
+function obPerfilSiguiente(){
+  const falta=[!obPerfil.sexo&&'si eres hombre o mujer (o prefieres no decirlo)',
+               !obPerfil.nivel&&'tu nivel',
+               !obPerfil.dias&&'cuántos días puedes entrenar'].filter(Boolean);
+  if(falta.length){aviso('Elige '+falta.join(', ')+'.');return;}
+  const t=(document.getElementById('ob-peso').value||'').replace(',','.').trim();
+  const peso=parseFloat(t);
+  if(t && (isNaN(peso)||peso<30||peso>250)){aviso('Escribe tu peso en kg (por ejemplo, 70) o déjalo vacío.');return;}
+  obPerfil.peso=t?Math.round(peso*10)/10:null;
+  obNext(1);
+}
+
+/* Deja cada semana del plan con `dias` sesiones, SEMANA A SEMANA. El cambio
+   de días de Ajustes copia una sola semana en todas las sin empezar; aquí eso
+   aplanaría la progresión del plan (4×15 → 5×15 → descarga…), así que cada
+   semana se reparte por su cuenta con la misma lógica (repartirSesiones). Solo
+   se reducen días: con más de los que trae la rutina saldrían sesiones vacías.
+   Devuelve true si ha cambiado algo. */
+function adaptarRutinaADias(rutina,dias){
+  const plan=(rutina&&rutina.plan)||[];
+  if(!dias||!plan.length) return false;
+  if(!plan.some(w=>(w.days||[]).length>dias)) return false;
+  let siguienteId=0;
+  plan.forEach(w=>(w.days||[]).forEach(d=>{ if(d.s>siguienteId)siguienteId=d.s; }));
+  plan.forEach(w=>{
+    if((w.days||[]).length<=dias) return;
+    const prop=repartirSesiones(w.days,dias);
+    w.days=prop.map((x,i)=>({
+      s:++siguienteId,
+      name:'S'+(i+1)+' · '+x.nombre,
+      type:x.tipo||'',
+      ex:x.ex.map(e=>e[3]?[e[0],e[1]||'',e[3]]:[e[0],e[1]||''])
+    }));
+  });
+  /* Los ids se renumeran de 1 en adelante en orden de plan: los repartidos
+     empiezan por encima de los viejos y quedarían saltados (S1 sería la 49).
+     La rutina es nueva y no tiene nada registrado, así que no hay registros
+     que se queden colgando. */
+  let n=0;
+  plan.forEach(w=>(w.days||[]).forEach(d=>{ d.s=++n; }));
+  renumerarNombresSesiones(rutina);
+  return true;
+}
+
+function botonRutinaOb(r,reco){
+  const marcada=obSeleccion.includes(r.id);
+  return `
     <button class="ob-routine-btn${marcada?' selected':''}" aria-pressed="${marcada}" onclick="obSelectRoutine('${r.id}')">
       <span class="marca">${marcada?'✓':''}</span>
       <span style="min-width:0;flex:1;">
-        <div class="ob-routine-btn-name">${r.name}</div>
-        <div class="ob-routine-btn-desc">${descriptions[r.id]||''}</div>
+        <div class="ob-routine-btn-name">${r.name}${reco?'<span class="ob-reco">Para ti</span>':''}</div>
+        <div class="ob-routine-btn-desc">${PRESET_DESC[r.id]||''}</div>
       </span>
     </button>`;
-  }).join('');
+}
+
+function renderObRoutineList(){
+  const c=document.getElementById('ob-routine-list');
+  const reco=rutinasRecomendadas(obPerfil);
+  if(!reco.length){ c.innerHTML=PRESET_ROUTINES.map(r=>botonRutinaOb(r,false)).join(''); return; }
+  const recomendadas=reco.map(id=>PRESET_ROUTINES.find(r=>r.id===id));
+  const otras=PRESET_ROUTINES.filter(r=>!reco.includes(r.id));
+  c.innerHTML='<div class="ob-grupo">Recomendadas para ti</div>'+recomendadas.map(r=>botonRutinaOb(r,true)).join('')+
+    (otras.length?'<div class="ob-grupo" style="margin-top:14px;">Otras rutinas</div>'+otras.map(r=>botonRutinaOb(r,false)).join(''):'');
 }
 
 /* Marca o desmarca. Sigue llamándose así porque las pruebas y el resto de la
@@ -7913,19 +8074,26 @@ function obNext(step){
   if(step===2){
     if(!obSeleccion.length){aviso('Elige al menos una rutina para continuar.');return;}
     const name=document.getElementById('ob-name').value.trim();
+    // Si alguna marcada trae más días de los que puede, se dice que se adapta.
+    const dias=obPerfil.dias;
+    const adapta=dias && obSeleccion.some(id=>{
+      const p=PRESET_ROUTINES.find(r=>r.id===id);
+      return p && p.plan.some(w=>w.days.length>dias);
+    });
+    const coletilla=adapta?` La dejamos en ${dias} días por semana.`:'';
     if(obSeleccion.length===1){
       const preset=PRESET_ROUTINES.find(r=>r.id===obSeleccion[0]);
       document.getElementById('ob-summary').textContent=
-        `${name}, tu rutina "${preset.name}" está lista. ¡A entrenar!`;
+        `${name}, tu rutina "${preset.name}" está lista.${coletilla} ¡A entrenar!`;
     }else{
       document.getElementById('ob-summary').textContent=
-        `${name}, tus ${obSeleccion.length} rutinas están listas. ¿Con cuál empiezas? Las demás quedan en "Mis rutinas".`;
+        `${name}, tus ${obSeleccion.length} rutinas están listas.${coletilla} ¿Con cuál empiezas? Las demás quedan en "Mis rutinas".`;
     }
     renderObActiva();
   }
-  document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
-  document.getElementById('ob-step-'+step).classList.add('active');
-  document.querySelectorAll('.ob-dot').forEach((d,i)=>d.classList.toggle('active',i===step));
+  if(step===1) renderObRoutineList();   // con el perfil recién elegido
+  // Los puntos van uno por delante desde que "Sobre ti" es el segundo.
+  mostrarPasoOb('ob-step-'+step, step===0?0:step+1);
 }
 
 function obFinish(){
@@ -7933,21 +8101,31 @@ function obFinish(){
   const presets=obSeleccion.map(id=>PRESET_ROUTINES.find(r=>r.id===id)).filter(Boolean);
   if(!presets.length){aviso('Elige al menos una rutina para continuar.');return;}
   const activa=presets.some(p=>p.id===obSelectedRoutine)?obSelectedRoutine:presets[0].id;
+  const perfil=obPerfil.sexo?{...obPerfil}:null;
+  const hoy=new Date().toLocaleDateString('es-ES');
   DB={
-    routines:presets.map(preset=>({
-      id:preset.id,
-      name:preset.name,
-      plan:JSON.parse(JSON.stringify(preset.plan)),
-      sessions:{},
-      medidas:[]
-    })),
+    routines:presets.map(preset=>{
+      const r={
+        id:preset.id,
+        name:preset.name,
+        plan:JSON.parse(JSON.stringify(preset.plan)),
+        sessions:{},
+        // El peso de "Sobre ti" es el primero de Medidas: así sale en la
+        // gráfica y en Ajustes, y no hay dos sitios con el mismo dato.
+        medidas:perfil&&perfil.peso!=null?[{semana:1,peso:perfil.peso,cintura:null,fecha:hoy}]:[]
+      };
+      if(perfil) adaptarRutinaADias(r,perfil.dias);
+      return r;
+    }),
     activeRoutine:activa,
     profileName:name.toUpperCase(),
     profilePic:obPhotoData||null
   };
+  if(perfil) DB.perfil=perfil;
   // Si el onboarding vuelve a salir en este móvil, que empiece sin nada marcado.
   obSeleccion=[];
   obSelectedRoutine=null;
+  obPerfil={sexo:null,nivel:null,dias:null,peso:null};
   save();
   onboardingEnEspera = false;      // se terminó a mano: ya no hay nada que restaurar
   document.getElementById('onboarding').classList.add('hidden');
@@ -8634,6 +8812,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <div class="ob-dot active" id="ob-dot-0"></div>
     <div class="ob-dot" id="ob-dot-1"></div>
     <div class="ob-dot" id="ob-dot-2"></div>
+    <div class="ob-dot" id="ob-dot-3"></div>
   </div>
 
   <!-- Paso 1: Bienvenida + nombre + foto -->
@@ -8651,7 +8830,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <p style="font-size:11px;color:var(--muted);margin-bottom:16px;">Toca para añadir foto de perfil</p>
     <input type="text" id="ob-name" placeholder="Tu nombre" style="text-align:center;font-size:18px;font-weight:700;margin-bottom:24px;">
     <div class="ob-acciones">
-      <button class="btn btn-primary" onclick="obNext(1)">Continuar →</button>
+      <button class="btn btn-primary" onclick="obIrPerfil()">Continuar →</button>
       <!-- Quien ya tiene cuenta (cambia de móvil, entra en otro navegador) no
            tenía por dónde entrar: la cabecera con "Cuenta" queda DEBAJO de esta
            capa. Se encontraba inventándose un nombre y una rutina para poder
@@ -8661,13 +8840,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
     </div>
   </div>
 
+  <!-- Paso "Sobre ti" (27/09/2026, pedido por Jhon): sexo, nivel, días y peso,
+       para recomendar rutinas, dejar el plan con los días que puedes y, más
+       adelante, orientar los pesos de partida. Va entre el nombre y las
+       rutinas; su id no es un número para no mover los de los demás pasos,
+       que usan las pruebas y el resto de la app. -->
+  <div class="ob-step" id="ob-step-perfil" style="align-items:stretch;justify-content:flex-start;padding-top:16px;">
+    <div class="ob-title" style="text-align:left;">Sobre ti</div>
+    <div class="ob-sub" style="text-align:left;margin-bottom:18px;">Con esto te recomendamos rutinas y las dejamos con los días que puedes entrenar. Lo puedes cambiar después en Ajustes.</div>
+    <div id="ob-perfil"></div>
+    <div class="ob-acciones">
+      <button class="btn btn-secondary" style="flex:1;" onclick="obNext(0)">← Atrás</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="obPerfilSiguiente()">Continuar →</button>
+    </div>
+  </div>
+
   <!-- Paso 2: Elegir rutina -->
   <div class="ob-step" id="ob-step-1" style="align-items:stretch;justify-content:flex-start;padding-top:16px;">
     <div class="ob-title" style="text-align:left;">Elige tus rutinas</div>
     <div class="ob-sub" style="text-align:left;">Marca una o varias. Si marcas más de una, después eliges con cuál empiezas.</div>
     <div id="ob-routine-list" style="width:100%;"></div>
     <div class="ob-acciones">
-      <button class="btn btn-secondary" style="flex:1;" onclick="obNext(0)">← Atrás</button>
+      <button class="btn btn-secondary" style="flex:1;" onclick="obIrPerfil()">← Atrás</button>
       <button class="btn btn-primary" style="flex:2;" onclick="obNext(2)">Continuar →</button>
     </div>
   </div>
@@ -9492,7 +9686,9 @@ const StorageFirestore = {
       rirActivo: !!cab.rirActivo,
       // Qué ejercicios se anotan en libras. Del perfil, como el RIR: es de la
       // persona y tiene que estar igual en el móvil y en el ordenador.
-      unidades: cab.unidades || {}
+      unidades: cab.unidades || {},
+      // "Sobre ti" (27/09/2026): sexo, nivel, días y peso del registro.
+      perfil: cab.perfil || null
     };
   },
 
@@ -9508,7 +9704,8 @@ const StorageFirestore = {
       // Ajuste de la persona, no de la rutina: viaja con el perfil, como la
       // altura, para que esté igual en el móvil y en el ordenador.
       rirActivo: !!db.rirActivo,
-      unidades: db.unidades || {}
+      unidades: db.unidades || {},
+      perfil: db.perfil || null
     };
     comprobarApto(cabecera, 'Perfil');
     await setDoc(doc(fdb, 'users', user.uid), cabecera, { merge: true });

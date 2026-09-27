@@ -1443,6 +1443,93 @@ async function appLista(page, url){
     ok(varias.final.activa === P[4] && varias.final.panelCerrado,
        'y activa la elegida y se cierra');
 
+    console.log('\n13k2. "Sobre ti" en el registro: recomendadas arriba y el plan con tus días');
+    /* 27/09/2026, pedido por Jhon: al registrarse, sexo, nivel, días y peso.
+       Las recomendadas salen arriba (no es un filtro), la rutina se queda con
+       los días que puede SEMANA A SEMANA (sin aplanar la progresión) y el peso
+       entra en Medidas. */
+    const perfil = await page.evaluate(async ()=>{
+      if(STORAGE.backend.name !== 'local') return { saltado:true };   // nunca contra la nube
+      const copia = JSON.stringify(DB);
+      const r = {};
+      showOnboarding();
+      document.getElementById('ob-name').value = 'Lucía';
+      obIrPerfil();
+      r.enPerfil = document.getElementById('ob-step-perfil').classList.contains('active');
+      r.punto = [...document.querySelectorAll('.ob-dot')].findIndex(d => d.classList.contains('active'));
+      obPerfilSiguiente();                                    // sin elegir nada: no avanza
+      r.noAvanzaVacio = document.getElementById('ob-step-perfil').classList.contains('active');
+      const toca = (c, v) => document.querySelector(`#ob-perfil .ob-op[data-campo="${c}"][data-valor="${v}"]`).click();
+      toca('sexo','m'); toca('nivel','ini'); toca('dias','3');
+      r.marcadas = document.querySelectorAll('#ob-perfil .ob-op.elegida').length;
+      document.getElementById('ob-peso').value = 'mucho';
+      obPerfilSiguiente();
+      r.pesoMalNoAvanza = document.getElementById('ob-step-perfil').classList.contains('active');
+      document.getElementById('ob-peso').value = '62,5';
+      obPerfilSiguiente();
+      r.enRutinas = document.getElementById('ob-step-1').classList.contains('active');
+      const lista = document.getElementById('ob-routine-list');
+      r.grupos = [...lista.querySelectorAll('.ob-grupo')].map(g => g.textContent);
+      r.primeras = [...lista.querySelectorAll('.ob-routine-btn')].slice(0,3)
+        .map(b => b.querySelector('.ob-routine-btn-name').textContent);
+      r.conEtiqueta = lista.querySelectorAll('.ob-reco').length;
+      r.todas = lista.querySelectorAll('.ob-routine-btn').length;
+      r.recoHombreIni = rutinasRecomendadas({sexo:'h', nivel:'ini'});
+      r.recoHombreAva = rutinasRecomendadas({sexo:'h', nivel:'ava'});
+      obSelectRoutine('preset_gluteo_pierna');
+      const semanasAntes = PRESET_ROUTINES.find(x => x.id === 'preset_gluteo_pierna').plan
+        .map(w => w.days.map(d => d.ex.map(e => e[1]).join('|')).join('/'));
+      obNext(2);
+      r.resumen = document.getElementById('ob-summary').textContent;
+      obFinish();
+      const rut = DB.routines[0];
+      r.perfil = DB.perfil;
+      r.diasPorSemana = rut.plan.map(w => w.days.length);
+      const ids = rut.plan.flatMap(w => w.days.map(d => d.s));
+      r.idsSeguidos = ids.every((s, i) => s === i + 1);
+      r.nombres = rut.plan[0].days.map(d => d.name);
+      r.nombresSegunda = rut.plan[1].days.map(d => d.name);
+      // La progresión no se aplana: las semanas no son todas iguales.
+      const huella = w => w.days.map(d => d.ex.map(e => e[1]).join('|')).join('/');
+      r.semanasDistintas = new Set(rut.plan.map(huella)).size;
+      r.semanasOrigenDistintas = new Set(semanasAntes).size;
+      r.medidas = rut.medidas;
+      r.tope = rut.plan.every(w => w.days.every(d => d.ex.length <= maxEjerciciosPorSesion(3)));
+      // Ajustes lo enseña y lo deja cambiar.
+      pintarConfig();
+      r.ajustes = { sexo: document.getElementById('cfg-sexo').value, nivel: document.getElementById('cfg-nivel').value};
+      guardarSobreTi('nivel', 'med');
+      r.nivelCambiado = DB.perfil.nivel;
+      DB = JSON.parse(copia); save();
+      return r;
+    });
+    ok(!perfil.saltado, 'la prueba corre en local, nunca contra la nube');
+    ok(perfil.enPerfil && perfil.punto === 1, 'tras el nombre viene "Sobre ti" (segundo punto)');
+    ok(perfil.noAvanzaVacio, 'sin sexo, nivel y días no deja seguir');
+    ok(perfil.marcadas === 3, 'cada respuesta es un toque y se marca');
+    ok(perfil.pesoMalNoAvanza && perfil.enRutinas, 'un peso que no es un número no pasa; 62,5 sí');
+    ok(perfil.grupos.join('|') === 'Recomendadas para ti|Otras rutinas' && perfil.conEtiqueta === 3,
+       'las rutinas salen en dos grupos, con 3 "Para ti" arriba');
+    ok(perfil.primeras[0].startsWith('Glúteo & Pierna'), 'para una mujer, la primera es Glúteo & Pierna: '+perfil.primeras.join(', '));
+    ok(perfil.todas === 7, 'y siguen todas a la vista: no es un filtro');
+    ok(!perfil.recoHombreIni.includes('preset_fuerza') && perfil.recoHombreIni[0] === 'preset_volumen',
+       'quien empieza no ve Fuerza Máxima entre las recomendadas: '+perfil.recoHombreIni.join(', '));
+    ok(perfil.recoHombreAva.includes('preset_fuerza'), 'con más de un año, sí');
+    ok(/3 días por semana/.test(perfil.resumen), 'el resumen dice que se deja en 3 días: '+perfil.resumen);
+    ok(perfil.diasPorSemana.every(n => n === 3), 'el plan queda en 3 sesiones cada semana: '+perfil.diasPorSemana.join(','));
+    ok(perfil.idsSeguidos, 'con los ids seguidos, de 1 en adelante');
+    ok(perfil.nombres[0].startsWith('S1 · ') && perfil.nombresSegunda[0].startsWith('S4 · '),
+       'y los nombres numerados de corrido: '+perfil.nombres[0]+' … '+perfil.nombresSegunda[0]);
+    ok(perfil.semanasDistintas === perfil.semanasOrigenDistintas,
+       '🔴 cada semana conserva su progresión ('+perfil.semanasDistintas+' semanas distintas, como el original)');
+    ok(perfil.tope, 'ninguna sesión pasa del tope de ejercicios para 3 días');
+    ok(perfil.perfil && perfil.perfil.sexo === 'm' && perfil.perfil.nivel === 'ini' && perfil.perfil.dias === 3 && perfil.perfil.peso === 62.5,
+       'el perfil se guarda: '+JSON.stringify(perfil.perfil));
+    ok(perfil.medidas.length === 1 && perfil.medidas[0].peso === 62.5 && perfil.medidas[0].semana === 1,
+       'y el peso entra en Medidas como el primero');
+    ok(perfil.ajustes.sexo === 'm' && perfil.ajustes.nivel === 'ini' && perfil.nivelCambiado === 'med',
+       'Ajustes enseña sexo y nivel y deja cambiarlos');
+
     console.log('\n13l. Botones de volver y cómo instalar en iPhone');
     /* Una entrenadora (15/09) no veía que "← Semanas" era volver, y no entendía
        las instrucciones de instalar en su iPhone. */
