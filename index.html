@@ -173,6 +173,17 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 .recordatorio-guardar{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);
   margin:-4px 0 10px;}
 .recordatorio-guardar b{color:var(--text);}
+.recordatorio-guardar.recordatorio-pie{margin:14px 0 4px;}
+/* Dentro de un ejercicio, del cardio o de la nota (27/09/2026, Jhon): la tarjeta
+   de arriba se queda solo con "Volver a ejercicios". El nombre de la sesión y
+   el aviso de guardar ocupaban un tercio de pantalla que hace falta para las
+   series; el aviso reaparece al pie del ejercicio. La clase la pone
+   actualizarBotonVolver(), que ya se entera de cada cambio de paso. */
+#session-form.en-paso .form-cab,
+#session-form.en-paso > .card > .recordatorio-guardar{display:none;}
+/* Y la tarjeta, que se quedaría casi vacía, suelta el marco: solo el botón. */
+#session-form.en-paso > .card{background:none;border:none;box-shadow:none;padding:0 4px;margin-bottom:6px;}
+#session-form.en-paso > .card > .btn-volver{margin-bottom:0;}
 .cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:10.5px;
   color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;}
 .cab-ico{background:rgba(255,255,255,0.08);border:none;border-radius:10px;width:36px;height:36px;
@@ -2002,7 +2013,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       <!-- El texto lo pone actualizarBotonVolver(): "Volver a sesiones" o
            "Volver a ejercicios", según dónde estés. -->
       <button class="btn-volver" id="btn-volver" onclick="volverAtras()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver a sesiones</span></button>
-      <div style="margin-bottom:12px;">
+      <div class="form-cab" style="margin-bottom:12px;">
         <div style="font-size:16px;font-weight:800;" id="form-title"></div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="form-type"></div>
       </div>
@@ -2092,6 +2103,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       <!-- La progresión va DEBAJO de las series: primero registrar, que es a lo
            que vienes al gimnasio, y luego mirar el histórico si te interesa. -->
       <div id="ex-grafica" style="margin-top:14px;"></div>
+      <!-- Aquí abajo y no arriba (27/09/2026, Jhon): dentro de un ejercicio la
+           cabecera se queda solo en "Volver a ejercicios" para ganar pantalla,
+           y el aviso cae donde acabas, después de apuntar las series. -->
+      <div class="recordatorio-guardar recordatorio-pie"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Al terminar la sesión, vuelve a ejercicios y pulsa <b>Guardar sesión</b></span></div>
     </div>
 
     <!-- Panel cardio -->
@@ -3136,7 +3151,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 19:04';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 19:17';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4426,6 +4441,8 @@ function actualizarBotonVolver(){
   // En el <span>: textContent sobre el botón se llevaría la flecha dibujada.
   const t=b.querySelector('span')||b;
   t.textContent=pasoActual()==='sesion'?'Volver a sesiones':'Volver a ejercicios';
+  const f=document.getElementById('session-form');
+  if(f)f.classList.toggle('en-paso',pasoActual()!=='sesion');
 }
 
 function volverAtras(){

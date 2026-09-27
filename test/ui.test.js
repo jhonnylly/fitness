@@ -1461,11 +1461,22 @@ async function appLista(page, url){
       openSession(act.plan[0].days[0].s);
       await tic();
       r.sesion = document.getElementById('btn-volver').textContent.trim();
+      const cabVisible = () => v(document.getElementById('form-title'))
+        && v(document.querySelector('#session-form > .card > .recordatorio-guardar'));
+      r.cabEnSesion = cabVisible();
       openExDetail(0);
       await tic();
       r.ejercicio = document.getElementById('btn-volver').textContent.trim();
       r.flechaSigue = !!document.querySelector('#btn-volver svg');
-      volverAtras(); volverAtras(); closeWeekDetail();
+      /* 27/09/2026 (Jhon): dentro del ejercicio, arriba solo el botón de volver;
+         el aviso de guardar, al pie del ejercicio. */
+      r.cabEnEjercicio = v(document.getElementById('form-title'))
+        || v(document.querySelector('#session-form > .card > .recordatorio-guardar'));
+      r.avisoAlPie = v(document.querySelector('#ex-detail-view .recordatorio-pie'));
+      volverAtras();
+      await tic();
+      r.cabVuelve = cabVisible();
+      volverAtras(); closeWeekDetail();
       const safari = 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
       const chrome = 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/140.0 Mobile/15E148 Safari/604.1';
       const d = document.createElement('div');
@@ -1480,6 +1491,8 @@ async function appLista(page, url){
     ok(volver.semana.arribaIzq, 'y está arriba a la izquierda, antes del título (donde el iPhone pone "atrás")');
     ok(volver.sesion === 'Volver a sesiones' && volver.ejercicio === 'Volver a ejercicios' && volver.flechaSigue,
        'en la sesión y en el ejercicio dice a dónde vuelve, sin perder la flecha');
+    ok(volver.cabEnSesion && !volver.cabEnEjercicio && volver.avisoAlPie && volver.cabVuelve,
+       'dentro del ejercicio no se repite el nombre de la sesión y el aviso de guardar va al pie; al volver, reaparecen');
     ok(volver.safari.pasos === 4 && /•••/.test(volver.safari.texto) && /Compartir/.test(volver.safari.texto)
        && /Añadir a pantalla de inicio/.test(volver.safari.texto) && /Ya la tengo/.test(volver.safari.texto),
        'en Safari de iPhone: 4 pasos, empezando por el botón •••');
