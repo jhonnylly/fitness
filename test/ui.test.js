@@ -160,14 +160,16 @@ async function appLista(page, url){
     });
     await esperar(900);
     const foto = await page.evaluate(()=>{
-      const img = document.querySelector('#ex-musculos img');
+      // Sin vídeo, la foto va arriba en grande y los nombres en la tarjeta (27/09/2026).
+      const img = document.querySelector('#ex-hero img');
+      const pie = document.querySelector('#ex-musculos figcaption');
       return img ? {src: img.getAttribute('src'), cargada: img.complete && img.naturalWidth>0,
-                    pie: document.querySelector('#ex-musculos figcaption').innerText} : null;
+                    pie: pie ? pie.innerText : ''} : null;
     });
     ok(!!foto, 'hay imagen en el detalle del ejercicio');
     ok(foto && foto.src.includes('img/musculos/'), 'es una foto de músculo, no la silueta de reserva');
     ok(foto && foto.cargada, 'y carga de verdad (no es un enlace roto)');
-    ok(foto && /Principal:/.test(foto.pie), 'con el texto de qué músculo trabaja');
+    ok(foto && /Primario/.test(foto.pie), 'con el texto de qué músculo trabaja (Primario / Secundario)');
 
     // Cada foto a la que apunta FOTO_MUSCULO tiene que existir: una clave mal escrita
     // o un fichero olvidado enseñaría una imagen rota en la rejilla de músculos.
@@ -176,70 +178,70 @@ async function appLista(page, url){
     ok(faltan.length === 0, 'todas las fotos de músculo existen en img/musculos/'+(faltan.length?': faltan '+faltan.join(', '):''));
     ok(['aductor','trapecio','tibial'].every(f=>fotosMusculo.includes(f)), 'aductor, trapecio y tibial tienen foto propia');
 
-    console.log('\n3b. El vídeo explicativo: una fila bajo el nombre y en grande al tocarla');
-    /* 26/09/2026: la fila lleva la miniatura y "Vídeo explicativo · Cómo hacer
-       este ejercicio" (sin texto no se entendía qué era); al tocarla, el vídeo
-       en grande DENTRO de la tarjeta, sin pantalla completa, sin sonido y en
-       bucle. La foto del músculo sigue en grande, como antes. */
+    console.log('\n3b. Ficha estilo Synergym: el vídeo arriba, solo y a todo el ancho');
+    /* 27/09/2026, elegido por Jhon: con vídeo, arriba y arrancando solo (sin
+       sonido, en bucle, sin pantalla completa), a 260 px de alto; el nombre en
+       grande debajo; los músculos, en una tarjeta bajo las series con la foto
+       pequeña. Sin vídeo, la foto del músculo ocupa el sitio del vídeo. */
     const nombreAntes = await page.evaluate(()=>curEx[0].name);
     await page.evaluate(()=>{ curEx[0].name = 'Curl bíceps mancuerna'; pintarImagenEjercicio(); window.scrollTo(0,0); });
+    await esperar(1500);
     const vid = await page.evaluate(()=>{
-      const fila = document.querySelector('#ex-video-mini .ex-video-fila');
-      const grande = document.getElementById('ex-video-grande'), v = grande.querySelector('video');
-      const input = document.getElementById('ex-detail-title').getBoundingClientRect(), rf = fila && fila.getBoundingClientRect();
-      const foto = document.querySelector('#ex-musculos img');
-      return { fila: !!fila, debajo: !!rf && rf.top >= input.bottom, texto: fila ? fila.innerText.replace(/\s+/g,' ') : '',
-               enTarjeta: !!(fila && fila.closest('#ex-detail-view .card')),
-               cerrado: getComputedStyle(grande).display === 'none',
-               v: v ? { muted: v.muted, inline: v.hasAttribute('playsinline'), bucle: v.loop, controles: v.controls, preload: v.getAttribute('preload') } : null,
-               fotoAlto: foto ? foto.getBoundingClientRect().height : 0 };
+      const hero = document.getElementById('ex-hero'), v = hero.querySelector('video');
+      const r = hero.getBoundingClientRect(), tit = document.getElementById('ex-detail-title').getBoundingClientRect();
+      const series = document.getElementById('exercises-container').getBoundingClientRect();
+      const tarjeta = document.querySelector('#ex-musculos .ex-mus-tarjeta');
+      return { hay: !!v, arriba: r.bottom <= tit.top + 1, alto: Math.round(r.height),
+               ancho: r.width >= document.getElementById('ex-detail-view').getBoundingClientRect().width - 2,
+               etiqueta: (hero.querySelector('.ex-hero-etq')||{}).textContent || '',
+               v: v ? { muted: v.muted, inline: v.hasAttribute('playsinline'), bucle: v.loop, controles: v.controls,
+                        auto: v.autoplay, t: v.currentTime, pausado: v.paused } : null,
+               tituloGrande: parseFloat(getComputedStyle(document.getElementById('ex-detail-title')).fontSize),
+               tarjetaBajoSeries: !!tarjeta && tarjeta.getBoundingClientRect().top >= series.bottom,
+               tarjetaTexto: tarjeta ? tarjeta.innerText.replace(/\s+/g,' ') : '',
+               fotoEnTarjeta: !!(tarjeta && tarjeta.querySelector('img')) };
     });
-    ok(vid.fila && vid.debajo && vid.enTarjeta, 'un ejercicio con vídeo enseña su fila bajo el nombre, en la misma tarjeta');
-    ok(/Vídeo explicativo/.test(vid.texto) && /Cómo hacer este ejercicio/.test(vid.texto),
-       'y dice lo que es: '+vid.texto);
-    ok(vid.cerrado, 'el vídeo grande empieza cerrado: no ocupa nada');
+    ok(vid.hay && vid.arriba && vid.ancho, 'un ejercicio con vídeo lo enseña arriba del todo, a todo el ancho');
+    ok(vid.alto >= 250 && vid.alto <= 270, 'a unos 260 px de alto, no el cuadrado entero ('+vid.alto+' px)');
+    ok(vid.v && vid.v.auto && !vid.v.pausado && vid.v.t > 0, 'y arranca solo ('+(vid.v?vid.v.t.toFixed(1):0)+' s)');
     ok(vid.v && vid.v.inline && vid.v.muted && vid.v.bucle && !vid.v.controles,
        'sin sonido, en bucle, sin controles y con playsinline (en el iPhone no se abre a pantalla completa)');
-    ok(vid.v && vid.v.preload === 'none', 'y no descarga nada hasta que lo abres (datos móviles)');
-    ok(vid.fotoAlto >= 140, 'la foto del músculo sigue en grande, como antes ('+Math.round(vid.fotoAlto)+' px)');
+    ok(/Vídeo explicativo/.test(vid.etiqueta), 'con la etiqueta "Vídeo explicativo" encima');
+    ok(vid.tituloGrande >= 20, 'el nombre va en grande debajo ('+vid.tituloGrande+' px)');
+    ok(vid.tarjetaBajoSeries && /Primario/.test(vid.tarjetaTexto) && /Bíceps/.test(vid.tarjetaTexto) && vid.fotoEnTarjeta,
+       'los músculos, en su tarjeta bajo las series y con la foto pequeña: '+vid.tarjetaTexto);
 
-    await page.evaluate(()=>document.querySelector('#ex-video-mini .ex-video-fila').click());
-    await esperar(1500);
-    const abierto = await page.evaluate(()=>{ const g = document.getElementById('ex-video-grande'), v = g.querySelector('video'),
-      r = g.getBoundingClientRect(), card = g.closest('.card').getBoundingClientRect();
-      return { visible: getComputedStyle(g).display !== 'none', t: v.currentTime, pausado: v.paused,
-               cuadrado: Math.abs(r.width - r.height) < 4, ancho: r.width >= card.width - 40,
-               activa: document.querySelector('.ex-video-fila').classList.contains('activo'),
-               dice: document.querySelector('.ex-video-flecha').textContent }; });
-    ok(abierto.visible && !abierto.pausado && abierto.t > 0, 'al tocar la miniatura se abre y se reproduce ahí mismo ('+abierto.t.toFixed(1)+' s)');
-    ok(abierto.cuadrado && abierto.ancho, 'en grande: cuadrado y a todo el ancho de la tarjeta');
-    ok(abierto.activa && abierto.dice === 'Cerrar', 'y la fila se marca y pasa a decir "Cerrar" mientras está abierto');
-    await page.evaluate(()=>document.querySelector('#ex-video-grande .ex-video').click());
-    ok(await page.evaluate(()=>document.querySelector('#ex-video-grande video').paused), 'tocar el vídeo lo pausa');
-    await page.evaluate(()=>document.querySelector('#ex-video-grande .ex-video').click());
+    await page.evaluate(()=>document.querySelector('#ex-hero .ex-video').click());
+    ok(await page.evaluate(()=>document.querySelector('#ex-hero video').paused), 'tocar el vídeo lo pausa');
+    await page.evaluate(()=>document.querySelector('#ex-hero .ex-video').click());
     await esperar(300);
-    ok(await page.evaluate(()=>!document.querySelector('#ex-video-grande video').paused), 'y otro toque lo sigue');
-    await page.evaluate(()=>document.querySelector('.ex-video-cerrar').click());
-    const cerrado = await page.evaluate(()=>({ oculto: getComputedStyle(document.getElementById('ex-video-grande')).display === 'none',
-      pausado: document.querySelector('#ex-video-grande video').paused, activa: document.querySelector('.ex-video-fila').classList.contains('activo') }));
-    ok(cerrado.oculto && cerrado.pausado && !cerrado.activa, '"Cerrar" lo recoge y lo para');
-
-    await page.evaluate(()=>document.querySelector('#ex-musculos figure').click());
-    await esperar(400);   // la foto crece con una transición de 0,2 s
-    const grandeFoto = await page.evaluate(()=>document.querySelector('#ex-musculos img').getBoundingClientRect().height);
-    ok(grandeFoto > 250, 'tocar la foto del músculo la amplía, como siempre ('+Math.round(grandeFoto)+' px)');
-    await page.evaluate(()=>document.querySelector('#ex-musculos figure').click());
+    ok(await page.evaluate(()=>!document.querySelector('#ex-hero video').paused), 'y otro toque lo sigue');
+    // Renombrar o cambiar la unidad repinta la ficha: el vídeo no puede volver a empezar.
+    const sigue = await page.evaluate(async ()=>{ const v = document.querySelector('#ex-hero video'); const t = v.currentTime;
+      pintarImagenEjercicio(); return document.querySelector('#ex-hero video') === v && v.currentTime >= t; });
+    ok(sigue, 'repintar la ficha no reinicia el vídeo');
 
     await page.evaluate(()=>{ curEx[0].name = 'Sentadilla goblet'; pintarImagenEjercicio(); });
-    ok(await page.evaluate(()=>document.getElementById('ex-video-mini').innerHTML === '' && document.getElementById('ex-video-grande').innerHTML === ''),
-       'un ejercicio sin vídeo no enseña la fila ni ningún hueco');
+    const sinVideo = await page.evaluate(()=>({ video: !!document.querySelector('#ex-hero video'),
+      foto: !!document.querySelector('#ex-hero img[src*="img/musculos/"]'),
+      fotoEnTarjeta: !!document.querySelector('#ex-musculos img') }));
+    ok(!sinVideo.video && sinVideo.foto && !sinVideo.fotoEnTarjeta,
+       'sin vídeo, arriba va la foto del músculo en grande (y no se repite en la tarjeta)');
     // Cada vídeo, solo en su ejercicio: el rumano con barra no es el de mancuernas.
     const rumano = await page.evaluate(()=>{ const hay = n => { curEx[0].name = n; pintarImagenEjercicio();
-        const img = document.querySelector('#ex-video-mini img'); return img ? img.getAttribute('src') : ''; };
+        const v = document.querySelector('#ex-hero video'); return v ? v.getAttribute('src') : ''; };
       return { barra: hay('Peso muerto rumano'), mancuernas: hay('Peso muerto rumano con mancuernas'), piernas: hay('Peso muerto piernas rígidas') }; });
-    ok(/peso_muerto_rumano\.jpg/.test(rumano.barra), 'el peso muerto rumano tiene su vídeo');
+    ok(/peso_muerto_rumano\.mp4/.test(rumano.barra), 'el peso muerto rumano tiene su vídeo');
     ok(!rumano.mancuernas && !rumano.piernas, 'y no se cuela en el de mancuernas ni en el de piernas rígidas');
     await page.evaluate(n=>{ curEx[0].name = n; pintarImagenEjercicio(); }, nombreAntes);
+    /* Al salir del ejercicio el vídeo se para. Se prueba con el nombre ya
+       devuelto: closeExDetail guarda el borrador, y con el nombre de prueba
+       dentro se colaría en la sección siguiente. */
+    const alSalir = await page.evaluate(n=>{ curEx[0].name = 'Curl bíceps mancuerna'; pintarImagenEjercicio();
+      const v = document.querySelector('#ex-hero video'); curEx[0].name = n;
+      closeExDetail(); return { pausado: v.paused, vacio: document.getElementById('ex-hero').innerHTML === '' }; }, nombreAntes);
+    ok(alSalir.pausado && alSalir.vacio, 'al salir del ejercicio el vídeo se para y se quita');
+    await page.evaluate(()=>openExDetail(0));
     const videos = await page.evaluate(()=>[...new Set(Object.values(VIDEO_EJERCICIO))]);
     const sinFichero = videos.filter(v=>['.mp4','.jpg'].some(e=>!fs.existsSync(path.join(__dirname,'..','videos','ejercicios',v+e))));
     ok(sinFichero.length === 0, 'cada vídeo del mapa tiene su .mp4 y su portada .jpg'+(sinFichero.length?': faltan '+sinFichero.join(', '):''));
@@ -819,7 +821,7 @@ async function appLista(page, url){
     });
     await esperar(1000);
     const fotoOffline = await page.evaluate(()=>{
-      const i = document.querySelector('#ex-musculos img');
+      const i = document.querySelector('#ex-hero img');
       return i ? i.complete && i.naturalWidth>0 : false;
     });
     ok(fotoOffline, 'y las fotos de músculo se ven sin red');
@@ -2065,7 +2067,7 @@ async function appLista(page, url){
       usarNombreSugerido(conFoto);
       await tic();
       r.recuperaFoto = { nombre: curEx[curExIndex].name,
-                         hayFigura: !!document.querySelector('#ex-musculos figure'),
+                         hayFigura: !!document.querySelector('#ex-hero img'),
                          sinSugerencias: document.getElementById('ex-sugerencias').textContent.trim() === '' };
       aplicarRenombrado('sesion');
       volverAtras(); volverAtras(); closeWeekDetail();

@@ -609,7 +609,7 @@ textarea{resize:vertical;min-height:60px;}
    daría un salto al engancharla. */
 .mos-card{transition:transform .12s ease, box-shadow .12s ease;}
 .mos-card:not(.arrastrando):active{transform:scale(.97);}
-.ex-musculos img, .cab-avatar, .cab-ico{transition:transform .12s ease;}
+.cab-avatar, .cab-ico{transition:transform .12s ease;}
 .cab-ico:active, .cab-avatar:active{transform:scale(.92);}
 /* Punto en Ajustes cuando alguien pide entrenador (solo lo ve el admin). */
 .cab-ico.con-punto{position:relative;}
@@ -1004,62 +1004,53 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ex-order-btns{display:flex;flex-direction:column;gap:2px;margin-right:8px;}
 .ex-order-btn{background:var(--surface);border:1px solid var(--border);border-radius:4px;width:24px;height:20px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);}
 .ex-detail-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-/* Mapa muscular del ejercicio abierto. Compacto por defecto: encima de las
-   series, en un móvil, a tamaño completo se comería media pantalla. Al tocarlo
-   se agranda, que es cuando de verdad quieres mirarlo. */
-.ex-musculos{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0 0 10px;cursor:pointer;}
-.ex-mus-fotos{display:flex;justify-content:center;align-items:flex-end;gap:10px;width:100%;}
-.ex-musculos img{height:150px;width:auto;max-width:100%;transition:height .2s ease;}
-.ex-musculos.grande img{height:280px;}
-/* Varias fotos en fila, cada una con su parte del ancho. El máximo por foto no
-   es adorno: sin él, tres fotos ampliadas pedían más ancho del que hay y se
-   salían de la fila. Tres es el tope real —solo el peso muerto tiene tres
-   músculos principales— pero la regla vale para los que vengan. */
-.ex-musculos.dos img{height:130px;max-width:calc(50% - 5px);object-fit:contain;}
-.ex-musculos.dos.grande img{height:230px;}
-.ex-musculos.tres img{height:110px;max-width:calc(33.33% - 7px);object-fit:contain;}
-.ex-musculos.tres.grande img{height:185px;}
-.ex-musculos figcaption{font-size:11.5px;color:var(--muted);line-height:1.45;text-align:center;}
-.ex-musculos figcaption b{color:var(--text);font-weight:700;}
-/* El pie del mapa de siluetas sí es una etiqueta, no una frase. */
-.ex-musculos.silueta figcaption{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;}
-.ex-musculos .ex-mus-reducir{display:none;}
-.ex-musculos.grande .ex-mus-ampliar{display:none;}
-.ex-musculos.grande .ex-mus-reducir{display:inline;}
-/* Vídeo de cómo se hace el ejercicio (26/09/2026): una fila bajo el nombre con
-   la miniatura y "Vídeo explicativo · Cómo hacer este ejercicio" y, al tocarla,
-   el vídeo en grande dentro de la misma tarjeta. Se reproduce AHÍ MISMO: sin pantalla
-   completa, sin sonido y en bucle. Tocar el vídeo lo pausa o lo sigue;
-   "Cerrar" lo recoge. Primero fue vertical debajo de la foto y luego cuadrado
-   a su lado: en los dos había que hacer scroll para llegar a las series. */
-#ex-video-mini:empty{display:none;}
-/* La fila: miniatura + qué es. Sin el texto no se entendía que era un vídeo
-   de explicación (Jhon, 26/09/2026). Toda la fila es el botón. */
-.ex-video-fila{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 10px;padding:6px 12px 6px 6px;
-  background:var(--surface);border:1px solid var(--border);border-radius:14px;color:var(--text);
-  font-family:inherit;text-align:left;cursor:pointer;}
-.ex-video-fila.activo{border-color:var(--accent);}
-.ex-video-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
-.ex-video-txt b{font-size:14px;font-weight:800;}
-.ex-video-txt span{font-size:12px;color:var(--muted);}
-.ex-video-flecha{font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap;}
-.ex-video-mini{position:relative;display:block;width:56px;height:56px;flex:0 0 56px;
-  border-radius:10px;overflow:hidden;background:#000;}
-.ex-video-mini img{display:block;width:100%;height:100%;object-fit:cover;}
+/* ── Ficha del ejercicio, estilo Synergym (27/09/2026, elegido por Jhon) ──
+   Arriba, a todo el ancho y 260 px de alto, el vídeo explicativo o la foto del
+   músculo. 260 y no el cuadrado entero (~360): Jhon prefirió recortar un poco
+   para que las series asomen sin tanto scroll. El vídeo se reproduce ahí
+   mismo, sin sonido, en bucle y sin pantalla completa; tocarlo lo pausa. */
+#ex-hero:empty{display:none;}
+.ex-hero{position:relative;height:260px;margin:0 0 12px;border-radius:16px;overflow:hidden;}
+.ex-hero-video{background:#000;}
+.ex-hero .ex-video{position:relative;display:block;width:100%;height:100%;cursor:pointer;}
+.ex-hero video{display:block;width:100%;height:100%;object-fit:cover;}
+/* La foto: centrada sobre un fondo algo más claro que la página, con un halo
+   violeta suave detrás del cuerpo, que las fotos llevan el fondo transparente. */
+.ex-hero-foto{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;
+  background:radial-gradient(ellipse at 50% 60%,rgba(var(--accent-rgb),0.16),transparent 70%),var(--surface);}
+.ex-hero-foto img{height:100%;width:auto;max-width:100%;object-fit:contain;}
+.ex-hero-foto.dos img{max-width:calc(50% - 4px);}
+.ex-hero-foto.tres img{max-width:calc(33.33% - 6px);}
+.ex-hero-foto.silueta{background:var(--surface);}
+.ex-hero-etq{position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:6px;
+  padding:5px 11px;border-radius:20px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:700;
+  pointer-events:none;}
+.ex-hero-etq i{width:7px;height:7px;border-radius:50%;background:#ff4d4d;}
 .ex-video-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   transition:opacity .15s ease;pointer-events:none;}
-.ex-video-play span{width:44px;height:44px;border-radius:50%;background:var(--accent);
+.ex-video-play span{width:52px;height:52px;border-radius:50%;background:var(--accent);
   display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.45);}
-.ex-video-play svg{width:18px;height:18px;fill:#fff;margin-left:3px;}
-.ex-video-mini .ex-video-play span{width:26px;height:26px;box-shadow:0 3px 10px rgba(0,0,0,.45);}
-.ex-video-mini .ex-video-play svg{width:11px;height:11px;margin-left:2px;}
-#ex-video-grande:not(.abierto){display:none;}
-.ex-video{position:relative;display:block;width:100%;aspect-ratio:1/1;margin:0 0 10px;padding:0;
-  border:none;border-radius:14px;overflow:hidden;background:#000;cursor:pointer;}
-.ex-video video{display:block;width:100%;height:100%;object-fit:cover;}
+.ex-video-play svg{width:20px;height:20px;fill:#fff;margin-left:3px;}
 .ex-video.reproduciendo .ex-video-play{opacity:0;}
-.ex-video-cerrar{position:absolute;top:8px;right:8px;min-height:36px;padding:0 14px;border:none;border-radius:18px;
-  background:rgba(0,0,0,.55);color:#fff;font:700 12.5px inherit;font-family:inherit;cursor:pointer;}
+/* El nombre, grande y sin tarjeta: es el título de la pantalla. Sigue siendo
+   un campo (renombrar, sugerencias del catálogo), así que al tocarlo se
+   enmarca para que se note que se puede escribir. */
+.ex-cab{margin:0 0 6px;}
+.ex-cab .ex-detail-header{margin-bottom:8px;}
+.ex-titulo{flex:1;min-width:0;font-size:22px;font-weight:800;letter-spacing:-0.3px;padding:4px 6px;margin-left:-6px;
+  background:transparent;border:1px solid transparent;border-radius:var(--radius-sm);color:var(--text);}
+.ex-titulo:focus{border-color:var(--accent);background:var(--surface);outline:none;}
+/* Qué músculos trabaja, bajo las series: Primario / Secundario en texto y,
+   si arriba va el vídeo, la foto pequeña a la derecha. */
+#ex-musculos:empty{display:none;}
+.ex-mus-tarjeta{display:flex;align-items:center;gap:12px;margin:14px 0 0;padding:14px 16px;
+  background:var(--card);border:1px solid var(--border);border-radius:16px;}
+.ex-mus-tarjeta figcaption{flex:1;min-width:0;display:flex;flex-direction:column;}
+.ex-mus-etq{font-size:12px;color:var(--muted);}
+.ex-mus-tarjeta b{font-size:15px;font-weight:800;color:var(--text);margin:1px 0 8px;}
+.ex-mus-tarjeta b:last-child{margin-bottom:0;}
+.ex-mus-fotos{display:flex;gap:4px;flex:none;}
+.ex-mus-fotos img{height:110px;width:auto;max-width:110px;object-fit:contain;}
 /* Las semanas, en mosaico de dos columnas: en lista, un plan de 12 semanas eran
    doce filas y mucho scroll para llegar a la que entrenas. Las acciones de cada
    semana (duplicar, borrar) se fueron DENTRO de la semana: en una celda de
@@ -2065,27 +2056,24 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 
     <!-- Detalle de ejercicio -->
     <div id="ex-detail-view" style="display:none;">
-      <div class="card">
+      <!-- Ficha estilo Synergym (27/09/2026, elegido por Jhon): arriba, a todo
+           el ancho, el vídeo explicativo —solo, sin sonido y en bucle— o, si el
+           ejercicio no tiene, la foto del músculo en grande. Debajo el nombre
+           en grande, sin tarjeta, y después las series. Los músculos, en texto
+           (Primario / Secundario), van bajo las series. -->
+      <div id="ex-hero"></div>
+      <div class="ex-cab">
         <div class="ex-detail-header">
-          <input class="ex-name" style="font-size:15px;font-weight:800;flex:1;" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" autocomplete="off" oninput="pintarSugerenciasEjercicio(this.value)" onchange="renombrarEjercicioActual(this.value)">
+          <input class="ex-name ex-titulo" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" autocomplete="off" oninput="pintarSugerenciasEjercicio(this.value)" onchange="renombrarEjercicioActual(this.value)">
           <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
         </div>
         <!-- Nombres del catálogo que se parecen a lo que va escribiendo: si
              elige uno, el ejercicio conserva su foto y su historial (17/09/2026,
              a Jhon se le quedó sin imagen al escribir "Remo en máquina"). -->
-        <!-- Vídeo explicativo (26/09/2026): una fila bajo el nombre con la
-             miniatura y el texto "Vídeo explicativo · Cómo hacer este ejercicio"
-             (vacía si el ejercicio no tiene vídeo). Al tocarla se abre en grande
-             justo debajo, dentro de la misma tarjeta; cerrado no ocupa nada. -->
-        <div id="ex-video-mini"></div>
-        <div id="ex-video-grande"></div>
         <div id="ex-sugerencias"></div>
         <!-- "¿Solo esta sesión o toda la rutina?" tras renombrar. -->
         <div id="ex-renombrar"></div>
       </div>
-      <!-- La foto del músculo, en grande (26/09/2026: se probó como línea
-           compacta dentro de la tarjeta y Jhon la prefirió así). -->
-      <div id="ex-musculos"></div>
       <!-- La unidad, junto a "Series" y como desplegable (17/09/2026). Era un
            botón gris que ponía "kg" en la cabecera, al lado del de borrar:
            Jhon lo probó y dijo que no se entendía que se pudiera cambiar. Aquí
@@ -2100,6 +2088,9 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       </div>
       <div id="exercises-container"></div>
       <!-- "+ Serie" se fue el 27/09/2026: ahora es la columna "+" de las series. -->
+      <!-- Qué músculos trabaja: Primario / Secundario en texto, y la foto pequeña
+           a la derecha cuando arriba va el vídeo (si no, la foto ya está arriba). -->
+      <div id="ex-musculos"></div>
       <!-- La progresión va DEBAJO de las series: primero registrar, que es a lo
            que vienes al gimnasio, y luego mirar el histórico si te interesa. -->
       <div id="ex-grafica" style="margin-top:14px;"></div>
@@ -3151,7 +3142,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 19:17';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 19:39';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4469,6 +4460,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    sesión repetidos entre semanas era muy fácil seguir registrando en la semana
    equivocada sin darse cuenta. */
 function closeForm(){
+  pararVideoEjercicio(true);
   document.getElementById('session-form').style.display='none';
   document.getElementById('session-list-view').style.display='block';
   document.getElementById('week-list-view').style.display='none';
@@ -5184,6 +5176,7 @@ let saludoHecho=false;
    (5 × 56 px mínimo + separaciones), y `.tabs` tiene `overflow-x:auto` por si
    algún día dejan de caber. */
 function showTab(id,el){
+  pararVideoEjercicio();
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('pane-'+id).classList.add('active');
@@ -5685,57 +5678,50 @@ const VIDEO_EJERCICIO={
    Service Worker) y el iPhone seguiría enseñando el viejo. */
 const VIDEOS_REV=2;
 
-/* El vídeo del ejercicio abierto: la fila "Vídeo explicativo" bajo el nombre y
-   el vídeo en grande, cerrado, dentro de la tarjeta. Sin vídeo, los dos huecos
-   vacíos. */
+/* El vídeo del ejercicio abierto, arriba de la ficha y a todo el ancho
+   (27/09/2026, estilo Synergym, elegido por Jhon). Arranca SOLO: muted +
+   playsinline + autoplay es lo que el iPhone deja reproducir sin tocar y sin
+   abrirlo a pantalla completa. Cuesta ~1 MB la primera vez que se abre cada
+   ejercicio con vídeo (Jhon lo aceptó); luego sale de la caché del navegador.
+   Devuelve true si ha pintado vídeo, para que la foto sepa dónde ir. */
 function pintarVideoEjercicio(nombre){
-  const mini=document.getElementById('ex-video-mini');
-  const grande=document.getElementById('ex-video-grande');
-  if(!mini||!grande) return;
-  grande.classList.remove('abierto');
+  const hero=document.getElementById('ex-hero');
+  if(!hero) return false;
   const v=nombre ? buscarImagenEjercicio(nombre, VIDEO_EJERCICIO) : null;
-  if(!v){ mini.innerHTML=''; grande.innerHTML=''; return; }
+  if(!v) return false;
   const base='videos/ejercicios/'+v, rev='?v='+VIDEOS_REV;
-  const play='<span class="ex-video-play"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg></span></span>';
-  mini.innerHTML=`<button type="button" class="ex-video-fila" onclick="abrirVideoEjercicio()"
-      aria-label="Vídeo explicativo: cómo hacer ${escaparHTML(nombre)}">
-      <span class="ex-video-mini"><img src="${base}.jpg${rev}" alt="">${play}</span>
-      <span class="ex-video-txt"><b>Vídeo explicativo</b><span>Cómo hacer este ejercicio</span></span>
-      <span class="ex-video-flecha">Ver</span>
-    </button>`;
-  /* muted + playsinline: sin eso el iPhone no deja reproducir sin abrir su
-     reproductor a pantalla completa. preload="none": nada se descarga hasta
-     abrirlo, que es lo que cuida los datos móviles. */
-  grande.innerHTML=`<div class="ex-video" onclick="alternarVideoEjercicio(this)" role="button" tabindex="0"
-      aria-label="Reproducir o pausar el vídeo">
-      <video src="${base}.mp4${rev}" poster="${base}.jpg${rev}" muted loop playsinline preload="none"
-             disablepictureinpicture disableremoteplayback></video>${play}
-      <button type="button" class="ex-video-cerrar" onclick="event.stopPropagation();cerrarVideoEjercicio()">Cerrar ✕</button>
+  const src=base+'.mp4'+rev;
+  // Si ya está puesto ESE vídeo (se repinta al renombrar, al cambiar la unidad…),
+  // no se toca: volver a meterlo lo reiniciaría desde el principio.
+  const actual=hero.querySelector('video');
+  if(actual && actual.getAttribute('src')===src) return true;
+  hero.className='ex-hero ex-hero-video';
+  hero.innerHTML=`<div class="ex-video reproduciendo" onclick="alternarVideoEjercicio(this)" role="button" tabindex="0"
+      aria-label="Pausar o seguir el vídeo explicativo">
+      <video src="${src}" poster="${base}.jpg${rev}" muted loop playsinline autoplay preload="auto"
+             disablepictureinpicture disableremoteplayback></video>
+      <span class="ex-hero-etq"><i></i>Vídeo explicativo</span>
+      <span class="ex-video-play"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg></span></span>
     </div>`;
+  const vid=hero.querySelector('video');
+  // Por si el navegador no lo arranca solo (ahorro de datos, sin red): que se vea el play.
+  const p=vid.play && vid.play();
+  if(p && p.catch) p.catch(()=>hero.querySelector('.ex-video')?.classList.remove('reproduciendo'));
+  return true;
 }
 
-/* La fila del vídeo lo abre y lo pone en marcha; si ya está abierto, lo cierra. */
-function abrirVideoEjercicio(){
-  const grande=document.getElementById('ex-video-grande');
-  if(!grande||!grande.innerHTML) return;
-  if(grande.classList.contains('abierto')){ cerrarVideoEjercicio(); return; }
-  grande.classList.add('abierto');
-  const m=document.querySelector('#ex-video-mini .ex-video-fila');
-  if(m){ m.classList.add('activo'); m.querySelector('.ex-video-flecha').textContent='Cerrar'; }
-  const caja=grande.querySelector('.ex-video');
-  if(caja && caja.querySelector('video').paused) alternarVideoEjercicio(caja);
-}
-
-function cerrarVideoEjercicio(){
-  const grande=document.getElementById('ex-video-grande');
-  if(!grande) return;
-  const v=grande.querySelector('video');
-  if(v) v.pause();
-  const caja=grande.querySelector('.ex-video');
-  if(caja) caja.classList.remove('reproduciendo');
-  grande.classList.remove('abierto');
-  const m=document.querySelector('#ex-video-mini .ex-video-fila');
-  if(m){ m.classList.remove('activo'); m.querySelector('.ex-video-flecha').textContent='Ver'; }
+/* Al salir del ejercicio (o de la pestaña) el vídeo se para: escondido seguiría
+   corriendo y gastando batería. */
+function pararVideoEjercicio(vaciar){
+  const hero=document.getElementById('ex-hero');
+  const caja=hero&&hero.querySelector('.ex-video');
+  if(!caja) return;
+  /* Al cerrar el ejercicio se quita del todo, para que al volver a abrirlo
+     arranque solo otra vez; al cambiar de pestaña solo se pausa, porque al
+     volver el ejercicio sigue ahí montado (y un toque lo sigue). */
+  if(vaciar){ caja.querySelector('video').pause(); hero.className=''; hero.innerHTML=''; return; }
+  caja.querySelector('video').pause();
+  caja.classList.remove('reproduciendo');
 }
 
 function alternarVideoEjercicio(caja){
@@ -5752,49 +5738,53 @@ function alternarVideoEjercicio(caja){
   }
 }
 
-/* Foto del músculo que trabaja el ejercicio abierto, con los nombres escritos
-   debajo. Una foto por músculo principal (65 ejercicios tienen uno, 36 tienen
-   dos) y los secundarios en texto: son cinco palabras y una foto por cada uno
-   llenaría la pantalla sin añadir nada.
-
-   Si algún principal no tiene foto todavía, se enseña la silueta dibujada en
-   su lugar: prefiere el mapa completo antes que media información. */
+/* La cabecera visual de la ficha y la tarjeta de músculos (27/09/2026).
+   - Con vídeo: el vídeo arriba, y la foto del músculo pequeña en la tarjeta.
+   - Sin vídeo: la foto (una por músculo principal, 65 ejercicios tienen uno y
+     36 dos) arriba en grande, y la tarjeta solo con el texto.
+   - Sin foto para algún principal: arriba la silueta dibujada de siempre.
+   La tarjeta dice Primario / Secundario en texto: los secundarios son cinco
+   palabras, una foto por cada uno llenaría la pantalla sin añadir nada. */
 function pintarImagenEjercicio(){
+  const hero=document.getElementById('ex-hero');
   const c=document.getElementById('ex-musculos');
-  if(!c)return;
+  if(!c||!hero)return;
   const ex=curExIndex!==null?curEx[curExIndex]:null;
-  pintarVideoEjercicio(ex && ex.name);
+  const conVideo=pintarVideoEjercicio(ex && ex.name);
+  if(!conVideo){ hero.className=''; hero.innerHTML=''; }
   if(!ex||!ex.name){ c.innerHTML=''; return; }
 
   const m=musculosDeEjercicio(ex.name);
   const fotos=m ? m.primarios.map(x=>FOTO_MUSCULO[x]) : [];
   const todasConFoto = m && m.primarios.length && fotos.every(Boolean);
+  // Sin repetidas: dos principales pueden compartir foto de apoyo.
+  const unicas=todasConFoto ? [...new Set(fotos)] : [];
+  const imgs=unicas.map(f=>
+    `<img src="img/musculos/${f}.webp" alt="Músculo: ${escaparHTML(f)}" loading="lazy">`).join('');
 
-  if(todasConFoto){
-    // Sin repetidas: dos principales pueden compartir foto de apoyo.
-    const unicas=[...new Set(fotos)];
-    const pie='<b>Principal:</b> '+escaparHTML(listaEnEspanol(m.primarios.map(x=>NOMBRE_MUSCULO[x]||x)))
-      + (m.secundarios.length
-          ? '<br>También trabaja: '+escaparHTML(listaEnEspanol(m.secundarios.map(x=>NOMBRE_MUSCULO[x]||x)))
-          : '');
-    const reparto = unicas.length>2 ? ' tres' : unicas.length>1 ? ' dos' : '';
-    c.innerHTML=`<figure class="ex-musculos${reparto}" onclick="this.classList.toggle('grande')">
-        <div class="ex-mus-fotos">${unicas.map(f=>
-          `<img src="img/musculos/${f}.webp" alt="Músculo: ${escaparHTML(f)}" loading="lazy">`).join('')}</div>
-        <figcaption>${pie}</figcaption>
-      </figure>`;
-    return;
+  if(!conVideo){
+    const sil=!todasConFoto ? buscarImagenEjercicio(ex.name, mapaImagenesEjercicios()) : null;
+    /* Ni músculos ni silueta: arriba no se pinta nada, pero no se deja el hueco
+       mudo: lo explica pintarSugerenciasEjercicio(), justo bajo el nombre, que
+       es donde está el campo que acaba de cambiar (17/09/2026). */
+    if(todasConFoto){
+      hero.className='ex-hero ex-hero-foto'+(unicas.length>2?' tres':unicas.length>1?' dos':'');
+      hero.innerHTML=imgs;
+    }else if(sil){
+      hero.className='ex-hero ex-hero-foto silueta';
+      hero.innerHTML=`<img src="${sil}" alt="Músculos que trabaja: ${escaparHTML(ex.name)}" loading="lazy">`;
+    }
   }
 
-  // Sin foto para algún principal: la silueta de siempre.
-  const url=buscarImagenEjercicio(ex.name, mapaImagenesEjercicios());
-  /* Ni músculos ni silueta: aquí no se pinta nada, pero no se deja el hueco
-     mudo: lo explica pintarSugerenciasEjercicio(), justo bajo el nombre, que es
-     donde está el campo que acaba de cambiar (17/09/2026). */
-  if(!url){ c.innerHTML=''; return; }
-  c.innerHTML=`<figure class="ex-musculos silueta" onclick="this.classList.toggle('grande')">
-      <img src="${url}" alt="Músculos que trabaja: ${escaparHTML(ex.name||'')}" loading="lazy">
-      <figcaption>Músculos que trabaja · <span class="ex-mus-ampliar">toca para ampliar</span><span class="ex-mus-reducir">toca para reducir</span></figcaption>
+  if(!m||!m.primarios.length){ c.innerHTML=''; return; }
+  const nombres=l=>{ const t=listaEnEspanol(l.map(x=>NOMBRE_MUSCULO[x]||x));
+    return escaparHTML(t.charAt(0).toUpperCase()+t.slice(1)); };
+  c.innerHTML=`<figure class="ex-mus-tarjeta">
+      <figcaption>
+        <span class="ex-mus-etq">Primario</span><b>${nombres(m.primarios)}</b>
+        ${m.secundarios.length?`<span class="ex-mus-etq">Secundario</span><b>${nombres(m.secundarios)}</b>`:''}
+      </figcaption>
+      ${conVideo&&imgs?`<div class="ex-mus-fotos">${imgs}</div>`:''}
     </figure>`;
 }
 
@@ -7411,6 +7401,7 @@ function openExDetail(ei){
 
 function closeExDetail(){
   setTimeout(actualizarBotonVolver,0);
+  pararVideoEjercicio(true);
   curExIndex=null;
   document.getElementById('ex-detail-view').style.display='none';
   document.getElementById('ex-list-view').style.display='block';
