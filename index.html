@@ -1084,6 +1084,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
 .mos-card.actual{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
 .mos-card.lista{border-color:var(--green);background:rgba(45,122,79,0.06);}
+/* La sesión que toca en la semana, en violeta: la tarjeta de "Semana en curso"
+   de Entrenar trae aquí y esta es la que hay que encontrar. */
+.mos-card.siguiente{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:rgba(var(--accent-rgb),0.08);}
+.mos-badge-toca{color:var(--accent);background:rgba(var(--accent-rgb),0.16);}
 .mos-num{font-size:15px;font-weight:800;color:var(--text);}
 /* El título de la semana ("Circuito quema") a dos líneas como mucho: si no,
    una semana con nombre largo estira toda la fila del mosaico. */
@@ -3157,7 +3161,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 18:37';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-27 18:55';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4149,8 +4153,10 @@ if(!plan.length){
    "Entrenamiento de hoy" (ver el bloque .hoy del CSS). Devuelve HTML porque
    renderWeekButtons pinta toda la pantalla de una vez, y es UNA CELDA MÁS del
    mosaico (la que ocupa la fila entera), no una tarjeta aparte.
-   El botón entero lleva a la sesión que toca, no a la lista: en esta pestaña se
-   viene a registrar, y la lista de la semana está a un toque en el mosaico. */
+   El botón entero lleva a la LISTA de sesiones de la semana, con la que toca
+   marcada como "Siguiente" (Jhon, 27/09/2026). Antes entraba derecho en la
+   sesión pendiente y desorientaba: aparecías dentro de un ejercicio sin haber
+   visto qué tenías por delante esa semana. */
 function tarjetaSemanaEnCurso(plan,sessions,num,wi){
   const w=plan.find(x=>x.num===num)||plan[plan.length-1];
   const dias=w.days||[];
@@ -4188,26 +4194,19 @@ function tarjetaSemanaEnCurso(plan,sessions,num,wi){
     const quedan=total-hechas;
     tag=ico('rayo')+' Semana en curso';
     tit=escaparHTML(etiquetaSemana(w));
-    meta=hechas+' de '+total+' sesiones · '+(quedan===1?'queda 1':'quedan '+quedan);
-    cta='Continuar: <span class="cta-txt">'+escaparHTML(pendiente.name)+'</span> →';
+    meta=hechas+' de '+total+' sesiones · '+(quedan===1?'queda 1':'quedan '+quedan)+
+         ' · te toca '+escaparHTML(pendiente.name);
+    cta='Ver las sesiones de la semana →';
   }
 
   return`<button class="hoy sem-actual" style="--i:${Math.min(wi||0,8)}"
-    onclick="abrirDeSemana(${w.num},${pendiente?pendiente.s:'null'})">
+    onclick="openWeekDetail(${w.num})">
     <span class="hoy-tag">${tag}</span>
     <span class="hoy-tit">${tit}</span>
     <span class="hoy-meta">${meta}</span>
     ${puntos}
     <span class="hoy-cta">${cta}</span>
   </button>`;
-}
-
-/* Abrir una sesión PASANDO por su semana: openWeekDetail fija curWeekNum, y sin
-   eso el "← Sesiones" de dentro volvería a la semana que se mirase por última
-   vez (el mismo fallo que se arregló en closeForm el 02/09). */
-function abrirDeSemana(num,s){
-  openWeekDetail(num);
-  if(s!=null) openSession(s);
 }
 
 function openWeekDetail(weekNum){
@@ -4228,16 +4227,20 @@ function openWeekDetail(weekNum){
      Duplicar y borrar la sesión se fueron DENTRO de la sesión, por lo mismo que
      en las semanas: en una celda estrecha engordaban la tarjeta. */
   const c=document.getElementById('session-list');
+  // La primera sin registrar es la que toca: se marca para encontrarla de un vistazo.
+  const siguiente=week.days.find(d=>!sessions[d.s]);
   c.innerHTML='<div class="'+claseCascada()+'" id="ses-mosaico">'+week.days.map((d,di)=>{
     const reg=sessions[d.s];
     const hecha=!!reg;
+    const toca=d===siguiente;
     const nEj=(d.ex||[]).length;
-    return`<button class="mos-card${hecha?' lista':''}" data-ei="${di}" style="--i:${Math.min(di,8)}" onclick="sesToque(${d.s})">
+    return`<button class="mos-card${hecha?' lista':''}${toca?' siguiente':''}" data-ei="${di}" style="--i:${Math.min(di,8)}" onclick="sesToque(${d.s})">
       <div class="mos-num">${escaparHTML(d.name)}</div>
       <div class="mos-tit">${nEjercicios(nEj)}</div>
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${hecha&&reg.date?escaparHTML(reg.date):''}</span>
         ${hecha?'<span class="mos-badge" style="color:var(--green);background:rgba(45,122,79,0.14);">✓ Hecha</span>':''}
+        ${toca?'<span class="mos-badge mos-badge-toca">Siguiente</span>':''}
       </div>
     </button>`;
   }).join('')+'</div>';

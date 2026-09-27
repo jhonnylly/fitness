@@ -441,18 +441,27 @@ async function appLista(page, url){
        'la semana en curso está en su sitio, no arriba del todo');
     ok(prota.puntos === prota.dias && prota.hechos === prota.registradas && prota.hechos > 0,
        'una marca por sesión, encendidas las hechas ('+prota.hechos+'/'+prota.puntos+')');
-    ok(/Continuar/.test(prota.cta), 'y el botón nombra la sesión que toca: '+prota.cta);
+    ok(/sesiones de la semana/.test(prota.cta), 'y el botón invita a ver las sesiones: '+prota.cta);
 
-    /* Lleva a la sesión pendiente, pero PASANDO por su semana: si no fijara
-       curWeekNum, el "← Sesiones" de dentro volvería a otra. */
+    /* 27/09/2026 (Jhon): al tocarla entraba derecho en la sesión pendiente y
+       desorientaba. Ahora abre la LISTA de la semana, con la que toca marcada. */
     const salto = await page.evaluate(()=>{
       document.querySelector('#week-buttons-container .hoy').click();
+      const dias = getActivePlan().find(w=>w.num===curWeekNum).days;
+      const toca = dias.findIndex(d=>!getActiveSessions()[d.s]);
+      const celdas = [...document.querySelectorAll('#ses-mosaico .mos-card')];
       return {form: document.getElementById('session-form').style.display,
-              titulo: document.getElementById('form-title').textContent,
-              semana: curWeekNum};
+              lista: document.getElementById('session-list-view').style.display,
+              semana: curWeekNum,
+              marcadas: celdas.filter(c=>c.classList.contains('siguiente')).map(c=>celdas.indexOf(c)),
+              toca,
+              etiqueta: (celdas[toca]||document.body).querySelector('.mos-badge-toca')?.textContent || ''};
     });
-    ok(salto.form === 'block', 'al tocarla se abre la sesión pendiente: '+salto.titulo);
-    ok(salto.semana === prota.curso, 'y entra por su semana, no por la que se mirase antes');
+    ok(salto.form !== 'block' && salto.lista === 'block',
+       '🔴 al tocarla se abre la lista de sesiones de la semana, no un ejercicio');
+    ok(salto.semana === prota.curso, 'y es la de la semana en curso');
+    ok(salto.marcadas.length === 1 && salto.marcadas[0] === salto.toca && salto.etiqueta === 'Siguiente',
+       'con la sesión que toca marcada como "Siguiente" (la '+(salto.toca+1)+'ª)');
 
     // Resumen: la racha, que era una de seis cifras iguales de 24 px.
     const resumen = await page.evaluate(()=>{
@@ -502,8 +511,12 @@ async function appLista(page, url){
        'el mosaico de semanas ya no repite "Pendiente": '+(etiquetas.semanas.join(', ')||'(sin etiquetas)'));
     ok(!etiquetas.sesiones.some(t=>/Pendiente/.test(t)),
        'ni el de sesiones: '+(etiquetas.sesiones.join(', ')||'(sin etiquetas)'));
-    ok(etiquetas.sesiones.length === etiquetas.hechas && etiquetas.hechas > 0,
-       'una etiqueta por sesión hecha y ninguna más ('+etiquetas.hechas+')');
+    /* Más la de "Siguiente" en la que toca (27/09/2026): una sola, no una
+       por pendiente, que era lo que sobraba. */
+    ok(etiquetas.sesiones.filter(t=>/Hecha/.test(t)).length === etiquetas.hechas && etiquetas.hechas > 0
+       && etiquetas.sesiones.filter(t=>t==='Siguiente').length === 1
+       && etiquetas.sesiones.length === etiquetas.hechas + 1,
+       'una etiqueta por sesión hecha, una "Siguiente" y ninguna más ('+etiquetas.hechas+' + 1)');
     ok(etiquetas.sinFoto && etiquetas.avatar === etiquetas.nombre[0],
        'sin foto, el avatar son las iniciales del nombre: '+etiquetas.avatar);
     ok(etiquetas.obIcono && etiquetas.obTexto === '',
