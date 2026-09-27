@@ -2474,6 +2474,17 @@ async function appLista(page, url){
         holguraIzq: Math.round(R - Math.hypot(R - izq.left, izq.bottom - (H - R))),
         holguraDer: Math.round(R - Math.hypot(der.right - (W - R), der.bottom - (H - R))),
       };
+      /* Las apagadas tienen que verse (Jhon, 27/09): al 45 % de blanco se le
+         perdían. Y la activa lleva pastilla, que el color solo no bastaba. */
+      const alfa = c => { const m = c.match(/rgba?\(([^)]+)\)/)[1].split(','); return m.length > 3 ? parseFloat(m[3]) : 1; };
+      r.apagadasSeVen = [...tabs.children].filter(b => !b.classList.contains('active'))
+        .every(b => alfa(getComputedStyle(b).color) >= 0.75);
+      showTab('resumen', document.getElementById('tab-resumen'));
+      await tic();
+      r.activaConPastilla = getComputedStyle(document.getElementById('tab-resumen')).backgroundColor !== 'rgba(0, 0, 0, 0)';
+      showTab('inicio', document.getElementById('tab-inicio'));
+      await tic();
+      r.inicioSinPastilla = getComputedStyle(document.getElementById('tab-inicio')).backgroundColor === 'rgba(0, 0, 0, 0)';
       const circulo = tabs.querySelector('.tab-centro svg').getBoundingClientRect();
       r.centrado = Math.abs((circulo.left + circulo.width/2) - window.innerWidth/2) < 6;
       r.sobresale = circulo.top < caja.top - 8;
@@ -2525,6 +2536,9 @@ async function appLista(page, url){
       return r;
     });
     ok(barra.fija && barra.pegadaAbajo, 'la barra va fija al borde de abajo');
+    ok(barra.apagadasSeVen, 'las pestañas apagadas se ven (blanco al 75 % o más), no gris perdido');
+    ok(barra.activaConPastilla && barra.inicioSinPastilla,
+       'la pestaña activa lleva pastilla violeta; el círculo de Inicio no la necesita');
     ok(barra.orden.join(',') === 'Entrenar,Resumen,Inicio,Medidas,Ajustes',
        'en el orden de la propuesta: '+barra.orden.join(' · '));
     /* 23/09/2026: se llamaba "Registrar" y varias personas no daban con ella
