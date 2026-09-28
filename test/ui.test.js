@@ -1685,6 +1685,38 @@ async function appLista(page, url){
     ok(mes.recoMujerIni5[0] === 'preset_primer_mes', 'quien empieza la ve primero aunque elija 5 días');
     ok(!mes.recoMujerMed.includes('preset_primer_mes'), 'y quien ya entrena no la recibe como recomendada');
 
+    console.log('\n13k3d. Más rutinas: en casa, 5 días, 2 días y salud');
+    /* 28/09/2026: Jhon eligió las cuatro. Huecos que había: nada para casa, un
+       solo 5 días (glúteo), nada de 2 días y nada suave. */
+    const mas = await page.evaluate(()=>{
+      const p = id => PRESET_ROUTINES.find(x => x.id === id);
+      const semana = id => p(id).plan[0].days;
+      const conMaterial = ['barra','mancuerna','máquina','polea','prensa','kettlebell'];
+      return {
+        casaSinMaterial: semana('preset_casa').every(d => d.ex.every(e => !conMaterial.some(m => e[0].toLowerCase().includes(m)))),
+        casaSemanas: p('preset_casa').plan.length,
+        dias5: semana('preset_5dias').length, semanas5: p('preset_5dias').plan.length,
+        dias2: semana('preset_2dias').length,
+        saludCinta: p('preset_salud').plan.every(w => w.days.every(d => d.ex[0][1] === '1×10min')),
+        saludSuave: semana('preset_salud').every(d => d.ex.every(e => !/^[4-6]×/.test(e[1]))),
+        descs: ['preset_casa','preset_5dias','preset_2dias','preset_salud'].every(id => PRESET_DESC[id] && PRESET_DESC_PANEL[id]),
+        opcion2: OPCIONES_PERFIL.dias.some(([v]) => v === 2),
+        reco2: rutinasRecomendadas({sexo:'h', nivel:'med', dias:2})[0],
+        reco5: rutinasRecomendadas({sexo:'h', nivel:'med', dias:5})[0],
+        recoSalud: ['h','m','x'].some(sx => rutinasRecomendadas({sexo:sx, nivel:'med', dias:3}).includes('preset_salud')),
+        nivelCinta: (()=>{ const r = JSON.parse(JSON.stringify(p('preset_salud'))); ajustarRutinaANivel(r,'ini'); return r.plan[0].days[0].ex[0][1]; })()
+      };
+    });
+    ok(mas.casaSinMaterial && mas.casaSemanas === 4, 'En Casa: 4 semanas y ningún ejercicio con barra, mancuerna, máquina o polea');
+    ok(mas.dias5 === 5 && mas.semanas5 === 8, 'Torso / Pierna / PPL: 5 días y 8 semanas');
+    ok(mas.dias2 === 2, 'Cuerpo Completo 2 días: dos sesiones por semana');
+    ok(mas.saludCinta && mas.saludSuave, 'Salud y Movilidad: empieza con 10 min de cinta y nunca pasa de 3 series');
+    ok(mas.nivelCinta === '1×10min', '🔴 los minutos de cinta no se convierten en series al ajustar el nivel');
+    ok(mas.descs, 'las cuatro con su descripción corta y larga');
+    ok(mas.opcion2 && mas.reco2 === 'preset_2dias', 'en el registro se puede elegir 2 días, y entonces sale primero la de 2 días');
+    ok(mas.reco5 === 'preset_5dias', 'un hombre con 5 días recibe primero la de 5 días');
+    ok(!mas.recoSalud, 'Salud y Movilidad no se recomienda sola (no sabemos la edad)');
+
     console.log('\n13k4. Peso de partida orientativo, en gris y solo la primera vez');
     /* 27/09/2026, parte 3: sin historial del ejercicio, el campo de kg enseña en
        gris un peso de partida (peso corporal × ejercicio × sexo × nivel) y

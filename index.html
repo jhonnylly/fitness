@@ -2703,6 +2703,10 @@ const PRESET_DESC={
   'preset_ppl3':'Empuje, tirón y pierna. Gana músculo en 3 días.',
   'preset_primer_mes':'Tu primer mes: máquinas y 5 ejercicios. 4 semanas.',
   'preset_expres':'4 ejercicios por sesión, unos 30 minutos. 4 semanas.',
+  'preset_casa':'Solo tu peso corporal, sin material. 4 semanas.',
+  'preset_5dias':'Torso, pierna, empuje, tirón y pierna. 5 días.',
+  'preset_2dias':'Todo el cuerpo en 2 días. Si no tienes más tiempo.',
+  'preset_salud':'Suave y sin impacto: fuerza, equilibrio y core.',
 };
 
 const PRESET_ROUTINES=[
@@ -3189,6 +3193,8 @@ const PROGRESION_8=[
 function esquemaProgresado(esq,dSeries,dReps){
   const m=String(esq).match(/^(\d+)×(.+)$/);
   if(!m) return esq;
+  // Los minutos de cardio ("1×10min") no se tocan: no son series.
+  if(/min$/.test(m[2])) return esq;
   const series=Math.max(2,Math.min(6,parseInt(m[1])+dSeries));
   let reps=m[2];
   if(dReps && /^\d+$/.test(reps) && parseInt(reps)>=8) reps=String(Math.max(6,parseInt(reps)+dReps));
@@ -3258,6 +3264,29 @@ const PLANTILLAS_RUTINA=[
     {nombre:'Exprés A',tipo:'Full',ex:[['Sentadilla goblet','3×12'],['Press banca mancuernas','3×10'],['Remo mancuerna','3×10'],['Plancha','3×30s']]},
     {nombre:'Exprés B',tipo:'Full',ex:[['Peso muerto rumano','3×10'],['Press hombros mancuernas','3×10'],['Jalón al pecho','3×12'],['Rueda abdominal','3×8']]},
     {nombre:'Exprés C',tipo:'Full',ex:[['Zancada','3×10'],['Flexiones','3×10'],['Remo invertido','3×10'],['Leñador en polea','3×12']]},
+  ]},
+  /* 28/09/2026, más rutinas (Jhon eligió las cuatro): en casa, 5 días, 2 días
+     y salud. Diseño mío, orientativo: que las revise un entrenador. */
+  {id:'preset_casa',name:'En Casa sin Material',semanas:4,dias:[
+    {nombre:'Casa A',tipo:'Full',ex:[['Sentadillas libre','3×15'],['Flexiones','3×8'],['Superman','3×12'],['Puente de glúteo a una pierna','3×10'],['Plancha','3×30s']]},
+    {nombre:'Casa B',tipo:'Full',ex:[['Zancada','3×10'],['Fondos en banco','3×10'],['Sentadilla búlgara','3×8'],['Dead bug','3×10'],['Mountain climbers','3×20']]},
+    {nombre:'Casa C',tipo:'Full',ex:[['Sentadilla sumo','3×15'],['Burpees','3×8'],['Hip thrust a una pierna','3×10'],['Elevación de gemelo de pie','3×15'],['Plancha lateral','3×20s']]},
+  ]},
+  {id:'preset_5dias',name:'Torso / Pierna / PPL 5 días',dias:[
+    {nombre:'Torso',tipo:'Upper',ex:[['Press banca barra','4×8'],['Remo barra','4×8'],['Press militar','3×10'],['Jalón al pecho','3×10'],['Curl bíceps barra','3×10'],['Tríceps polea','3×12']]},
+    {nombre:'Pierna fuerza',tipo:'Lower',ex:[['Sentadilla barra','4×8'],['Peso muerto rumano','3×10'],['Prensa 45°','3×12'],['Curl femoral','3×12'],['Elevación de gemelo de pie','4×12']]},
+    {nombre:'Empuje',tipo:'Push',ex:[['Press inclinado mancuernas','4×10'],['Press pecho en máquina','3×12'],['Elevaciones laterales','4×15'],['Aperturas con mancuernas','3×12'],['Tríceps cuerda','3×12'],['Press francés','3×10']]},
+    {nombre:'Tirón',tipo:'Pull',ex:[['Dominadas','4×6'],['Remo en T','3×10'],['Remo polea baja','3×12'],['Face pull','3×15'],['Curl martillo','3×12'],['Curl predicador','3×12']]},
+    {nombre:'Pierna volumen',tipo:'Lower',ex:[['Sentadilla hack','4×10'],['Hip thrust','3×12'],['Zancada caminando','3×12'],['Extensión piernas','3×15'],['Curl femoral sentado','3×12'],['Elevación de gemelo sentado','4×15']]},
+  ]},
+  {id:'preset_2dias',name:'Cuerpo Completo 2 días',dias:[
+    {nombre:'Full Body A',tipo:'Full',ex:[['Sentadilla goblet','3×10'],['Press banca mancuernas','3×10'],['Remo polea baja','3×12'],['Peso muerto rumano','3×10'],['Elevaciones laterales','2×15'],['Plancha','3×30s']]},
+    {nombre:'Full Body B',tipo:'Full',ex:[['Prensa 45°','3×12'],['Jalón al pecho','3×12'],['Press hombros mancuernas','3×10'],['Hip thrust','3×12'],['Curl bíceps mancuerna','2×12'],['Tríceps polea','2×12']]},
+  ]},
+  {id:'preset_salud',name:'Salud y Movilidad',semanas:4,dias:[
+    {nombre:'Salud A',tipo:'Full',ex:[['Caminadora','1×10min'],['Prensa 45°','2×12'],['Press pecho en máquina','2×12'],['Remo en máquina','2×12'],['Elevación de gemelo de pie','2×12'],['Dead bug','2×8']]},
+    {nombre:'Salud B',tipo:'Full',ex:[['Caminadora','1×10min'],['Sentadilla goblet','2×10'],['Jalón al pecho','2×12'],['Press hombros en máquina','2×10'],['Pallof press','2×10'],['Caminar de talones','2×20']]},
+    {nombre:'Salud C',tipo:'Full',ex:[['Caminadora','1×10min'],['Step up con mancuernas','2×8'],['Remo polea baja','2×12'],['Curl femoral sentado','2×12'],['Face pull','2×15'],['Plancha','2×20s']]},
   ]},
 ];
 PLANTILLAS_RUTINA.forEach(p=>PRESET_ROUTINES.push({id:p.id,name:p.name,
@@ -3376,7 +3405,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-28 20:03';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-28 20:20';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -8073,6 +8102,10 @@ const PRESET_DESC_PANEL={
   'preset_ppl3':'Empuje, tirón y pierna: cada grupo una vez por semana con volumen alto. Tres días.',
   'preset_primer_mes':'Para tu primer mes en el gimnasio: cuerpo completo, casi todo en máquina y 5 ejercicios por sesión. Cuatro semanas, tres días.',
   'preset_expres':'Para cuando vas con prisa: 4 ejercicios de cuerpo completo, unos 30 minutos. Cuatro semanas, tres días.',
+  'preset_casa':'Para entrenar en casa sin material: solo tu peso corporal y una silla. Cuatro semanas, tres días.',
+  'preset_5dias':'Torso, pierna, empuje, tirón y pierna: cada músculo dos veces por semana. Para ganar músculo en 5 días.',
+  'preset_2dias':'Cuerpo completo dos veces por semana. Para quien no puede ir más días y quiere avanzar igual.',
+  'preset_salud':'Fuerza suave, equilibrio y core, sin impacto y con calentamiento en cinta. Para mayores o si vuelves tras mucho tiempo parado. Cuatro semanas, tres días.',
 };
 
 function renderPresetList(){
@@ -8305,7 +8338,7 @@ let obSeleccion=[];
    días que puede entrenar. Se guarda en DB.perfil = {sexo, nivel, dias, peso}:
      sexo  'h' | 'm' | 'x' (prefiero no decirlo)
      nivel 'ini' | 'med' | 'ava'
-     dias  3..6
+     dias  2..6 (el 2, desde el 28/09/2026)
      peso  kg o null (opcional; va además a Medidas como primer peso)
    Sexo, nivel y días son obligatorios en el paso; el peso no. */
 let obPerfil={sexo:null,nivel:null,dias:null,peso:null};
@@ -8313,7 +8346,7 @@ let obPerfil={sexo:null,nivel:null,dias:null,peso:null};
 const OPCIONES_PERFIL={
   sexo:[['h','Hombre'],['m','Mujer'],['x','Prefiero no decirlo']],
   nivel:[['ini','Empiezo'],['med','Llevo unos meses'],['ava','Más de un año']],
-  dias:[[3,'3'],[4,'4'],[5,'5'],[6,'6']]
+  dias:[[2,'2'],[3,'3'],[4,'4'],[5,'5'],[6,'6']]
 };
 
 /* Qué rutinas se recomiendan, en orden (3). Es un punto de partida, no un
@@ -8323,14 +8356,16 @@ const OPCIONES_PERFIL={
 function rutinasRecomendadas(perfil){
   if(!perfil||!perfil.sexo) return [];
   let porSexo={
-    m:['preset_gluteo3','preset_tonifica4','preset_gluteo_pierna','preset_full3','preset_definicion','preset_recomp','preset_quema'],
-    h:['preset_ppl3','preset_torso_pierna4','preset_volumen','preset_full3','preset_recomp','preset_definicion'],
-    x:['preset_full3','preset_torso_pierna4','preset_recomp','preset_quema','preset_volumen','preset_definicion']
+    m:['preset_gluteo3','preset_tonifica4','preset_gluteo_pierna','preset_full3','preset_2dias','preset_definicion','preset_recomp','preset_quema'],
+    h:['preset_ppl3','preset_torso_pierna4','preset_5dias','preset_volumen','preset_full3','preset_2dias','preset_recomp','preset_definicion'],
+    x:['preset_full3','preset_torso_pierna4','preset_5dias','preset_2dias','preset_recomp','preset_quema','preset_volumen','preset_definicion']
   }[perfil.sexo]||[];
   if(perfil.nivel==='ava') porSexo=[porSexo[0],'preset_fuerza',...porSexo.slice(1)];
   else porSexo=porSexo.filter(id=>id!=='preset_fuerza');
-  // La exprés, al final de todas: sirve a cualquiera, pero no es lo primero.
-  porSexo=[...porSexo,'preset_expres'];
+  /* La exprés y la de casa, al final de todas: sirven a cualquiera, pero no
+     son lo primero. "Salud y Movilidad" no se recomienda sola (no sabemos la
+     edad): está en Explorar rutinas. */
+  porSexo=[...porSexo,'preset_expres','preset_casa'];
   /* Con los días elegidos, primero las que nacen con ESOS días; luego las de
      menos días (caben de sobra) y al final las de más, que habría que fundir.
      El orden de la lista desempata: es la preferencia por perfil. */
