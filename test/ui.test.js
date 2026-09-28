@@ -1717,6 +1717,67 @@ async function appLista(page, url){
     ok(mas.reco5 === 'preset_5dias', 'un hombre con 5 días recibe primero la de 5 días');
     ok(!mas.recoSalud, 'Salud y Movilidad no se recomienda sola (no sabemos la edad)');
 
+    console.log('\n13k3e. Al terminar una rutina, la app propone la siguiente');
+    /* 28/09/2026 (Jhon): al acabar se quedaba en "Añade semanas o activa otra
+       rutina". Ahora propone una con su perfil, sin repetir lo terminado. */
+    const sig = await page.evaluate(async ()=>{
+      if(STORAGE.backend.name !== 'local') return { saltado:true };   // nunca contra la nube
+      const copia = JSON.stringify(DB);
+      const tic = (ms=60) => new Promise(res => setTimeout(res, ms));
+      const r = {};
+      const pm = PRESET_ROUTINES.find(x => x.id === 'preset_primer_mes');
+      const todas = rut => { const ss = {}; rut.plan.forEach(w => w.days.forEach(d => { ss[d.s] = {fecha:'01/09/2026'}; })); return ss; };
+      DB.perfil = {sexo:'m', nivel:'ini', dias:3};
+      DB.routines = [{id:pm.id, name:pm.name, plan:JSON.parse(JSON.stringify(pm.plan)), sessions:{}, medidas:[]}];
+      DB.activeRoutine = pm.id;
+      r.aMedias = siguienteRutinaSugerida() === null;
+      DB.routines[0].sessions = todas(DB.routines[0]);
+      const s = siguienteRutinaSugerida();
+      r.propuesta = s && s.id;
+      // La celebración de la última sesión la ofrece, y "Seguir" pasa a "Ahora no".
+      const total = totalSesiones(DB.routines[0]);
+      celebrarSesion({records:[], hechasAntes:total-1, sesion:total});
+      await tic();
+      r.celTit = document.getElementById('cel-tit').textContent;
+      r.celBoton = (document.querySelector('#cel-siguiente .btn') || {}).textContent || '';
+      r.ahoraNo = document.getElementById('cel-seguir').textContent;
+      cerrarCelebracion(); await tic();
+      // Inicio también la propone.
+      showTab('inicio', document.getElementById('tab-inicio')); updateHome(); await tic();
+      r.cta = document.getElementById('hoy-cta').textContent;
+      // Empezarla: se carga con sus días, pasa a activa y el nivel sube.
+      document.getElementById('home-hoy').click(); await tic(200);
+      r.activa = DB.activeRoutine; r.nivel = DB.perfil.nivel;
+      r.cargada = DB.routines.some(x => x.id === r.propuesta);
+      r.dias = DB.routines.find(x => x.id === r.propuesta).plan[0].days.length;
+      // Una celebración normal vuelve a decir "Seguir" y no propone nada.
+      celebrarSesion({records:[], hechasAntes:0, sesion:1}); await tic();
+      r.normal = document.getElementById('cel-seguir').textContent === 'Seguir' && !document.getElementById('cel-siguiente').innerHTML;
+      cerrarCelebracion();
+      // No repite una ya terminada.
+      const terminada = DB.routines.find(x => x.id === r.propuesta);
+      terminada.sessions = todas(terminada);
+      r.otra = (siguienteRutinaSugerida() || {}).id;
+      // Con entrenador no propone nada.
+      const antes = window.tieneEntrenador; window.tieneEntrenador = () => true;
+      r.conCoach = siguienteRutinaSugerida() === null;
+      updateHome(); r.metaCoach = document.getElementById('hoy-meta').textContent;
+      window.tieneEntrenador = antes;
+      DB = JSON.parse(copia); save(); updateHome();
+      return r;
+    });
+    ok(!sig.saltado, 'la prueba corre en local, nunca contra la nube');
+    ok(sig.aMedias, 'a medias no propone nada');
+    ok(sig.propuesta && sig.propuesta !== 'preset_primer_mes', 'al terminar "Primer Mes" propone otra: '+sig.propuesta);
+    ok(sig.celTit === '¡Plan terminado!' && /^Empezar «/.test(sig.celBoton) && sig.ahoraNo === 'Ahora no',
+       'la celebración final la ofrece con su botón ('+sig.celBoton+') y "Ahora no"');
+    ok(/^Empezar «.+» →$/.test(sig.cta), 'y la tarjeta de Inicio también: '+sig.cta);
+    ok(sig.cargada && sig.activa === sig.propuesta && sig.dias === 3, 'tocarla la carga con tus 3 días y la deja en curso');
+    ok(sig.nivel === 'med', 'quien empezaba pasa a "Llevo unos meses"');
+    ok(sig.normal, 'una sesión normal sigue diciendo "Seguir", sin propuesta');
+    ok(sig.otra && sig.otra !== sig.propuesta && sig.otra !== 'preset_primer_mes', 'no repite una rutina ya terminada: '+sig.otra);
+    ok(sig.conCoach && /Tu entrenador te dirá/.test(sig.metaCoach), 'con entrenador no propone nada: la elige él');
+
     console.log('\n13k4. Peso de partida orientativo, en gris y solo la primera vez');
     /* 27/09/2026, parte 3: sin historial del ejercicio, el campo de kg enseña en
        gris un peso de partida (peso corporal × ejercicio × sexo × nivel) y

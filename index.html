@@ -1246,6 +1246,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   border:1px solid rgba(var(--accent-rgb),.35);}
 .cel-linea.hito{background:rgba(45,122,79,.12);border:1px solid rgba(45,122,79,.35);}
 .cel-linea.hito svg{color:var(--green);}
+/* La rutina siguiente, al terminar el plan: tarjeta violeta con su botón. */
+.cel-siguiente{margin-top:14px;padding:14px;border-radius:var(--radius);text-align:left;
+  background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.35);}
+.cel-sig-tag{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);}
+.cel-sig-nombre{font-size:17px;font-weight:800;margin-top:3px;}
+.cel-sig-desc{font-size:12.5px;color:var(--muted);line-height:1.45;margin:4px 0 12px;}
+.cel-siguiente .btn{margin:0;}
+#cel-seguir{margin-top:10px;}
 .cel-cifra{margin-left:auto;font-family:'Cifras',-apple-system,sans-serif;font-weight:800;
   font-size:14px;color:var(--accent);white-space:nowrap;}
 .cel-linea.hito .cel-cifra{color:var(--green);}
@@ -2353,7 +2361,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <div class="cel-tit" id="cel-tit">¡Sesión completada!</div>
     <div class="cel-sub" id="cel-sub"></div>
     <div class="cel-lineas" id="cel-lineas"></div>
-    <button class="btn btn-primary" onclick="cerrarCelebracion()">Seguir</button>
+    <div id="cel-siguiente"></div>
+    <button class="btn btn-primary" id="cel-seguir" onclick="cerrarCelebracion()">Seguir</button>
   </div>
 </div>
 
@@ -3405,7 +3414,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-28 20:20';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-28 20:31';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5205,6 +5214,67 @@ function semanaDeSesion(rutina,n){
   return null;
 }
 
+/* ── La rutina siguiente (28/09/2026, Jhon) ──
+   Al terminar una rutina la app se quedaba en "¡Lo has completado! Añade
+   semanas o activa otra rutina", y quien acaba "Primer Mes" no sabe cuál toca.
+   Ahora propone UNA, con su perfil y sin repetir lo ya terminado. Quien
+   empezaba pasa a "Llevo unos meses": ya lleva un plan entero hecho. Con
+   entrenador no se propone nada: la elige él. */
+function rutinaTerminada(r){
+  const t=totalSesiones(r);
+  return t>0 && Object.keys((r&&r.sessions)||{}).length>=t;
+}
+
+function siguienteRutinaSugerida(){
+  const act=getActive();
+  if(!act||!rutinaTerminada(act)) return null;
+  if(window.tieneEntrenador && window.tieneEntrenador()) return null;
+  const pf=DB.perfil||{};
+  const nivel=pf.nivel==='ini'?'med':(pf.nivel||'med');
+  const reco=pf.sexo?rutinasRecomendadas({...pf,nivel}):[];
+  // Detrás de las de su perfil, las de siempre para no quedarse sin ninguna.
+  const orden=[...reco,'preset_full3','preset_torso_pierna4','preset_recomp','preset_ppl3',...PRESET_ROUTINES.map(r=>r.id)];
+  // "Primer Mes" y "Salud" son puntos de partida, no un siguiente paso.
+  const fuera=new Set(['preset_primer_mes','preset_salud',act.id]);
+  for(const id of orden){
+    if(fuera.has(id)||!PRESET_ROUTINES.some(r=>r.id===id)) continue;
+    const ya=DB.routines.find(r=>r.id===id);
+    if(ya&&rutinaTerminada(ya)) continue;
+    return PRESET_ROUTINES.find(r=>r.id===id);
+  }
+  return null;
+}
+
+/* Cargarla (si no estaba) con sus días y su nivel, y activarla. */
+function empezarRutinaSugerida(id){
+  if(bloqueadoPorPausa('añadir rutinas')) return;
+  const p=PRESET_ROUTINES.find(r=>r.id===id);
+  if(!p) return;
+  let subeNivel=false;
+  if(DB.perfil&&DB.perfil.nivel==='ini'){ DB.perfil={...DB.perfil,nivel:'med'}; subeNivel=true; }
+  let r=DB.routines.find(x=>x.id===id);
+  if(!r){
+    r={id:p.id,name:p.name,plan:JSON.parse(JSON.stringify(p.plan)),sessions:{},medidas:[]};
+    if(DB.perfil){ adaptarRutinaADias(r,DB.perfil.dias); ajustarRutinaANivel(r,DB.perfil.nivel); }
+    DB.routines.push(r);
+  }
+  document.getElementById('celebracion').classList.add('hidden');
+  sincronizarBloqueoFondo();
+  activateRoutine(id);                  // guarda y repinta Inicio y Entrenar
+  aviso('Rutina en curso: «'+r.name+'»'+(subeNivel?'. Tu nivel pasa a «Llevo unos meses».':''),'bien');
+}
+
+/* El bloque de la propuesta, para la celebración final. */
+function htmlSiguienteRutina(p){
+  const sube=DB.perfil&&DB.perfil.nivel==='ini';
+  return `<div class="cel-siguiente">
+      <div class="cel-sig-tag">Tu siguiente rutina</div>
+      <div class="cel-sig-nombre">${escaparHTML(p.name)}</div>
+      <div class="cel-sig-desc">${escaparHTML(PRESET_DESC_PANEL[p.id]||PRESET_DESC[p.id]||'')}${sube?' Ya no empiezas: la ajustamos a «Llevo unos meses».':''}</div>
+      <button type="button" class="btn btn-primary" onclick="empezarRutinaSugerida('${p.id}')">Empezar «${escaparHTML(p.name)}»</button>
+    </div>`;
+}
+
 /* Una línea de la caja de celebración. La comparten la de sesión y la de reto. */
 function celLinea(clase,icono,texto,cifra){
   return '<div class="cel-linea '+clase+'">'+ico(icono)+'<span>'+texto+'</span>'+
@@ -5248,6 +5318,12 @@ function celebrarSesion({records,hechasAntes,sesion}){
     'Semana <b>'+semana.num+'</b> completa'+(semana.titulo?' — '+escaparHTML(semana.titulo):''),
     semana.total+'/'+semana.total));
   document.getElementById('cel-lineas').innerHTML=filas.join('');
+  // Plan terminado: la propuesta de la siguiente, y "Seguir" pasa a "Ahora no".
+  const sig=hechas===total?siguienteRutinaSugerida():null;
+  document.getElementById('cel-siguiente').innerHTML=sig?htmlSiguienteRutina(sig):'';
+  const seguir=document.getElementById('cel-seguir');
+  seguir.textContent=sig?'Ahora no':'Seguir';
+  seguir.className='btn '+(sig?'btn-secondary':'btn-primary');
 
   capa.classList.remove('hidden');
   sincronizarBloqueoFondo();
@@ -6522,6 +6598,9 @@ window.irAProximaSesion=function(){
      cerrada, y el cálculo no. */
   const impuesta = window.sesionDelAviso && window.sesionDelAviso();
   const p=act?proximaSesion(act):null;
+  // Plan terminado y con propuesta: la tarjeta dice "Empezar «…»" y eso hace.
+  const sig=(impuesta==null&&!p)?siguienteRutinaSugerida():null;
+  if(sig){ empezarRutinaSugerida(sig.id); goTo('inicio'); return; }
   goTo('log');
   if(impuesta!=null) openSession(impuesta);
   else if(p)openSession(p.dia.s);   // sin plan que abrir, la lista de sesiones ya lo explica
@@ -6609,8 +6688,15 @@ function updateHome(){
   }else if(total){
     if(tag)tag.textContent='Plan terminado';
     set('hoy-tit','¡Lo has completado! 🏆');
-    set('hoy-meta','Las '+total+' sesiones registradas. Añade semanas o activa otra rutina.');
-    if(cta)cta.textContent='Ver el historial →';
+    const sig=siguienteRutinaSugerida();
+    if(sig){
+      set('hoy-meta','Las '+total+' sesiones registradas. Te proponemos seguir con «'+sig.name+'».');
+      if(cta)cta.textContent='Empezar «'+sig.name+'» →';
+    }else{
+      set('hoy-meta','Las '+total+' sesiones registradas. '+
+        (window.tieneEntrenador&&window.tieneEntrenador()?'Tu entrenador te dirá cuál sigue.':'Añade semanas o activa otra rutina.'));
+      if(cta)cta.textContent='Ver el historial →';
+    }
   }else{
     if(tag)tag.textContent='Sin plan';
     set('hoy-tit','Aún no hay sesiones');
@@ -13210,6 +13296,12 @@ function cerrarVigilanciaAviso(){
    carga después, y hasta entonces no hay aviso que valga. */
 window.sesionDelAviso = function(){
   return sesionImpuesta(miSesionCoach, getActive(), getActiveSessions());
+};
+
+/* Si la persona tiene entrenador, la rutina siguiente la elige él: la app no
+   propone ninguna al terminar (ver siguienteRutinaSugerida). Misma vía. */
+window.tieneEntrenador = function(){
+  return !!(meData && meData.role !== 'trainer' && meData.trainerId);
 };
 
 /* El cliente al que su entrenador ha pausado el seguimiento. Repinta lo que
