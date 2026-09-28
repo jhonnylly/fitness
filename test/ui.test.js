@@ -1626,6 +1626,33 @@ async function appLista(page, url){
        'con más de un año, una más en el principal del día: '+nuevas.ava.join(' '));
     ok(nuevas.medNoCambia, '"Llevo unos meses" la deja como está');
 
+    console.log('\n13k3b. Las 7 rutinas antiguas usan ejercicios del catálogo nuevo');
+    /* 28/09/2026 (Jhon): "mete los ejercicios nuevos en las rutinas antiguas".
+       Se cambió un ejercicio por otro del mismo músculo, con sus mismas series,
+       así las sesiones no se alargan. */
+    const antiguas = await page.evaluate(()=>{
+      const NUEVOS = ['Press hombros en máquina','Elevaciones laterales en polea','Fondos en banco','Curl en polea','Flexiones',
+        'Remo en máquina','Press militar','Press banca agarre cerrado','Jalón agarre estrecho','Curl predicador',
+        'Elevación de gemelo en máquina','Leñador en polea','Rueda abdominal','Remo en T','Hiperextensiones',
+        'Aperturas con mancuernas','Pájaros con mancuernas','Press pecho en máquina','Superman','Remo invertido',
+        'Cruces inversos en polea','Sentadilla en Smith'];
+      const ids = ['preset_quema','preset_volumen','preset_fuerza','preset_recomp','preset_mantenimiento','preset_definicion','preset_gluteo_pierna'];
+      const r = { pocas: [], repetidos: [], largas: 0 };
+      for(const id of ids){
+        const p = PRESET_ROUTINES.find(x => x.id === id);
+        const usados = new Set(p.plan.flatMap(w => w.days.flatMap(d => d.ex.map(e => e[0]))).filter(n => NUEVOS.includes(n)));
+        if(usados.size < 4) r.pocas.push(id+' ('+usados.size+')');
+        for(const w of p.plan) for(const d of w.days){
+          const n = d.ex.map(e => e[0]);
+          if(new Set(n).size !== n.length) r.repetidos.push(id+' '+d.name);
+          if(n.length > 7) r.largas++;
+        }
+      }
+      return r;
+    });
+    ok(!antiguas.pocas.length, 'cada rutina antigua usa al menos 4 ejercicios nuevos'+(antiguas.pocas.length?': '+antiguas.pocas.join(', '):''));
+    ok(!antiguas.repetidos.length && !antiguas.largas, 'sin ejercicios repetidos en un mismo día ni sesiones más largas');
+
     console.log('\n13k4. Peso de partida orientativo, en gris y solo la primera vez');
     /* 27/09/2026, parte 3: sin historial del ejercicio, el campo de kg enseña en
        gris un peso de partida (peso corporal × ejercicio × sexo × nivel) y
