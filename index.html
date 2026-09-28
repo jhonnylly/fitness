@@ -42,9 +42,8 @@
    pulsar "Aceptar" y sale con la cara del navegador: justo después de terminar
    una serie es lo último que quieres. Este aparece, se lee y se va solo. */
 /* Abajo y no arriba: arriba tapaba la cabecera justo cuando dice qué rutina
-   llevas. A 88 px del borde queda por encima del cronómetro de descanso, que
-   es fijo abajo y puede estar corriendo cuando guardas. */
-#aviso-flotante{position:fixed;bottom:calc(100px + var(--nav-h) + var(--crono-hueco));left:50%;transform:translate(-50%,14px);
+   llevas. Por encima de la barra de pestañas y con aire. */
+#aviso-flotante{position:fixed;bottom:calc(128px + var(--nav-h));left:50%;transform:translate(-50%,14px);
   z-index:600;max-width:min(92vw,420px);padding:12px 16px;border-radius:var(--radius);
   background:var(--dark);color:#f2f0f7;font-size:13.5px;font-weight:600;line-height:1.45;
   box-shadow:0 10px 30px rgba(0,0,0,.45);opacity:0;pointer-events:none;
@@ -52,30 +51,59 @@
 #aviso-flotante.visible{opacity:1;transform:translate(-50%,0);}
 #aviso-flotante.bien{border-left:4px solid var(--green);}
 #aviso-flotante.mal{border-left:4px solid var(--danger);}
-/* Mientras corre el descanso hay DOS barras abajo. Sin este hueco de más, lo
-   último de Registrar —que es justo el botón de guardar— se queda debajo del
-   cronómetro (23/09/2026). */
-body.con-descanso{padding-bottom:calc(var(--nav-h) + var(--crono-hueco) + 84px + env(safe-area-inset-bottom,0px));}
-/* Encima de la barra de pestañas, no debajo: las dos viven abajo y la barra no
-   puede quedar tapada mientras descansas (23/09/2026). Y despegado de ella, en
-   forma de tarjeta: pegado abajo tapaba el círculo de Inicio, que sobresale.
-   Ganar sitio por arriba no valía —el cronómetro se lee mejor cerca del
-   pulgar—, así que flota, como los reproductores que conviven con una barra de
-   pestañas. */
-#rest-timer{position:fixed;bottom:calc(var(--nav-h) + var(--crono-hueco) + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:576px;background:var(--dark);color:#f2f0f7;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:200;border:1px solid rgba(255,255,255,0.09);border-top:2px solid var(--accent);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45);transition:transform .3s ease;}
-/* Escondido tiene que salir ENTERO de la pantalla, y está colocado a la altura
-   de la barra: hay que bajarlo su propio alto MÁS lo que mide la barra. Con un
-   porcentaje fijo (200%) se quedaba corto en cuanto la barra creció, y asomaba
-   su borde violeta por debajo de las etiquetas. */
-#rest-timer.hidden{transform:translate(-50%,calc(110% + var(--nav-h) + var(--crono-hueco) + env(safe-area-inset-bottom,0px)));}
-.timer-ring{position:relative;width:48px;height:48px;flex-shrink:0;}
-.timer-ring svg{transform:rotate(-90deg);}
-.timer-ring circle{transition:stroke-dashoffset .9s linear;}
-.timer-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:14px;font-weight:800;}
-.timer-info{flex:1;}
-.timer-secs{font-size:22px;font-weight:800;color:var(--accent);line-height:1;}
-.timer-txt{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;}
-.timer-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;}
+/* ── El descanso, ARRIBA (28/09/2026, Jhon) ──
+   Antes era una tarjeta flotando sobre la barra de pestañas que arrancaba
+   sola al apuntar las repeticiones, siempre con 90 s. Ahora solo corre cuando
+   pulsas Iniciar, y va en una franja fina arriba del todo, encima de la
+   cabecera: no tapa las series ni el botón de guardar, que están abajo. */
+#rest-timer{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;z-index:200;
+  background:var(--dark);color:#f2f0f7;box-shadow:0 6px 20px rgba(0,0,0,.35);transition:transform .3s ease;}
+#rest-timer.hidden{transform:translate(-50%,-110%);}
+/* Tan alta como la cabecera, que queda debajo: más baja dejaba asomar el avatar. */
+.rt-fila{display:flex;align-items:center;gap:8px;min-height:78px;padding:8px 12px;}
+.rt-ico{width:20px;height:20px;flex-shrink:0;stroke:#b79dff;}
+.timer-secs{font-size:24px;font-weight:800;color:#b79dff;line-height:1;min-width:58px;}
+.timer-txt{flex:1;min-width:0;font-size:12px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rt-btn{flex-shrink:0;min-width:44px;height:36px;padding:0 8px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);
+  background:rgba(255,255,255,0.06);color:#f2f0f7;font-size:13px;font-weight:700;cursor:pointer;}
+.rt-barra{height:4px;background:rgba(255,255,255,0.08);}
+#timer-barra{height:100%;width:100%;background:var(--accent);transform-origin:left;transition:transform .5s linear;}
+#rest-timer.fin #timer-barra{background:var(--green);}
+#rest-timer.fin .timer-secs{color:var(--green);}
+/* La hoja de la rueda: sube desde abajo, como el selector de hora del iPhone. */
+#desc-hoja{position:fixed;inset:0;z-index:650;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;
+  transition:opacity .2s ease;}
+#desc-hoja.hidden{opacity:0;pointer-events:none;}
+.desc-panel{width:100%;max-width:600px;background:var(--card);border-radius:20px 20px 0 0;
+  padding:18px 16px calc(16px + env(safe-area-inset-bottom,0px));transition:transform .25s ease;}
+#desc-hoja.hidden .desc-panel{transform:translateY(100%);}
+.desc-titulo{text-align:center;font-size:16px;font-weight:800;margin-bottom:4px;}
+.desc-sub{text-align:center;font-size:12px;color:var(--muted);margin-bottom:10px;}
+.rueda-marco{position:relative;height:220px;margin:0 auto 16px;max-width:240px;}
+/* La franja del centro: lo que queda dentro es lo elegido. */
+.rueda-marco::before{content:'';position:absolute;left:0;right:0;top:88px;height:44px;border-radius:12px;
+  background:rgba(var(--accent-rgb),0.14);pointer-events:none;}
+.rueda{position:relative;height:100%;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(transparent,#000 35%,#000 65%,transparent);
+  mask-image:linear-gradient(transparent,#000 35%,#000 65%,transparent);}
+.rueda::-webkit-scrollbar{display:none;}
+.rueda-hueco{height:88px;}
+.rueda-op{height:44px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;
+  font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:22px;font-weight:700;color:var(--muted);cursor:pointer;}
+.rueda-op.sel{color:var(--text);font-size:26px;}
+.desc-acciones{display:flex;gap:10px;}
+.desc-acciones button{flex:1;height:48px;border-radius:var(--radius);font-size:15px;font-weight:800;cursor:pointer;}
+.desc-cancelar{background:var(--surface);border:1px solid var(--border);color:var(--text);}
+.desc-ok{background:var(--accent);border:none;color:#fff;}
+/* En el ejercicio, bajo las series: el tiempo (toca para cambiarlo) e Iniciar. */
+.desc-fila{display:flex;gap:8px;margin:10px 0 4px;}
+.desc-tiempo{flex:1;display:flex;align-items:center;gap:8px;height:48px;padding:0 14px;border-radius:var(--radius);
+  background:var(--card);border:1px solid var(--border);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;text-align:left;}
+.desc-tiempo b{font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:18px;color:var(--accent);}
+.desc-tiempo .ico-btn{stroke:var(--accent);}
+.desc-tiempo small{margin-left:auto;font-size:12px;color:var(--muted);}
+.desc-iniciar{flex-shrink:0;display:flex;align-items:center;gap:6px;height:48px;padding:0 18px;border-radius:var(--radius);
+  background:var(--accent);border:none;color:#fff;font-size:15px;font-weight:800;cursor:pointer;}
 
 
 /* Cifras en Oswald. Los números son lo que se mira de reojo entre serie y
@@ -100,7 +128,7 @@ body.con-descanso{padding-bottom:calc(var(--nav-h) + var(--crono-hueco) + 84px +
 /* Dónde se usan: las cifras que se leen como cifra, no cualquier número suelto
    dentro de una frase. Siempre con la del sistema detrás, que es la que pinta
    las letras que las acompañan. */
-.stat-val,.duo-val,.hp-centro b,.timer-secs,.timer-label,.mos-num,.racha-num{
+.stat-val,.duo-val,.hp-centro b,.timer-secs,.mos-num,.racha-num{
   font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -198,18 +226,15 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
    el rato. Inicio va en el centro y levantado, que es a donde más se vuelve.
    Ajustes baja aquí desde la esquina de arriba a la derecha (la más lejos del
    pulgar); no es una pestaña —no tiene pane—, solo abre su panel.
-   `--nav-h` la mide para todo lo demás que vive abajo: el cronómetro de
-   descanso, el aviso flotante y el hueco que se le deja al final del contenido.
+   `--nav-h` la mide para todo lo demás que vive abajo: el aviso flotante y el
+   hueco que se le deja al final del contenido.
    La franja del iPhone se respeta con `env(safe-area-inset-bottom)`. */
 /* El alto de la barra se FIJA, no se estima: el círculo de Inicio la hacía 10 px
-   más alta que el `min-height` y el cronómetro de descanso, que se coloca a
-   `--nav-h` del suelo, se le montaba encima. */
+   más alta que el `min-height` y lo que se coloca a `--nav-h` del suelo se le
+   montaba encima. */
 /* 80 px y no 68: las etiquetas de los extremos tienen que quedar por encima de
-   la curva de la pantalla (ver el padding de abajo).
-   `--crono-hueco`: lo que el cronómetro de descanso se despega de la barra. El
-   círculo de Inicio sobresale por encima de ella, y apoyado en la barra el
-   cronómetro le tapaba la coronilla (Jhon, 23/09, en el iPhone). */
-:root{--nav-h:80px;--crono-hueco:28px;}
+   la curva de la pantalla (ver el padding de abajo). */
+:root{--nav-h:80px;}
 .tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;
   z-index:150;display:flex;align-items:flex-end;gap:2px;background:var(--dark);
   border-top:1px solid rgba(255,255,255,0.08);
@@ -767,9 +792,6 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .sc-grid input{width:100%;min-width:0;height:44px;padding:0 2px;border-radius:12px;text-align:center;
   font-size:16px;font-weight:800;}
 .sc-grid input::placeholder{color:var(--muted);font-weight:600;opacity:.75;}
-.sc-desc{position:relative;}
-.sc-desc input{height:36px;font-size:13px;font-weight:700;padding-right:12px;}
-.sc-desc::after{content:'s';position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none;}
 .sc-mas{align-self:stretch;min-height:44px;border:1px dashed var(--border);border-radius:12px;background:transparent;
   color:var(--accent);font-size:22px;font-weight:800;cursor:pointer;}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
@@ -2047,11 +2069,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
            de los ejercicios y del "¿Cómo te has sentido?". -->
       <div class="recordatorio-guardar"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Al terminar, pulsa <b>Guardar sesión</b> (abajo del todo)</span></div>
       <div id="aviso-borrador" class="msg msg-info" style="display:none;"></div>
-      <!-- 27/09/2026, Jhon: fuera la línea "Descanso entre series". Repetía lo
-           que ya dice la columna "Desc." de cada serie, al registrar. Queda el
-           campo, oculto, como descanso GENERAL: es el gris de las series sin
-           descanso propio y lo que usa el cronómetro si no hay otro. Se guarda
-           con la sesión (rest) como siempre, así que los datos no cambian. -->
+      <!-- 27/09/2026, Jhon: fuera la línea "Descanso entre series". Queda el
+           campo, oculto, como descanso GENERAL: lo que usa un ejercicio al que
+           nunca le has cambiado el tiempo (ver descansoDe). Se guarda con la
+           sesión (rest) como siempre, así que los datos no cambian. -->
       <input type="hidden" id="rest" value="90">
     </div>
 
@@ -2548,20 +2569,29 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;" id="rutina-cliente-cuerpo"></div>
 </div>
-<div id="rest-timer" class="hidden">
-  <div class="timer-ring">
-    <svg width="48" height="48" viewBox="0 0 48 48">
-      <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="4"/>
-      <circle id="timer-arc" cx="24" cy="24" r="20" fill="none" stroke="var(--accent)" stroke-width="4"
-        stroke-linecap="round" stroke-dasharray="125.66" stroke-dashoffset="0"/>
-    </svg>
-    <span class="timer-label" id="timer-label">●</span>
+<!-- El descanso (28/09/2026): franja arriba mientras corre y hoja con la rueda
+     para elegir el tiempo. Solo arranca al pulsar Iniciar. -->
+<div id="rest-timer" class="hidden" role="timer">
+  <div class="rt-fila">
+    <svg class="rt-ico" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5M12 2v3"/></svg>
+    <span class="timer-secs" id="timer-secs">1:30</span>
+    <span class="timer-txt" id="timer-txt">Descansando</span>
+    <button type="button" class="rt-btn" onclick="ajustarDescanso(-15)" aria-label="Quitar 15 segundos">−15</button>
+    <button type="button" class="rt-btn" onclick="ajustarDescanso(15)" aria-label="Añadir 15 segundos">+15</button>
+    <button type="button" class="rt-btn" onclick="skipTimer()" aria-label="Terminar el descanso">✕</button>
   </div>
-  <div class="timer-info">
-    <div class="timer-secs" id="timer-secs">90</div>
-    <div class="timer-txt" id="timer-txt">Descansando...</div>
+  <div class="rt-barra"><div id="timer-barra"></div></div>
+</div>
+<div id="desc-hoja" class="hidden" onclick="if(event.target===this)cerrarRuedaDescanso()">
+  <div class="desc-panel" role="dialog" aria-labelledby="desc-titulo">
+    <div class="desc-titulo" id="desc-titulo">Descanso</div>
+    <div class="desc-sub" id="desc-sub"></div>
+    <div class="rueda-marco"><div class="rueda" id="desc-rueda" onscroll="marcarRueda()"></div></div>
+    <div class="desc-acciones">
+      <button type="button" class="desc-cancelar" onclick="cerrarRuedaDescanso()">Cancelar</button>
+      <button type="button" class="desc-ok" onclick="iniciarDesdeRueda()">Iniciar</button>
+    </div>
   </div>
-  <button class="timer-btn" onclick="skipTimer()">Saltar ▶</button>
 </div>
 
 <div id="new-routine-panel" class="routine-panel hidden">
@@ -2603,6 +2633,8 @@ const ICO={
   lapiz:'<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
   rejilla:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
   copiar:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  reloj:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5M12 2v3"/>',
+  play:'<path d="M7 4.5v15l12-7.5z"/>',
 };
 const ico=(n,cls)=>`<svg class="${cls||'ico-txt'}" viewBox="0 0 24 24" fill="none" `+
   `stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" `+
@@ -3274,7 +3306,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-27 20:40';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-28 19:06';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3792,68 +3824,161 @@ function guardar(propagar){
   return propagar?operacion:capturada;
 }
 
+/* ── El descanso (28/09/2026, Jhon) ──
+   Antes arrancaba solo al apuntar las repeticiones y casi siempre con 90 s: el
+   descanso de la serie se escribía DESPUÉS de las reps (el reloj ya corría) y
+   el general no se podía cambiar desde que se quitó su línea. Ahora:
+   - bajo las series, el tiempo del ejercicio (toca → rueda) e Iniciar;
+   - solo corre cuando pulsas Iniciar, nunca solo;
+   - cada ejercicio recuerda su tiempo (DB.descansos, por nombre, como las
+     unidades), así el press banca puede ir a 2:00 y el curl a 1:00;
+   - mientras corre, una franja fina arriba con −15 / +15 / ✕. */
 let timerInterval=null;
-  let timerTotal=90;
-  let timerLeft=0;
-  let timerEnd=null;
-  const CIRC=125.66;
+let timerTotal=90;
+let timerLeft=0;
+let timerEnd=null;
+let timerFinTimeout=null;
+/* De 15 s a 5 min de 15 en 15, y luego de minuto en minuto hasta 10. */
+const DESC_OPCIONES=[...Array.from({length:20},(_,i)=>(i+1)*15),360,420,480,540,600];
+const DESC_ALTO_OPCION=44;
+let descRuedaValor=90;
 
-  /* Enseñar y esconder el cronómetro por un solo sitio: además de la barra hay
-     que mover el hueco del final del contenido, y se escondía desde tres
-     sitios distintos. */
-  function verDescanso(visible){
-    const el=document.getElementById('rest-timer');
-    if(el)el.classList.toggle('hidden',!visible);
-    document.body.classList.toggle('con-descanso',!!visible);
-  }
+function fmtDescanso(seg){
+  seg=Math.max(0,Math.round(seg));
+  return Math.floor(seg/60)+':'+String(seg%60).padStart(2,'0');
+}
 
-  function startTimer(secs){
-    if(timerInterval)clearInterval(timerInterval);
-    timerTotal=secs||90;
-    timerLeft=timerTotal;
-    timerEnd=Date.now()+timerTotal*1000;
-    verDescanso(true);
-    updateTimerUI();
-    timerInterval=setInterval(()=>{
-      timerLeft=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));
-      updateTimerUI();
-      if(timerLeft<=0){
-        clearInterval(timerInterval);timerInterval=null;
-        document.getElementById('timer-txt').textContent='¡A por la siguiente serie!';
-        document.getElementById('timer-secs').textContent='0';
-        document.getElementById('timer-arc').style.strokeDashoffset=CIRC;
-        vibrateEnd();
-        setTimeout(()=>verDescanso(false),2500);
-      }
-    },500);
-  }
+/* El tiempo de un ejercicio: el que usaste la última vez; si nunca lo
+   cambiaste, el general de la sesión (90 s). */
+function descansoDe(nombre){
+  const c=claveEjercicioLaxa(nombre||'');
+  const guardado=c&&DB.descansos?parseInt(DB.descansos[c]):0;
+  return guardado>0?guardado:(parseInt(document.getElementById('rest').value)||90);
+}
 
+function fijarDescanso(nombre,seg){
+  const c=claveEjercicioLaxa(nombre||'');
+  if(!c||descansoDe(nombre)===seg)return;
+  DB.descansos=Object.assign({},DB.descansos||{},{[c]:seg});
+  save();
+}
+
+function filaDescanso(ex){
+  return `<div class="desc-fila">
+      <button type="button" class="desc-tiempo" onclick="abrirRuedaDescanso()" aria-label="Cambiar el descanso">
+        ${ico('reloj','ico-btn')}<span>Descanso</span><b id="desc-valor">${fmtDescanso(descansoDe(ex.name))}</b><small>Cambiar</small></button>
+      <button type="button" class="desc-iniciar" onclick="iniciarDescanso()">${ico('play','ico-btn')}Iniciar</button>
+    </div>`;
+}
+
+/* Enseñar y esconder la franja por un solo sitio. */
+function verDescanso(visible){
+  const el=document.getElementById('rest-timer');
+  if(el)el.classList.toggle('hidden',!visible);
+  document.body.classList.toggle('con-descanso',!!visible);
+}
+
+function startTimer(secs){
+  if(timerInterval)clearInterval(timerInterval);
+  clearTimeout(timerFinTimeout);
+  timerTotal=secs||90;
+  timerLeft=timerTotal;
+  timerEnd=Date.now()+timerTotal*1000;
+  document.getElementById('rest-timer').classList.remove('fin');
+  verDescanso(true);
+  updateTimerUI();
+  timerInterval=setInterval(tickDescanso,250);
+}
+
+/* Iniciar desde el ejercicio: con el tiempo que tenga ese ejercicio. */
+function iniciarDescanso(){
+  const ex=curExIndex!==null?curEx[curExIndex]:null;
+  startTimer(ex?descansoDe(ex.name):(parseInt(document.getElementById('rest').value)||90));
+}
+
+function tickDescanso(){
+  if(!timerEnd)return;
+  timerLeft=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));
+  updateTimerUI();
+  if(timerLeft<=0)terminarDescanso();
+}
+
+function terminarDescanso(){
+  clearInterval(timerInterval);timerInterval=null;timerEnd=null;
+  document.getElementById('rest-timer').classList.add('fin');
+  document.getElementById('timer-txt').textContent='¡A por la siguiente serie!';
+  document.getElementById('timer-secs').textContent='0:00';
+  document.getElementById('timer-barra').style.transform='scaleX(0)';
+  vibrateEnd();
+  timerFinTimeout=setTimeout(()=>verDescanso(false),2500);
+}
 
 function updateTimerUI(){
-  document.getElementById('timer-secs').textContent=timerLeft;
-  document.getElementById('timer-txt').textContent='Descansando...';
-  const pct=timerLeft/timerTotal;
-  document.getElementById('timer-arc').style.strokeDashoffset=CIRC*(1-pct);
-  const lbl=document.getElementById('timer-label');
-  lbl.textContent='';
+  document.getElementById('timer-secs').textContent=fmtDescanso(timerLeft);
+  document.getElementById('timer-txt').textContent='Descansando';
+  document.getElementById('timer-barra').style.transform='scaleX('+(timerTotal?timerLeft/timerTotal:0)+')';
 }
+
+/* −15 / +15 mientras corre. No baja de 0 (eso ya es terminar). */
+function ajustarDescanso(d){
+  if(!timerInterval||!timerEnd)return;
+  timerEnd+=d*1000;
+  timerTotal=Math.max(1,timerTotal+d);
+  tickDescanso();
+}
+
+// El móvil congela los intervalos con la pantalla apagada: al volver, recalcular.
 document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden&&timerInterval&&timerEnd){
-      timerLeft=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));
-      updateTimerUI();
-      if(timerLeft<=0){
-        clearInterval(timerInterval);timerInterval=null;
-        document.getElementById('timer-txt').textContent='¡A por la siguiente serie!';
-        document.getElementById('timer-secs').textContent='0';
-        document.getElementById('timer-arc').style.strokeDashoffset=CIRC;
-        vibrateEnd();
-        setTimeout(()=>verDescanso(false),2500);
-      }
-    }
-  });
+  if(!document.hidden&&timerInterval)tickDescanso();
+});
+
 function skipTimer(){
   if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
+  timerEnd=null;
+  clearTimeout(timerFinTimeout);
   verDescanso(false);
+}
+
+/* La rueda: una lista con scroll-snap. Lo elegido es lo que queda en la franja
+   del centro; se lee del scroll, no de un toque, igual que el del iPhone. */
+function abrirRuedaDescanso(){
+  const ex=curExIndex!==null?curEx[curExIndex]:null;
+  descRuedaValor=ex?descansoDe(ex.name):90;
+  document.getElementById('desc-sub').textContent=ex&&ex.name?ex.name:'';
+  const r=document.getElementById('desc-rueda');
+  r.innerHTML='<div class="rueda-hueco"></div>'+DESC_OPCIONES.map((v,i)=>
+    `<div class="rueda-op" data-v="${v}" onclick="irAOpcionRueda(${i})">${fmtDescanso(v)}</div>`).join('')+'<div class="rueda-hueco"></div>';
+  document.getElementById('desc-hoja').classList.remove('hidden');
+  let i=DESC_OPCIONES.indexOf(descRuedaValor);
+  if(i<0)i=DESC_OPCIONES.reduce((m,v,k)=>Math.abs(v-descRuedaValor)<Math.abs(DESC_OPCIONES[m]-descRuedaValor)?k:m,0);
+  r.scrollTop=i*DESC_ALTO_OPCION;
+  marcarRueda();
+}
+
+function irAOpcionRueda(i){
+  document.getElementById('desc-rueda').scrollTo({top:i*DESC_ALTO_OPCION,behavior:'smooth'});
+}
+
+function marcarRueda(){
+  const r=document.getElementById('desc-rueda');
+  const i=Math.max(0,Math.min(DESC_OPCIONES.length-1,Math.round(r.scrollTop/DESC_ALTO_OPCION)));
+  descRuedaValor=DESC_OPCIONES[i];
+  r.querySelectorAll('.rueda-op').forEach((el,k)=>el.classList.toggle('sel',k===i));
+}
+
+function cerrarRuedaDescanso(){
+  document.getElementById('desc-hoja').classList.add('hidden');
+}
+
+/* Iniciar en la hoja: el ejercicio se queda con ese tiempo y arranca. */
+function iniciarDesdeRueda(){
+  marcarRueda();
+  const ex=curExIndex!==null?curEx[curExIndex]:null;
+  if(ex)fijarDescanso(ex.name,descRuedaValor);
+  const v=document.getElementById('desc-valor');
+  if(v)v.textContent=fmtDescanso(descRuedaValor);
+  cerrarRuedaDescanso();
+  startTimer(descRuedaValor);
 }
 
 function vibrateEnd(){
@@ -4686,6 +4811,7 @@ function renderEx(){
     <div class="ex-card">
       <div id="sets-container" class="sc-scroll">${columnasSeries(ex,u)}</div>
     </div>
+    ${filaDescanso(ex)}
     ${lineaPesoOrientativo(ex,u)}
   `;
   pintarImagenEjercicio();
@@ -4770,24 +4896,22 @@ function yaTieneHistorial(nombre){
 }
 
 /* Las series en columnas. Filas: repeticiones (en gris, lo que pide el plan),
-   peso en la unidad del ejercicio, descanso de ESA serie (en gris, el general
-   de la sesión) y RIR si está activo. La primera columna son las etiquetas y
+   peso en la unidad del ejercicio y RIR si está activo. (El descanso por serie
+   salió el 28/09/2026: va en el botón de debajo, uno por ejercicio. Los `desc`
+   de sesiones viejas se quedan en los datos, sin pintar.) La primera columna son las etiquetas y
    la última, el "+" que añade una serie. */
 function columnasSeries(ex,u){
   const n=ex.sets.length;
   const obj=objetivoReps(ex.name)||'reps';
   const orient=!yaTieneHistorial(ex.name) ? pesoOrientativo(ex.name) : null;
   const grisKg=orient ? num(deKg(orient.kg,u)) : u;
-  const descGeneral=parseInt(document.getElementById('rest').value)||90;
   const col=(si,html)=>`<div style="grid-column:${si+2}">${html}</div>`;
   const filas=[
     ['Reps', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp set-reps" value="${escaparHTML(String(set.reps||''))}" placeholder="${escaparHTML(obj)}"
         aria-label="Repeticiones de la serie ${si+1}" onchange="anotarReps(${si},this.value)">`],
     [u, (set,si)=>{ const m=set.kg===''||set.kg==null?'':deKg(set.kg,u);
         return `<input type="text" inputmode="decimal" class="set-inp set-kg" value="${m===''?'':escaparHTML(String(m))}" placeholder="${escaparHTML(grisKg)}"
-        aria-label="Peso de la serie ${si+1} en ${u}" onchange="anotarPeso(${si},this.value)">`; }, 'set-unit'],
-    ['Desc.', (set,si)=>`<div class="sc-desc"><input type="text" inputmode="numeric" class="set-desc" value="${set.desc?escaparHTML(String(set.desc)):''}" placeholder="${descGeneral}"
-        aria-label="Descanso tras la serie ${si+1}, en segundos" onchange="anotarDescanso(${si},this.value)"></div>`]
+        aria-label="Peso de la serie ${si+1} en ${u}" onchange="anotarPeso(${si},this.value)">`; }, 'set-unit']
   ];
   if(DB.rirActivo) filas.push(['RIR', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp" value="${set.rir!=null?escaparHTML(String(set.rir)):''}" placeholder="RIR"
         aria-label="RIR de la serie ${si+1}" onchange="curEx[${curExIndex}].sets[${si}].rir=this.value">`]);
@@ -4815,23 +4939,11 @@ function objetivoReps(nombre){
   return partes.length>1 ? partes[1].trim() : '';
 }
 
-/* Apuntar las repeticiones pone en marcha el descanso de ESA serie; si no se
-   ha tocado, el general de la sesión. */
+/* Apuntar las repeticiones ya NO arranca el descanso (28/09/2026): arrancaba
+   cuando no querías y con el tiempo que no era. Se inicia con su botón. */
 function anotarReps(si,valor){
   if(curExIndex===null)return;
-  const set=curEx[curExIndex].sets[si];
-  set.reps=valor;
-  if(valor) startTimer(parseInt(set.desc)||parseInt(document.getElementById('rest').value)||90);
-}
-
-/* Descanso propio de una serie, en segundos. Vacío = el general de la sesión
-   (no se guarda nada, así cambiar el general sigue valiendo para todas). */
-function anotarDescanso(si,valor){
-  if(curExIndex===null)return;
-  const n=parseInt(String(valor).replace(/[^0-9]/g,''));
-  const set=curEx[curExIndex].sets[si];
-  if(n>0) set.desc=n; else delete set.desc;
-  guardarBorrador();
+  curEx[curExIndex].sets[si].reps=valor;
 }
 
 /* Lo tecleado entra convertido a kilos. Vacío se guarda como '' y no como 0:
@@ -9903,6 +10015,8 @@ const StorageFirestore = {
       // Qué ejercicios se anotan en libras. Del perfil, como el RIR: es de la
       // persona y tiene que estar igual en el móvil y en el ordenador.
       unidades: cab.unidades || {},
+      // El descanso de cada ejercicio (28/09/2026), como las unidades.
+      descansos: cab.descansos || {},
       // "Sobre ti" (27/09/2026): sexo, nivel, días y peso del registro.
       perfil: cab.perfil || null
     };
@@ -9921,6 +10035,7 @@ const StorageFirestore = {
       // altura, para que esté igual en el móvil y en el ordenador.
       rirActivo: !!db.rirActivo,
       unidades: db.unidades || {},
+      descansos: db.descansos || {},
       perfil: db.perfil || null
     };
     comprobarApto(cabecera, 'Perfil');

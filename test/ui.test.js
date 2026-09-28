@@ -246,7 +246,7 @@ async function appLista(page, url){
     const sinFichero = videos.filter(v=>['.mp4','.jpg'].some(e=>!fs.existsSync(path.join(__dirname,'..','videos','ejercicios',v+e))));
     ok(sinFichero.length === 0, 'cada vídeo del mapa tiene su .mp4 y su portada .jpg'+(sinFichero.length?': faltan '+sinFichero.join(', '):''));
 
-    console.log('\n3c. Las series en columnas: reps, peso, descanso por serie y RIR');
+    console.log('\n3c. Las series en columnas (reps, peso y RIR) y el descanso con su botón');
     /* 27/09/2026, idea de Jhon a partir de Synergym: una columna por serie y,
        de arriba abajo, repeticiones (en gris lo que pide el plan), peso,
        descanso de ESA serie y RIR. Con más de 4 series se desliza de lado. */
@@ -259,26 +259,49 @@ async function appLista(page, url){
       r.columnas = q('.sc-cab').length; r.series = curEx[0].sets.length;
       r.etiquetas = q('.sc-lab').map(e => e.textContent.trim()).filter(Boolean).join(',');
       r.objetivo = q('.set-reps')[0].placeholder;
-      r.descGris = q('.set-desc')[0].placeholder;
       // Mismo ancho de fila: las celdas de una columna van alineadas.
       const x = s => Math.round(q(s)[1].getBoundingClientRect().left);
-      r.alineadas = x('.set-reps') === x('.set-kg') && x('.set-kg') === x('.set-desc');
-      // Descanso propio en la S2 y apuntar sus repeticiones: el cronómetro usa el suyo.
+      r.alineadas = x('.set-reps') === x('.set-kg');
       const escribir = (el, v) => { el.value = v; el.dispatchEvent(new Event('change')); };
-      escribir(q('.set-desc')[1], '120');
+      /* 28/09/2026 (Jhon): el descanso siempre contaba 90 s y arrancaba solo.
+         Ahora no hay fila de descanso por serie: un botón por ejercicio con su
+         tiempo (toca → rueda) e Iniciar, y la cuenta va en una franja arriba. */
+      const crono = document.getElementById('rest-timer');
+      const clave = claveEjercicioLaxa(curEx[0].name);
+      if(DB.descansos) delete DB.descansos[clave];
+      renderEx();
+      r.sinFilaDesc = !q('.set-desc').length;
       escribir(q('.set-reps')[1], '12');
-      r.crono = timerTotal; r.guardadoDesc = curEx[0].sets[1].desc; r.guardadoReps = curEx[0].sets[1].reps;
-      escribir(q('.set-reps')[0], '15');
-      r.cronoGeneral = timerTotal;
-      verDescanso(false);
-      // Vaciar el descanso vuelve al general y no deja nada guardado.
-      escribir(q('.set-desc')[1], '');
-      r.sinDesc = !('desc' in curEx[0].sets[1]);
+      r.guardadoReps = curEx[0].sets[1].reps;
+      r.repsNoArranca = crono.classList.contains('hidden') && !timerInterval;
+      r.botonGeneral = document.getElementById('desc-valor').textContent;
+      document.querySelector('.desc-iniciar').click(); await tic();
+      r.iniciaVisible = !crono.classList.contains('hidden') && timerTotal === 90;
+      const cajaCrono = crono.getBoundingClientRect();
+      await new Promise(res => setTimeout(res, 400));        // baja deslizándose
+      r.cronoArriba = Math.round(crono.getBoundingClientRect().top) === 0;
+      const antesMas = timerEnd; ajustarDescanso(15); r.mas15 = timerEnd - antesMas === 15000;
+      skipTimer(); r.saltar = crono.classList.contains('hidden') && !timerInterval;
+      await new Promise(res => setTimeout(res, 400));        // sube deslizándose
+      r.fueraArriba = crono.getBoundingClientRect().bottom <= 0;
+      // La rueda: elegir 2:00 e Iniciar → arranca con 120 y el ejercicio lo recuerda.
+      document.querySelector('.desc-tiempo').click(); await tic();
+      const hoja = document.getElementById('desc-hoja');
+      r.ruedaAbierta = !hoja.classList.contains('hidden')
+                       && document.querySelector('#desc-rueda .rueda-op.sel').textContent === '1:30';
+      const rueda = document.getElementById('desc-rueda');
+      rueda.scrollTop = DESC_OPCIONES.indexOf(120) * DESC_ALTO_OPCION; marcarRueda();
+      document.querySelector('.desc-ok').click(); await tic();
+      r.rueda120 = timerTotal === 120 && hoja.classList.contains('hidden') && !crono.classList.contains('hidden');
+      r.recuerda = DB.descansos[clave] === 120;
+      skipTimer(); renderEx(); await tic();
+      r.botonTras = document.getElementById('desc-valor').textContent;
+      delete DB.descansos[clave]; renderEx();
+      r.tapaCabecera = cajaCrono.height >= document.querySelector('header').getBoundingClientRect().height - 1 && cajaCrono.height < 100;
       /* 27/09/2026 (Jhon): fuera la línea "Descanso entre series" de arriba de
-         la sesión: repetía la columna Desc. El general sigue, oculto, como gris. */
+         la sesión. El general sigue, oculto: es el de partida de cada ejercicio. */
       r.sinLineaDescanso = !/Descanso entre series/.test(document.getElementById('session-form').textContent)
                            && document.getElementById('rest').type === 'hidden';
-      r.grisNuevo = q('.set-desc')[0].placeholder;
       // Peso: se escribe en la fila del medio, en la unidad del ejercicio.
       escribir(q('.set-kg')[0], '20'); r.kg = curEx[0].sets[0].kg;
       // Añadir y quitar series desde la propia rejilla.
@@ -305,14 +328,20 @@ async function appLista(page, url){
       return r;
     });
     ok(cols.columnas === cols.series, 'una columna por serie ('+cols.columnas+')');
-    ok(/^Reps,(kg|lb),Desc\.$/.test(cols.etiquetas), 'de arriba abajo: repeticiones, peso y descanso ('+cols.etiquetas+')');
+    ok(/^Reps,(kg|lb)$/.test(cols.etiquetas), 'de arriba abajo: repeticiones y peso ('+cols.etiquetas+')');
     ok(cols.objetivo === cols.esquema.split('×')[1], 'en gris, las repeticiones que pide el plan ('+cols.esquema+' → '+cols.objetivo+')');
-    ok(cols.descGris === '90' && cols.alineadas, 'y el descanso general; cada columna, alineada');
-    ok(cols.crono === 120 && cols.guardadoDesc === 120 && cols.guardadoReps === '12',
-       '🔴 cada serie tiene su descanso: al apuntar la S2 el cronómetro cuenta sus 120 s');
-    ok(cols.cronoGeneral === 90, 'y una serie sin descanso propio usa el general (90 s)');
-    ok(cols.sinDesc && cols.grisNuevo == 90, 'vaciarlo vuelve al general, que sale en gris');
-    ok(cols.sinLineaDescanso, 'ya no está la línea "Descanso entre series": lo dice la columna Desc.');
+    ok(cols.alineadas, 'cada columna, alineada');
+    ok(cols.sinFilaDesc, 'ya no hay fila de descanso en cada serie');
+    ok(cols.guardadoReps === '12' && cols.repsNoArranca,
+       '🔴 apuntar las repeticiones ya NO arranca el descanso (arrancaba solo y con 90 s)');
+    ok(cols.botonGeneral === '1:30' && cols.iniciaVisible, 'Iniciar arranca con el tiempo del ejercicio (1:30 si nunca lo cambiaste)');
+    ok(cols.cronoArriba && cols.tapaCabecera, 'la cuenta va en una franja ARRIBA, justo encima de la cabecera (sin que asome el avatar)');
+    ok(cols.mas15 && cols.saltar, '+15 alarga el descanso y ✕ lo termina');
+    ok(cols.fueraArriba, 'y escondida sale entera por arriba, sin asomar');
+    ok(cols.ruedaAbierta, 'tocar el tiempo abre la rueda, colocada en el tiempo actual');
+    ok(cols.rueda120, '🔴 elegir 2:00 en la rueda e Iniciar cuenta 120 s, no 90');
+    ok(cols.recuerda && cols.botonTras === '2:00', 'y el ejercicio se queda con su tiempo para la próxima');
+    ok(cols.sinLineaDescanso, 'ya no está la línea "Descanso entre series"');
     ok(cols.kg === 20, 'el peso se apunta en su fila, en la unidad del ejercicio');
     ok(cols.tras === cols.series + 1 && cols.sinBotonSerie, 'la columna "+" añade una serie (y ya no hay botón "+ Serie")');
     ok(cols.desliza && cols.etiquetaFija, 'con muchas series se desliza de lado y las etiquetas se quedan fijas');
@@ -2750,29 +2779,6 @@ async function appLista(page, url){
       toggleConfigPanel();
       await tic(400);
 
-      /* El cronómetro de descanso también vive abajo: tiene que quedar ENCIMA de
-         la barra, y el contenido tiene que ganar hueco mientras corre. */
-      const act = getActive();
-      showTab('log', document.getElementById('tab-log'));
-      openWeekDetail(1); openSession(act.plan[0].days[0].s);
-      await tic();
-      const huecoAntes = parseFloat(getComputedStyle(document.body).paddingBottom);
-      startTimer(90);
-      await tic(400);                    // sube deslizándose: hay que dejarle llegar
-      const crono = document.getElementById('rest-timer').getBoundingClientRect();
-      r.cronoEncima = crono.bottom <= caja.top + 1;
-      /* Y por encima del CÍRCULO, que sobresale de la barra: apoyado en ella le
-         tapaba la coronilla (Jhon, 23/09, en el iPhone). */
-      r.cronoLibraElCirculo = crono.bottom <= circulo.top;
-      r.huecoCrono = Math.round(circulo.top - crono.bottom);
-      r.huecoCrece = parseFloat(getComputedStyle(document.body).paddingBottom) > huecoAntes;
-      skipTimer();
-      await tic(500);                   // baja deslizándose
-      r.huecoVuelve = parseFloat(getComputedStyle(document.body).paddingBottom) === huecoAntes;
-      /* Escondido tiene que salir ENTERO: con la barra más alta se quedaba
-         corto y asomaba su borde violeta por debajo de las etiquetas. */
-      r.cronoFuera = document.getElementById('rest-timer').getBoundingClientRect().top
-                     >= window.innerHeight - 1;
       showTab('inicio', document.getElementById('tab-inicio'));
       return r;
     });
@@ -2797,12 +2803,6 @@ async function appLista(page, url){
        'el engranaje ya no está en la cabecera: bajó a la barra');
     ok(barra.abreAjustes && barra.inicioSigueActivo,
        'Ajustes abre su panel sin cambiar de pestaña: no es una pestaña');
-    ok(barra.cronoEncima, '🔴 el cronómetro de descanso queda encima de la barra, no sobre ella');
-    ok(barra.cronoLibraElCirculo,
-       '🔴 y sin tocar el círculo de Inicio, que sobresale (le deja '+barra.huecoCrono+' px)');
-    ok(barra.cronoFuera, '🔴 y escondido sale entero de la pantalla, sin asomar por debajo de la barra');
-    ok(barra.huecoCrece && barra.huecoVuelve,
-       'y mientras descansas el contenido gana hueco, para que el botón de guardar no se esconda');
 
     console.log('\n13ab. El anillo de progreso vuelve a Inicio');
     const anillo = await page.evaluate(async ()=>{
