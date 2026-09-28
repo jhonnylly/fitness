@@ -1561,8 +1561,9 @@ async function appLista(page, url){
     ok(perfil.todas, 'y siguen todas a la vista: no es un filtro');
     ok(perfil.recoHombre4[0] === 'preset_torso_pierna4', 'un hombre con 4 días recibe primero Torso / Pierna 4 días: '+perfil.recoHombre4.join(', '));
     ok(perfil.recoMujer5[0] === 'preset_gluteo_pierna', 'una mujer con 5 días, la de lunes a viernes: '+perfil.recoMujer5.join(', '));
-    ok(!perfil.recoHombreIni.includes('preset_fuerza') && perfil.recoHombreIni[0] === 'preset_ppl3',
+    ok(!perfil.recoHombreIni.includes('preset_fuerza'),
        'quien empieza no ve Fuerza Máxima entre las recomendadas: '+perfil.recoHombreIni.join(', '));
+    ok(perfil.recoHombreIni[0] === 'preset_primer_mes', 'y le sale primero "Primer Mes" (28/09/2026)');
     ok(perfil.recoHombreAva.includes('preset_fuerza'), 'con más de un año, sí');
     ok(/3 días por semana/.test(perfil.resumen), 'el resumen dice que se deja en 3 días: '+perfil.resumen);
     ok(perfil.diasPorSemana.every(n => n === 3), 'el plan queda en 3 sesiones cada semana: '+perfil.diasPorSemana.join(','));
@@ -1635,23 +1636,54 @@ async function appLista(page, url){
         'Remo en máquina','Press militar','Press banca agarre cerrado','Jalón agarre estrecho','Curl predicador',
         'Elevación de gemelo en máquina','Leñador en polea','Rueda abdominal','Remo en T','Hiperextensiones',
         'Aperturas con mancuernas','Pájaros con mancuernas','Press pecho en máquina','Superman','Remo invertido',
-        'Cruces inversos en polea','Sentadilla en Smith'];
+        'Cruces inversos en polea','Sentadilla en Smith','Patada de tríceps','Press declinado','Curl invertido',
+        'Sentadilla frontal','Curl de muñeca','Curl de muñeca inverso','Elevación de gemelo sentado',
+        'Elevaciones frontales','Aperturas inversas en máquina','Gemelo en prensa'];
       const ids = ['preset_quema','preset_volumen','preset_fuerza','preset_recomp','preset_mantenimiento','preset_definicion','preset_gluteo_pierna'];
-      const r = { pocas: [], repetidos: [], largas: 0 };
+      const r = { pocas: [], repetidos: [], largas: 0, todos: new Set() };
       for(const id of ids){
         const p = PRESET_ROUTINES.find(x => x.id === id);
         const usados = new Set(p.plan.flatMap(w => w.days.flatMap(d => d.ex.map(e => e[0]))).filter(n => NUEVOS.includes(n)));
         if(usados.size < 4) r.pocas.push(id+' ('+usados.size+')');
+        usados.forEach(n => r.todos.add(n));
         for(const w of p.plan) for(const d of w.days){
           const n = d.ex.map(e => e[0]);
           if(new Set(n).size !== n.length) r.repetidos.push(id+' '+d.name);
           if(n.length > 7) r.largas++;
         }
       }
+      r.sinUsar = NUEVOS.filter(n => !r.todos.has(n)); delete r.todos;
       return r;
     });
+    ok(!antiguas.sinUsar.length, 'los 32 ejercicios nuevos salen en alguna rutina antigua'+(antiguas.sinUsar.length?': faltan '+antiguas.sinUsar.join(', '):''));
     ok(!antiguas.pocas.length, 'cada rutina antigua usa al menos 4 ejercicios nuevos'+(antiguas.pocas.length?': '+antiguas.pocas.join(', '):''));
     ok(!antiguas.repetidos.length && !antiguas.largas, 'sin ejercicios repetidos en un mismo día ni sesiones más largas');
+
+    console.log('\n13k3c. Rutinas de un mes: Primer Mes y Exprés 30 minutos');
+    const mes = await page.evaluate(()=>{
+      const r = {};
+      for(const id of ['preset_primer_mes','preset_expres']){
+        const p = PRESET_ROUTINES.find(x => x.id === id);
+        r[id] = { semanas: p.plan.length, dias: p.plan.map(w => w.days.length),
+          ejercicios: p.plan[0].days.map(d => d.ex.length),
+          primera: p.plan[0].days[0].ex[0][1], ultima: p.plan[3].days[0].ex[0][1],
+          titulo: p.plan[3].title, ids: p.plan.flatMap(w => w.days.map(d => d.s)).join(','),
+          desc: !!PRESET_DESC[id] && !!PRESET_DESC_PANEL[id] };
+      }
+      r.recoMujerIni5 = rutinasRecomendadas({sexo:'m', nivel:'ini', dias:5});
+      r.recoMujerMed = rutinasRecomendadas({sexo:'m', nivel:'med', dias:3});
+      return r;
+    });
+    const pm = mes.preset_primer_mes, ex = mes.preset_expres;
+    ok(pm.semanas === 4 && ex.semanas === 4, 'las dos duran 4 semanas');
+    ok(pm.dias.every(n => n === 3) && ex.dias.every(n => n === 3), 'tres días por semana');
+    ok(pm.ejercicios.every(n => n === 5) && ex.ejercicios.every(n => n === 4), 'Primer Mes con 5 ejercicios por sesión y Exprés con 4');
+    ok(pm.primera === '3×12' && pm.ultima === '4×10' && /Semana reto 🏆/.test(pm.titulo),
+       'suben poco a poco: '+pm.primera+' la primera semana y '+pm.ultima+' en la "Semana reto"');
+    ok(pm.ids === '1,2,3,4,5,6,7,8,9,10,11,12', 'sesiones numeradas de la 1 a la 12');
+    ok(pm.desc && ex.desc, 'y con su descripción corta y larga');
+    ok(mes.recoMujerIni5[0] === 'preset_primer_mes', 'quien empieza la ve primero aunque elija 5 días');
+    ok(!mes.recoMujerMed.includes('preset_primer_mes'), 'y quien ya entrena no la recibe como recomendada');
 
     console.log('\n13k4. Peso de partida orientativo, en gris y solo la primera vez');
     /* 27/09/2026, parte 3: sin historial del ejercicio, el campo de kg enseña en
