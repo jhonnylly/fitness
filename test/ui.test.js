@@ -276,12 +276,25 @@ async function appLista(page, url){
       r.repsNoArranca = crono.classList.contains('hidden') && !timerInterval;
       r.botonGeneral = document.getElementById('desc-valor').textContent;
       document.querySelector('.desc-iniciar').click(); await tic();
-      r.iniciaVisible = !crono.classList.contains('hidden') && timerTotal === 90;
+      /* Al iniciar sale el contador GRANDE encima de las series (Jhon, 28/09:
+         con solo la franja de arriba "estuve mucho rato hasta que me di cuenta"). */
+      const grande = document.getElementById('desc-grande');
+      r.iniciaVisible = !grande.classList.contains('hidden') && crono.classList.contains('hidden') && timerTotal === 90;
+      await new Promise(res => setTimeout(res, 300));
+      const panel = grande.querySelector('.dg-panel').getBoundingClientRect(), rejilla = document.getElementById('sets-container').getBoundingClientRect();
+      r.grandeEncima = panel.top < rejilla.bottom && panel.bottom > rejilla.top && panel.width > 250
+                       && document.getElementById('dg-secs').textContent === '1:30';
+      // Ocultar → franja arriba; tocar la franja → otra vez grande.
+      grande.querySelector('.dg-ocultar').click();
+      r.oculta = grande.classList.contains('hidden') && !crono.classList.contains('hidden');
       const cajaCrono = crono.getBoundingClientRect();
       await new Promise(res => setTimeout(res, 400));        // baja deslizándose
       r.cronoArriba = Math.round(crono.getBoundingClientRect().top) === 0;
+      crono.querySelector('.timer-txt').click();
+      r.reAmpliar = !grande.classList.contains('hidden') && crono.classList.contains('hidden');
+      grande.querySelector('.dg-ocultar').click();
       const antesMas = timerEnd; ajustarDescanso(15); r.mas15 = timerEnd - antesMas === 15000;
-      skipTimer(); r.saltar = crono.classList.contains('hidden') && !timerInterval;
+      skipTimer(); r.saltar = crono.classList.contains('hidden') && grande.classList.contains('hidden') && !timerInterval;
       await new Promise(res => setTimeout(res, 400));        // sube deslizándose
       r.fueraArriba = crono.getBoundingClientRect().bottom <= 0;
       // La rueda: elegir 2:00 e Iniciar → arranca con 120 y el ejercicio lo recuerda.
@@ -292,7 +305,7 @@ async function appLista(page, url){
       const rueda = document.getElementById('desc-rueda');
       rueda.scrollTop = DESC_OPCIONES.indexOf(120) * DESC_ALTO_OPCION; marcarRueda();
       document.querySelector('.desc-ok').click(); await tic();
-      r.rueda120 = timerTotal === 120 && hoja.classList.contains('hidden') && !crono.classList.contains('hidden');
+      r.rueda120 = timerTotal === 120 && hoja.classList.contains('hidden') && !grande.classList.contains('hidden');
       r.recuerda = DB.descansos[clave] === 120;
       skipTimer(); renderEx(); await tic();
       r.botonTras = document.getElementById('desc-valor').textContent;
@@ -335,7 +348,10 @@ async function appLista(page, url){
     ok(cols.guardadoReps === '12' && cols.repsNoArranca,
        '🔴 apuntar las repeticiones ya NO arranca el descanso (arrancaba solo y con 90 s)');
     ok(cols.botonGeneral === '1:30' && cols.iniciaVisible, 'Iniciar arranca con el tiempo del ejercicio (1:30 si nunca lo cambiaste)');
-    ok(cols.cronoArriba && cols.tapaCabecera, 'la cuenta va en una franja ARRIBA, justo encima de la cabecera (sin que asome el avatar)');
+    ok(cols.grandeEncima, '🔴 y sale un contador GRANDE encima de las series, donde estás mirando');
+    ok(cols.oculta, '"Ocultar" lo pasa a la franja de arriba para seguir apuntando');
+    ok(cols.cronoArriba && cols.tapaCabecera, 'la franja va ARRIBA, justo encima de la cabecera (sin que asome el avatar)');
+    ok(cols.reAmpliar, 'y tocar la franja lo vuelve a poner en grande');
     ok(cols.mas15 && cols.saltar, '+15 alarga el descanso y ✕ lo termina');
     ok(cols.fueraArriba, 'y escondida sale entera por arriba, sin asomar');
     ok(cols.ruedaAbierta, 'tocar el tiempo abre la rueda, colocada en el tiempo actual');

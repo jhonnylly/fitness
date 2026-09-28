@@ -54,8 +54,9 @@
 /* ── El descanso, ARRIBA (28/09/2026, Jhon) ──
    Antes era una tarjeta flotando sobre la barra de pestañas que arrancaba
    sola al apuntar las repeticiones, siempre con 90 s. Ahora solo corre cuando
-   pulsas Iniciar, y va en una franja fina arriba del todo, encima de la
-   cabecera: no tapa las series ni el botón de guardar, que están abajo. */
+   pulsas Iniciar. Esta franja es el contador OCULTADO: el que sale al
+   iniciar es el grande (#desc-grande); con "Ocultar" pasa aquí, encima de la
+   cabecera, para no tapar las series. */
 #rest-timer{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;z-index:200;
   background:var(--dark);color:#f2f0f7;box-shadow:0 6px 20px rgba(0,0,0,.35);transition:transform .3s ease;}
 #rest-timer.hidden{transform:translate(-50%,-110%);}
@@ -70,6 +71,29 @@
 #timer-barra{height:100%;width:100%;background:var(--accent);transform-origin:left;transition:transform .5s linear;}
 #rest-timer.fin #timer-barra{background:var(--green);}
 #rest-timer.fin .timer-secs{color:var(--green);}
+/* El contador GRANDE, encima de las series (28/09/2026, Jhon): con solo la
+   franja de arriba "estuve mucho rato hasta que me di cuenta". Al pulsar
+   Iniciar sale en medio, donde estás mirando. "Ocultar" (o tocar fuera) lo
+   pasa a la franja de arriba para seguir apuntando mientras corre. */
+#desc-grande{position:fixed;inset:0;z-index:640;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;
+  padding:16px;transition:opacity .2s ease;}
+#desc-grande.hidden{opacity:0;pointer-events:none;}
+.dg-panel{width:100%;max-width:340px;background:var(--dark);color:#f2f0f7;border-radius:24px;padding:22px 18px 16px;text-align:center;
+  border:1px solid rgba(255,255,255,0.09);box-shadow:0 20px 50px rgba(0,0,0,.5);transition:transform .2s ease;}
+#desc-grande.hidden .dg-panel{transform:scale(.92);}
+.dg-anillo{position:relative;width:200px;height:200px;margin:4px auto 10px;}
+.dg-anillo svg{transform:rotate(-90deg);display:block;}
+#dg-arco{transition:stroke-dashoffset .25s linear;}
+.dg-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.dg-secs{font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:56px;font-weight:800;line-height:1;color:#fff;}
+.dg-txt{font-size:13px;color:rgba(255,255,255,0.6);margin-top:6px;padding:0 20px;}
+#desc-grande.fin #dg-arco{stroke:var(--green);}
+#desc-grande.fin .dg-secs{color:#4fd18b;}
+.dg-fila{display:flex;gap:8px;margin-top:6px;}
+.dg-fila button{flex:1;height:48px;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;}
+.dg-ajuste{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);color:#f2f0f7;}
+.dg-saltar{background:var(--accent);border:none;color:#fff;}
+.dg-ocultar{margin-top:10px;background:none;border:none;color:rgba(255,255,255,0.6);font-size:13px;font-weight:700;padding:8px 12px;cursor:pointer;}
 /* La hoja de la rueda: sube desde abajo, como el selector de hora del iPhone. */
 #desc-hoja{position:fixed;inset:0;z-index:650;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;
   transition:opacity .2s ease;}
@@ -2569,9 +2593,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;" id="rutina-cliente-cuerpo"></div>
 </div>
-<!-- El descanso (28/09/2026): franja arriba mientras corre y hoja con la rueda
-     para elegir el tiempo. Solo arranca al pulsar Iniciar. -->
-<div id="rest-timer" class="hidden" role="timer">
+<!-- El descanso (28/09/2026): contador grande al iniciar (encima de las series),
+     franja arriba si lo ocultas, y hoja con la rueda para elegir el tiempo.
+     Solo arranca al pulsar Iniciar. -->
+<div id="rest-timer" class="hidden" role="timer" onclick="if(!event.target.closest('button'))ampliarDescanso()">
   <div class="rt-fila">
     <svg class="rt-ico" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5M12 2v3"/></svg>
     <span class="timer-secs" id="timer-secs">1:30</span>
@@ -2581,6 +2606,24 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <button type="button" class="rt-btn" onclick="skipTimer()" aria-label="Terminar el descanso">✕</button>
   </div>
   <div class="rt-barra"><div id="timer-barra"></div></div>
+</div>
+<div id="desc-grande" class="hidden" onclick="if(event.target===this)minimizarDescanso()">
+  <div class="dg-panel" role="timer" aria-live="off">
+    <div class="dg-anillo">
+      <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
+        <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="10"/>
+        <circle id="dg-arco" cx="100" cy="100" r="90" fill="none" stroke="var(--accent)" stroke-width="10"
+          stroke-linecap="round" stroke-dasharray="565.49" stroke-dashoffset="0"/>
+      </svg>
+      <div class="dg-centro"><span class="dg-secs" id="dg-secs">1:30</span><span class="dg-txt" id="dg-txt">Descansando</span></div>
+    </div>
+    <div class="dg-fila">
+      <button type="button" class="dg-ajuste" onclick="ajustarDescanso(-15)" aria-label="Quitar 15 segundos">−15</button>
+      <button type="button" class="dg-ajuste" onclick="ajustarDescanso(15)" aria-label="Añadir 15 segundos">+15</button>
+      <button type="button" class="dg-saltar" onclick="skipTimer()">Saltar</button>
+    </div>
+    <button type="button" class="dg-ocultar" onclick="minimizarDescanso()">Ocultar y seguir apuntando</button>
+  </div>
 </div>
 <div id="desc-hoja" class="hidden" onclick="if(event.target===this)cerrarRuedaDescanso()">
   <div class="desc-panel" role="dialog" aria-labelledby="desc-titulo">
@@ -3306,7 +3349,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-28 19:06';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-28 19:18';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3832,7 +3875,8 @@ function guardar(propagar){
    - solo corre cuando pulsas Iniciar, nunca solo;
    - cada ejercicio recuerda su tiempo (DB.descansos, por nombre, como las
      unidades), así el press banca puede ir a 2:00 y el curl a 1:00;
-   - mientras corre, una franja fina arriba con −15 / +15 / ✕. */
+   - al iniciar sale un contador GRANDE encima de las series; "Ocultar" lo
+     pasa a una franja arriba con −15 / +15 / ✕ (tocarla lo vuelve a agrandar). */
 let timerInterval=null;
 let timerTotal=90;
 let timerLeft=0;
@@ -3871,12 +3915,18 @@ function filaDescanso(ex){
     </div>`;
 }
 
-/* Enseñar y esconder la franja por un solo sitio. */
+/* Enseñar y esconder el descanso por un solo sitio: el contador grande o, si
+   lo has ocultado, la franja de arriba. Nunca los dos. */
+let descMinimizado=false;
 function verDescanso(visible){
-  const el=document.getElementById('rest-timer');
-  if(el)el.classList.toggle('hidden',!visible);
+  const grande=document.getElementById('desc-grande'), franja=document.getElementById('rest-timer');
+  if(grande)grande.classList.toggle('hidden',!visible||descMinimizado);
+  if(franja)franja.classList.toggle('hidden',!visible||!descMinimizado);
   document.body.classList.toggle('con-descanso',!!visible);
 }
+function minimizarDescanso(){ descMinimizado=true; verDescanso(true); }
+/* Tocar la franja lo vuelve a poner en grande. */
+function ampliarDescanso(){ descMinimizado=false; verDescanso(true); }
 
 function startTimer(secs){
   if(timerInterval)clearInterval(timerInterval);
@@ -3885,6 +3935,8 @@ function startTimer(secs){
   timerLeft=timerTotal;
   timerEnd=Date.now()+timerTotal*1000;
   document.getElementById('rest-timer').classList.remove('fin');
+  document.getElementById('desc-grande').classList.remove('fin');
+  descMinimizado=false;
   verDescanso(true);
   updateTimerUI();
   timerInterval=setInterval(tickDescanso,250);
@@ -3906,17 +3958,22 @@ function tickDescanso(){
 function terminarDescanso(){
   clearInterval(timerInterval);timerInterval=null;timerEnd=null;
   document.getElementById('rest-timer').classList.add('fin');
-  document.getElementById('timer-txt').textContent='¡A por la siguiente serie!';
-  document.getElementById('timer-secs').textContent='0:00';
+  document.getElementById('desc-grande').classList.add('fin');
+  for(const id of ['timer-txt','dg-txt'])document.getElementById(id).textContent='¡A por la siguiente serie!';
+  for(const id of ['timer-secs','dg-secs'])document.getElementById(id).textContent='0:00';
   document.getElementById('timer-barra').style.transform='scaleX(0)';
+  document.getElementById('dg-arco').style.strokeDashoffset=DG_CIRC;
   vibrateEnd();
   timerFinTimeout=setTimeout(()=>verDescanso(false),2500);
 }
 
+const DG_CIRC=565.49;   // 2·π·90, el radio del anillo grande
 function updateTimerUI(){
-  document.getElementById('timer-secs').textContent=fmtDescanso(timerLeft);
-  document.getElementById('timer-txt').textContent='Descansando';
-  document.getElementById('timer-barra').style.transform='scaleX('+(timerTotal?timerLeft/timerTotal:0)+')';
+  const pct=timerTotal?timerLeft/timerTotal:0;
+  for(const id of ['timer-secs','dg-secs'])document.getElementById(id).textContent=fmtDescanso(timerLeft);
+  for(const id of ['timer-txt','dg-txt'])document.getElementById(id).textContent='Descansando';
+  document.getElementById('timer-barra').style.transform='scaleX('+pct+')';
+  document.getElementById('dg-arco').style.strokeDashoffset=DG_CIRC*(1-pct);
 }
 
 /* −15 / +15 mientras corre. No baja de 0 (eso ya es terminar). */
