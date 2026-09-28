@@ -3351,7 +3351,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-28 19:28';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-09-28 19:42';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4954,8 +4954,9 @@ function yaTieneHistorial(nombre){
   return !!(r && serieDeCargas(r,nombre).length);
 }
 
-/* Las series en columnas. Filas: repeticiones (en gris, lo que pide el plan),
-   peso en la unidad del ejercicio y RIR si está activo. (El descanso por serie
+/* Las series en columnas. Filas: peso en la unidad del ejercicio, repeticiones
+   (en gris, lo que pide el plan) y RIR si está activo. El peso va arriba desde
+   el 28/09/2026 (Jhon). (El descanso por serie
    salió el 28/09/2026: va en el botón de debajo, uno por ejercicio. Los `desc`
    de sesiones viejas se quedan en los datos, sin pintar.) La primera columna son las etiquetas y
    la última, el "+" que añade una serie. */
@@ -4966,11 +4967,11 @@ function columnasSeries(ex,u){
   const grisKg=orient ? num(deKg(orient.kg,u)) : u;
   const col=(si,html)=>`<div style="grid-column:${si+2}">${html}</div>`;
   const filas=[
-    ['Reps', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp set-reps" value="${escaparHTML(String(set.reps||''))}" placeholder="${escaparHTML(obj)}"
-        aria-label="Repeticiones de la serie ${si+1}" onchange="anotarReps(${si},this.value)">`],
     [u, (set,si)=>{ const m=set.kg===''||set.kg==null?'':deKg(set.kg,u);
         return `<input type="text" inputmode="decimal" class="set-inp set-kg" value="${m===''?'':escaparHTML(String(m))}" placeholder="${escaparHTML(grisKg)}"
-        aria-label="Peso de la serie ${si+1} en ${u}" onchange="anotarPeso(${si},this.value)">`; }, 'set-unit']
+        aria-label="Peso de la serie ${si+1} en ${u}" onchange="anotarPeso(${si},this.value)">`; }, 'set-unit'],
+    ['Reps', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp set-reps" value="${escaparHTML(String(set.reps||''))}" placeholder="${escaparHTML(obj)}"
+        aria-label="Repeticiones de la serie ${si+1}" onchange="anotarReps(${si},this.value)">`]
   ];
   if(DB.rirActivo) filas.push(['RIR', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp" value="${set.rir!=null?escaparHTML(String(set.rir)):''}" placeholder="RIR"
         aria-label="RIR de la serie ${si+1}" onchange="curEx[${curExIndex}].sets[${si}].rir=this.value">`]);

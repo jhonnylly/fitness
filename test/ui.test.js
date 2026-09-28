@@ -341,7 +341,7 @@ async function appLista(page, url){
       return r;
     });
     ok(cols.columnas === cols.series, 'una columna por serie ('+cols.columnas+')');
-    ok(/^Reps,(kg|lb)$/.test(cols.etiquetas), 'de arriba abajo: repeticiones y peso ('+cols.etiquetas+')');
+    ok(/^(kg|lb),Reps$/.test(cols.etiquetas), 'de arriba abajo: peso y repeticiones ('+cols.etiquetas+')');
     ok(cols.objetivo === cols.esquema.split('×')[1], 'en gris, las repeticiones que pide el plan ('+cols.esquema+' → '+cols.objetivo+')');
     ok(cols.alineadas, 'cada columna, alineada');
     ok(cols.sinFilaDesc, 'ya no hay fila de descanso en cada serie');
