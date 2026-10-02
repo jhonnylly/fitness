@@ -2457,6 +2457,10 @@ async function appLista(page, url){
       r.sinFoto = document.getElementById('ex-sugerencias').textContent.replace(/\s+/g,' ');
       r.enSesion = curEx[curExIndex].name;
       const aviso = () => document.getElementById('ex-renombrar').textContent.replace(/\s+/g,' ');
+      // Con parecidos a la vista, primero elige nombre; la pregunta espera.
+      r.esperaAElegir = { aviso: aviso(), talCual: !!document.querySelector('#ex-sugerencias .ex-sug-tal') };
+      usarNombreTalCual();
+      await tic();
       r.pregunta = { texto: aviso(),
                      botones: document.querySelectorAll('#ex-renombrar button').length,
                      diasAntes };
@@ -2475,6 +2479,38 @@ async function appLista(page, url){
                          hayFigura: !!document.querySelector('#ex-hero img'),
                          sinSugerencias: document.getElementById('ex-sugerencias').textContent.trim() === '' };
       aplicarRenombrado('sesion');
+
+      /* Jhon (02/10): escribía a medias, pulsaba "Solo en esta sesión" o
+         "toda la rutina" antes que la sugerencia, y luego ya no volvía a
+         salir la pregunta o el plan se quedaba con el nombre a medias. */
+      closeExDetail(); await tic();
+      openExDetail(1); await tic();
+      const orig2 = curEx[curExIndex].name;
+      const dias2 = diasConEjercicio(getActive(), orig2);
+      campo.value = 'remo en maq';
+      campo.dispatchEvent(new Event('change'));          // el blur confirma lo escrito a medias
+      await tic();
+      r.aMedias = { aviso: aviso(), enSesion: curEx[curExIndex].name,
+                    hayBotones: document.querySelectorAll('#ex-sugerencias .ex-sug-btn').length };
+      const sug = document.querySelector('#ex-sugerencias .ex-sug-btn').dataset.n;
+      usarNombreSugerido(sug);
+      await tic();
+      r.trasSug = { aviso: aviso(), sug, orig2, dias2 };
+      aplicarRenombrado('sesion');
+      // Otro cambio más tarde: tiene que volver a preguntar, contra el nombre del plan.
+      usarNombreSugerido('Remo en máquina' === sug ? 'Remo en T' : 'Remo en máquina');
+      await tic();
+      r.otraVez = aviso();
+      aplicarRenombrado('rutina');
+      r.planFinal = { nuevo: diasConEjercicio(getActive(), curEx[curExIndex].name),
+                      viejo: diasConEjercicio(getActive(), orig2),
+                      aMedias: diasConEjercicio(getActive(), 'remo en maq') };
+      // Y el lápiz deja claro que el nombre se puede cambiar.
+      const lapiz = document.querySelector('#ex-detail-view .ex-editar');
+      r.lapiz = { hay: !!lapiz, visible: !!lapiz && lapiz.offsetWidth > 0 };
+      if(lapiz) lapiz.click();
+      r.lapiz.enfoca = document.activeElement === campo;
+      campo.blur();
       volverAtras(); volverAtras(); closeWeekDetail();
       return r;
     });
@@ -2483,6 +2519,8 @@ async function appLista(page, url){
        'al escribir salen nombres del catálogo parecidos: '+renom.sugerencias.texto.slice(0, 70));
     ok(/No tenemos foto/.test(renom.sinFoto) && renom.enSesion === 'Remo con banda elástica',
        '🔴 con un nombre sin foto se avisa en vez de dejar el hueco vacío, y el nombre se respeta');
+    ok(renom.esperaAElegir.aviso === '' && renom.esperaAElegir.talCual,
+       'con parecidos del catálogo, primero elige nombre (o "Dejar" el suyo) y no sale aún la pregunta');
     ok(renom.pregunta.botones === 2 && /toda la rutina/i.test(renom.pregunta.texto)
        && /Solo en esta sesión/i.test(renom.pregunta.texto) && renom.pregunta.diasAntes > 0,
        'y pregunta si cambiarlo solo en la sesión o en toda la rutina');
@@ -2491,6 +2529,17 @@ async function appLista(page, url){
     ok(renom.tras.avisoCerrado, 'y el aviso desaparece al decidir');
     ok(renom.recuperaFoto.hayFigura && renom.recuperaFoto.sinSugerencias,
        'eligiendo una sugerencia del catálogo, vuelve la foto: '+renom.recuperaFoto.nombre);
+    ok(renom.aMedias.aviso === '' && renom.aMedias.hayBotones > 0,
+       '🔴 un nombre a medias (el blur) no pregunta lo de la rutina: siguen las sugerencias');
+    ok(renom.trasSug.dias2 > 0 && renom.trasSug.aviso.includes(renom.trasSug.orig2)
+       && renom.trasSug.aviso.includes(renom.trasSug.sug) && !/remo en maq/.test(renom.trasSug.aviso),
+       '🔴 tras la sugerencia, pregunta con el nombre del plan y el elegido, no con lo escrito a medias');
+    ok(/toda la rutina/i.test(renom.otraVez),
+       '🔴 tras "Solo en esta sesión", otro cambio vuelve a ofrecer "toda la rutina"');
+    ok(renom.planFinal.nuevo > 0 && renom.planFinal.viejo === 0 && renom.planFinal.aMedias === 0,
+       'y "toda la rutina" cambia el nombre del plan por el bueno');
+    ok(renom.lapiz.hay && renom.lapiz.visible && renom.lapiz.enfoca,
+       'junto al nombre hay un lápiz que deja escribir en él');
 
     console.log('\n13x. La espera mientras bajan los datos de la cuenta');
     /* Jhon (17/09): al abrir se veían los datos de este dispositivo —o una foto

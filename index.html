@@ -673,6 +673,7 @@ textarea{resize:vertical;min-height:60px;}
 .ex-sug-btn{padding:6px 10px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;
   color:var(--accent);background:rgba(var(--accent-rgb),0.10);border:1px solid var(--accent);
   border-radius:var(--radius-sm);}
+.ex-sug-tal{margin-top:8px;}
 .ex-sug-tit{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:10px;}
 /* Elegir kg o lb del ejercicio: en violeta y con su flecha, para que se vea que
    se toca. En gris parecía un botón más de los de al lado. */
@@ -1088,6 +1089,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ex-titulo{flex:1;min-width:0;font-size:22px;font-weight:800;letter-spacing:-0.3px;padding:4px 6px;margin-left:-6px;
   background:transparent;border:1px solid transparent;border-radius:var(--radius-sm);color:var(--text);}
 .ex-titulo:focus{border-color:var(--accent);background:var(--surface);outline:none;}
+.ex-editar{flex:none;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;
+  background:var(--surface);border:1px solid var(--border);border-radius:50%;color:var(--accent);cursor:pointer;}
+.ex-editar .ico-btn{width:17px;height:17px;vertical-align:middle;}
+.ex-titulo:focus + .ex-editar{display:none;}
 /* Qué músculos trabaja, bajo las series: Primario / Secundario en texto y,
    si arriba va el vídeo, la foto pequeña a la derecha. */
 #ex-musculos:empty{display:none;}
@@ -2154,6 +2159,9 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       <div class="ex-cab">
         <div class="ex-detail-header">
           <input class="ex-name ex-titulo" type="text" id="ex-detail-title" placeholder="Nombre del ejercicio" autocomplete="off" oninput="pintarSugerenciasEjercicio(this.value)" onchange="renombrarEjercicioActual(this.value)">
+          <!-- Lápiz (02/10/2026): Jhon vio que nada decía que el nombre se
+               puede cambiar; sin marco, el título parece texto fijo. -->
+          <button type="button" class="ex-editar" onclick="editarNombreEjercicio()" aria-label="Cambiar el nombre del ejercicio"><svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>
           <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
         </div>
         <!-- Nombres del catálogo que se parecen a lo que va escribiendo: si
@@ -3414,7 +3422,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-09-28 20:31';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-02 17:50';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7939,6 +7947,10 @@ function openExDetail(ei){
   curExIndex=ei;
   const ex=curEx[ei];
   document.getElementById('ex-detail-title').value=ex.name||'';
+  nombreOrigenEj=(ex.name||'').trim();
+  renombrePendiente=null;
+  pintarRenombrar();
+  pintarSugerenciasEjercicio('');
   document.getElementById('ex-list-view').style.display='none';
   document.getElementById('ex-detail-view').style.display='block';
   renderEx();
@@ -7958,42 +7970,69 @@ function closeExDetail(){
 /* Lo que está pendiente de decidir: {viejo, nuevo, dias}. Vive fuera de la
    función porque los botones del aviso lo consultan después. */
 let renombrePendiente=null;
+/* El nombre que tenía al abrir la ficha, que es como lo llama el plan. Si
+   renombra dos veces (lo escrito a medias y luego la sugerencia, o "Solo en
+   esta sesión" y luego otro), la pregunta compara siempre con este. */
+let nombreOrigenEj=null;
 
 /* Debajo del nombre: los parecidos del catálogo mientras escribe y, cuando el
    nombre puesto no tiene foto, el porqué. Todo junto y en el mismo sitio: es
    una sola cosa —"este nombre no lo conozco, ¿querías uno de estos?"— y
    repartirla entre dos huecos de la pantalla la hacía ilegible. */
-function pintarSugerenciasEjercicio(texto, confirmado){
+function pintarSugerenciasEjercicio(texto, confirmado, decidido){
   const c=document.getElementById('ex-sugerencias');
   if(!c)return;
   const escrito=(texto||'').trim();
   const conFoto=tieneFotoEjercicio(escrito);
-  const lista=conFoto?[]:sugerenciasEjercicio(escrito,6);
+  const lista=conFoto||decidido?[]:sugerenciasEjercicio(escrito,6);
+  /* El mousedown no se deja seguir: quitaría el foco al campo, y ese blur
+     confirmaba lo escrito a medias y repintaba esta caja antes del toque. */
   const botones=lista.length
     ? `<div class="ex-sug">${lista.map(n=>
         `<button type="button" class="ex-sug-btn" data-n="${escaparHTML(n)}"
+           onmousedown="event.preventDefault()"
            onclick="usarNombreSugerido(this.dataset.n)">${escaparHTML(n)}</button>`).join('')}</div>`
     : '';
   if(conFoto||!escrito){ c.innerHTML=''; return; }
   /* `confirmado`: mientras teclea solo se ofrecen nombres; ya con el nombre
-     puesto se explica que ese no tiene foto, que es la duda que le surgió. */
+     puesto se explica que ese no tiene foto, que es la duda que le surgió.
+     Si hay parecidos, primero se elige el nombre (uno del catálogo o el suyo
+     tal cual) y solo después se pregunta lo de la rutina. */
   c.innerHTML=confirmado
     ? `<div class="msg msg-info" style="margin-top:10px;">
-         No tenemos foto para <b>${escaparHTML(escrito)}</b>. Puedes dejarlo así
-         —se guarda y se registra igual— o usar uno del catálogo.${botones}</div>`
+         No tenemos foto para <b>${escaparHTML(escrito)}</b>. ${botones
+           ?'¿Usas uno del catálogo o lo dejas así? Se guarda y se registra igual.'
+           :'Se guarda y se registra igual.'}${botones}${botones
+           ?`<button type="button" class="btn-sm ex-sug-tal" onmousedown="event.preventDefault()"
+               onclick="usarNombreTalCual()">Dejar «${escaparHTML(escrito)}»</button>`:''}</div>`
     : (botones?`<div class="ex-sug-tit">¿Quieres decir?</div>${botones}`:'');
 }
 
 function usarNombreSugerido(nombre){
   const campo=document.getElementById('ex-detail-title');
-  if(campo)campo.value=nombre;
-  renombrarEjercicioActual(nombre);
+  if(campo){ campo.value=nombre; campo.blur(); }
+  renombrarEjercicioActual(nombre, true);
+}
+
+function usarNombreTalCual(){
+  const campo=document.getElementById('ex-detail-title');
+  if(campo)campo.blur();
+  renombrarEjercicioActual(campo?campo.value:curEx[curExIndex].name, true);
+}
+
+/* El lápiz: pone el cursor al final del nombre para escribir encima. */
+function editarNombreEjercicio(){
+  const campo=document.getElementById('ex-detail-title');
+  if(!campo)return;
+  campo.focus();
+  const n=campo.value.length;
+  try{ campo.setSelectionRange(n,n); }catch(e){ /* algún teclado no deja */ }
 }
 
 /* Renombrar el ejercicio abierto. Cambia SIEMPRE la sesión que se está
    registrando; lo del plan se pregunta, porque son dos cosas distintas y solo
    quien entrena sabe si se equivocó de nombre hoy o cambió de máquina. */
-function renombrarEjercicioActual(nuevo){
+function renombrarEjercicioActual(nuevo, decidido){
   if(curExIndex===null)return;
   const viejo=(curEx[curExIndex].name||'').trim();
   const limpio=(nuevo||'').trim();
@@ -8002,12 +8041,16 @@ function renombrarEjercicioActual(nuevo){
   // La unidad (kg/lb) se va con el nombre nuevo: es el mismo aparato.
   if(cambia)DB.unidades=moverUnidad(DB.unidades,viejo,limpio);
   guardarBorrador();
-  pintarSugerenciasEjercicio(limpio, true);
+  pintarSugerenciasEjercicio(limpio, true, decidido);
   pintarImagenEjercicio();
   renderEx();
   pintarGraficaCargasEjercicio();
-  const dias=cambia?diasConEjercicio(getActive(),viejo):0;
-  renombrePendiente=dias?{viejo,nuevo:limpio,dias}:null;
+  // Con parecidos del catálogo a la vista, la pregunta espera a que elija.
+  const porElegir=!decidido&&!tieneFotoEjercicio(limpio)&&sugerenciasEjercicio(limpio,6).length>0;
+  const origen=nombreOrigenEj||viejo;
+  const cambiaPlan=origen&&limpio&&claveEjercicioLaxa(origen)!==claveEjercicioLaxa(limpio);
+  const dias=cambiaPlan&&!porElegir?diasConEjercicio(getActive(),origen):0;
+  renombrePendiente=dias?{viejo:origen,nuevo:limpio,dias}:null;
   pintarRenombrar();
 }
 
@@ -8036,6 +8079,7 @@ window.aplicarRenombrado=function(ambito){
   const act=getActive();
   const dias=renombrarEnPlan(act,p.viejo,p.nuevo);
   if(!dias)return;
+  nombreOrigenEj=p.nuevo;   // el plan ya lo llama así
   save();
   buildSessionList();
   renderWeekButtons();
