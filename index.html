@@ -815,7 +815,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   background:var(--surface);font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);
   box-shadow:6px 0 6px -4px var(--surface);}
 .sc-cab{display:flex;align-items:center;justify-content:center;gap:2px;height:26px;font-size:12px;font-weight:800;color:var(--muted);}
-.sc-quitar{border:none;background:transparent;color:var(--muted);font-size:15px;line-height:1;padding:4px 6px;cursor:pointer;}
+/* Quitar una serie: papelera roja como el resto de borrados (06/10/2026, Jhon:
+   la × junto a "S1" se leía como el signo de multiplicar). La caja de 28 px
+   es para el dedo; el icono se queda pequeño para no comerse la cabecera. */
+.sc-quitar{border:none;background:transparent;color:var(--danger);opacity:.85;line-height:1;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;margin-right:-6px;}
+.sc-quitar .ico-btn{width:15px;height:15px;vertical-align:middle;}
 .sc-grid input{width:100%;min-width:0;height:44px;padding:0 2px;border-radius:12px;text-align:center;
   font-size:16px;font-weight:800;}
 .sc-grid input::placeholder{color:var(--muted);font-weight:600;opacity:.75;}
@@ -2175,7 +2180,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
           <!-- Lápiz (02/10/2026): Jhon vio que nada decía que el nombre se
                puede cambiar; sin marco, el título parece texto fijo. -->
           <button type="button" class="ex-editar" onclick="editarNombreEjercicio()" aria-label="Cambiar el nombre del ejercicio"><svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>
-          <button class="btn-sm btn-danger" onclick="removeCurrentEx()">×</button>
+          <!-- Papelera, no × (06/10/2026, Jhon: la × se leía como "multiplicar"). -->
+          <button class="btn-sm btn-danger ex-quitar" onclick="removeCurrentEx()" aria-label="Quitar este ejercicio de la sesión"><svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
         </div>
         <!-- Nombres del catálogo que se parecen a lo que va escribiendo: si
              elige uno, el ejercicio conserva su foto y su historial (17/09/2026,
@@ -3435,7 +3441,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-06 17:40';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-06 17:52';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5105,7 +5111,7 @@ function columnasSeries(ex,u){
         aria-label="RIR de la serie ${si+1}" onchange="curEx[${curExIndex}].sets[${si}].rir=this.value">`]);
   let h=`<div class="sc-grid" style="grid-template-columns:40px repeat(${n},minmax(58px,1fr)) 38px">`;
   h+=`<div class="sc-lab"></div>`+ex.sets.map((_,si)=>col(si,`<div class="sc-cab">S${si+1}<button type="button" class="sc-quitar"
-        onclick="removeSetFromCurrent(${si})" aria-label="Quitar la serie ${si+1}">×</button></div>`)).join('');
+        onclick="removeSetFromCurrent(${si})" aria-label="Quitar la serie ${si+1}">${ico('papelera','ico-btn')}</button></div>`)).join('');
   h+=`<button type="button" class="sc-mas" style="grid-column:${n+2};grid-row:1 / span ${filas.length+1}"
         onclick="addSetToCurrentEx()" aria-label="Añadir una serie">+</button>`;
   for(const [lab,celda,cls] of filas){
@@ -5682,7 +5688,7 @@ if(!med.length){c.innerHTML='<p style="color:var(--muted);font-size:13px;">Sin m
           ${m.cintura?m.cintura+'cm':'—'}${dc!==null?` <span class="${parseFloat(dc)<0?'delta-neg':'delta-pos'}">(${parseFloat(dc)>0?'+':''}${dc})</span>`:''}
         </div>
       </div>
-      <button class="btn-sm btn-danger" onclick="delMedida(${m.semana})">×</button>
+      <button class="btn-sm btn-danger" onclick="delMedida(${m.semana})" aria-label="Borrar la medida de la semana ${m.semana}">${ico('papelera','ico-btn')}</button>
     </div>`;
   }).join('');
 }
@@ -7289,7 +7295,7 @@ function htmlPropuesta(prop,ns){
             <select onchange="moverEjercicioPropuesta${ns}(${i},${j},this.value)" style="width:auto;padding:4px 6px;font-size:11px;margin:0;">
               ${prop.map((_,k)=>`<option value="${k}"${k===i?' selected':''}>Sesión ${k+1}</option>`).join('')}
             </select>
-            <button class="btn-sm btn-danger" onclick="quitarEjercicioPropuesta${ns}(${i},${j})">×</button>
+            <button class="btn-sm btn-danger" onclick="quitarEjercicioPropuesta${ns}(${i},${j})" aria-label="Quitar este ejercicio">${ico('papelera','ico-btn')}</button>
           </div>`).join('')
         :'<div style="font-size:12px;color:var(--muted);">Sin ejercicios. Mueve alguno aquí o quedará vacía.</div>'}
       </div>
@@ -8913,7 +8919,7 @@ function nrPintarPaso(){
           <div class="sel-ej" style="padding-left:0;padding-right:0;">
             <div class="sel-ej-nombre">${escaparHTML(e.nombre)}</div>
             <button class="btn-sm" onclick="nrEsquema(${i},${j})">${escaparHTML(e.esquema)}</button>
-            <button class="btn-sm btn-danger" onclick="nrQuitar(${i},${j})">×</button>
+            <button class="btn-sm btn-danger" onclick="nrQuitar(${i},${j})" aria-label="Quitar este ejercicio">${ico('papelera','ico-btn')}</button>
           </div>`).join('')
           : '<div style="font-size:12.5px;color:var(--muted);padding:12px 0;">Todavía no has añadido ejercicios a este día.</div>'}
         <button class="btn btn-secondary" onclick="nrAbrirSelector(${i})">+ Añadir ejercicio</button>

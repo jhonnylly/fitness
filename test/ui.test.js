@@ -345,6 +345,13 @@ async function appLista(page, url){
       q('.sc-quitar')[q('.sc-quitar').length-1].click(); await tic();
       q('.sc-quitar')[q('.sc-quitar').length-1].click(); await tic();
       r.vuelta = curEx[0].sets.length === antes;
+      /* 06/10/2026 (Jhon): la × junto a "S1" parecía un signo de multiplicar. */
+      const quitar = q('.sc-quitar')[0];
+      r.papelera = !!quitar.querySelector('svg') && !/×/.test(quitar.textContent)
+                   && getComputedStyle(quitar).color === getComputedStyle(document.documentElement).getPropertyValue('--danger').trim().replace(/^#(..)(..)(..)$/,(m,r1,g1,b1)=>`rgb(${parseInt(r1,16)}, ${parseInt(g1,16)}, ${parseInt(b1,16)})`)
+                   && quitar.getBoundingClientRect().width >= 28;
+      const quitarEj = document.querySelector('.ex-quitar');
+      r.papeleraEjercicio = !!quitarEj && !!quitarEj.querySelector('svg') && !/×/.test(quitarEj.textContent);
       // El RIR, abajo del todo, solo si está activo.
       alternarRIR(true); renderEx(); await tic();
       r.rir = q('.sc-lab').map(e => e.textContent.trim()).filter(Boolean).pop();
@@ -379,7 +386,12 @@ async function appLista(page, url){
     ok(cols.kg === 20, 'el peso se apunta en su fila, en la unidad del ejercicio');
     ok(cols.tras === cols.series + 1 && cols.sinBotonSerie, 'la columna "+" añade una serie (y ya no hay botón "+ Serie")');
     ok(cols.desliza && cols.etiquetaFija, 'con muchas series se desliza de lado y las etiquetas se quedan fijas');
-    ok(cols.vuelta, 'la × de cada serie la quita');
+    ok(cols.vuelta, 'la papelera de cada serie la quita');
+    ok(cols.papelera, '🔴 quitar una serie es una papelera roja, no una × que parece "multiplicar"');
+    ok(cols.papeleraEjercicio, 'y quitar el ejercicio, junto al nombre, también es una papelera');
+    const sinAspas = await page.evaluate(()=>[...document.querySelectorAll('script')].map(x=>x.textContent).join('').match(/btn-danger[^>]*>×<\/button>/g) || []);
+    ok(sinAspas.length === 0,
+       'ningún botón de borrar se queda con la × (medidas y editores de rutina también con papelera)'+(sinAspas.length?': '+sinAspas.join(' | '):''));
     ok(cols.rir === 'RIR' && cols.rirCasillas, 'con el RIR activo, su fila va abajo del todo');
     ok(cols.sinRir, 'y sin RIR no aparece');
 
