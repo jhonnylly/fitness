@@ -1831,6 +1831,19 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     </div>
 
     <div class="card">
+      <div class="section-title">Aviso al terminar el descanso</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px;">
+        Suena un pitido cuando el descanso llega a 0:00. Se mezcla con tu música
+        sin pararla. En iPhone no suena con el interruptor de silencio puesto ni
+        con la pantalla bloqueada.
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;text-transform:none;font-size:13px;">
+        <input type="checkbox" id="cfg-sonido" onchange="alternarSonido(this.checked)" style="width:auto;margin:0;">
+        Pitido al terminar el descanso
+      </label>
+    </div>
+
+    <div class="card">
       <div class="section-title">Días de entrenamiento</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
         Tu rutina tiene ahora <b id="cfg-dias-actual" style="color:var(--text);">—</b> por semana.
@@ -3422,7 +3435,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-02 17:50';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-06 17:40';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4010,6 +4023,7 @@ function startTimer(secs){
   document.getElementById('rest-timer').classList.remove('fin');
   document.getElementById('desc-grande').classList.remove('fin');
   descMinimizado=false;
+  prepararSonido();
   verDescanso(true);
   updateTimerUI();
   timerInterval=setInterval(tickDescanso,250);
@@ -4037,6 +4051,7 @@ function terminarDescanso(){
   document.getElementById('timer-barra').style.transform='scaleX(0)';
   document.getElementById('dg-arco').style.strokeDashoffset=DG_CIRC;
   vibrateEnd();
+  pitar();
   timerFinTimeout=setTimeout(()=>verDescanso(false),2500);
 }
 
@@ -4113,6 +4128,48 @@ function iniciarDesdeRueda(){
 
 function vibrateEnd(){
   if(navigator.vibrate){navigator.vibrate([200,100,200,100,400]);}
+}
+
+/* El pitido al terminar el descanso (06/10/2026, Jhon): el iPhone no vibra
+   desde la web, así que solo avisaba en pantalla. Web Audio, sin archivos:
+   - en iPhone el audio solo suena si se arrancó tocando algo, por eso se
+     prepara en Iniciar (startTimer) y no al terminar;
+   - 'ambient' lo mezcla con la música en vez de pararla (y por eso respeta
+     el interruptor de silencio);
+   - se apaga en Ajustes. Es del móvil, no de la cuenta: va en localStorage. */
+let audioCtx=null;
+function sonidoActivo(){
+  try{ return localStorage.getItem('pitidoDescanso')!=='0'; }catch(e){ return true; }
+}
+function alternarSonido(v){
+  try{ localStorage.setItem('pitidoDescanso',v?'1':'0'); }catch(e){ /* sin almacenamiento: dura la sesión */ }
+  if(v){ prepararSonido(); pitar(); }   // al encenderlo, que se oiga cómo suena
+}
+function prepararSonido(){
+  if(!sonidoActivo())return;
+  try{
+    if(navigator.audioSession)navigator.audioSession.type='ambient';
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return;
+    if(!audioCtx)audioCtx=new AC();
+    if(audioCtx.state==='suspended')audioCtx.resume();
+  }catch(e){ audioCtx=null; }
+}
+/* Tres pitidos como la vibración: dos cortos y uno más largo y agudo. */
+function pitar(){
+  if(!sonidoActivo()||!audioCtx)return;
+  try{
+    const t0=audioCtx.currentTime+0.05;
+    [[0,880,0.15],[0.25,880,0.15],[0.5,1320,0.4]].forEach(([d,hz,dur])=>{
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='sine'; o.frequency.value=hz;
+      g.gain.setValueAtTime(0.0001,t0+d);
+      g.gain.exponentialRampToValueAtTime(0.6,t0+d+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+d+dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t0+d); o.stop(t0+d+dur+0.05);
+    });
+  }catch(e){ /* sin sonido no pasa nada: queda la pantalla */ }
 }
 
 /* Seguimiento pausado por el entrenador (impago). Lo pone el listener del
@@ -6966,6 +7023,8 @@ function pintarConfig(){
   if(alt)alt.value=DB.altura||'';
   const rir=document.getElementById('cfg-rir');
   if(rir)rir.checked=!!DB.rirActivo;
+  const son=document.getElementById('cfg-sonido');
+  if(son)son.checked=sonidoActivo();
   const p=ultimoPeso();
   const elPeso=document.getElementById('cfg-peso');
   if(elPeso)elPeso.textContent=p?(p.peso+' kg · semana '+p.semana):'sin registrar';

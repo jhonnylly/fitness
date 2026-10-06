@@ -307,6 +307,20 @@ async function appLista(page, url){
       document.querySelector('.desc-ok').click(); await tic();
       r.rueda120 = timerTotal === 120 && hoja.classList.contains('hidden') && !grande.classList.contains('hidden');
       r.recuerda = DB.descansos[clave] === 120;
+      /* 06/10/2026 (Jhon): pitido al terminar. Se cuentan los osciladores que
+         se crean: 3 pitidos encendido, 0 apagado. */
+      let osc = 0;
+      const contar = () => { const c = audioCtx, orig = c.createOscillator.bind(c);
+                             c.createOscillator = () => { osc++; return orig(); }; };
+      try { localStorage.removeItem('pitidoDescanso'); } catch(e) {}
+      r.sonidoPorDefecto = sonidoActivo();
+      r.preparado = !!audioCtx; contar();
+      terminarDescanso(); r.pitidos = osc;
+      alternarSonido(false); osc = 0;
+      startTimer(30); terminarDescanso(); r.callado = osc === 0 && localStorage.getItem('pitidoDescanso') === '0';
+      pintarConfig(); r.casillaApagada = document.getElementById('cfg-sonido').checked === false;
+      alternarSonido(true); pintarConfig();
+      r.casillaEncendida = document.getElementById('cfg-sonido').checked === true;
       skipTimer(); renderEx(); await tic();
       r.botonTras = document.getElementById('desc-valor').textContent;
       delete DB.descansos[clave]; renderEx();
@@ -357,6 +371,10 @@ async function appLista(page, url){
     ok(cols.ruedaAbierta, 'tocar el tiempo abre la rueda, colocada en el tiempo actual');
     ok(cols.rueda120, '🔴 elegir 2:00 en la rueda e Iniciar cuenta 120 s, no 90');
     ok(cols.recuerda && cols.botonTras === '2:00', 'y el ejercicio se queda con su tiempo para la próxima');
+    ok(cols.sonidoPorDefecto && cols.preparado && cols.pitidos === 3,
+       '🔴 al terminar el descanso suena un pitido (3 tonos, el audio se prepara al pulsar Iniciar) ('+cols.pitidos+')');
+    ok(cols.callado, 'con el pitido apagado en Ajustes no suena nada');
+    ok(cols.casillaApagada && cols.casillaEncendida, 'y la casilla de Ajustes enseña si está encendido');
     ok(cols.sinLineaDescanso, 'ya no está la línea "Descanso entre series"');
     ok(cols.kg === 20, 'el peso se apunta en su fila, en la unidad del ejercicio');
     ok(cols.tras === cols.series + 1 && cols.sinBotonSerie, 'la columna "+" añade una serie (y ya no hay botón "+ Serie")');
