@@ -221,6 +221,46 @@ async function appLista(page, url){
       pintarImagenEjercicio(); return document.querySelector('#ex-hero video') === v && v.currentTime >= t; });
     ok(sigue, 'repintar la ficha no reinicia el vídeo');
 
+    /* Plegar el vídeo (18/10/2026): al tocar las series o iniciar el descanso
+       se queda en una franja; el botón de la esquina lo pliega y lo despliega. */
+    const alto = () => Math.round(document.getElementById('ex-hero').getBoundingClientRect().height);
+    const pl = {};
+    Object.assign(pl, await page.evaluate(()=>{ window.scrollTo(0,0); const b = document.querySelector('#ex-hero .ex-hero-plegar');
+      return { boton: b ? b.textContent.trim() : '', expandido: b && b.getAttribute('aria-expanded') }; }));
+    await page.evaluate(()=>document.querySelector('#ex-detail-view .sc-grid input').focus());
+    await esperar(400);
+    pl.trasFoco = await page.evaluate(alto);
+    pl.botonPlegado = await page.evaluate(()=>document.querySelector('#ex-hero .ex-hero-plegar').textContent.trim());
+    pl.sigueVideo = await page.evaluate(()=>!document.querySelector('#ex-hero video').paused);
+    await page.evaluate(()=>{ document.activeElement.blur(); pintarImagenEjercicio(); });
+    await esperar(50);
+    pl.trasRepintar = await page.evaluate(()=>({ plegado: document.getElementById('ex-hero').classList.contains('plegado'),
+      botones: document.querySelectorAll('#ex-hero .ex-hero-plegar').length }));
+    await page.evaluate(()=>document.querySelector('#ex-hero .ex-hero-plegar').click());
+    await esperar(400);
+    pl.trasAmpliar = await page.evaluate(alto);
+    pl.videoNoSePausa = await page.evaluate(()=>!document.querySelector('#ex-hero video').paused);
+    await page.evaluate(()=>iniciarDescanso());
+    await esperar(400);
+    pl.trasDescanso = await page.evaluate(alto);
+    pl.descanso = await page.evaluate(()=>{ const d = document.querySelector('#desc-grande .dg-fila').getBoundingClientRect();
+      return { botonAlto: Math.round(d.height), abajo: d.top > innerHeight/2 }; });
+    await page.evaluate(()=>skipTimer());
+    await page.evaluate(()=>openExDetail(0));
+    await esperar(400);
+    pl.alReabrir = await page.evaluate(alto);
+    pl.serie = await page.evaluate(()=>{ const i = document.querySelector('#ex-detail-view .sc-grid input');
+      return { alto: Math.round(i.getBoundingClientRect().height), letra: parseFloat(getComputedStyle(i).fontSize) }; });
+    ok(pl.boton === 'Reducir' && pl.expandido === 'true', 'el vídeo lleva un botón «Reducir»');
+    ok(pl.trasFoco < 110 && pl.botonPlegado === 'Ampliar', 'al tocar una serie se pliega solo ('+pl.trasFoco+' px) y el botón pasa a «Ampliar»');
+    ok(pl.sigueVideo && pl.videoNoSePausa, 'plegado, el vídeo sigue en marcha');
+    ok(pl.trasRepintar.plegado && pl.trasRepintar.botones === 1, 'repintar la ficha no lo despliega ni duplica el botón');
+    ok(pl.trasAmpliar >= 250, '«Ampliar» lo devuelve a su tamaño ('+pl.trasAmpliar+' px)');
+    ok(pl.trasDescanso < 110, 'iniciar el descanso también lo pliega');
+    ok(pl.alReabrir >= 250, 'al abrir el ejercicio otra vez sale en grande');
+    ok(pl.descanso.botonAlto >= 56 && pl.descanso.abajo, 'los botones del descanso, de 56 px y en la mitad de abajo (a mano del pulgar)');
+    ok(pl.serie.alto >= 56 && pl.serie.letra >= 20, 'las casillas de las series, de 56 px y con la cifra a 20 ('+pl.serie.alto+' px)');
+
     await page.evaluate(()=>{ curEx[0].name = 'Sentadilla goblet'; pintarImagenEjercicio(); });
     const sinVideo = await page.evaluate(()=>({ video: !!document.querySelector('#ex-hero video'),
       foto: !!document.querySelector('#ex-hero img[src*="img/musculos/"]'),
@@ -241,6 +281,29 @@ async function appLista(page, url){
       const v = document.querySelector('#ex-hero video'); curEx[0].name = n;
       closeExDetail(); return { pausado: v.paused, vacio: document.getElementById('ex-hero').innerHTML === '' }; }, nombreAntes);
     ok(alSalir.pausado && alSalir.vacio, 'al salir del ejercicio el vídeo se para y se quita');
+
+    /* La foto (sin vídeo) también se pliega, y la primera medida no se compara
+       con nada (antes, con 110 kg y 113 cm fijos). Pantallas vacías con su paso. */
+    const varios = await page.evaluate(()=>{
+      const r = {};
+      r.fotoConBoton = !!document.querySelector('#ex-hero.ex-hero-foto .ex-hero-plegar')
+        || !document.getElementById('ex-hero').classList.contains('ex-hero');
+      const act = getActive(), antes = act.medidas;
+      act.medidas = [{ semana:1, fecha:'1/10/2026', peso:80, cintura:85 }];
+      renderMedidas();
+      r.primeraSinDelta = !document.querySelector('#medidas-content .delta-neg, #medidas-content .delta-pos');
+      act.medidas = [];
+      renderMedidas();
+      const c = document.getElementById('medidas-content');
+      r.vacioMedidas = !!c.querySelector('.vacio-caja .vacio-btn') && /Sin medidas/.test(c.textContent);
+      act.medidas = antes; renderMedidas();
+      r.vacio = estadoVacio({ icono:'mas', titulo:'T <b>', texto:'x', boton:'B', accion:'void 0' });
+      return r;
+    });
+    ok(varios.fotoConBoton, 'la foto del músculo también lleva el botón de plegar');
+    ok(varios.primeraSinDelta, '🔴 la primera medida no sale comparada con unos kilos inventados');
+    ok(varios.vacioMedidas, 'sin medidas, la pantalla explica qué apuntar y lleva un botón');
+    ok(/vacio-tit">T &lt;b&gt;/.test(varios.vacio) && /vacio-btn/.test(varios.vacio), 'las pantallas vacías escapan el texto');
     await page.evaluate(()=>openExDetail(0));
     const videos = await page.evaluate(()=>[...new Set(Object.values(VIDEO_EJERCICIO))]);
     const sinFichero = videos.filter(v=>['.mp4','.jpg'].some(e=>!fs.existsSync(path.join(__dirname,'..','videos','ejercicios',v+e))));

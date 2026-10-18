@@ -65,7 +65,7 @@
 .rt-ico{width:20px;height:20px;flex-shrink:0;stroke:#b79dff;}
 .timer-secs{font-size:24px;font-weight:800;color:#b79dff;line-height:1;min-width:58px;}
 .timer-txt{flex:1;min-width:0;font-size:12px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rt-btn{flex-shrink:0;min-width:44px;height:36px;padding:0 8px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);
+.rt-btn{flex-shrink:0;min-width:44px;height:44px;padding:0 8px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);
   background:rgba(255,255,255,0.06);color:#f2f0f7;font-size:13px;font-weight:700;cursor:pointer;}
 .rt-barra{height:4px;background:rgba(255,255,255,0.08);}
 #timer-barra{height:100%;width:100%;background:var(--accent);transform-origin:left;transition:transform .5s linear;}
@@ -77,25 +77,29 @@
    pasa a la franja de arriba para seguir apuntando mientras corre. */
 /* Sin tarjeta (Jhon, 28/09): la pantalla se atenúa y se desenfoca, y el
    anillo y los botones flotan encima. */
+/* A una mano (18/10/2026): el anillo y los botones bajan a la mitad de abajo,
+   que es donde llega el pulgar sin soltar el móvil; en el centro, −15/+15 y
+   Saltar quedaban a medio camino del borde de arriba. */
 #desc-grande{position:fixed;inset:0;z-index:640;background:rgba(10,9,16,.78);
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;
-  padding:16px;transition:opacity .2s ease;}
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;
+  padding:16px 16px calc(36px + env(safe-area-inset-bottom,0px));transition:opacity .2s ease;}
 #desc-grande.hidden{opacity:0;pointer-events:none;}
 .dg-panel{width:100%;max-width:340px;color:#f2f0f7;padding:0 18px;text-align:center;transition:transform .2s ease;}
 #desc-grande.hidden .dg-panel{transform:scale(.92);}
-.dg-anillo{position:relative;width:200px;height:200px;margin:4px auto 10px;}
+.dg-anillo{position:relative;width:220px;height:220px;margin:4px auto 14px;}
 .dg-anillo svg{transform:rotate(-90deg);display:block;}
 #dg-arco{transition:stroke-dashoffset .25s linear;}
 .dg-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-.dg-secs{font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:56px;font-weight:800;line-height:1;color:#fff;}
+.dg-secs{font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:68px;font-weight:800;line-height:1;color:#fff;}
 .dg-txt{font-size:13px;color:rgba(255,255,255,0.75);margin-top:6px;padding:0 20px;}
 #desc-grande.fin #dg-arco{stroke:var(--green);}
 #desc-grande.fin .dg-secs{color:#4fd18b;}
 .dg-fila{display:flex;gap:8px;margin-top:6px;}
-.dg-fila button{flex:1;height:48px;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;}
+.dg-fila button{flex:1;height:56px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;}
+.dg-fila button:active{transform:scale(.96);}
 .dg-ajuste{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);color:#f2f0f7;}
 .dg-saltar{background:var(--accent);border:none;color:#fff;}
-.dg-ocultar{margin-top:14px;background:none;border:none;color:rgba(255,255,255,0.8);font-size:13px;font-weight:700;padding:8px 12px;cursor:pointer;}
+.dg-ocultar{margin-top:10px;min-height:44px;background:none;border:none;color:rgba(255,255,255,0.8);font-size:14px;font-weight:700;padding:8px 14px;cursor:pointer;}
 /* La hoja de la rueda: sube desde abajo, como el selector de hora del iPhone. */
 #desc-hoja{position:fixed;inset:0;z-index:650;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;
   transition:opacity .2s ease;}
@@ -640,6 +644,10 @@ details[open] > .det-resumen::after{transform:rotate(-135deg);}
 label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;}
 select,input,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:14px;outline:none;font-family:inherit;}
 select:focus,input:focus,textarea:focus{border-color:var(--accent);}
+/* Un aro violeta en el campo donde estás escribiendo (18/10/2026): con una
+   rejilla de 3×2 casillas iguales, el borde solo no bastaba para saber cuál era. */
+select:focus,textarea:focus,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):focus{
+  outline:none;box-shadow:0 0 0 3px rgba(var(--accent-rgb),.25);}
 /* Contraseña con ojo: el botón va DENTRO del campo, y el campo deja hueco a la
    derecha para que lo escrito no quede debajo del icono. */
 .campo-clave{position:relative;}
@@ -821,8 +829,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .sc-quitar{border:none;background:transparent;color:var(--danger);opacity:.85;line-height:1;cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;margin-right:-6px;}
 .sc-quitar .ico-btn{width:15px;height:15px;vertical-align:middle;}
-.sc-grid input{width:100%;min-width:0;height:44px;padding:0 2px;border-radius:12px;text-align:center;
-  font-size:16px;font-weight:800;}
+/* 56 px y cifra a 20 (18/10/2026, de las ideas de Grok que eligió Jhon): se
+   apunta en el gimnasio, de pie, con una mano y entre series. */
+.sc-grid input{width:100%;min-width:0;height:56px;padding:0 2px;border-radius:12px;text-align:center;
+  font-size:20px;font-weight:800;}
 .sc-grid input::placeholder{color:var(--muted);font-weight:600;opacity:.75;}
 .sc-mas{align-self:stretch;min-height:44px;border:1px dashed var(--border);border-radius:12px;background:transparent;
   color:var(--accent);font-size:22px;font-weight:800;cursor:pointer;}
@@ -1064,7 +1074,15 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    para que las series asomen sin tanto scroll. El vídeo se reproduce ahí
    mismo, sin sonido, en bucle y sin pantalla completa; tocarlo lo pausa. */
 #ex-hero:empty{display:none;}
-.ex-hero{position:relative;height:260px;margin:0 0 12px;border-radius:16px;overflow:hidden;}
+.ex-hero{position:relative;height:260px;margin:0 0 12px;border-radius:16px;overflow:hidden;transition:height .25s ease;}
+/* Plegada (18/10/2026): al ponerte con las series o el descanso, la cabecera
+   se queda en una franja y las series suben. Sigue el vídeo, solo que recortado. */
+.ex-hero.plegado{height:96px;}
+.ex-hero-plegar{position:absolute;top:8px;right:8px;z-index:2;display:inline-flex;align-items:center;gap:4px;
+  min-height:36px;padding:0 12px;border-radius:18px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(0,0,0,.55);color:#fff;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;}
+.ex-hero-plegar svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+@media(prefers-reduced-motion:reduce){.ex-hero{transition:none;}}
 .ex-hero-video{background:#000;}
 .ex-hero .ex-video{position:relative;display:block;width:100%;height:100%;cursor:pointer;}
 .ex-hero video{display:block;width:100%;height:100%;object-fit:cover;}
@@ -1362,6 +1380,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ob-avatar{width:100px;height:120px;border-radius:12px;background:var(--surface);border:2px dashed var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin:0 auto 16px;}
 .ob-avatar img{width:100%;height:100%;object-fit:cover;}
 .ob-dots{display:flex;gap:8px;justify-content:center;margin-bottom:24px;}
+/* Pantallas vacías: estadoVacio(). */
+.vacio-caja{text-align:center;padding:18px 8px 6px;}
+.vacio-ico{width:48px;height:48px;margin:0 auto 10px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(var(--accent-rgb),.12);color:var(--accent);}
+.vacio-svg{width:24px;height:24px;}
+.vacio-tit{font-size:15px;font-weight:800;margin-bottom:4px;color:var(--text);}
+.vacio-txt{font-size:13px;color:var(--muted);line-height:1.45;max-width:320px;margin:0 auto;}
+.vacio-btn{margin-top:14px;}
 .ob-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
 .ob-dot.active{background:var(--accent);}
 </style>
@@ -3445,7 +3471,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-18 13:05';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-18 16:42';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3708,6 +3734,17 @@ async function recomprimirFotosAntiguas(){
 
 /* Los nombres de cliente los escribe otra persona y se pintan con innerHTML
    para poder montar la tarjeta de una vez. Escapar no es opcional. */
+/* Pantalla vacía (18/10/2026): qué va a salir aquí y el primer paso para que
+   salga, en vez de un "sin datos" gris. `accion` es el onclick del botón. */
+function estadoVacio({icono, titulo, texto, boton, accion}){
+  return `<div class="vacio-caja">
+    ${icono?`<div class="vacio-ico">${ico(icono,'vacio-svg')}</div>`:''}
+    <div class="vacio-tit">${escaparHTML(titulo)}</div>
+    <div class="vacio-txt">${escaparHTML(texto)}</div>
+    ${boton?`<button type="button" class="btn btn-primary vacio-btn" onclick="${accion}">${escaparHTML(boton)}</button>`:''}
+  </div>`;
+}
+
 function escaparHTML(s){
   return String(s==null?'':s).replace(/[&<>"']/g,c=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -4042,6 +4079,7 @@ function startTimer(secs){
 /* Iniciar desde el ejercicio: con el tiempo que tenga ese ejercicio. */
 function iniciarDescanso(){
   const ex=curExIndex!==null?curEx[curExIndex]:null;
+  plegarHeroSiSeVe();
   startTimer(ex?descansoDe(ex.name):(parseInt(document.getElementById('rest').value)||90));
 }
 
@@ -5566,7 +5604,9 @@ function tarjetaRacha(){
 function renderResumen(){
 const act=getActive();
 const c2=document.getElementById('resumen-content');
-if(!act){c2.innerHTML='<div class="card"><p style="color:var(--muted);font-size:13px;">Ninguna rutina seleccionada.</p></div>';return;}
+if(!act){c2.innerHTML='<div class="card">'+estadoVacio({icono:'lista', titulo:'Elige una rutina',
+  texto:'Aquí verás tu racha, tus sesiones y tu progreso en cuanto tengas una rutina en marcha.',
+  boton:'Elegir rutina', accion:'toggleRoutinePanel()'})+'</div>';return;}
 const keys=Object.keys(act.sessions).map(Number);
 const done=keys.length;
 const totalSes=act.plan.reduce((s,w)=>s+w.days.length,0);
@@ -5586,6 +5626,9 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
      protagonista de la pestaña y van arriba, en grande. */
   c.innerHTML=`
     ${tarjetaRacha()}
+    ${done===0?'<div class="card">'+estadoVacio({icono:'rayo', titulo:'Tu progreso empieza hoy',
+      texto:'Registra tu primera sesión y aquí irán apareciendo tu racha, tus récords y las gráficas de cada ejercicio.',
+      boton:'Ir a entrenar', accion:"goTo('log')"})+'</div>':''}
     <div class="stat-grid">
       ${stat(done+'/'+totalSes,'Sesiones',done>0)}
       ${stat(pct+'%','Progreso',pct>0)}
@@ -5678,11 +5721,16 @@ getActive().medidas.sort((a,b)=>a.semana-b.semana);
 function renderMedidas(){
   const c=document.getElementById('medidas-content');
   const med=getActiveMedidas();
-if(!med.length){c.innerHTML='<p style="color:var(--muted);font-size:13px;">Sin medidas aún.</p>';return;}
+if(!med.length){c.innerHTML=estadoVacio({icono:'lista', titulo:'Sin medidas aún',
+  texto:'Apunta tu peso y tu cintura una vez por semana, siempre a la misma hora. Con dos medidas ya verás cuánto cambias.',
+  boton:'Apuntar la primera', accion:"document.getElementById('med-peso').focus()"});return;}
   c.innerHTML=med.map((m,i)=>{
-    const prev=i>0?med[i-1]:{peso:110,cintura:113};
-    const dp=m.peso&&prev.peso?(m.peso-prev.peso).toFixed(1):null;
-    const dc=m.cintura&&prev.cintura?(m.cintura-prev.cintura).toFixed(1):null;
+    /* La primera no tiene con qué compararse. Antes se comparaba con 110 kg y
+       113 cm escritos a mano (las medidas de Jhon al empezar), y a cualquier
+       otra persona le salía una diferencia inventada. */
+    const prev=i>0?med[i-1]:null;
+    const dp=prev&&m.peso&&prev.peso?(m.peso-prev.peso).toFixed(1):null;
+    const dc=prev&&m.cintura&&prev.cintura?(m.cintura-prev.cintura).toFixed(1):null;
     return`<div class="medida-row">
       <div>
         <div style="font-weight:700;font-size:13px;">Semana ${m.semana} <span style="font-weight:400;font-size:11px;color:var(--muted);">${m.fecha||''}</span></div>
@@ -6354,6 +6402,8 @@ function pintarImagenEjercicio(){
   const conVideo=pintarVideoEjercicio(ex && ex.name);
   if(!conVideo){ hero.className=''; hero.innerHTML=''; }
   if(!ex||!ex.name){ c.innerHTML=''; return; }
+  // Al final de todo, pase lo que pase con la tarjeta de músculos de abajo.
+  setTimeout(ponerBotonPlegar,0);
 
   const m=musculosDeEjercicio(ex.name);
   const fotos=m ? m.primarios.map(x=>FOTO_MUSCULO[x]) : [];
@@ -6388,6 +6438,44 @@ function pintarImagenEjercicio(){
       ${conVideo&&imgs?`<div class="ex-mus-fotos">${imgs}</div>`:''}
     </figure>`;
 }
+
+/* Plegar el vídeo o la foto de arriba (18/10/2026). Se pliega solo al tocar
+   una casilla de las series o al iniciar el descanso, y el botón de la
+   esquina lo pliega o lo despliega a mano. Al abrir otro ejercicio vuelve a
+   salir en grande. */
+let heroPlegado=false;
+function ponerBotonPlegar(){
+  const hero=document.getElementById('ex-hero');
+  // Solo con algo pintado arriba: sin vídeo ni foto, #ex-hero está vacío.
+  if(!hero||!hero.classList.contains('ex-hero'))return;
+  hero.classList.toggle('plegado',heroPlegado);
+  let b=hero.querySelector('.ex-hero-plegar');
+  if(!b){
+    hero.insertAdjacentHTML('beforeend',
+      '<button type="button" class="ex-hero-plegar" onclick="event.stopPropagation();plegarHero(!heroPlegado)"></button>');
+    b=hero.querySelector('.ex-hero-plegar');
+  }
+  b.setAttribute('aria-expanded',String(!heroPlegado));
+  b.innerHTML=(heroPlegado
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>Ampliar'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>Reducir');
+}
+function plegarHero(si){
+  heroPlegado=!!si;
+  ponerBotonPlegar();
+}
+/* Solo si se ve: plegarlo con la cabecera ya fuera de pantalla movería las
+   series de debajo del dedo sin que se vea por qué. */
+function plegarHeroSiSeVe(){
+  if(heroPlegado||curExIndex===null)return;
+  const hero=document.getElementById('ex-hero');
+  if(!hero||!hero.classList.contains('ex-hero'))return;
+  if(hero.getBoundingClientRect().bottom<=0)return;
+  plegarHero(true);
+}
+document.addEventListener('focusin',e=>{
+  if(e.target&&e.target.closest&&e.target.closest('#ex-detail-view .sc-grid'))plegarHeroSiSeVe();
+});
 
 /* Progresión de cargas del ejercicio abierto: el peso máximo de cada sesión
    en la que se registró. Es lo que contesta "¿estoy subiendo o llevo semanas
@@ -8031,6 +8119,7 @@ function montarArrastre(cont, alSoltar){
 function openExDetail(ei){
   setTimeout(actualizarBotonVolver,0);
   curExIndex=ei;
+  heroPlegado=false;   // cada ejercicio se abre con el vídeo o la foto en grande
   const ex=curEx[ei];
   document.getElementById('ex-detail-title').value=ex.name||'';
   nombreOrigenEj=(ex.name||'').trim();
@@ -10752,7 +10841,9 @@ function vigilarClientes(){
 
     const c = document.getElementById('clientes-lista');
     if(qs.empty){
-      c.textContent = 'Todavía no tienes clientes vinculados. Créales un enlace de invitación aquí arriba.';
+      // Sin botón: el de invitar está justo encima, en su tarjeta.
+      c.innerHTML = estadoVacio({icono:'mas', titulo:'Aún no tienes clientes',
+        texto:'Invita al primero desde «Invitar a un cliente», aquí arriba. Si le preparas la rutina, entrará con ella puesta y aparecerá aquí.'});
       return;
     }
     /* Una celda por cliente: quién es y por dónde va. Todo lo demás —asignar,
@@ -13361,7 +13452,8 @@ function vigilarMisRetos(){
 function pintarMisRetos(){
   const c = document.getElementById('retos-lista');
   if(!c) return;
-  if(!misRetos.length){ c.innerHTML = '<div style="font-size:12px;color:var(--muted);">Todavía no has propuesto ninguno.</div>'; return; }
+  if(!misRetos.length){ c.innerHTML = '<div style="font-size:12.5px;color:var(--muted);line-height:1.45;">Todavía no has propuesto ninguno. '
+    + 'Para empezar, prueba con uno corto, de una o dos semanas.</div>'; return; }
   const ahora = Date.now();
   c.innerHTML = misRetos.map(r => {
     const vivo = (r.termina||0) >= ahora;
