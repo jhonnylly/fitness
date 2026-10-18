@@ -227,6 +227,26 @@ async function permitido(promesa) {
         { name:'Invitado', role:'client', trainerId:'u-coach', inviteId:'inv-libre' })),
        'con una invitación válida, sí');
 
+    /* Invitación con la rutina ya preparada (18/10/2026): el entrenador la
+       guarda dentro de la invitación y el invitado, al darse de alta, crea en
+       el MISMO lote su perfil (con activeRoutine), la rutina y la invitación
+       gastada. Tiene que pasar entero o no entra. */
+    ok(await permitido(setDoc(doc(coach, 'invites/inv-con-rutina'),
+        { trainerId:'u-coach', usado:false, usadoPor:null, creadoEn:1,
+          rutina:{ name:'Plan de inicio', plan:[{ d:'Día 1', e:[] }] } })),
+       'el entrenador crea una invitación con la rutina dentro');
+    const invitado2 = env.authenticatedContext('u-invitado2').firestore();
+    ok(await permitido(getDoc(doc(invitado2, 'invites/inv-con-rutina'))),
+       'el invitado la lee (y con ella, la rutina)');
+    const alta = writeBatch(invitado2);
+    alta.set(doc(invitado2, 'users/u-invitado2/routines/r_1'),
+      { name:'Plan de inicio', plan:[], sessions:{}, medidas:[], assignedBy:'u-coach', createdAt:1, active:true });
+    alta.set(doc(invitado2, 'users/u-invitado2'),
+      { name:'Invitada', role:'client', trainerId:'u-coach', inviteId:'inv-con-rutina', activeRoutine:'r_1' });
+    alta.update(doc(invitado2, 'invites/inv-con-rutina'), { usado:true, usadoPor:'u-invitado2', usadoEn:1 });
+    ok(await permitido(alta.commit()),
+       'alta, rutina activa e invitación gastada en un solo lote');
+
     /* ─────────────────────────────────────────────────────────────────
        8. Datos que no se tocan nunca
        ───────────────────────────────────────────────────────────────── */

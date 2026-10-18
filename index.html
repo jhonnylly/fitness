@@ -745,7 +745,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden,#home-pausado.hidden,#alta-fila-hasta.hidden,#alta-fila-dias.hidden,#home-plan.hidden,#rol-fila-hasta.hidden,#rol-fila-dias.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden,#home-pausado.hidden,#alta-fila-hasta.hidden,#alta-fila-dias.hidden,#home-plan.hidden,#rol-fila-hasta.hidden,#rol-fila-dias.hidden,#asignar-activar-fila.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -2309,7 +2309,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <input type="text" id="asignar-nombre-rutina" placeholder="Ej: Rutina de agosto" oninput="avisarNombreRepetido()">
     <div id="asignar-aviso-repe"></div>
 
-    <label class="fila-check">
+    <label class="fila-check" id="asignar-activar-fila">
       <input type="checkbox" id="asignar-activar">
       <span>Activársela ahora <span id="asignar-activar-nota" style="color:var(--muted);"></span></span>
     </label>
@@ -2451,7 +2451,11 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       registra con su propia contraseña y queda vinculado contigo. Cada enlace
       sirve para una sola persona.
     </p>
-    <button class="btn btn-primary" id="invitar-btn" onclick="crearInvitacion()">+ Crear enlace de invitación</button>
+    <p style="font-size:12px;color:var(--muted);line-height:1.45;">
+      Si le preparas ya la rutina, entra con ella puesta y no tiene que elegir nada.
+    </p>
+    <button class="btn btn-primary" id="invitar-rutina-btn" onclick="abrirAsignarInvitacion()">+ Invitar con una rutina ya preparada</button>
+    <button class="btn btn-secondary" id="invitar-btn" onclick="crearInvitacion()">Invitar sin rutina (la elige él)</button>
     <div id="invitar-msg"></div>
     <div id="invitaciones-lista" style="font-size:13px;color:var(--muted);margin-top:10px;"></div>
   </div>
@@ -3441,7 +3445,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-06 17:52';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-18 13:05';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7528,6 +7532,23 @@ function entrenarRutina(id){
   goTo('log');
 }
 
+/* Rutina que venía en una invitación aceptada teniendo ya cuenta. El plan
+   llega como lo guarda Firestore (sin arrays anidados). Devuelve 'activa' si
+   pasa a ser la que entrena y 'guardada' si ya tenía otra en curso. */
+function recibirRutinaDeInvitacion(rutina, trainerId){
+  const id='r_'+Date.now();
+  DB.routines.push({id, name: rutina.name||'Rutina de tu entrenador',
+    plan: window.planDesdeFirestore(rutina.plan||[]), sessions:{}, medidas:[], assignedBy: trainerId});
+  const activa=!DB.activeRoutine;
+  if(activa) DB.activeRoutine=id;
+  save();
+  updateHeaderRoutine();
+  buildSessionList();
+  updateHome();
+  renderRoutineList();
+  return activa ? 'activa' : 'guardada';
+}
+
 function activateRoutine(id){
   DB.activeRoutine=id;
   save();
@@ -10069,7 +10090,7 @@ async function pintarInvitacionConSesion(user){
   }
   const estado = estadoInvitacionConSesion(meData, inv, user.uid);
   invitacionPendiente = (estado === 'aceptar' || estado === 'pedido')
-    ? { codigo, trainerId: inv.trainerId, nombre: coach.nombre } : null;
+    ? { codigo, trainerId: inv.trainerId, nombre: coach.nombre, rutina: inv.rutina || null } : null;
   el.innerHTML = htmlInvitacionConSesion(estado, coach);
   el.classList.remove('hidden');
 }
@@ -10088,7 +10109,14 @@ window.aceptarInvitacionConSesion = async function(){
     if(meData){ meData.trainerId = p.trainerId; meData.inviteId = p.codigo; meData.pideEntrenador = null; }
     invitacionPendiente = null;
     history.replaceState({}, '', location.pathname);   // enlace gastado: fuera de la URL
-    aviso('«' + (p.nombre || 'Tu entrenador') + '» ya es tu entrenador ✓', 'bien');
+    /* La rutina que le preparó entra por su DB, como una suya más: escribirla
+       aparte en Firestore se cruzaría con su propia sincronización. Solo se
+       activa si no está entrenando otra; si no, la tiene en Mis rutinas. */
+    const puesta = (p.rutina && STORAGE.backend.name === 'firestore')
+      ? recibirRutinaDeInvitacion(p.rutina, p.trainerId) : null;
+    aviso('«' + (p.nombre || 'Tu entrenador') + '» ya es tu entrenador ✓'
+      + (puesta === 'activa' ? ' Ya tienes puesta la rutina que te ha preparado.'
+        : puesta === 'guardada' ? ' Te ha dejado «' + p.rutina.name + '» en Mis rutinas.' : ''), 'bien');
     alCambiarVinculo();
   }catch(e){
     console.error('[invitaciones] no se pudo aceptar', e);
@@ -10302,7 +10330,10 @@ const StorageFirestore = {
         plan: window.planDesdeFirestore(r.plan || []),
         sessions: r.sessions || {},
         medidas: r.medidas || [],
-        ...(r.photos ? { photos: r.photos } : {})
+        ...(r.photos ? { photos: r.photos } : {}),
+        /* Quién la puso. Sin esto se perdía al leer, esAsignada() nunca daba
+           true en el móvil del cliente y la pausa por impago no escondía nada. */
+        ...(r.assignedBy ? { assignedBy: r.assignedBy } : {})
       });
       ultimoEscrito.set(d.id, JSON.stringify(r));
     });
@@ -10389,7 +10420,8 @@ const StorageFirestore = {
         sessions: r.sessions || {},
         medidas: r.medidas || [],
         active: r.id === db.activeRoutine,
-        ...(r.photos ? { photos: r.photos } : {})
+        ...(r.photos ? { photos: r.photos } : {}),
+        ...(r.assignedBy ? { assignedBy: r.assignedBy } : {})
       };
       const serializado = JSON.stringify(payload);
       if(ultimoEscrito.get(r.id) === serializado) continue;   // sin cambios
@@ -11411,8 +11443,14 @@ function enlaceDeInvitacion(codigo){
   return location.origin + location.pathname + '?inv=' + codigo;
 }
 
-window.crearInvitacion = async function(){
-  const btn = document.getElementById('invitar-btn');
+/* `rutina` ({name, plan}) es opcional (18/10/2026, idea de Jhon): un
+   entrenador con un cliente en puertas le monta el plan ANTES de que tenga
+   cuenta, y el cliente entra con ella puesta en vez de elegir una en el
+   onboarding y que luego se la cambien. Va dentro de la propia invitación:
+   el invitado la lee al darse de alta y se la guarda él, que es quien puede
+   escribir en su cuenta. Devuelve el código, o null si falló. */
+window.crearInvitacion = async function(rutina){
+  const btn = document.getElementById(rutina ? 'invitar-rutina-btn' : 'invitar-btn');
   const msg = document.getElementById('invitar-msg');
   btn.disabled = true;
   const txt = btn.textContent;
@@ -11423,12 +11461,17 @@ window.crearInvitacion = async function(){
       trainerId: meUid,
       usado: false,
       usadoPor: null,
-      creadoEn: Date.now()
+      creadoEn: Date.now(),
+      ...(rutina ? { rutina: { name: rutina.name, plan: window.planParaFirestore(rutina.plan) } } : {})
     });
-    msg.innerHTML = '<div class="msg msg-ok">Enlace creado. Pásaselo a tu cliente.</div>';
+    msg.innerHTML = '<div class="msg msg-ok">Enlace creado'
+      + (rutina ? ' con «' + escaparHTML(rutina.name) + '»' : '')
+      + '. Pásaselo a tu cliente con «Compartir».</div>';
+    return codigo;
   }catch(e){
     console.error('[invitaciones] no se pudo crear', e);
     msg.innerHTML = '<div class="msg msg-err">No se pudo crear la invitación: '+(e.code||e.message)+'</div>';
+    return null;
   }finally{
     btn.disabled = false;
     btn.textContent = txt;
@@ -11480,7 +11523,8 @@ function vigilarInvitaciones(){
       c.insertAdjacentHTML('beforeend', `
         <div class="client-item" style="padding:10px;">
           <div class="codigo-val" style="margin-bottom:6px;">${escaparHTML(enlaceDeInvitacion(d.id))}</div>
-          <div class="client-meta">Creado el ${escaparHTML(fecha)} · sin usar</div>
+          <div class="client-meta">Creado el ${escaparHTML(fecha)} · sin usar${d.data().rutina
+            ? ' · con «' + escaparHTML(d.data().rutina.name || 'rutina') + '»' : ''}</div>
           <div style="display:flex;gap:6px;margin-top:8px;">
             <button class="btn-sm" data-c="${escaparHTML(d.id)}" onclick="copiarEnlace(this.dataset.c)">Compartir</button>
             <button class="btn-sm btn-danger" data-c="${escaparHTML(d.id)}" onclick="revocarInvitacion(this.dataset.c)">Revocar</button>
@@ -12706,6 +12750,10 @@ let presetElegido = null;
    elige como una prehecha más, con presetElegido === 'creada'. */
 let rutinaCreada = null;
 
+/* El panel de asignar sirve también para preparar la rutina de una invitación:
+   mismo selector de prehechas y mismo asistente, pero sin cliente todavía. */
+const DESTINO_INVITACION = '__invitacion__';
+
 function metaPlan(plan){
   if(!Array.isArray(plan)) return '';
   const sesiones = plan.reduce((s,w) => s + ((w && w.days) || []).length, 0);
@@ -12814,11 +12862,20 @@ window.abrirAsignar = function(uid, nombre){
     ? '(ahora está entrenando otra)'
     : '(no tiene ninguna en curso)';
 
+  // Para una invitación no hay nada que activar: entra con ella puesta.
+  const invitando = uid === DESTINO_INVITACION;
+  document.getElementById('asignar-activar-fila').classList.toggle('hidden', invitando);
+  document.getElementById('asignar-submit').textContent = invitando ? 'Crear enlace con esta rutina' : 'Asignar';
+
   pintarPresetsAsignar();
   document.getElementById('asignar-panel').classList.remove('hidden');
   // La capa se abre entera: lo que hay que asegurar es que no herede el scroll
   // de la vez anterior.
   document.getElementById('asignar-cuerpo').scrollTop = 0;
+};
+
+window.abrirAsignarInvitacion = function(){
+  abrirAsignar(DESTINO_INVITACION, 'tu nuevo cliente');
 };
 
 window.cerrarAsignar = function(){
@@ -12857,6 +12914,17 @@ window.asignarRutina = async function(){
     }
   }else{
     msg.innerHTML = '<div class="msg msg-err">Elige una rutina de la lista, o pega un plan en «avanzado»</div>';
+    return;
+  }
+  if(asignarDestino === DESTINO_INVITACION){
+    const codigo = await crearInvitacion({ name: nombre, plan });
+    if(codigo){
+      cerrarAsignar();
+      // De vuelta a la tarjeta de invitar, donde aparece el enlace nuevo.
+      document.getElementById('invitar-msg').scrollIntoView({ block:'center', behavior:'smooth' });
+    }else{
+      msg.innerHTML = document.getElementById('invitar-msg').innerHTML;
+    }
     return;
   }
   const btn = document.getElementById('asignar-submit');
@@ -13694,12 +13762,27 @@ async function altaPorInvitacion(user, name){
     throw new Error('INVITACION_NO_VALIDA');
   }
   const lote = writeBatch(fdb);
+  /* Si el entrenador le dejó la rutina preparada, se crea ya activa en el
+     mismo lote: al cargar, la cuenta tiene datos y no sale el onboarding a
+     pedirle que elija una. */
+  const rutina = inv.data().rutina;
+  const rutinaId = rutina ? 'r_' + Date.now() : null;
+  if(rutina){
+    lote.set(doc(fdb, 'users', user.uid, 'routines', rutinaId), {
+      name: rutina.name || 'Rutina de tu entrenador',
+      plan: rutina.plan || [],
+      sessions: {}, medidas: [],
+      assignedBy: inv.data().trainerId, createdAt: Date.now(),
+      active: true
+    });
+  }
   lote.set(doc(fdb, 'users', user.uid), {
     name, email: user.email, role: 'client',
     trainerId: inv.data().trainerId,
     inviteId: codigoInvitacion,
     consentimiento: consentimientoAhora(),
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    ...(rutinaId ? { activeRoutine: rutinaId } : {})
   });
   lote.update(doc(fdb, 'invites', codigoInvitacion), {
     usado: true, usadoPor: user.uid, usadoEn: Date.now()

@@ -828,6 +828,48 @@ async function appLista(page, url){
        'con la rutina creada ya elegida y su nombre puesto');
     ok(/2 sesiones · 2 semanas · 1 días\/semana/.test(crear.meta||''), 'y su resumen: '+crear.meta);
     ok(crear.misRutinasIntactas, '🔴 la rutina del cliente NO se mete en las rutinas del entrenador');
+
+    /* Invitar con la rutina ya preparada (18/10/2026): el mismo panel, sin
+       cliente todavía. La escritura de la invitación no se prueba aquí (sin
+       sesión); las reglas del lote del alta, en rules.test.js. */
+    const inv = await page.evaluate(()=>{
+      // Si se VE de verdad: la clase sola no oculta nada sin su línea en el CSS.
+      const visible = id => getComputedStyle(document.getElementById(id)).display !== 'none';
+      const r = {};
+      r.botonTarjeta = (document.getElementById('invitar-rutina-btn')||{}).textContent;
+      abrirAsignarInvitacion();
+      r.abierto = visible('asignar-panel');
+      r.para = document.getElementById('asignar-nombre').textContent;
+      r.sinActivar = !visible('asignar-activar-fila');
+      r.boton = document.getElementById('asignar-submit').textContent;
+      r.presets = document.querySelectorAll('#asignar-presets .preset-op').length;
+      cerrarAsignar();
+      abrirAsignar('u1','Ana Pérez');
+      r.normalActivar = visible('asignar-activar-fila');
+      r.normalBoton = document.getElementById('asignar-submit').textContent;
+      cerrarAsignar();
+      // Aceptada teniendo ya cuenta: entra en su DB, activa solo si no entrena otra.
+      const copia = JSON.stringify(DB);
+      const plan = window.planParaFirestore([{num:1,title:'S1',days:[{s:1,name:'D1',type:'Full',ex:[]}]}]);
+      DB.activeRoutine = null;
+      r.sinOtra = recibirRutinaDeInvitacion({name:'De mi coach', plan}, 'uid-coach');
+      const nueva = DB.routines.find(x=>x.name==='De mi coach');
+      r.nuevaBien = !!nueva && DB.activeRoutine === nueva.id && nueva.assignedBy === 'uid-coach'
+        && Array.isArray(nueva.plan[0].days);
+      r.conOtra = recibirRutinaDeInvitacion({name:'Otra', plan}, 'uid-coach');
+      r.sigueLaPrimera = DB.activeRoutine === nueva.id;
+      DB = JSON.parse(copia); save();
+      return r;
+    });
+    ok(/rutina ya preparada/.test(inv.botonTarjeta||''), 'invitar ofrece «con una rutina ya preparada»: '+inv.botonTarjeta);
+    ok(inv.abierto && inv.para === 'tu nuevo cliente' && inv.presets > 0,
+       'que abre el panel de asignar para «tu nuevo cliente», con las rutinas para elegir');
+    ok(inv.sinActivar && inv.boton === 'Crear enlace con esta rutina',
+       'sin la casilla de activar y con «Crear enlace con esta rutina»');
+    ok(inv.normalActivar && inv.normalBoton === 'Asignar', 'asignar a un cliente sigue como siempre');
+    ok(inv.sinOtra === 'activa' && inv.nuevaBien,
+       'aceptada con cuenta y sin rutina en curso: entra activa, como asignada y con el plan bien');
+    ok(inv.conOtra === 'guardada' && inv.sigueLaPrimera, 'con otra en curso, se guarda sin cambiársela');
     ok(crear.cerrarDevuelve && crear.sigueElegida === 'Plan de Ana',
        'cerrar el asistente sin terminar devuelve a Asignar sin perder lo creado');
     ok(crear.botonNormal === '✓ Crear rutina' && crear.asignarSigueCerrado,
