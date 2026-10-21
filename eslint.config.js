@@ -53,7 +53,7 @@ const deLaApp = {
 };
 
 module.exports = [
-  { ignores: ['node_modules/**', 'img/**', 'fuentes/**', 'icons/**'] },
+  { ignores: ['node_modules/**', 'img/**', 'fuentes/**', 'icons/**', 'e2e/informe/**', 'e2e/resultados/**'] },
   js.configs.recommended,
   {
     rules: {
@@ -75,12 +75,12 @@ module.exports = [
     languageOptions: { sourceType: 'script', globals: globals.serviceworker },
   },
   {
-    files: ['test/**/*.js', 'tools/**/*.js', 'eslint.config.js'],
+    files: ['test/**/*.js', 'tools/**/*.js', 'e2e/**/*.js', 'eslint.config.js', 'playwright.config.js'],
     languageOptions: { sourceType: 'commonjs', globals: globals.node },
   },
   {
     // Lo de dentro de page.evaluate() corre en el navegador, dentro de la app.
-    files: ['test/ui.test.js'],
+    files: ['test/ui.test.js', 'e2e/**/*.js'],
     languageOptions: { globals: { ...globals.node, ...deLaApp } },
   },
 ];
