@@ -262,55 +262,40 @@ header{background:var(--dark);color:#eef2fa;padding:12px 16px;position:sticky;to
      tema claro. Con el emoji no se notaba porque tenía color propio. */
   color:inherit;display:flex;align-items:center;justify-content:center;}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#888;flex-shrink:0;}
-/* ── La barra de pestañas, ABAJO (23/09/2026, propuesta de v0 que eligió Jhon) ──
-   Con el móvil en una mano el pulgar no llega arriba, y esta barra se toca todo
-   el rato. Inicio va en el centro y levantado, que es a donde más se vuelve.
-   Ajustes baja aquí desde la esquina de arriba a la derecha (la más lejos del
-   pulgar); no es una pestaña —no tiene pane—, solo abre su panel.
-   `--nav-h` la mide para todo lo demás que vive abajo: el aviso flotante y el
-   hueco que se le deja al final del contenido.
-   La franja del iPhone se respeta con `env(safe-area-inset-bottom)`. */
-/* El alto de la barra se FIJA, no se estima: el círculo de Inicio la hacía 10 px
-   más alta que el `min-height` y lo que se coloca a `--nav-h` del suelo se le
-   montaba encima. */
-/* 80 px y no 68: las etiquetas de los extremos tienen que quedar por encima de
-   la curva de la pantalla (ver el padding de abajo). */
-:root{--nav-h:80px;}
+/* ── EL MINI-DIAL, abajo (21/10/2026). Sustituye a la barra de pestañas ──
+   Rediseño pedido por Jhon y probado antes en un prototipo en su iPhone: dentro
+   de cada sección asoma abajo un trozo del bisel de Inicio. Gira con el pulgar
+   de lado a lado y, al soltarlo, entra en la sección que queda bajo la marca;
+   tocar una etiqueta también entra. Los botones son los MISMOS de la barra de
+   antes (mismos ids y onclick: `tab-log`, `config-btn`…), solo cambian de
+   sitio, así que sigue funcionando todo lo que colgaba de ellos: goTo(), el
+   punto de Ajustes (versión nueva) y el de Inicio (mensaje del entrenador).
+   En Inicio se esconde mientras el dial grande está a la vista y asoma al
+   bajar: la navegación nunca desaparece del todo.
+   `--nav-h` sigue midiendo lo que ocupa abajo, para el aviso flotante y el
+   hueco del final del contenido. El bisel es oscuro en los dos temas.
+   Historia: de 23/09 a 21/10 fue una barra de 5 pestañas con Inicio en un
+   círculo en medio (propuesta de v0). De ahí viene lo de las esquinas: las
+   etiquetas no pueden caer bajo la curva de la pantalla del iPhone (lo
+   comprueba la prueba 13aa). */
+:root{--nav-h:84px;}
 .tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;
-  z-index:150;display:flex;align-items:flex-end;gap:2px;background:var(--dark);
-  border-top:1px solid rgba(255,255,255,0.08);
-  height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));
-  /* Las esquinas de un iPhone son REDONDEADAS (Jhon, 23/09, en un 17 Pro): en
-     los extremos —"Entrenar" y "Ajustes"— la curva se comía la esquina de
-     abajo de la etiqueta y no se leían enteras. Se arregla por los dos lados:
-     30 px de margen a izquierda y derecha, para que los extremos no lleguen a
-     la esquina, y 20 px por abajo, para que las etiquetas queden por encima de
-     donde la curva muerde. Con estos números las etiquetas se libran por 15 px
-     de una curva de 70 px de radio, más de lo que curva ningún iPhone (medido,
-     no a ojo; la prueba 13aa lo comprueba). El `max()` es por si el sistema
-     pide más todavía: en horizontal, un iPhone reserva 44 px a los lados. */
-  padding:6px max(30px,env(safe-area-inset-right,0px))
-          calc(20px + env(safe-area-inset-bottom,0px))
-          max(30px,env(safe-area-inset-left,0px));}
-/* Las apagadas en blanco al 80 % y no al 45 % (Jhon, 27/09/2026): gris sobre
-   casi negro, a él mismo se le perdían los botones y solo encontraba Inicio.
-   Siguen un escalón por debajo del círculo de Inicio y de la pestaña activa,
-   pero se ven de un vistazo. Icono de 23 por lo mismo. Letra de 10 px A PROPÓSITO:
-   es lo que usa iOS en su barra de pestañas, y a 11 "ENTRENAR" no cabe en su
-   hueco (61 px de texto en 54 de hueco a 360 de ancho). El detector de diseño
-   lo marca por debajo de su mínimo de 11; aquí manda la convención de la
-   plataforma (auditoría del 21/10/2026). */
-.tab{flex:1;min-width:0;padding:5px 2px;border:none;background:none;color:rgba(255,255,255,0.8);
-  font-size:10px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.4px;
-  border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:3px;
-  transition:color .2s ease,background-color .2s ease;}
-.tab svg{width:23px;height:23px;}
-/* El círculo de Inicio sobresale por arriba: el borde del color de la barra lo
-   recorta contra ella y es lo que le da el relieve. */
-.tab.tab-centro{flex:0 0 auto;width:78px;}
-.tab.tab-centro svg{width:60px;height:60px;padding:17px;border:3px solid var(--dark);
-  border-radius:50%;background:var(--accent-fill);color:var(--on-accent);margin-top:-26px;
-  box-shadow:0 8px 20px rgba(var(--accent-rgb),0.45);}
+  z-index:150;height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));overflow:hidden;
+  touch-action:none;user-select:none;-webkit-user-select:none;
+  /* Por fuera del arco, en las esquinas, se funde con el fondo en vez de cortar. */
+  background:linear-gradient(to top,var(--bg) 45%,rgba(0,0,0,0));
+  transition:transform .45s cubic-bezier(.2,.8,.2,1);}
+.tabs.oculto{transform:translate(-50%,115%);}
+.mini-bisel{position:absolute;left:50%;top:12px;width:900px;height:900px;margin-left:-450px;pointer-events:none;}
+.mini-bisel svg{width:100%;height:100%;display:block;overflow:visible;}
+.mini-marca{position:absolute;left:50%;top:5px;margin-left:-8px;width:0;height:0;pointer-events:none;
+  border-left:8px solid transparent;border-right:8px solid transparent;border-top:11px solid var(--accent);}
+/* Letra de 13 px: ya no hay que meter cinco en una fila, cada una tiene su sitio en el arco. */
+.tab{position:absolute;left:0;top:0;min-height:44px;padding:12px 8px;border:none;background:none;
+  color:var(--bisel-txt);font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;white-space:nowrap;cursor:pointer;transition:color .15s ease;}
+.tab.active{color:var(--bisel-sel);}
+.tab:focus-visible{outline:2px solid var(--bisel-sel);outline-offset:-4px;border-radius:10px;}
 /* Iconos de trazo, el mismo juego que estas pestañas. Sustituyen a los emoji
    que había (🏋️ 🔥 ❤️ 📏 ⚡ 🏆): un emoji lo dibuja cada sistema a su manera
    —en el iPhone salen los de Apple, aquí los de Google— y trae sus propios
@@ -330,13 +315,6 @@ header{background:var(--dark);color:#eef2fa;padding:12px 16px;position:sticky;to
   fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 /* En los dos botones cuadrados de la cabecera manda la caja, no el texto. */
 .cab-ico .ico-btn{width:19px;height:19px;vertical-align:middle;}
-/* La activa, con una pastilla del acento detrás: con las apagadas ya casi
-   blancas, solo el color no bastaba para saber dónde estás. El violeta va más
-   claro (--accent-ink del tema oscuro: la barra es oscura en los dos temas).
-   El círculo de Inicio no la lleva: ya es su propia marca. */
-.tab.active{color:var(--accent-ink);}
-.tab.active:not(.tab-centro){background:rgba(var(--accent-rgb),0.2);}
-.tab:active{transform:scale(0.95);}
 .pane{display:none;padding:12px;} .pane.active{display:block;animation:entrar .24s ease both;}
 /* Entrada suave al cambiar de pestaña o de vista. Antes el cambio era seco
    —display none/block— y la app parecía dar saltos aunque fuera rápida. */
@@ -455,11 +433,9 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 .aviso-coach-btn{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--on-accent);
   font-weight:800;margin-top:12px;}
 
-/* El punto de la pestaña de Inicio. Dentro de los límites del botón a
-   propósito: .tab lleva overflow:hidden y cualquier cosa que se salga se
-   recorta sin avisar. */
-.tab{position:relative;}
-.tab.con-aviso::after,.tab.con-punto::after{content:'';position:absolute;top:2px;right:18px;
+/* El punto de Inicio (mensaje del entrenador) y el de Ajustes (versión nueva),
+   arriba a la derecha de la etiqueta, dentro de su botón. */
+.tab.con-aviso::after,.tab.con-punto::after{content:'';position:absolute;top:7px;right:1px;
   width:7px;height:7px;border-radius:50%;background:var(--accent-fill);
   box-shadow:0 0 0 2px rgba(0,0,0,.35);}
 .reto-aviso.pendiente{background:linear-gradient(135deg,#1b2d57 0%,#0d1526 100%);border:none;border-radius:18px;padding:18px;
@@ -942,8 +918,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .dial-zona{display:flex;flex-direction:column;align-items:center;gap:14px;margin:2px 0 18px;}
 .dial{position:relative;width:min(84vw,330px);aspect-ratio:1;max-width:100%;}
 .dial svg{width:100%;height:100%;display:block;overflow:visible;}
-/* touch-action:none SOLO en el aro: el resto de la pantalla sigue haciendo
-   scroll normal con el dedo encima del dial. */
+/* touch-action:none SOLO en el bisel: sobre el centro y fuera del dial la
+   pantalla sigue haciendo scroll normal. */
 .dial-aro{touch-action:none;cursor:grab;outline:none;}
 .dial-aro.agarrado{cursor:grabbing;}
 .dial-aro:focus-visible .dial-foco{stroke:var(--bisel-sel);}
@@ -2010,37 +1986,23 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   <button id="modo-btn-coaches" onclick="setModo('coaches')">Entrenadores</button>
 </div>
 
-<!-- La barra vive ABAJO desde el 23/09/2026 (propuesta de v0 que eligió Jhon).
-     El orden es el de la pantalla: Inicio va en medio y levantado. Ajustes
-     cierra por la derecha; conserva el id `config-btn` porque es el mismo botón
-     que estaba arriba —con su punto de "hay algo que mirar"— solo que ahora al
-     alcance del pulgar. No es una pestaña: abre su panel y no tiene pane. -->
-<div class="tabs">
+<!-- El MINI-DIAL (21/10/2026): la navegación de abajo. Ver el CSS de .tabs. -->
+<div class="tabs" id="mini-dial" aria-label="Secciones">
+  <div class="mini-bisel" aria-hidden="true">
+    <svg viewBox="0 0 900 900"><circle cx="450" cy="450" r="448" fill="var(--bisel)" stroke="var(--bisel-borde)" stroke-width="2"/><g id="mini-tics"></g></svg>
+  </div>
+  <div class="mini-marca" aria-hidden="true"></div>
   <!-- "Entrenar" y no "Registrar" (23/09/2026): varias personas no daban con
-       esta pestaña para empezar su sesión. "Registrar" nombra lo que hace la
-       app con los datos; nadie piensa "voy a registrar", piensa "voy a
-       entrenar". Además enlaza con el "Comenzar entrenamiento" de Inicio.
-       El id sigue siendo `tab-log` y el pane `pane-log`: son de dentro. -->
-  <button class="tab" id="tab-log" onclick="showTab('log',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M4 8.5v7M17.5 6.5v11M20 8.5v7M6.5 12h11"/></svg>
-    <span>Entrenar</span>
-  </button>
-  <button class="tab" id="tab-resumen" onclick="showTab('resumen',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19v-6M10 19V9M15 19v-8M20 19V5"/></svg>
-    <span>Resumen</span>
-  </button>
-  <button class="tab tab-centro active" id="tab-inicio" onclick="showTab('inicio',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/></svg>
-    <span>Inicio</span>
-  </button>
-  <button class="tab" id="tab-medidas" onclick="showTab('medidas',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="9" width="18" height="7" rx="1.5"/><path d="M7 9v3M11 9v2.3M15 9v3M19 9v2.3"/></svg>
-    <span>Medidas</span>
-  </button>
-  <button class="tab" id="config-btn" onclick="toggleConfigPanel()" title="Ajustes">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
-    <span>Ajustes</span>
-  </button>
+       esta pestaña para empezar su sesión. Nadie piensa "voy a registrar",
+       piensa "voy a entrenar". El id sigue siendo `tab-log` y el pane
+       `pane-log`: son de dentro. El orden es el del dial grande. -->
+  <button class="tab active" id="tab-inicio" onclick="showTab('inicio',this)"><span>Inicio</span></button>
+  <button class="tab" id="tab-log" onclick="showTab('log',this)"><span>Entrenar</span></button>
+  <button class="tab" id="tab-resumen" onclick="showTab('resumen',this)"><span>Resumen</span></button>
+  <button class="tab" id="tab-medidas" onclick="showTab('medidas',this)"><span>Medidas</span></button>
+  <!-- Ajustes no es una pestaña: abre su panel y no tiene pane. Conserva el id
+       `config-btn` y su punto de "hay algo que mirar". -->
+  <button class="tab" id="config-btn" onclick="toggleConfigPanel()" title="Ajustes"><span>Ajustes</span></button>
 </div>
 
 <!-- INICIO -->
@@ -3592,7 +3554,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-21 19:59';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-21 21:22';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5937,14 +5899,8 @@ const TEXTO_SECCION={
 let seccionCab='inicio';
 let saludoHecho=false;
 
-/* Las cinco pestañas están SIEMPRE visibles.
-   Antes, al salir de Inicio, las no activas se colapsaban a 0 de ancho
-   (`tab-hidden`): desde Registrar solo quedaban Inicio y la activa, así que
-   para ir a Historial había que pasar por Inicio. Venía de `80386c4`, que era
-   una animación y nada más — no protegía de nada. El coste era real: la
-   navegación desaparecía sin explicar por qué. Caben de sobra hasta en móvil
-   (5 × 56 px mínimo + separaciones), y `.tabs` tiene `overflow-x:auto` por si
-   algún día dejan de caber. */
+/* Cambia de sección. La llaman los botones del mini-dial (`#tab-…`), el dial
+   grande de Inicio y goTo(). El mini-dial se coloca solo en la sección nueva. */
 function showTab(id,el){
   pararVideoEjercicio();
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
@@ -5963,6 +5919,7 @@ function showTab(id,el){
   if(id==='resumen'){renderResumen();renderPhotos();}
   if(id==='medidas'){buildMedSel();renderMedidas();renderMedidasChart();}
   window.scrollTo(0,0);
+  miniDialA(id);
 }
 
 function goTo(id){
@@ -7025,8 +6982,8 @@ function updateHome(){
    pasar 8 px (un toque no gira), al soltar proyecta el impulso (deceleración
    .995, la de iOS) y se asienta con un muelle (amortiguación .8, respuesta .4).
    Tocar una etiqueta gira hasta ella; tocarla otra vez, entra.
-   Solo el ANILLO del bisel captura el dedo (touch-action:none); entre el anillo
-   y el centro la página sigue haciendo scroll, si no medio Inicio no se movería. */
+   Solo el bisel captura el dedo (touch-action:none); sobre el centro y fuera
+   del dial la página sigue haciendo scroll. */
 const DIAL_SECCIONES=['Inicio','Entrenar','Resumen','Medidas','Ajustes'];
 const DIAL_PASO=360/DIAL_SECCIONES.length;
 const dialEstado={x:0,v:0,raf:0,sel:0,etiquetas:null,destinos:{}};
@@ -7096,7 +7053,12 @@ function iniciarDial(){
   dialEstado.etiquetas=DIAL_SECCIONES.map((s,i)=>{
     const g=document.createElementNS(NS,'g'), t=document.createElementNS(NS,'text');
     t.textContent=s;t.setAttribute('class','dial-etq');t.setAttribute('text-anchor','middle');t.setAttribute('dominant-baseline','central');
-    g.appendChild(t);g.dataset.i=i;g.style.cursor='pointer';etqs.appendChild(g);
+    /* Zona de toque invisible: sin ella, un dedo entre dos letras caía en el
+       aro y giraba en vez de tocar la etiqueta (lo cazó WebKit, el de Safari). */
+    const zona=document.createElementNS(NS,'rect');
+    zona.setAttribute('x',-56);zona.setAttribute('y',-22);zona.setAttribute('width',112);zona.setAttribute('height',44);
+    zona.setAttribute('fill','transparent');
+    g.appendChild(zona);g.appendChild(t);g.dataset.i=i;g.style.cursor='pointer';etqs.appendChild(g);
     return {g,t,ang:i*DIAL_PASO};
   });
 
@@ -7140,12 +7102,143 @@ function iniciarDial(){
   dialPintarGiro();
 }
 
+/* ═══════════ EL MINI-DIAL de abajo (21/10/2026) ═══════════
+   Un trozo del bisel grande: un círculo de 900 px del que asoma el borde de
+   arriba. Las etiquetas son los botones de siempre (#tab-inicio, #tab-log…),
+   colocados sobre el arco. Arrastrar de lado lo gira (0,3° por px: el pulgar
+   va de lado, no en círculo), con topes elásticos en Inicio y en Ajustes; al
+   soltar se asienta con un muelle y entra en la sección de la marca. Tocar una
+   etiqueta es un toque normal: hace lo que hacía en la barra.
+   Solo enseña la sección actual y sus dos vecinas, como el prototipo: las
+   cinco no caben en el ancho de un móvil sin pisarse, y las de los extremos
+   caerían bajo la curva de la esquina del iPhone (medido, prueba 13aa). Las
+   demás aparecen al girar. */
+const MINI_IDS=['tab-inicio','tab-log','tab-resumen','tab-medidas','config-btn'];
+const MINI_SECCION={inicio:0,log:1,resumen:2,medidas:3};
+const MINI_PASO=15, MINI_GANANCIA=.3, MINI_R=450, MINI_RE=418;   // grados por sección y por px de arrastre
+const miniEstado={x:0,v:0,raf:0,listo:false,botones:null,tics:null,seccion:0,dialALaVista:true};
+
+function miniPintar(){
+  const e=miniEstado; if(!e.listo)return;
+  const barra=document.getElementById('mini-dial'), w=barra.clientWidth, cy=12+MINI_R;
+  e.tics.setAttribute('transform','rotate('+e.x.toFixed(2)+' 450 450)');
+  e.botones.forEach((b,i)=>{
+    const ang=i*MINI_PASO+e.x, a=ang*Math.PI/180;
+    const x=w/2+MINI_RE*Math.sin(a), y=cy-MINI_RE*Math.cos(a);
+    const d=Math.abs(ang), op=d<=1.15*MINI_PASO?1:Math.max(0,1-(d-1.15*MINI_PASO)/(.45*MINI_PASO));
+    b.style.transform='translate('+(x-b.offsetWidth/2).toFixed(1)+'px,'+(y-b.offsetHeight/2).toFixed(1)+'px)';
+    b.style.opacity=op; b.style.visibility=op<.05?'hidden':'visible';
+  });
+}
+
+function miniMuelle(objetivo,{amort=1,resp=.35}={},alFin){
+  const e=miniEstado;
+  cancelAnimationFrame(e.raf);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ e.x=objetivo;e.v=0;miniPintar();alFin&&alFin();return; }
+  const k=Math.pow(2*Math.PI/resp,2), c=4*Math.PI*amort/resp;
+  let t0=performance.now();
+  const paso=t=>{
+    const dt=Math.min(.032,(t-t0)/1000);t0=t;
+    e.v+=(-k*(e.x-objetivo)-c*e.v)*dt; e.x+=e.v*dt;
+    if(Math.abs(e.x-objetivo)<.03&&Math.abs(e.v)<.5){ e.x=objetivo;e.v=0;miniPintar();alFin&&alFin();return; }
+    miniPintar(); e.raf=requestAnimationFrame(paso);
+  };
+  e.raf=requestAnimationFrame(paso);
+}
+
+/* Lo llama showTab(): el mini-dial gira hasta la sección en la que se ha entrado. */
+function miniDialA(id){
+  const e=miniEstado;
+  if(!(id in MINI_SECCION))return;
+  e.seccion=MINI_SECCION[id];
+  if(!e.listo)return;
+  miniMuelle(-e.seccion*MINI_PASO);
+  miniVisibilidad();
+}
+
+// En Inicio, con el dial grande a la vista, sobra.
+function miniVisibilidad(){
+  const barra=document.getElementById('mini-dial');
+  if(barra)barra.classList.toggle('oculto',miniEstado.seccion===0&&miniEstado.dialALaVista);
+}
+
+function iniciarMiniDial(){
+  const e=miniEstado, barra=document.getElementById('mini-dial');
+  if(e.listo||!barra)return;
+  const NS='http://www.w3.org/2000/svg', tics=document.getElementById('mini-tics');
+  for(let k=-24;k<=40;k++){
+    const gordo=k%4===0&&k>=0&&k<=16, l=document.createElementNS(NS,'line');
+    l.setAttribute('x1',450);l.setAttribute('y1',8);l.setAttribute('x2',450);l.setAttribute('y2',gordo?20:14);
+    l.setAttribute('class','dial-tic'+(gordo?' gordo':''));
+    l.setAttribute('transform','rotate('+(k*MINI_PASO/4)+' 450 450)');
+    tics.appendChild(l);
+  }
+  e.tics=tics;
+  e.botones=MINI_IDS.map(id=>document.getElementById(id));
+  e.x=-e.seccion*MINI_PASO; e.listo=true;
+  miniPintar();
+  addEventListener('resize',miniPintar);
+  // Las medidas de las etiquetas cambian cuando llega la fuente; se recolocan.
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(miniPintar);
+
+  const dial=document.getElementById('dial');
+  if(dial&&'IntersectionObserver' in window){
+    // Asoma en cuanto queda a la vista menos de la mitad del dial grande.
+    new IntersectionObserver(ents=>{
+      e.dialALaVista=ents[0].intersectionRatio>=.5; miniVisibilidad();
+    },{threshold:[0,.5,1]}).observe(dial);
+  }else{ e.dialALaVista=false; }
+  miniVisibilidad();
+
+  /* El arrastre. Mientras no pase de 8 px es un toque y el botón hace lo suyo;
+     a partir de ahí es un giro y el clic de después se anula. */
+  const MIN=-4*MINI_PASO, MAX=0;
+  const goma=(sobra,dim=40,k=.55)=>(sobra*dim*k)/(dim+k*Math.abs(sobra));
+  let ini=null, libre=0, hist=[], girando=false, anularClic=false;
+  barra.addEventListener('pointerdown',ev=>{
+    if(ev.button>0)return;
+    cancelAnimationFrame(e.raf);
+    ini={x:ev.clientX,y:ev.clientY,id:ev.pointerId,px:ev.clientX}; libre=e.x; hist=[{t:performance.now(),r:e.x}];
+    girando=false; anularClic=false;
+  });
+  barra.addEventListener('pointermove',ev=>{
+    if(!ini||ev.pointerId!==ini.id)return;
+    if(!girando){
+      if(Math.hypot(ev.clientX-ini.x,ev.clientY-ini.y)<8)return;
+      girando=true; anularClic=true;
+      try{barra.setPointerCapture(ev.pointerId);}catch(_){/* ya soltado */}
+    }
+    libre+=(ev.clientX-ini.px)*MINI_GANANCIA; ini.px=ev.clientX;
+    e.x=libre<MIN?MIN+goma(libre-MIN):libre>MAX?MAX+goma(libre-MAX):libre;
+    hist.push({t:performance.now(),r:e.x}); if(hist.length>6)hist.shift();
+    e.v=0; miniPintar();
+  });
+  const fin=ev=>{
+    if(!ini||ev.pointerId!==ini.id)return;
+    ini=null;
+    if(!girando){ miniMuelle(-e.seccion*MINI_PASO); return; }   // por si un toque lo pilló a medio giro
+    const a=hist[0], b=hist[hist.length-1], v=(b.r-a.r)/((b.t-a.t)/1000||1);
+    const proy=(v/1000)*.99/(1-.99);
+    const i=Math.max(0,Math.min(4,Math.round(-(e.x+proy)/MINI_PASO)));
+    e.v=v;
+    miniMuelle(-i*MINI_PASO,{amort:.8,resp:.4},()=>{
+      if(i===e.seccion)return;
+      document.getElementById(MINI_IDS[i]).click();
+      // Ajustes no es una sección: abre su panel y el dial vuelve a donde estabas.
+      if(i===4)miniMuelle(-e.seccion*MINI_PASO);
+    });
+  };
+  barra.addEventListener('pointerup',fin); barra.addEventListener('pointercancel',fin);
+  barra.addEventListener('click',ev=>{ if(anularClic){ ev.stopPropagation(); ev.preventDefault(); anularClic=false; } },true);
+}
+
 /* Los textos del dial y la tira de semanas. La llama updateHome(), así que
    está al día cada vez que se entra en Inicio o cambian los datos. */
 function pintarDial(){
   // Sin SVG no hay dial (las pruebas de almacenamiento corren con un DOM de mentira).
   if(!document.getElementById('dial')||typeof document.createElementNS!=='function')return;
   iniciarDial();
+  iniciarMiniDial();
   const hoy=new Date();
   document.getElementById('dial-dia').textContent=hoy.toLocaleDateString('es-ES',{weekday:'long'});
   document.getElementById('dial-num').textContent=hoy.getDate();

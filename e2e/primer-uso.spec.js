@@ -1,10 +1,10 @@
 /* Lo primero que ve alguien que abre la app por primera vez. */
 
-const { test, expect, appLista } = require('./base');
+const { test, expect, appLista, irA } = require('./base');
 
 test('el onboarding deja la rutina elegida lista para entrenar', async ({ page }) => {
   await appLista(page);
-  await page.locator('#tab-log').click();
+  await irA(page, 'Entrenar');
 
   await expect(page.getByText('Semana 1 — Adaptación')).toBeVisible();
   await expect(page.getByText(/0 de 3 sesiones/)).toBeVisible();

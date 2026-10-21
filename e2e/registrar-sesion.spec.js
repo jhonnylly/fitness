@@ -1,10 +1,10 @@
 /* El uso de cada día: abrir la sesión que toca, apuntar las series y
    guardarla. Si esto se rompe, la app no sirve para nada más. */
 
-const { test, expect, appLista } = require('./base');
+const { test, expect, appLista, irA } = require('./base');
 
 async function apuntarPrimeraSerie(page, kg, reps){
-  await page.locator('#tab-log').click();
+  await irA(page, 'Entrenar');
   await page.getByRole('button', { name: /Ver las sesiones de la semana/ }).click();
   await page.getByRole('button', { name: /S1 · Full Body A/ }).click();
   await page.locator('#ex-mosaico').getByRole('button', { name: /Prensa 45°/ }).click();
@@ -45,6 +45,6 @@ test('la sesión guardada sigue ahí al recargar, con sus kilos', async ({ page 
   expect(serie, 'la sesión S1 está registrada').toBeTruthy();
   expect(String(serie.kg).replace(',', '.')).toBe('62.5');
   expect(String(serie.reps)).toBe('8');
-  await page.locator('#tab-log').click();
+  await irA(page, 'Entrenar');
   await expect(page.getByText(/1 de 3 sesiones/)).toBeVisible();
 });

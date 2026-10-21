@@ -2,7 +2,7 @@
    tocar el centro. Es la puerta de entrada a todo, así que va con el dedo de
    verdad: arrastres y toques, no llamadas a funciones. */
 
-const { test, expect, appLista } = require('./base');
+const { test, expect, appLista, irA } = require('./base');
 
 const etiqueta = (page, nombre) => page.locator('#dial-etiquetas g').filter({ hasText: nombre });
 const seleccionada = page => page.locator('#dial-aro').getAttribute('aria-valuetext');
@@ -35,7 +35,7 @@ test('tocar una etiqueta gira hasta ella; tocarla otra vez entra', async ({ page
   await expect(page.locator('#pane-resumen')).toHaveClass(/active/);
 
   // Al volver a Inicio el dial vuelve a apuntar a Inicio.
-  await page.locator('#tab-inicio').click();
+  await irA(page, 'Inicio');
   expect(await seleccionada(page)).toBe('Inicio');
 });
 

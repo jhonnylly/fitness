@@ -52,4 +52,38 @@ async function appLista(page, { nombre = 'Prueba', rutina = /Primer Mes/ } = {})
   await comprobarLocal(page);
 }
 
-module.exports = { test, expect, appLista, comprobarLocal };
+/* Ir a una sección como lo haría una persona (desde el 21/10/2026 no hay
+   barra de pestañas): en Inicio, con el dial grande —tocar la etiqueta y luego
+   el centro—; en las demás, con el mini-dial de abajo: tocar la etiqueta si se
+   ve y, si queda lejos de la marca, arrastrarlo de lado hasta ella. */
+const SECCIONES = ['Inicio', 'Entrenar', 'Resumen', 'Medidas', 'Ajustes'];
+async function irA(page, nombre){
+  if(await page.locator('#pane-inicio').evaluate(e => e.classList.contains('active'))){
+    await page.evaluate(() => scrollTo(0, 0));
+    if(await page.locator('#dial-aro').getAttribute('aria-valuetext') !== nombre){
+      await page.locator('#dial-etiquetas g').filter({ hasText: nombre }).click();
+      await expect.poll(() => page.locator('#dial-aro').getAttribute('aria-valuetext')).toBe(nombre);
+    }
+    await page.locator('#dial-centro').click();
+    return;
+  }
+  // Si aún está girando hacia la sección de ahora, se espera a que pare: una persona también lo haría.
+  await page.waitForFunction(() => miniEstado.v === 0 && Math.abs(miniEstado.x + miniEstado.seccion * MINI_PASO) < .01);
+  const boton = page.locator('#mini-dial .tab').filter({ hasText: nombre });
+  if(!await boton.isVisible()){
+    const [desde, pxPorPaso] = await page.evaluate(() => [miniEstado.seccion, MINI_PASO / MINI_GANANCIA]);
+    const pasos = SECCIONES.indexOf(nombre) - desde;
+    const caja = await page.locator('#mini-dial').boundingBox();
+    const x = caja.x + caja.width / 2, y = caja.y + caja.height / 2;
+    // Despacio, sin impulso, lo justo para que la sección quede bajo la marca.
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    for(let i = 1; i <= 20; i++) await page.mouse.move(x - pasos * pxPorPaso * i / 20, y);
+    await page.waitForTimeout(150);
+    await page.mouse.up();
+    return;
+  }
+  await boton.click();
+}
+
+module.exports = { test, expect, appLista, comprobarLocal, irA };
