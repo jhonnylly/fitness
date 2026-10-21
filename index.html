@@ -68,7 +68,7 @@
 .rt-btn{flex-shrink:0;min-width:44px;height:44px;padding:0 8px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);
   background:rgba(255,255,255,0.06);color:#f2f0f7;font-size:13px;font-weight:700;cursor:pointer;}
 .rt-barra{height:4px;background:rgba(255,255,255,0.08);}
-#timer-barra{height:100%;width:100%;background:var(--accent);transform-origin:left;transition:transform .5s linear;}
+#timer-barra{height:100%;width:100%;background:var(--accent-fill);transform-origin:left;transition:transform .5s linear;}
 #rest-timer.fin #timer-barra{background:var(--green);}
 #rest-timer.fin .timer-secs{color:var(--green);}
 /* El contador GRANDE, encima de las series (28/09/2026, Jhon): con solo la
@@ -98,7 +98,7 @@
 .dg-fila button{flex:1;height:56px;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;}
 .dg-fila button:active{transform:scale(.96);}
 .dg-ajuste{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.22);color:#f2f0f7;}
-.dg-saltar{background:var(--accent);border:none;color:#fff;}
+.dg-saltar{background:var(--accent-fill);border:none;color:#fff;}
 .dg-ocultar{margin-top:10px;min-height:44px;background:none;border:none;color:rgba(255,255,255,0.8);font-size:14px;font-weight:700;padding:8px 14px;cursor:pointer;}
 /* La hoja de la rueda: sube desde abajo, como el selector de hora del iPhone. */
 #desc-hoja{position:fixed;inset:0;z-index:650;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;
@@ -124,16 +124,16 @@
 .desc-acciones{display:flex;gap:10px;}
 .desc-acciones button{flex:1;height:48px;border-radius:var(--radius);font-size:15px;font-weight:800;cursor:pointer;}
 .desc-cancelar{background:var(--surface);border:1px solid var(--border);color:var(--text);}
-.desc-ok{background:var(--accent);border:none;color:#fff;}
+.desc-ok{background:var(--accent-fill);border:none;color:#fff;}
 /* En el ejercicio, bajo las series: el tiempo (toca para cambiarlo) e Iniciar. */
 .desc-fila{display:flex;gap:8px;margin:10px 0 4px;}
 .desc-tiempo{flex:1;display:flex;align-items:center;gap:8px;height:48px;padding:0 14px;border-radius:var(--radius);
   background:var(--card);border:1px solid var(--border);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;text-align:left;}
-.desc-tiempo b{font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:18px;color:var(--accent);}
+.desc-tiempo b{font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:18px;color:var(--accent-ink);}
 .desc-tiempo .ico-btn{stroke:var(--accent);}
 .desc-tiempo small{margin-left:auto;font-size:12px;color:var(--muted);}
 .desc-iniciar{flex-shrink:0;display:flex;align-items:center;gap:6px;height:48px;padding:0 18px;border-radius:var(--radius);
-  background:var(--accent);border:none;color:#fff;font-size:15px;font-weight:800;cursor:pointer;}
+  background:var(--accent-fill);border:none;color:#fff;font-size:15px;font-weight:800;cursor:pointer;}
 
 
 /* Cifras en Oswald. Los números son lo que se mira de reojo entre serie y
@@ -177,12 +177,20 @@
      guardado, aviso de storage. --orange se queda de ámbar para "guardando",
      que es un estado, no la marca. */
   --accent:#8b5cf6;--accent-rgb:139,92,246;
-  --danger:#e63f1f;--danger-rgb:230,63,31;
+  /* El violeta de marca (#8b5cf6) no llega al 4,5:1 de AA ni con texto blanco
+     encima (4,2:1) ni como texto sobre el fondo (3,8-4,2:1). Auditoría del
+     21/10/2026. Sigue siendo el acento de bordes, brillos y tintes, y salen dos
+     derivados: --accent-fill para los fondos que llevan texto blanco (5,7:1) y
+     --accent-ink para el texto violeta, más oscuro en claro y más luminoso en
+     oscuro (≥5,3:1 sobre todos los fondos de la app). Lo mismo con el rojo. */
+  --accent-fill:#7c3aed;--accent-ink:#6d28d9;
+  --danger:#e63f1f;--danger-rgb:230,63,31;--danger-ink:#c7341a;
   --dark:#17161f;--green:#2d7a4f;--orange:#c97820;
   --text:#1a1a1a;--muted:#6e6a7a;--radius:12px;--radius-sm:8px;
 }
 @media(prefers-color-scheme:dark){
-  :root{--bg:#0f0f14;--card:#1a1a22;--surface:#232330;--border:#343446;--text:#f0f0f0;--muted:#8a8794;}
+  :root{--bg:#0f0f14;--card:#1a1a22;--surface:#232330;--border:#343446;--text:#f0f0f0;--muted:#8a8794;
+    --accent-ink:#a78bfa;--danger-ink:#ff6a4d;}
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;max-width:600px;margin:0 auto;
   /* La barra de pestañas es fija: sin este hueco taparía lo último de cada
@@ -214,7 +222,7 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 .cab-avatar img{width:100%;height:100%;object-fit:cover;}
 /* Sin foto: iniciales sobre violeta. El borde de acento sobraría —sería violeta
    sobre violeta— así que en este estado se quita. */
-.cab-avatar.sin-foto{background:var(--accent);border-color:transparent;color:#fff;
+.cab-avatar.sin-foto{background:var(--accent-fill);border-color:transparent;color:#fff;
   font-size:20px;font-weight:800;letter-spacing:.5px;}
 .cab-centro{flex:1;min-width:0;}
 /* El saludo, al lado de la foto (22/09/2026). Ocupa el sitio que tenían la
@@ -242,7 +250,7 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 /* Y la tarjeta, que se quedaría casi vacía, suelta el marco: solo el botón. */
 #session-form.en-paso > .card{background:none;border:none;box-shadow:none;padding:0 4px;margin-bottom:6px;}
 #session-form.en-paso > .card > .btn-volver{margin-bottom:0;}
-.cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:10.5px;
+.cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:11px;
   color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;}
 .cab-ico{background:rgba(255,255,255,0.08);border:none;border-radius:10px;width:36px;height:36px;
   font-size:15px;cursor:pointer;flex-shrink:0;line-height:1;
@@ -284,7 +292,11 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 /* Las apagadas en blanco al 80 % y no al 45 % (Jhon, 27/09/2026): gris sobre
    casi negro, a él mismo se le perdían los botones y solo encontraba Inicio.
    Siguen un escalón por debajo del círculo de Inicio y de la pestaña activa,
-   pero se ven de un vistazo. Letra de 10 px e icono de 23 por lo mismo. */
+   pero se ven de un vistazo. Icono de 23 por lo mismo. Letra de 10 px A PROPÓSITO:
+   es lo que usa iOS en su barra de pestañas, y a 11 "ENTRENAR" no cabe en su
+   hueco (61 px de texto en 54 de hueco a 360 de ancho). El detector de diseño
+   lo marca por debajo de su mínimo de 11; aquí manda la convención de la
+   plataforma (auditoría del 21/10/2026). */
 .tab{flex:1;min-width:0;padding:5px 2px;border:none;background:none;color:rgba(255,255,255,0.8);
   font-size:10px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.4px;
   border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:3px;
@@ -294,7 +306,7 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
    recorta contra ella y es lo que le da el relieve. */
 .tab.tab-centro{flex:0 0 auto;width:78px;}
 .tab.tab-centro svg{width:60px;height:60px;padding:17px;border:3px solid var(--dark);
-  border-radius:50%;background:var(--accent);color:#fff;margin-top:-26px;
+  border-radius:50%;background:var(--accent-fill);color:#fff;margin-top:-26px;
   box-shadow:0 8px 20px rgba(var(--accent-rgb),0.45);}
 /* Iconos de trazo, el mismo juego que estas pestañas. Sustituyen a los emoji
    que había (🏋️ 🔥 ❤️ 📏 ⚡ 🏆): un emoji lo dibuja cada sistema a su manera
@@ -335,7 +347,7 @@ header{background:var(--dark);color:#f2f0f7;padding:12px 16px;position:sticky;to
 .modo-sel{display:none;gap:6px;padding:8px 8px 0;background:var(--dark);}
 body.es-entrenador .modo-sel{display:flex;}
 .modo-sel button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
-.modo-sel button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.modo-sel button.active{background:var(--accent-fill);border-color:var(--accent);color:#fff;}
 body.modo-clientes .tabs,body.modo-clientes .pane,
 body.modo-coaches .tabs,body.modo-coaches .pane{display:none;}
 /* Sin barra abajo no hace falta guardarle sitio (23/09/2026). */
@@ -424,7 +436,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
   border:3px solid var(--accent);background:var(--surface);cursor:pointer;font-family:inherit;
   display:flex;align-items:center;justify-content:center;}
 .cuenta-avatar img{width:100%;height:100%;object-fit:cover;}
-.cuenta-avatar.sin-foto{background:var(--accent);color:#fff;font-size:28px;font-weight:800;}
+.cuenta-avatar.sin-foto{background:var(--accent-fill);color:#fff;font-size:28px;font-weight:800;}
 .cuenta-avatar:active{transform:scale(.96);}
 
 .aviso-coach-quien{font-size:15px;font-weight:800;color:#fff;line-height:1.2;
@@ -437,7 +449,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 .aviso-coach-ses{font-size:13px;color:rgba(255,255,255,.92);margin-top:11px;}
 /* Blanco sobre violeta, igual que "Acepto el reto": es la misma clase de
    gesto, cerrar algo que te han mandado. */
-.aviso-coach-btn{background:#fff;border-color:#fff;color:var(--accent);
+.aviso-coach-btn{background:#fff;border-color:#fff;color:var(--accent-fill);
   font-weight:800;margin-top:12px;}
 
 /* El punto de la pestaña de Inicio. Dentro de los límites del botón a
@@ -445,9 +457,9 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
    recorta sin avisar. */
 .tab{position:relative;}
 .tab.con-aviso::after,.tab.con-punto::after{content:'';position:absolute;top:2px;right:18px;
-  width:7px;height:7px;border-radius:50%;background:var(--accent);
+  width:7px;height:7px;border-radius:50%;background:var(--accent-fill);
   box-shadow:0 0 0 2px rgba(0,0,0,.35);}
-.reto-aviso.pendiente{background:var(--accent);border:none;border-radius:18px;padding:18px;
+.reto-aviso.pendiente{background:var(--accent-fill);border:none;border-radius:18px;padding:18px;
   color:#fff;box-shadow:none;}
 /* ── El reto sin contestar, ardiendo ──
    Marco de llama: un degradado rojo-ámbar-amarillo que se desplaza sin parar,
@@ -477,7 +489,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 @media (prefers-reduced-motion:reduce){
   .reto-llama{animation:none;box-shadow:0 0 18px rgba(239,68,68,.28);}
 }
-.reto-tag{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);font-weight:700;}
+.reto-tag{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-ink);font-weight:700;}
 .reto-tit{font-size:16px;font-weight:800;margin-top:4px;}
 .reto-sub{font-size:12px;color:var(--muted);line-height:1.45;margin-top:4px;}
 /* Sobre violeta, el acento no se ve: todo pasa a blanco con distinta fuerza. */
@@ -486,10 +498,10 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 .reto-aviso.pendiente .reto-sub{color:rgba(255,255,255,.88);font-size:12.5px;}
 /* Aceptar es blanco lleno; "ahora no", solo contorno: la decisión que se espera
    se ve a un metro, la otra está pero no compite. */
-.reto-aviso.pendiente .btn-sm{background:#fff;border-color:#fff;color:var(--accent);font-weight:800;}
+.reto-aviso.pendiente .btn-sm{background:#fff;border-color:#fff;color:var(--accent-fill);font-weight:800;}
 .reto-aviso.pendiente .btn-sm.secundario{background:transparent;border-color:rgba(255,255,255,.55);color:#fff;}
 /* La cifra del marcador, en la fuente de las cifras como el resto de la app. */
-.reto-marcador{font-size:26px;font-weight:800;color:var(--accent);line-height:1;
+.reto-marcador{font-size:26px;font-weight:800;color:var(--accent-ink);line-height:1;
   font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 .fila-reto{display:flex;align-items:center;gap:8px;}
 .fila-reto input{margin:0;}
@@ -497,7 +509,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
    clasificación y no como una lista de nombres. */
 .reto-fila{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);}
 .reto-puesto{font-size:13px;font-weight:800;color:var(--muted);min-width:22px;}
-.reto-fila.yo .reto-puesto,.reto-fila.yo .reto-nombre{color:var(--accent);}
+.reto-fila.yo .reto-puesto,.reto-fila.yo .reto-nombre{color:var(--accent-ink);}
 .reto-nombre{font-size:13px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .reto-pct{font-size:13px;font-weight:800;min-width:42px;text-align:right;}
 .reto-fila .prog-bar{margin:6px 0 0;}
@@ -519,7 +531,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 /* margin-top:auto pega el pie abajo: con nombres de una y de dos líneas, las
    barras de la fila quedan a la misma altura. */
-.cliente-card-meta{font-size:10.5px;color:var(--muted);line-height:1.35;margin-top:auto;width:100%;}
+.cliente-card-meta{font-size:11px;color:var(--muted);line-height:1.35;margin-top:auto;width:100%;}
 .cliente-card .prog-bar{height:5px;margin:5px 0 0;width:100%;}
 .preset-op{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-top:6px;cursor:pointer;font-family:inherit;color:var(--text);}
 .preset-op.elegida{border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
@@ -534,13 +546,13 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 .dias-cliente .card{background:var(--card)!important;}
 .sem-btn{min-width:34px;padding:7px 4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
 .sem-btn.completa{color:var(--green);border-color:rgba(45,122,79,0.4);}
-.sem-btn.elegida{background:var(--accent);border-color:var(--accent);color:#fff;}
+.sem-btn.elegida{background:var(--accent-fill);border-color:var(--accent);color:#fff;}
 .ej-bloque{margin-bottom:10px;}
 .ej-bloque:last-child{margin-bottom:0;}
 .ej-nombre{font-size:12px;font-weight:700;margin-bottom:5px;}
 .serie-chips{display:flex;gap:5px;flex-wrap:wrap;}
 .chip-serie{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;font-size:11.5px;color:var(--muted);white-space:nowrap;}
-.chip-serie.tope{border-color:var(--accent);color:var(--accent);font-weight:700;}
+.chip-serie.tope{border-color:var(--accent);color:var(--accent-ink);font-weight:700;}
 .ses-extra{font-size:11.5px;color:var(--muted);margin-top:8px;}
 .fila-ej{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:10px;}
 .fila-ej input{margin:0;padding:7px 8px;font-size:12px;}
@@ -557,10 +569,10 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
    pegado a su campo. */
 .fila-ej .ej-pista{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:5px;
   font-size:11px;line-height:1.5;padding:0 2px;}
-.ej-musculo{color:var(--accent);font-weight:700;}
+.ej-musculo{color:var(--accent-ink);font-weight:700;}
 .ej-pista-txt{color:var(--muted);}
 .ej-sug{padding:3px 8px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;
-  color:var(--accent);background:rgba(var(--accent-rgb),0.10);border:1px solid var(--accent);
+  color:var(--accent-ink);background:rgba(var(--accent-rgb),0.10);border:1px solid var(--accent);
   border-radius:var(--radius-sm);}
 /* Subir/bajar el ejercicio dentro de la sesión (23/09/2026, pedido por un
    entrenador). Van en columna y pegadas al nombre, ocupando el alto de la fila:
@@ -600,10 +612,10 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
   border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 12px;margin-bottom:10px;
   font-size:12.5px;line-height:1.5;color:var(--text);}
 .ex-nota-tag{display:block;font-size:10px;font-weight:800;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--accent);margin-bottom:3px;}
+  text-transform:uppercase;color:var(--accent-ink);margin-bottom:3px;}
 /* Un punto y no un texto: en el mosaico solo hace falta saber QUE hay
    indicación; el qué se lee al abrir el ejercicio. */
-.mos-nota-punto{width:6px;height:6px;border-radius:50%;background:var(--accent);
+.mos-nota-punto{width:6px;height:6px;border-radius:50%;background:var(--accent-fill);
   display:inline-block;flex:none;}
 /* El aviso que el entrenador tiene puesto ahora mismo, en su propia ficha del
    cliente. Recuadro y no texto suelto: hay que distinguir de un vistazo "esto
@@ -612,7 +624,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
   border-left:3px solid var(--accent);border-radius:0 var(--radius-sm) var(--radius-sm) 0;
   padding:10px 12px;margin-bottom:10px;font-size:12.5px;line-height:1.5;}
 .aviso-vigente-tag{display:block;font-size:10px;font-weight:800;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--accent);margin-bottom:4px;}
+  text-transform:uppercase;color:var(--accent-ink);margin-bottom:4px;}
 .aviso-vigente-ses{font-size:11.5px;color:var(--muted);margin-top:5px;}
 
 /* Cabecera de una tarjeta plegable. La flecha por defecto de <summary> se
@@ -655,7 +667,7 @@ select:focus,textarea:focus,input:not([type=checkbox]):not([type=radio]):not([ty
 .ver-clave{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:40px;padding:0;
   border:none;background:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .ver-clave svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.ver-clave[aria-pressed="true"]{color:var(--accent);}
+.ver-clave[aria-pressed="true"]{color:var(--accent-ink);}
 textarea{resize:vertical;min-height:60px;}
 /* Tacto al pulsar. Lo tenían las pestañas y las tarjetas de Inicio, pero no los
    botones ni las tarjetas del mosaico, que es lo que más se toca ahora: sin
@@ -673,13 +685,13 @@ textarea{resize:vertical;min-height:60px;}
 /* Punto en Ajustes cuando alguien pide entrenador (solo lo ve el admin). */
 .cab-ico.con-punto{position:relative;}
 .cab-ico.con-punto::after{content:'';position:absolute;top:5px;right:5px;width:10px;height:10px;border-radius:50%;
-  background:var(--accent);box-shadow:0 0 0 2px var(--dark);}
+  background:var(--accent-fill);box-shadow:0 0 0 2px var(--dark);}
 /* La versión arriba de Ajustes: nombre a la izquierda, botón a la derecha. */
 .card.version-fila{display:flex;gap:12px;align-items:center;}
 /* Sugerencias de nombre del catálogo, bajo el campo del ejercicio. */
 .ex-sug{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
 .ex-sug-btn{padding:6px 10px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;
-  color:var(--accent);background:rgba(var(--accent-rgb),0.10);border:1px solid var(--accent);
+  color:var(--accent-ink);background:rgba(var(--accent-rgb),0.10);border:1px solid var(--accent);
   border-radius:var(--radius-sm);}
 .ex-sug-tal{margin-top:8px;}
 .ex-sug-tit{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:10px;}
@@ -688,8 +700,8 @@ textarea{resize:vertical;min-height:60px;}
 .fila-unidad{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
 .fila-unidad .section-title{flex:1;min-width:0;}
 .unidad-etq{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0;flex:none;}
-.sel-unidad{width:auto;flex:none;padding:7px 10px;font-size:14px;font-weight:800;
-  color:var(--accent);border:1.5px solid var(--accent);background:rgba(var(--accent-rgb),0.10);}
+.sel-unidad{width:auto;flex:none;padding:7px 10px;font-size:14px;font-weight:800;min-height:44px;
+  color:var(--accent-ink);border:1.5px solid var(--accent);background:rgba(var(--accent-rgb),0.10);}
 .sel-unidad:focus{border-color:var(--accent);}
 /* Segundo botón sobre el violeta lleno del aviso: hueco, para que "Aceptar" siga siendo el principal. */
 /* Con `.aviso-coach` delante a propósito: .btn-sm está definida MÁS ABAJO con
@@ -698,17 +710,17 @@ textarea{resize:vertical;min-height:60px;}
    los dos botones en la misma fila. */
 .aviso-coach .aviso-coach-acciones{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;}
 .aviso-coach .aviso-coach-acciones .btn-sm{margin:0;padding:8px 14px;font-size:13px;}
-.aviso-coach .aviso-coach-acciones .aviso-coach-btn{background:#fff;border:1.5px solid #fff;color:var(--accent);}
+.aviso-coach .aviso-coach-acciones .aviso-coach-btn{background:#fff;border:1.5px solid #fff;color:var(--accent-fill);}
 .aviso-coach .aviso-coach-btn-sec{background:transparent;border:1.5px solid rgba(255,255,255,.85);color:#fff;font-weight:800;}
 /* Peticiones de entrenador en Ajustes: una fila por persona sobre el violeta. */
 .peticion-fila{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.14);border-radius:12px;
   padding:10px 12px;margin-top:8px;color:#fff;font-size:13.5px;}
 .peticion-sub{font-size:11.5px;color:rgba(255,255,255,.85);word-break:break-all;}
 .aviso-coach .peticion-fila .aviso-coach-btn{margin:0;flex:none;background:#fff;border:1.5px solid #fff;
-  color:var(--accent);padding:8px 14px;font-size:13px;}
+  color:var(--accent-ink);padding:8px 14px;font-size:13px;}
 /* "Cuentas" en Ajustes: solo para el admin. */
 body:not(.es-admin) #pane-cuentas{display:none;}
-.btn-primary{background:var(--accent);color:#fff;margin-top:10px;}
+.btn-primary{background:var(--accent-fill);color:#fff;margin-top:10px;}
 .btn-primary:active{opacity:0.85;}
 .btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text);margin-top:8px;}
 .btn-sm{padding:6px 12px;font-size:12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;}
@@ -729,18 +741,18 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .foto-item.marcada .foto-toque{border-color:var(--accent);}
 .foto-toque img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;}
 .foto-fecha{display:block;font-size:10px;color:var(--muted);padding:4px 2px;text-align:center;}
-.foto-item.marcada .foto-fecha{color:var(--accent);font-weight:700;}
+.foto-item.marcada .foto-fecha{color:var(--accent-ink);font-weight:700;}
 /* El número dice si es la 1ª o la 2ª de la comparación: sin él, dos marcos
    naranjas no explican en qué orden van a salir. */
 .foto-num{position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;
-  background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:flex;
+  background:var(--accent-fill);color:#fff;font-size:11px;font-weight:800;display:flex;
   align-items:center;justify-content:center;}
 .foto-borrar{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;
   border:none;background:rgba(0,0,0,0.55);color:#fff;font-size:12px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;padding:0;}
-.btn-danger{border-color:var(--danger);color:var(--danger);background:transparent;}
+.btn-danger{border-color:var(--danger);color:var(--danger-ink);background:transparent;}
 .msg{font-size:12px;padding:8px 10px;border-radius:var(--radius-sm);margin-bottom:10px;line-height:1.45;}
-.msg-err{background:rgba(var(--danger-rgb),0.1);color:var(--danger);}
+.msg-err{background:rgba(var(--danger-rgb),0.1);color:var(--danger-ink);}
 .msg-ok{background:rgba(45,122,79,0.1);color:var(--green);}
 .msg-info{background:var(--surface);color:var(--muted);}
 /* No hay una .hidden genérica en este fichero, y no puede haberla: los paneles
@@ -792,7 +804,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .comp-barra{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--dark);color:#f2f0f7;}
 .comp-tabs{display:flex;gap:6px;}
 .comp-tabs button{padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
-.comp-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.comp-tabs button.active{background:var(--accent-fill);border-color:var(--accent);color:#fff;}
 #comp-cuerpo{flex:1;min-height:0;padding:10px;display:flex;gap:8px;}
 #comp-cuerpo.comp-simple{justify-content:center;}
 .comp-figura{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
@@ -801,7 +813,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .comp-hueco{flex:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);border:1px dashed var(--border);border-radius:var(--radius-sm);}
 .auth-tabs{display:flex;gap:6px;margin-bottom:12px;}
 .auth-tabs button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
-.auth-tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.auth-tabs button.active{background:var(--accent-fill);border-color:var(--accent);color:#fff;}
 .row{display:flex;gap:8px;align-items:center;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .ex-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:8px;}
@@ -816,34 +828,47 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    (si está activo). En gris, lo que toca: las repeticiones del plan y el
    descanso general; se escribe encima. Con más de 4 series se desliza de lado
    y la columna de etiquetas se queda fija. La columna "+" añade una serie. */
-.sc-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:-2px;padding:2px;}
+/* 10 px de aire por arriba (compensados con el margen): el scroll horizontal
+   recorta también en vertical, y sin ese hueco la zona táctil de 44 px de la
+   papelera de cada serie se cortaba por arriba (21/10/2026). */
+.sc-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:-10px -2px -2px;padding:10px 2px 2px;}
 .sc-scroll::-webkit-scrollbar{display:none;}
 .sc-grid{display:grid;gap:6px 5px;align-items:center;}
 .sc-lab{position:sticky;left:0;z-index:1;align-self:stretch;display:flex;align-items:center;
-  background:var(--surface);font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);
+  background:var(--surface);font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);
   box-shadow:6px 0 6px -4px var(--surface);}
 .sc-cab{display:flex;align-items:center;justify-content:center;gap:2px;height:26px;font-size:12px;font-weight:800;color:var(--muted);}
 /* Quitar una serie: papelera roja como el resto de borrados (06/10/2026, Jhon:
    la × junto a "S1" se leía como el signo de multiplicar). La caja de 28 px
    es para el dedo; el icono se queda pequeño para no comerse la cabecera. */
-.sc-quitar{border:none;background:transparent;color:var(--danger);opacity:.85;line-height:1;cursor:pointer;
+.sc-quitar{border:none;background:transparent;color:var(--danger-ink);opacity:.85;line-height:1;cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;margin-right:-6px;}
 .sc-quitar .ico-btn{width:15px;height:15px;vertical-align:middle;}
+/* Zona táctil de 44×44 sin cambiar el dibujo (auditoría 21/10/2026): la
+   papelera de la serie (28 px), las acciones del programa (27 de alto, y una
+   es Borrar), quitar el ejercicio y el lápiz. Una capa invisible amplía el
+   toque solo por los lados que no llegan a 44: min(0px, …) no la encoge en
+   los que ya sobran. */
+.sc-quitar,.hp-accion,.ex-quitar,.ex-editar{position:relative;z-index:1;}
+.sc-quitar::after,.hp-accion::after,.ex-quitar::after,.ex-editar::after{content:'';position:absolute;
+  top:min(0px,calc((100% - 44px) / 2));bottom:min(0px,calc((100% - 44px) / 2));
+  left:min(0px,calc((100% - 44px) / 2));right:min(0px,calc((100% - 44px) / 2));}
 /* 56 px y cifra a 20 (18/10/2026, de las ideas de Grok que eligió Jhon): se
    apunta en el gimnasio, de pie, con una mano y entre series. */
 .sc-grid input{width:100%;min-width:0;height:56px;padding:0 2px;border-radius:12px;text-align:center;
   font-size:20px;font-weight:800;}
 .sc-grid input::placeholder{color:var(--muted);font-weight:600;opacity:.75;}
 .sc-mas{align-self:stretch;min-height:44px;border:1px dashed var(--border);border-radius:12px;background:transparent;
-  color:var(--accent);font-size:22px;font-weight:800;cursor:pointer;}
+  color:var(--accent-ink);font-size:22px;font-weight:800;cursor:pointer;}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
 .stat{background:var(--surface);border-radius:var(--radius-sm);padding:12px;text-align:center;}
-.stat-val{font-size:24px;font-weight:800;color:var(--accent);
+.stat-val{font-size:24px;font-weight:800;color:var(--accent-ink);
   /* Cifras de ancho fijo: sin esto, al pasar de 9 a 10 sesiones el número
      entero se descoloca porque el 1 mide menos que el 9. */
   font-variant-numeric:tabular-nums;}
 /* Misma regla que en Inicio: un 0 no es un logro, no se lleva el acento. */
-.stat-val.vacio{color:var(--muted);opacity:.55;}
+/* Vacío = más apagado, pero legible: a .55 quedaba a 2,3:1 (auditoría 21/10/2026). */
+.stat-val.vacio{color:var(--muted);opacity:.8;}
 .stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
 .prog-bar{background:var(--border);border-radius:4px;height:8px;overflow:hidden;margin-bottom:12px;}
 /* La barra se llena al aparecer. Con scaleX y no con width: el ancho lo pone el
@@ -858,7 +883,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .dot-todo{background:var(--border);}
 .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;}
 .badge-green{background:rgba(45,122,79,0.12);color:var(--green);}
-.badge-accent{background:rgba(var(--accent-rgb),0.12);color:var(--accent);}
+.badge-accent{background:rgba(var(--accent-rgb),0.12);color:var(--accent-ink);}
 /* "sin guardar": el día que tiene cambios escritos y no guardados. En rojo
    apagado y no en violeta, que aquí significa "pendiente de hacer": esto no es
    un estado del plan, es algo que le falta al entrenador (23/09/2026).
@@ -866,7 +891,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    partían las palabras en dos líneas y estiraban la fila, y un día con cambios
    sin guardar ya se sabe que está pendiente. En uno ya hecho sí van las dos: la
    fecha es un dato que no se puede tapar. */
-.badge-sin-guardar{background:rgba(var(--danger-rgb),0.12);color:var(--danger);font-weight:700;
+.badge-sin-guardar{background:rgba(var(--danger-rgb),0.12);color:var(--danger-ink);font-weight:700;
   white-space:nowrap;}
 .hist-item{border-bottom:1px solid var(--border);padding:10px 0;}
 .hist-item:last-child{border-bottom:none;}
@@ -878,12 +903,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .action-row .btn-sm{flex:1;min-width:100px;}
 .medida-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
 .medida-row:last-child{border-bottom:none;}
-.delta-pos{color:var(--accent);font-size:12px;}
+.delta-pos{color:var(--accent-ink);font-size:12px;}
 .delta-neg{color:var(--green);font-size:12px;}
-.week-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(var(--accent-rgb),0.1);color:var(--accent);}
+.week-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(var(--accent-rgb),0.1);color:var(--accent-ink);}
 .home-prog{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;}
 .home-prog-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:8px;}
-.home-prog-head span:last-child{color:var(--accent);font-size:11px;}
+.home-prog-head span:last-child{color:var(--accent-ink);font-size:11px;}
 .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .home-card{position:relative;overflow:hidden;border-radius:16px;padding:16px 14px;min-height:150px;display:flex;flex-direction:column;cursor:pointer;border:none;text-align:left;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.14);transition:transform .15s ease;font-family:inherit;}
 .home-card:active{transform:scale(.96);}
@@ -909,14 +934,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .hp{background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius);padding:14px;margin-bottom:12px;}
 .hp-fila{display:flex;align-items:center;gap:14px;}
-.hp-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;}
-.hp-nombre{font-size:20px;font-weight:800;color:var(--accent);margin-top:4px;line-height:1.2;
+.hp-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.hp-nombre{font-size:20px;font-weight:800;color:var(--accent-ink);margin-top:4px;line-height:1.2;
   overflow-wrap:anywhere;}
 /* El nombre es un botón, pero se ve como un título: sin fondo, sin borde y
    alineado a la izquierda. El chevron es la pista de que ahí se cambia. */
 .hp-rutina{background:none;border:none;padding:0;font-family:inherit;text-align:left;
   cursor:pointer;display:flex;align-items:center;gap:6px;max-width:100%;}
-.hp-chevron{color:var(--accent);font-size:14px;flex-shrink:0;}
+.hp-chevron{color:var(--accent-ink);font-size:14px;flex-shrink:0;}
 .hp-meta{font-size:13px;color:var(--muted);margin-top:4px;}
 .hp-anillo{position:relative;width:76px;height:76px;flex-shrink:0;}
 .hp-anillo svg{width:76px;height:76px;transform:rotate(-90deg);}
@@ -939,7 +964,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   transition:transform .12s ease;}
 .hp-accion:active{transform:scale(.96);}
 .hp-accion .ico-btn{width:13px;height:13px;opacity:.8;}
-.hp-accion-borrar{margin-left:auto;color:var(--danger);background:rgba(var(--danger-rgb),.09);}
+.hp-accion-borrar{margin-left:auto;color:var(--danger-ink);background:rgba(var(--danger-rgb),.09);}
 .anillo-fondo{fill:none;stroke:var(--border);stroke-width:7;}
 .anillo-fill{fill:none;stroke:var(--accent);stroke-width:7;stroke-linecap:round;
   transition:stroke-dashoffset .5s ease;}
@@ -958,6 +983,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   background:linear-gradient(135deg,#251f33 0%,#14121b 60%),var(--dark);
   box-shadow:0 6px 20px rgba(0,0,0,.2);transition:transform .15s ease;}
 .hoy:active{transform:scale(.985);}
+/* Superficies que son oscuras en los DOS temas (la tarjeta de hoy, la
+   cabecera, la barra, el descanso, los avisos): llevan siempre la tinta del
+   tema oscuro. Sin esto, en modo claro el texto violeta oscuro quedaba sobre
+   fondo casi negro a 2,3:1 (lo cazó el detector el 21/10/2026). */
+.hoy,header,.tabs,#aviso-flotante,#rest-timer,.modo-sel,.comp-barra,.routine-panel-header{
+  --accent-ink:#a78bfa;--danger-ink:#ff6a4d;}
 /* La semana en curso vive DENTRO del mosaico y ocupa la fila entera
    (23/09/2026). Estaba arriba del todo, fuera de la lista, y varias personas se
    la saltaban, bajaban al mosaico y decían que les faltaba una semana: la
@@ -968,11 +999,11 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   background:radial-gradient(circle,var(--accent) 0%,transparent 70%);opacity:.28;pointer-events:none;}
 /* display:block obligatorio: son <span> dentro de un <button>, y sin esto
    salen los tres seguidos en la misma línea. Se vio en la primera captura. */
-.hoy-tag{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);
+.hoy-tag{display:block;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-ink);
   font-weight:700;position:relative;}
 .hoy-tit{display:block;font-size:22px;font-weight:800;margin-top:5px;line-height:1.2;position:relative;}
 .hoy-meta{display:block;font-size:12px;color:rgba(255,255,255,.66);margin-top:6px;position:relative;}
-.hoy-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);
+.hoy-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent-fill);
   color:#fff;font-weight:800;font-size:14px;border-radius:11px;padding:12px;margin-top:14px;position:relative;}
 
 /* ═══ Una protagonista por pantalla ═══
@@ -992,7 +1023,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    llevas dice cuántas sesiones tiene la semana, que es lo que se viene a ver. */
 .sem-puntos{display:flex;gap:5px;margin-top:12px;position:relative;}
 .sem-punto{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.16);}
-.sem-punto.hecha{background:var(--accent);}
+.sem-punto.hecha{background:var(--accent-fill);}
 
 /* La racha no lleva a ninguna parte, así que es un <div> y no un botón: sin
    cursor de mano y sin el encogido al pulsar, que prometerían un destino. */
@@ -1000,7 +1031,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .hoy-racha:active{transform:none;}
 .racha-fila{display:flex;align-items:center;gap:9px;margin-top:6px;position:relative;}
 .racha-num{font-size:40px;font-weight:800;line-height:1;}
-.racha-llama{width:26px;height:26px;color:var(--accent);}
+.racha-llama{width:26px;height:26px;color:var(--accent-ink);}
 .racha-dias{font-size:13px;color:rgba(255,255,255,.72);align-self:flex-end;padding-bottom:5px;}
 /* Con la racha a cero se apaga ENTERA —etiqueta incluida—, igual que las
    cifras del resumen: el violeta solo cuando hay algo que celebrar (ver
@@ -1013,14 +1044,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .racha-cal{display:flex;gap:4px;margin-top:14px;position:relative;}
 .racha-dia{flex:1;min-width:0;text-align:center;}
 .racha-dia i{display:block;height:22px;border-radius:5px;background:rgba(255,255,255,.10);}
-.racha-dia.hecho i{background:var(--accent);}
+.racha-dia.hecho i{background:var(--accent-fill);}
 /* Hoy va marcado con un aro: sin él no se sabe por qué extremo se lee. */
 .racha-dia.es-hoy i{box-shadow:0 0 0 2px rgba(255,255,255,.55);}
 .racha-dia span{display:block;font-size:8.5px;color:rgba(255,255,255,.45);margin-top:4px;}
 
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .duo .card{margin-bottom:0;}
-.duo-label{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:700;
+.duo-label{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:700;
   display:flex;align-items:center;gap:5px;}
 .duo-label .ico-txt{width:13px;height:13px;flex-shrink:0;opacity:.75;}
 .duo-val{font-size:24px;font-weight:800;margin-top:5px;line-height:1.1;}
@@ -1052,7 +1083,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .routine-item-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .routine-item-meta{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5;display:block;}
 .routine-badge{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
-  color:var(--accent);background:rgba(var(--accent-rgb),.12);padding:2px 8px;border-radius:20px;}
+  color:var(--accent-ink);background:rgba(var(--accent-rgb),.12);padding:2px 8px;border-radius:20px;}
 .routine-item .acciones-fila{margin-left:0;margin-top:10px;}
 .routine-actions{display:flex;gap:6px;}
 .feeling-btn{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:24px;min-width:64px;}
@@ -1100,7 +1131,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ex-hero-etq i{width:7px;height:7px;border-radius:50%;background:#ff4d4d;}
 .ex-video-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   transition:opacity .15s ease;pointer-events:none;}
-.ex-video-play span{width:52px;height:52px;border-radius:50%;background:var(--accent);
+.ex-video-play span{width:52px;height:52px;border-radius:50%;background:var(--accent-fill);
   display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.45);}
 .ex-video-play svg{width:20px;height:20px;fill:#fff;margin-left:3px;}
 .ex-video.reproduciendo .ex-video-play{opacity:0;}
@@ -1113,7 +1144,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   background:transparent;border:1px solid transparent;border-radius:var(--radius-sm);color:var(--text);}
 .ex-titulo:focus{border-color:var(--accent);background:var(--surface);outline:none;}
 .ex-editar{flex:none;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;
-  background:var(--surface);border:1px solid var(--border);border-radius:50%;color:var(--accent);cursor:pointer;}
+  background:var(--surface);border:1px solid var(--border);border-radius:50%;color:var(--accent-ink);cursor:pointer;}
 .ex-editar .ico-btn{width:17px;height:17px;vertical-align:middle;}
 .ex-titulo:focus + .ex-editar{display:none;}
 /* Qué músculos trabaja, bajo las series: Primario / Secundario en texto y,
@@ -1130,7 +1161,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* Explicación del peso orientativo, bajo la tabla de series. */
 .peso-orient{display:flex;gap:8px;align-items:flex-start;margin:8px 2px 0;font-size:12px;color:var(--muted);line-height:1.5;}
 .peso-orient b{color:var(--text);}
-.peso-orient .ico-btn{color:var(--accent);flex:none;margin-top:1px;}
+.peso-orient .ico-btn{color:var(--accent-ink);flex:none;margin-top:1px;}
 /* Las semanas, en mosaico de dos columnas: en lista, un plan de 12 semanas eran
    doce filas y mucho scroll para llegar a la que entrenas. Las acciones de cada
    semana (duplicar, borrar) se fueron DENTRO de la semana: en una celda de
@@ -1158,11 +1189,11 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* La sesión que toca en la semana, en violeta: la tarjeta de "Semana en curso"
    de Entrenar trae aquí y esta es la que hay que encontrar. */
 .mos-card.siguiente{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:rgba(var(--accent-rgb),0.08);}
-.mos-badge-toca{color:var(--accent);background:rgba(var(--accent-rgb),0.16);}
+.mos-badge-toca{color:var(--accent-ink);background:rgba(var(--accent-rgb),0.16);}
 .mos-num{font-size:15px;font-weight:800;color:var(--text);}
 /* El título de la semana ("Circuito quema") a dos líneas como mucho: si no,
    una semana con nombre largo estira toda la fila del mosaico. */
-.mos-tit{font-size:10.5px;color:var(--muted);line-height:1.35;
+.mos-tit{font-size:11px;color:var(--muted);line-height:1.35;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .mos-pie{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:6px;}
 .mos-badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap;}
@@ -1228,7 +1259,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .esp-puntos{display:flex;gap:7px;}
 .esp-punto{width:7px;height:7px;border-radius:50%;background:var(--border);
   transition:background .25s ease;}
-.esp-punto.on{background:var(--accent);}
+.esp-punto.on{background:var(--accent-fill);}
 /* Quien pide menos movimiento ve la figura quieta y las frases igual: se entera
    de que está esperando sin que nada se mueva. */
 @media (prefers-reduced-motion:reduce){
@@ -1266,7 +1297,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .cel-lineas{margin-top:14px;display:flex;flex-direction:column;gap:7px;}
 .cel-linea{display:flex;align-items:center;gap:9px;text-align:left;font-size:12.5px;
   background:var(--surface);border-radius:var(--radius-sm);padding:9px 11px;line-height:1.35;}
-.cel-linea svg{color:var(--accent);}
+.cel-linea svg{color:var(--accent-ink);}
 .cel-linea b{font-weight:800;}
 /* El récord es lo más gordo que puede pasar en una sesión: se distingue del
    resto de líneas en vez de perderse entre ellas. */
@@ -1277,23 +1308,23 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* La rutina siguiente, al terminar el plan: tarjeta violeta con su botón. */
 .cel-siguiente{margin-top:14px;padding:14px;border-radius:var(--radius);text-align:left;
   background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.35);}
-.cel-sig-tag{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);}
+.cel-sig-tag{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent-ink);}
 .cel-sig-nombre{font-size:17px;font-weight:800;margin-top:3px;}
 .cel-sig-desc{font-size:12.5px;color:var(--muted);line-height:1.45;margin:4px 0 12px;}
 .cel-siguiente .btn{margin:0;}
 #cel-seguir{margin-top:10px;}
 .cel-cifra{margin-left:auto;font-family:'Cifras',-apple-system,sans-serif;font-weight:800;
-  font-size:14px;color:var(--accent);white-space:nowrap;}
+  font-size:14px;color:var(--accent-ink);white-space:nowrap;}
 .cel-linea.hito .cel-cifra{color:var(--green);}
 
 .onboarding{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;height:100dvh;background:var(--bg);z-index:500;display:flex;flex-direction:column;overflow-y:auto;}
 .onboarding.hidden{display:none;}
-.ob-enlace{background:none;border:none;color:var(--accent);font-family:inherit;font-size:12.5px;
+.ob-enlace{background:none;border:none;color:var(--accent-ink);font-family:inherit;font-size:12.5px;
   font-weight:700;padding:12px 8px 4px;cursor:pointer;flex:1 0 100%;}
 .ob-step{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px 24px;text-align:center;}
 .ob-step.active{display:flex;}
 .ob-title{font-size:28px;font-weight:800;margin-bottom:8px;color:var(--text);}
-.ob-title span{color:var(--accent);}
+.ob-title span{color:var(--accent-ink);}
 .ob-sub{font-size:14px;color:var(--muted);margin-bottom:32px;line-height:1.6;}
 .ob-routine-btn{width:100%;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .2s;}
 .ob-routine-btn.selected{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
@@ -1307,14 +1338,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ob-opciones{display:flex;gap:6px;flex-wrap:wrap;}
 .ob-op{flex:1 1 0;min-width:0;padding:11px 6px;border-radius:var(--radius-sm);border:1px solid var(--border);
   background:var(--card);color:var(--text);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;}
-.ob-op.elegida{border-color:var(--accent);background:rgba(var(--accent-rgb),0.12);color:var(--accent);}
+.ob-op.elegida{border-color:var(--accent);background:rgba(var(--accent-rgb),0.12);color:var(--accent-ink);}
 .ob-peso{display:flex;align-items:center;gap:8px;}
 .ob-peso input{max-width:120px;text-align:center;font-size:16px;font-weight:700;margin:0;}
 .ob-peso span{font-size:13px;color:var(--muted);}
 /* Las rutinas, en dos grupos cuando hay perfil: las recomendadas y el resto. */
 .ob-grupo{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 8px;text-align:left;}
 .ob-reco{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:800;
-  color:var(--accent);background:rgba(var(--accent-rgb),0.14);vertical-align:1px;}
+  color:var(--accent-ink);background:rgba(var(--accent-rgb),0.14);vertical-align:1px;}
 
 /* ── Elegir VARIAS rutinas (15/09/2026, pedido por quienes la probaron) ──
    Casilla cuadrada = puedes marcar varias; redonda = eliges una. La diferencia
@@ -1329,7 +1360,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .marca{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid var(--border);margin-top:1px;
   display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900;line-height:1;}
 .marca.redonda{border-radius:50%;}
-.seleccionada .marca,.ob-routine-btn.selected .marca{background:var(--accent);border-color:var(--accent);}
+.seleccionada .marca,.ob-routine-btn.selected .marca{background:var(--accent-fill);border-color:var(--accent);}
 .marca.redonda i{display:block;width:8px;height:8px;border-radius:50%;background:#fff;}
 .preset-pie{padding:12px 12px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--bg);}
 .preset-pie .btn{margin:0;}
@@ -1341,7 +1372,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    del título—, en el color de lo que se toca y diciendo a dónde te lleva. */
 .btn-volver{display:inline-flex;align-items:center;gap:2px;background:none;border:none;
   padding:6px 10px 6px 0;margin:-6px 0 4px;min-height:40px;font-family:inherit;font-size:14.5px;
-  font-weight:700;color:var(--accent);cursor:pointer;}
+  font-weight:700;color:var(--accent-ink);cursor:pointer;}
 .btn-volver svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2.4;
   stroke-linecap:round;stroke-linejoin:round;}
 .btn-volver:active{opacity:.55;}
@@ -1361,7 +1392,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .pasos-instalar li{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5;
   margin-bottom:9px;color:var(--text);}
 .pasos-instalar li::before{counter-increment:paso;content:counter(paso);flex:none;width:22px;height:22px;
-  border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:800;
+  border-radius:50%;background:var(--accent-fill);color:#fff;font-size:12px;font-weight:800;
   display:flex;align-items:center;justify-content:center;margin-top:0;}
 .tecla{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;
   padding:0 6px;border-radius:7px;background:var(--surface);border:1px solid var(--border);
@@ -1383,13 +1414,13 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* Pantallas vacías: estadoVacio(). */
 .vacio-caja{text-align:center;padding:18px 8px 6px;}
 .vacio-ico{width:48px;height:48px;margin:0 auto 10px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  background:rgba(var(--accent-rgb),.12);color:var(--accent);}
+  background:rgba(var(--accent-rgb),.12);color:var(--accent-ink);}
 .vacio-svg{width:24px;height:24px;}
 .vacio-tit{font-size:15px;font-weight:800;margin-bottom:4px;color:var(--text);}
 .vacio-txt{font-size:13px;color:var(--muted);line-height:1.45;max-width:320px;margin:0 auto;}
 .vacio-btn{margin-top:14px;}
 .ob-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
-.ob-dot.active{background:var(--accent);}
+.ob-dot.active{background:var(--accent-fill);}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <!-- Qué mapas musculares existen en img/ejercicios/. Lo genera
@@ -1547,7 +1578,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
              setAuthTab(). -->
         <div id="olvide-fila" style="margin-top:6px;text-align:right;">
           <a href="#" onclick="recuperarContrasena();return false;"
-             style="font-size:12px;color:var(--accent);font-weight:700;">¿Has olvidado la contraseña?</a>
+             style="font-size:12px;color:var(--accent-ink);font-weight:700;">¿Has olvidado la contraseña?</a>
         </div>
 
         <div id="register-extra" class="hidden">
@@ -1599,8 +1630,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
                un consentimiento explícito. Se guarda qué versión aceptó. -->
           <label style="display:flex;gap:9px;align-items:flex-start;margin-top:14px;font-size:12px;line-height:1.45;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:500;">
             <input type="checkbox" id="auth-consiente" style="width:auto;margin:2px 0 0;flex:none;">
-            <span>He leído la <a href="legal.html#privacidad" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">política de privacidad</a>
-              y los <a href="legal.html#terminos" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">términos</a>,
+            <span>He leído la <a href="legal.html#privacidad" target="_blank" rel="noopener" style="color:var(--accent-ink);font-weight:700;">política de privacidad</a>
+              y los <a href="legal.html#terminos" target="_blank" rel="noopener" style="color:var(--accent-ink);font-weight:700;">términos</a>,
               y doy mi consentimiento para que se traten mis datos de salud
               (medidas, fotos y entrenamientos) para usar la app.</span>
           </label>
@@ -1709,7 +1740,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
         <div class="msg msg-info">
           Este dispositivo guarda además datos antiguos sin subir
           (<span id="pendiente-resumen"></span>).
-          <a href="#" onclick="revisarPendienteLocal();return false;" style="color:var(--accent);font-weight:700;">Revisar</a>
+          <a href="#" onclick="revisarPendienteLocal();return false;" style="color:var(--accent-ink);font-weight:700;">Revisar</a>
         </div>
       </div>
 
@@ -1839,7 +1870,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
            la foto (se abre tocando tu foto en la cabecera). -->
       <div style="margin-top:10px;font-size:12px;color:var(--muted);">
         Peso: <b id="cfg-peso" style="color:var(--text);">—</b>
-        <a href="#" onclick="irAMedidas();return false;" style="color:var(--accent);font-weight:700;margin-left:6px;">Registrar en Medidas</a>
+        <a href="#" onclick="irAMedidas();return false;" style="color:var(--accent-ink);font-weight:700;margin-left:6px;">Registrar en Medidas</a>
       </div>
       <div id="cfg-imc" style="margin-top:6px;font-size:12px;color:var(--muted);"></div>
     </div>
@@ -2496,7 +2527,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     </p>
     <div id="retos-lista" style="margin-top:8px;">Cargando...</div>
     <details id="reto-nuevo" style="margin-top:10px;">
-      <summary style="font-size:12px;color:var(--accent);font-weight:700;cursor:pointer;">+ Crear un reto</summary>
+      <summary style="font-size:12px;color:var(--accent-ink);font-weight:700;cursor:pointer;">+ Crear un reto</summary>
       <div style="margin-top:10px;">
         <label style="font-size:11px;color:var(--muted);">Cuánto hay que subir</label>
         <div class="fila-reto">
@@ -2627,8 +2658,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <button class="btn btn-primary" id="cfg-app-btn" onclick="guardarConfigApp()">Guardar</button>
     <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:10px;word-break:break-all;">
       Enlace del alta abierta: <span id="cfg-enlace"></span><br>
-      <a href="legal.html#privacidad" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">Ver privacidad</a> ·
-      <a href="legal.html#terminos" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;">Ver términos</a>
+      <a href="legal.html#privacidad" target="_blank" rel="noopener" style="color:var(--accent-ink);font-weight:700;">Ver privacidad</a> ·
+      <a href="legal.html#terminos" target="_blank" rel="noopener" style="color:var(--accent-ink);font-weight:700;">Ver términos</a>
     </div>
   </div>
 </div>
@@ -3471,7 +3502,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-18 16:42';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-21 13:29';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -3849,7 +3880,7 @@ function pintarCopiaPrevia(){
   c.innerHTML='<div class="msg msg-info">'+
     'Copia automática de '+escaparHTML(copia.origen||'antes de sobrescribir')+
     '<br><b>'+escaparHTML(cuando)+'</b> — '+escaparHTML(textoResumen(resumenDB(copia.db)))+
-    '<br><a href="#" onclick="restaurarCopiaPrevia();return false;" style="color:var(--accent);font-weight:700;">Restaurar</a>'+
+    '<br><a href="#" onclick="restaurarCopiaPrevia();return false;" style="color:var(--accent-ink);font-weight:700;">Restaurar</a>'+
     '</div>';
 }
 
@@ -4835,7 +4866,7 @@ function pintarAvisoBorrador(sinGuardar){
   el.className='msg '+(sinGuardar?'msg-info':'msg-ok');
   el.innerHTML=sinGuardar
     ? 'Cambios sin guardar. Se conservan aunque salgas; pulsa <b>Guardar sesión</b> para darla por hecha.'
-    : 'Recuperado lo que dejaste sin guardar. <a href="#" onclick="descartarBorrador();return false;" style="color:var(--accent);">Descartar</a>';
+    : 'Recuperado lo que dejaste sin guardar. <a href="#" onclick="descartarBorrador();return false;" style="color:var(--accent-ink);">Descartar</a>';
 }
 
 function ocultarAvisoBorrador(){
@@ -5659,7 +5690,7 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
         <div style="display:flex;flex-wrap:wrap;gap:4px;">
           ${w.days.map(d=>{
             const done=!!act.sessions[d.s];
-            return`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${done?'rgba(45,122,79,0.12)':'var(--surface)'};color:${done?'var(--green)':'var(--muted)'};">${d.name.split('·')[1]?.trim()||d.name}</span>`;
+            return`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${done?'rgba(45,122,79,0.12)':'var(--surface)'};color:${done?'var(--green)':'var(--muted)'};">${d.name.split('·')[1]?.trim()||d.name}</span>`;
           }).join('')}
         </div>
       </div>
@@ -7190,7 +7221,7 @@ function textoInfoReparto(sinEmpezar,destino){
     '<b>'+maxEjerciciosPorSesion(destino)+' ejercicios como mucho</b>'+
     (ajustes.length?': '+ajustes.join(' y ')+'.':'.')+
     (infoReparto.descartados.length
-      ? ' <b style="color:var(--danger);">No cabían '+infoReparto.descartados.length+
+      ? ' <b style="color:var(--danger-ink);">No cabían '+infoReparto.descartados.length+
         ': '+infoReparto.descartados.map(escaparHTML).join(', ')+'.</b>'
       : '')+
     ' Puedes renombrar cada sesión y mover ejercicios antes de aplicar.';
@@ -9236,7 +9267,7 @@ function nrPintarFilas(items){
   return items.map((e, i) => {
     const puesto = yaPuestos.has(e.nombre);
     const musc = e.conMusculo && e.musculo
-      ? `<div style="font-size:10.5px;color:var(--muted);margin-top:1px;">${escaparHTML(NOMBRE_MUSCULO[e.musculo]||e.musculo)}</div>` : '';
+      ? `<div style="font-size:11px;color:var(--muted);margin-top:1px;">${escaparHTML(NOMBRE_MUSCULO[e.musculo]||e.musculo)}</div>` : '';
     return `<div class="sel-ej${puesto ? ' puesto' : ''}">
       <div class="sel-ej-nombre">${escaparHTML(e.nombre)}${musc}</div>
       ${puesto
@@ -9566,7 +9597,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 <div id="onboarding" class="onboarding hidden">
   <div style="padding:24px 24px 0;width:100%;">
-    <div style="font-size:18px;font-weight:800;">MY <span style="color:var(--accent);">FITNESS TRACKER</span></div>
+    <div style="font-size:18px;font-weight:800;">MY <span style="color:var(--accent-ink);">FITNESS TRACKER</span></div>
   </div>
   <div class="ob-dots" style="margin-top:16px;">
     <div class="ob-dot active" id="ob-dot-0"></div>
@@ -9582,7 +9613,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <div class="ob-avatar" id="ob-avatar" onclick="document.getElementById('ob-photo-input').click()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
-           style="width:44px;height:44px;color:var(--accent);">
+           style="width:44px;height:44px;color:var(--accent-ink);">
         <circle cx="12" cy="8.5" r="3.5"/><path d="M4.5 20c0-3.7 3.4-5.9 7.5-5.9s7.5 2.2 7.5 5.9"/>
       </svg>
     </div>
@@ -9628,7 +9659,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   <!-- Paso 3: Listo -->
   <div class="ob-step" id="ob-step-2">
-    <svg class="ico" style="width:64px;height:64px;margin:0 auto 16px;color:var(--accent);"
+    <svg class="ico" style="width:64px;height:64px;margin:0 auto 16px;color:var(--accent-ink);"
          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M7 4h10v5.5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a3 3 0 0 0 2.9 3M17 6h2.5a3 3 0 0 1-2.9 3"/>
@@ -10772,7 +10803,7 @@ function vigilarRutinasCliente(uid, activeRoutineDelPerfil){
     elProg.innerHTML =
       `<b style="color:var(--text);">${escaparHTML(r.nombre)}</b>`+
       `<div>${r.hechas}/${r.total} sesiones · ${r.pct}%</div>`+
-      (r.total === 0 ? '<div style="color:var(--accent);font-weight:700;">Sin sesiones</div>' : '')+
+      (r.total === 0 ? '<div style="color:var(--accent-ink);font-weight:700;">Sin sesiones</div>' : '')+
       `<div class="prog-bar"><div class="prog-fill" style="width:${r.pct}%"></div></div>`;
   }, err => {
     console.error('[entrenador] no se pudieron leer las rutinas del cliente', err);
@@ -10870,7 +10901,7 @@ function vigilarClientes(){
           ${miniaturaCliente(cl)}
           <div class="cliente-card-nombre">${escaparHTML(cl.name||'(sin nombre)')}</div>
           ${cl.suspendidoPorCoach === true
-            ? '<div style="font-size:11px;font-weight:700;color:var(--danger);margin-top:2px;">En pausa</div>' : ''}
+            ? '<div style="font-size:11px;font-weight:700;color:var(--danger-ink);margin-top:2px;">En pausa</div>' : ''}
           <div class="cliente-card-meta" id="cliente-prog-${d.id}">Cargando...</div>
         </button>`);
       vigilarRutinasCliente(d.id, cl.activeRoutine || null);
@@ -11153,14 +11184,14 @@ async function pintarEntrenadoresDeAlta(usadas){
         ${desde ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">Entró el ${escaparHTML(desde)}</div>` : ''}
         <div style="font-size:11px;margin-top:2px;color:${acceso.vencido ? 'var(--danger)' : 'var(--muted)'};">${escaparHTML(acceso.texto)}${perfil.registroAbierto ? ' · entró con el alta abierta' : ''}</div>
         ${perfil.quierePagar
-          ? `<div style="font-size:12px;margin-top:4px;color:var(--accent);font-weight:800;">Quiere pagar · lo pidió el ${escaparHTML(fechaCorta(msDeFecha(perfil.quierePagar)))}</div>`
+          ? `<div style="font-size:12px;margin-top:4px;color:var(--accent-ink);font-weight:800;">Quiere pagar · lo pidió el ${escaparHTML(fechaCorta(msDeFecha(perfil.quierePagar)))}</div>`
           : ''}
         <div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
           ${perfil.suspendido
-            ? `<span class="badge" style="color:var(--danger);background:rgba(200,60,60,.12);">Suspendido</span>
+            ? `<span class="badge" style="color:var(--danger-ink);background:rgba(200,60,60,.12);">Suspendido</span>
                <button class="btn-sm" data-u="${escaparHTML(alta.usadoPor)}" onclick="reactivarEntrenador(this.dataset.u)">Reactivar</button>`
             : `${acceso.vencido
-                 ? `<span class="badge" style="color:var(--danger);background:rgba(200,60,60,.12);">Plazo terminado</span>`
+                 ? `<span class="badge" style="color:var(--danger-ink);background:rgba(200,60,60,.12);">Plazo terminado</span>`
                  : `<span class="badge badge-green">Activo</span>`}
                <button class="btn-sm btn-danger" data-u="${escaparHTML(alta.usadoPor)}" onclick="suspenderEntrenador(this.dataset.u)">Suspender</button>`}
           ${conFecha
@@ -11815,7 +11846,7 @@ function pintarDetalle(){
         </div>
       </button>`;
     }).join('') +
-    `<button class="btn btn-secondary" style="margin-top:8px;color:var(--accent);border-color:var(--accent);"
+    `<button class="btn btn-secondary" style="margin-top:8px;color:var(--accent-ink);border-color:var(--accent);"
         data-uid="${escaparHTML(detalle.uid)}" data-nombre="${escaparHTML(detalle.nombre||'')}"
         onclick="abrirAsignar(this.dataset.uid,this.dataset.nombre)">+ Añadir rutina</button>` +
     '</div>');
@@ -11919,7 +11950,7 @@ function pintarRutinaCliente(){
           ${bloqueDiasCliente(r)}
           <div class="sem-selector">${selector}</div>
           <div style="font-size:12px;color:var(--muted);margin:8px 0 6px;">
-            Semana ${sem.num} · ${escaparHTML(sem.title||'')}${sem.num===enCurso?' <span style="color:var(--accent);">· en curso</span>':''}
+            Semana ${sem.num} · ${escaparHTML(sem.title||'')}${sem.num===enCurso?' <span style="color:var(--accent-ink);">· en curso</span>':''}
           </div>
           ${dias}
         </div>

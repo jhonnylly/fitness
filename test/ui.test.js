@@ -408,10 +408,12 @@ async function appLista(page, url){
       q('.sc-quitar')[q('.sc-quitar').length-1].click(); await tic();
       q('.sc-quitar')[q('.sc-quitar').length-1].click(); await tic();
       r.vuelta = curEx[0].sets.length === antes;
-      /* 06/10/2026 (Jhon): la × junto a "S1" parecía un signo de multiplicar. */
+      /* 06/10/2026 (Jhon): la × junto a "S1" parecía un signo de multiplicar.
+         Desde el 21/10/2026 el texto rojo usa --danger-ink (el rojo con
+         contraste AA según el tema), no --danger. */
       const quitar = q('.sc-quitar')[0];
       r.papelera = !!quitar.querySelector('svg') && !/×/.test(quitar.textContent)
-                   && getComputedStyle(quitar).color === getComputedStyle(document.documentElement).getPropertyValue('--danger').trim().replace(/^#(..)(..)(..)$/,(m,r1,g1,b1)=>`rgb(${parseInt(r1,16)}, ${parseInt(g1,16)}, ${parseInt(b1,16)})`)
+                   && getComputedStyle(quitar).color === getComputedStyle(document.documentElement).getPropertyValue('--danger-ink').trim().replace(/^#(..)(..)(..)$/,(m,r1,g1,b1)=>`rgb(${parseInt(r1,16)}, ${parseInt(g1,16)}, ${parseInt(b1,16)})`)
                    && quitar.getBoundingClientRect().width >= 28;
       const quitarEj = document.querySelector('.ex-quitar');
       r.papeleraEjercicio = !!quitarEj && !!quitarEj.querySelector('svg') && !/×/.test(quitarEj.textContent);
