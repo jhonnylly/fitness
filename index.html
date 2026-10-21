@@ -768,7 +768,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    pasó a #asignar-panel, que estuvo desplegado bajo la lista de clientes desde
    que se creó. */
 #auth-panel .hidden{display:none;}
-#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden,#home-pausado.hidden,#alta-fila-hasta.hidden,#alta-fila-dias.hidden,#home-plan.hidden,#rol-fila-hasta.hidden,#rol-fila-dias.hidden,#asignar-activar-fila.hidden{display:none;}
+#asignar-panel.hidden,#home-entrenador.hidden,#comparador.hidden,#cfg-propuesta.hidden,#visor-foto.hidden,#selector-ejercicio.hidden,#instalar-aviso.hidden,#instalar-ajustes.hidden,#home-reto.hidden,#home-aviso.hidden,#aviso-suspendido.hidden,#home-pausado.hidden,#alta-fila-hasta.hidden,#alta-fila-dias.hidden,#home-plan.hidden,#rol-fila-hasta.hidden,#rol-fila-dias.hidden,#asignar-activar-fila.hidden,#dial-semanas.hidden{display:none;}
 /* Comparador de fotos: capa propia por encima de todo, incluidos los paneles. */
 #comparador{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;}
 /* Visor de la foto de perfil. Mismo patrón que el comparador: capa fija a
@@ -932,6 +932,57 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    antes: el anillo va a la IZQUIERDA (así lo pone la propuesta, y es lo primero
    que se mira) y mide 76 px en vez de 88, para devolverle a la tarjeta de hoy
    parte de lo que le quita. */
+/* ═══ EL DIAL de Inicio (21/10/2026, rediseño pedido por Jhon) ═══
+   La portada es la esfera de un reloj de buceo: el bisel gira con el dedo y la
+   marca de arriba señala una sección; tocar el centro entra en ella. Salió de un
+   prototipo que Jhon probó en su iPhone ("gira bien"). El bisel es OSCURO en los
+   dos temas, como en un reloj: es una superficie siempre oscura con su tinta. */
+:root{--bisel:#0d1526;--bisel-borde:#2c3d63;--bisel-txt:#a9b6d1;--bisel-sel:#ffd84a;--esfera:#fbfcff;}
+@media(prefers-color-scheme:dark){ :root{--esfera:#101a2d;} }
+.dial-zona{display:flex;flex-direction:column;align-items:center;gap:14px;margin:2px 0 18px;}
+.dial{position:relative;width:min(84vw,330px);aspect-ratio:1;max-width:100%;}
+.dial svg{width:100%;height:100%;display:block;overflow:visible;}
+/* touch-action:none SOLO en el aro: el resto de la pantalla sigue haciendo
+   scroll normal con el dedo encima del dial. */
+.dial-aro{touch-action:none;cursor:grab;outline:none;}
+.dial-aro.agarrado{cursor:grabbing;}
+.dial-aro:focus-visible .dial-foco{stroke:var(--bisel-sel);}
+.dial-marca{fill:var(--accent);}
+.dial-etq{font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;
+  fill:var(--bisel-txt);transition:fill .15s ease;}
+.dial-etq.sel{fill:var(--bisel-sel);}
+.dial-tic{stroke:var(--bisel-borde);stroke-width:1.5;}
+.dial-tic.gordo{stroke:var(--bisel-txt);stroke-width:2.5;}
+.dial-centro{position:absolute;inset:25%;border-radius:50%;border:0;background:var(--esfera);color:var(--text);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;
+  box-shadow:inset 0 0 0 1px var(--border),0 8px 24px rgba(0,0,0,.25);font-family:inherit;padding:0;
+  transition:transform .1s ease;}
+.dial-centro:active{transform:scale(.97);}
+.dial-centro:focus-visible{outline:3px solid var(--accent);outline-offset:4px;}
+.dial-dia,.dial-mes{font-weight:600;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.dial-num{font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700;
+  font-size:clamp(44px,14vw,58px);line-height:.95;font-variant-numeric:tabular-nums;}
+.dial-destino{margin-top:6px;font-size:12px;color:var(--accent-ink);font-weight:700;max-width:80%;
+  text-align:center;line-height:1.3;min-height:2.6em;}
+/* Semanas: la tira bajo el dial. La de ahora va resaltada; tocar una abre sus
+   sesiones en Entrenar. Con más de 4 semanas la tira se desliza de lado. */
+.dial-semanas{width:min(84vw,330px);max-width:100%;}
+.dial-semanas-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;}
+.dial-semanas-cab b{font-size:13px;letter-spacing:.12em;text-transform:uppercase;}
+.dial-semanas-cab span{font-size:12px;color:var(--muted);}
+.dial-tira{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 18px)/4);gap:6px;
+  overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:2px;}
+.dial-tira::-webkit-scrollbar{display:none;}
+.dial-sem{min-height:56px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;
+  padding:8px 4px 9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  font-family:inherit;font-weight:700;font-size:14px;letter-spacing:.06em;cursor:pointer;scroll-snap-align:start;}
+.dial-sem:active{transform:scale(.97);}
+.dial-sem.actual{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.dial-sem.futura{color:var(--muted);}
+.dial-sem:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+.dial-puntos{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:100%;}
+.dial-puntos i{width:7px;height:7px;border-radius:50%;background:var(--surface);box-shadow:inset 0 0 0 1px var(--border);}
+.dial-puntos i.hecho{background:var(--accent);box-shadow:none;}
 /* 24/09/2026: la tarjeta es un bloque y la fila de anillo + nombre va en
    .hp-fila, para que las acciones quepan DENTRO, al pie (ver .hp-acciones). */
 .hp{background:var(--card);border:1px solid var(--border);
@@ -2043,6 +2094,42 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   <!-- Reto del entrenador: invitación mientras no se ha contestado, y marcador
        cuando ya se participa. Lo pinta pintarAvisoReto(). -->
   <div id="home-reto" class="hidden"></div>
+
+  <!-- EL DIAL (21/10/2026). Va DEBAJO de los avisos del entrenador, que siguen
+       arriba del todo. El centro, en Inicio, hace lo mismo que la tarjeta
+       "Entrenamiento de hoy" (que se queda más abajo: no se pierde nada).
+       Lo dibuja y lo mueve iniciarDial(); los textos los pone pintarDial(). -->
+  <section class="dial-zona" id="dial-zona" aria-label="Ir a una sección">
+    <div class="dial" id="dial">
+      <svg viewBox="0 0 400 400" aria-hidden="false">
+        <defs>
+          <radialGradient id="dial-brillo" cx="50%" cy="35%" r="70%">
+            <stop offset="0" stop-color="#ffffff" stop-opacity=".07"/>
+            <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle cx="200" cy="200" r="196" fill="var(--bisel)" stroke="var(--bisel-borde)" stroke-width="2"/>
+        <circle cx="200" cy="200" r="196" fill="url(#dial-brillo)"/>
+        <g class="dial-aro" id="dial-aro" tabindex="0" role="slider" aria-label="Sección"
+           aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" aria-valuetext="Inicio">
+          <circle class="dial-foco" cx="200" cy="200" r="190" fill="transparent" stroke="transparent" stroke-width="3"/>
+          <g id="dial-tics"></g>
+          <g id="dial-etiquetas"></g>
+        </g>
+        <path class="dial-marca" d="M200 22 l-9 -16 h18 z"/>
+      </svg>
+      <button type="button" class="dial-centro" id="dial-centro" aria-describedby="dial-destino">
+        <span class="dial-dia" id="dial-dia"></span>
+        <span class="dial-num" id="dial-num"></span>
+        <span class="dial-mes" id="dial-mes"></span>
+        <span class="dial-destino" id="dial-destino" aria-live="polite"></span>
+      </button>
+    </div>
+    <div class="dial-semanas" id="dial-semanas">
+      <div class="dial-semanas-cab"><b>Semanas</b><span>toca una para ver sus sesiones</span></div>
+      <div class="dial-tira" id="dial-tira"></div>
+    </div>
+  </section>
 
   <!-- Aquí vivía "Tu resumen de hoy": cuatro tarjetas (Entreno, Racha, Cardio,
        Medidas) que repetían lo que tienen al lado. "Entreno" decía lo mismo que
@@ -3505,7 +3592,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-21 14:20';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-21 19:59';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -6927,6 +7014,176 @@ function updateHome(){
           '<i class="'+(i<a.hechas?'on':'')+'" style="height:'+(i<a.hechas?100:38)+'%"></i>').join('')
       : '';
   }
+  pintarDial();
+}
+
+/* ═══════════ EL DIAL de Inicio (21/10/2026) ═══════════
+   Rediseño pedido por Jhon y probado antes en un prototipo en su iPhone. El
+   bisel gira con el dedo y la marca de arriba señala una sección; tocar el
+   centro entra. En Inicio el centro hace lo mismo que la tarjeta de hoy.
+   El gesto sigue las pautas de iOS: el aro va pegado al dedo, no se mueve hasta
+   pasar 8 px (un toque no gira), al soltar proyecta el impulso (deceleración
+   .995, la de iOS) y se asienta con un muelle (amortiguación .8, respuesta .4).
+   Tocar una etiqueta gira hasta ella; tocarla otra vez, entra.
+   Solo el ANILLO del bisel captura el dedo (touch-action:none); entre el anillo
+   y el centro la página sigue haciendo scroll, si no medio Inicio no se movería. */
+const DIAL_SECCIONES=['Inicio','Entrenar','Resumen','Medidas','Ajustes'];
+const DIAL_PASO=360/DIAL_SECCIONES.length;
+const dialEstado={x:0,v:0,raf:0,sel:0,etiquetas:null,destinos:{}};
+
+function dialIndice(rot){ return ((Math.round(-rot/DIAL_PASO)%5)+5)%5; }
+
+function dialPintarGiro(){
+  const e=dialEstado;
+  if(!e.etiquetas)return;
+  for(const t of e.etiquetas){
+    const a=(t.ang+e.x)*Math.PI/180;
+    t.g.setAttribute('transform','translate('+(200+148*Math.sin(a)).toFixed(2)+' '+(200-148*Math.cos(a)).toFixed(2)+')');
+  }
+  const i=dialIndice(e.x);
+  if(i!==e.sel){ e.sel=i; if(navigator.vibrate)try{navigator.vibrate(6);}catch(_){/* sin vibración */} }
+  e.etiquetas.forEach((t,j)=>t.t.classList.toggle('sel',j===e.sel));
+  const aro=document.getElementById('dial-aro');
+  aro.setAttribute('aria-valuenow',e.sel);
+  aro.setAttribute('aria-valuetext',DIAL_SECCIONES[e.sel]);
+  document.getElementById('dial-destino').textContent=e.destinos[DIAL_SECCIONES[e.sel]]||'';
+}
+
+/* Muelle con respuesta y amortiguación, como los de iOS. Arranca SIEMPRE desde
+   donde está el aro y con la velocidad que lleva: se puede agarrar a medio giro. */
+function dialMuelle(objetivo,{amort=1,resp=.35}={}){
+  const e=dialEstado;
+  cancelAnimationFrame(e.raf);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ e.x=objetivo;e.v=0;dialPintarGiro();return; }
+  const k=Math.pow(2*Math.PI/resp,2), c=4*Math.PI*amort/resp;
+  let t0=performance.now();
+  const paso=t=>{
+    const dt=Math.min(.032,(t-t0)/1000);t0=t;
+    e.v+=(-k*(e.x-objetivo)-c*e.v)*dt; e.x+=e.v*dt;
+    if(Math.abs(e.x-objetivo)<.05&&Math.abs(e.v)<1){ e.x=objetivo;e.v=0;dialPintarGiro();return; }
+    dialPintarGiro(); e.raf=requestAnimationFrame(paso);
+  };
+  e.raf=requestAnimationFrame(paso);
+}
+
+// Gira hasta la sección i por el camino más corto.
+function dialGirarA(i){
+  let d=i-dialIndice(dialEstado.x); if(d>2)d-=5; if(d<-2)d+=5;
+  dialMuelle(Math.round(dialEstado.x/DIAL_PASO)*DIAL_PASO-d*DIAL_PASO);
+}
+
+function dialEntrar(i){
+  if(i===0) irAProximaSesion();
+  else if(i===4) toggleConfigPanel();
+  else goTo(['','log','resumen','medidas'][i]);
+  /* De vuelta en Inicio, el dial vuelve a apuntar a Inicio. Se hace ya, sin
+     animación: la pantalla ya no está a la vista. */
+  cancelAnimationFrame(dialEstado.raf);
+  dialEstado.x=0; dialEstado.v=0; dialPintarGiro();
+}
+
+function iniciarDial(){
+  if(dialEstado.etiquetas||!document.getElementById('dial'))return;
+  const NS='http://www.w3.org/2000/svg';
+  const tics=document.getElementById('dial-tics');
+  for(let i=0;i<60;i++){
+    const gordo=i%12===0, l=document.createElementNS(NS,'line');
+    l.setAttribute('x1',200);l.setAttribute('y1',10);l.setAttribute('x2',200);l.setAttribute('y2',gordo?22:16);
+    l.setAttribute('class','dial-tic'+(gordo?' gordo':''));l.setAttribute('transform','rotate('+(i*6)+' 200 200)');
+    tics.appendChild(l);
+  }
+  const etqs=document.getElementById('dial-etiquetas');
+  dialEstado.etiquetas=DIAL_SECCIONES.map((s,i)=>{
+    const g=document.createElementNS(NS,'g'), t=document.createElementNS(NS,'text');
+    t.textContent=s;t.setAttribute('class','dial-etq');t.setAttribute('text-anchor','middle');t.setAttribute('dominant-baseline','central');
+    g.appendChild(t);g.dataset.i=i;g.style.cursor='pointer';etqs.appendChild(g);
+    return {g,t,ang:i*DIAL_PASO};
+  });
+
+  const aro=document.getElementById('dial-aro'), dial=document.getElementById('dial');
+  const angulo=ev=>{ const r=dial.getBoundingClientRect();
+    return Math.atan2(ev.clientX-(r.left+r.width/2),-(ev.clientY-(r.top+r.height/2)))*180/Math.PI; };
+  const proyectar=v=>(v/1000)*.995/(1-.995);
+  let ini=null, hist=[], movido=false, tocado=null;
+  aro.addEventListener('pointerdown',ev=>{
+    cancelAnimationFrame(dialEstado.raf);
+    aro.setPointerCapture(ev.pointerId);aro.classList.add('agarrado');
+    tocado=ev.target.closest('g[data-i]');
+    ini={ang:angulo(ev),x:ev.clientX,y:ev.clientY};hist=[{t:performance.now(),r:dialEstado.x}];movido=false;
+  });
+  aro.addEventListener('pointermove',ev=>{
+    if(!ini)return;
+    if(!movido&&Math.hypot(ev.clientX-ini.x,ev.clientY-ini.y)<8)return;
+    movido=true;
+    let d=angulo(ev)-ini.ang; if(d>180)d-=360; if(d<-180)d+=360;
+    dialEstado.x+=d; ini.ang=angulo(ev);
+    hist.push({t:performance.now(),r:dialEstado.x}); if(hist.length>6)hist.shift();
+    dialEstado.v=0; dialPintarGiro();
+  });
+  const fin=()=>{
+    if(!ini)return; aro.classList.remove('agarrado'); ini=null;
+    if(!movido){
+      if(tocado){ const i=+tocado.dataset.i; if(i===dialEstado.sel&&i!==0)dialEntrar(i); else dialGirarA(i); }
+      return;
+    }
+    const a=hist[0], b=hist[hist.length-1], dt=(b.t-a.t)/1000||1, v=(b.r-a.r)/dt;
+    dialEstado.v=v;
+    dialMuelle(Math.round((dialEstado.x+proyectar(v))/DIAL_PASO)*DIAL_PASO,{amort:.8,resp:.4});
+  };
+  aro.addEventListener('pointerup',fin);aro.addEventListener('pointercancel',fin);
+  aro.addEventListener('keydown',ev=>{
+    if(ev.key==='ArrowRight'||ev.key==='ArrowDown'){ev.preventDefault();dialGirarA((dialEstado.sel+1)%5);}
+    else if(ev.key==='ArrowLeft'||ev.key==='ArrowUp'){ev.preventDefault();dialGirarA((dialEstado.sel+4)%5);}
+    else if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();dialEntrar(dialEstado.sel);}
+  });
+  document.getElementById('dial-centro').addEventListener('click',()=>dialEntrar(dialEstado.sel));
+  dialPintarGiro();
+}
+
+/* Los textos del dial y la tira de semanas. La llama updateHome(), así que
+   está al día cada vez que se entra en Inicio o cambian los datos. */
+function pintarDial(){
+  // Sin SVG no hay dial (las pruebas de almacenamiento corren con un DOM de mentira).
+  if(!document.getElementById('dial')||typeof document.createElementNS!=='function')return;
+  iniciarDial();
+  const hoy=new Date();
+  document.getElementById('dial-dia').textContent=hoy.toLocaleDateString('es-ES',{weekday:'long'});
+  document.getElementById('dial-num').textContent=hoy.getDate();
+  document.getElementById('dial-mes').textContent=hoy.toLocaleDateString('es-ES',{month:'long'});
+
+  const act=getActive();
+  const done=Object.keys(getActiveSessions()||{}).length, total=totalSesiones(act);
+  const a=act?adherenciaSemana(act):null;
+  const pesos=(getActiveMedidas()||[]).filter(m=>m.peso!=null&&m.peso!=='');
+  // Lo de Inicio sale de la tarjeta de hoy, que ya decide entre plan, aviso del entrenador y plan terminado.
+  const tag=(document.getElementById('hoy-tag')||{}).textContent||'';
+  const tit=(document.getElementById('hoy-tit')||{}).textContent||'';
+  dialEstado.destinos={
+    Inicio:(tag==='Entrenamiento de hoy'?'Hoy':tag)+': '+tit,
+    Entrenar:a?('Semana '+a.num+' · '+a.hechas+' de '+a.previstas+' sesiones'):'Tus semanas y sesiones',
+    Resumen:total?(done+' de '+total+' sesiones · '+Math.round(done/total*100)+' %'):'Tu progreso y tus fotos',
+    Medidas:pesos.length?('Peso: '+num(pesos[pesos.length-1].peso)+' kg'):'Peso: sin registrar',
+    Ajustes:'Versión, copia de seguridad y tus datos'
+  };
+  dialPintarGiro();
+
+  const zona=document.getElementById('dial-semanas'), tira=document.getElementById('dial-tira');
+  const plan=(act&&act.plan)||[];
+  zona.classList.toggle('hidden',!plan.length);
+  if(!plan.length){ tira.innerHTML=''; return; }
+  const ses=getActiveSessions()||{}, actual=semanaEnCurso(act);
+  let pasada=true;
+  tira.innerHTML=plan.map(w=>{
+    const esActual=w.num===actual; if(esActual)pasada=false;
+    const cls=esActual?' actual':(pasada?'':' futura');
+    const dias=w.days||[], hechas=dias.filter(d=>ses[d.s]).length;
+    return '<button type="button" class="dial-sem'+cls+'" onclick="goTo(\'log\');openWeekDetail('+w.num+')"'+
+      ' aria-label="Semana '+w.num+', '+hechas+' de '+dias.length+' sesiones'+(esActual?', la de ahora':'')+'">'+
+      '<span>S'+w.num+'</span><span class="dial-puntos" aria-hidden="true">'+
+      dias.map(d=>'<i'+(ses[d.s]?' class="hecho"':'')+'></i>').join('')+'</span></button>';
+  }).join('');
+  const b=tira.querySelector('.actual');
+  if(b) tira.scrollLeft=Math.max(0,b.offsetLeft-tira.offsetLeft-tira.clientWidth/2+b.offsetWidth/2);
 }
 
 /* Minigráfica de peso: SVG a mano, sin Chart.js. Son 4 líneas y aquí no hay
