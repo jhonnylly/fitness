@@ -3554,7 +3554,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-21 21:22';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-22 18:31';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -6976,17 +6976,21 @@ function updateHome(){
 
 /* ═══════════ EL DIAL de Inicio (21/10/2026) ═══════════
    Rediseño pedido por Jhon y probado antes en un prototipo en su iPhone. El
-   bisel gira con el dedo y la marca de arriba señala una sección; tocar el
-   centro entra. En Inicio el centro hace lo mismo que la tarjeta de hoy.
+   bisel gira con el dedo y, al soltarlo, entra en la sección que queda bajo la
+   marca de arriba, como el mini-dial (22/10/2026: Jhon vio que, si había que
+   tocar después el centro, no se sabía qué hacer). Si se queda en Inicio no
+   hace nada. El centro entra en la sección marcada; en Inicio hace lo mismo
+   que la tarjeta de hoy.
    El gesto sigue las pautas de iOS: el aro va pegado al dedo, no se mueve hasta
    pasar 8 px (un toque no gira), al soltar proyecta el impulso (deceleración
    .995, la de iOS) y se asienta con un muelle (amortiguación .8, respuesta .4).
-   Tocar una etiqueta gira hasta ella; tocarla otra vez, entra.
+   Tocar una etiqueta gira hasta ella y entra. Con el teclado, las flechas
+   solo giran y Intro entra: entrar a cada pulsación no dejaría elegir.
    Solo el bisel captura el dedo (touch-action:none); sobre el centro y fuera
    del dial la página sigue haciendo scroll. */
 const DIAL_SECCIONES=['Inicio','Entrenar','Resumen','Medidas','Ajustes'];
 const DIAL_PASO=360/DIAL_SECCIONES.length;
-const dialEstado={x:0,v:0,raf:0,sel:0,etiquetas:null,destinos:{}};
+const dialEstado={x:0,v:0,raf:0,sel:0,obj:null,etiquetas:null,destinos:{}};   // obj: adonde va el muelle
 
 function dialIndice(rot){ return ((Math.round(-rot/DIAL_PASO)%5)+5)%5; }
 
@@ -7008,26 +7012,31 @@ function dialPintarGiro(){
 
 /* Muelle con respuesta y amortiguación, como los de iOS. Arranca SIEMPRE desde
    donde está el aro y con la velocidad que lleva: se puede agarrar a medio giro. */
-function dialMuelle(objetivo,{amort=1,resp=.35}={}){
+function dialMuelle(objetivo,{amort=1,resp=.35}={},alFin){
   const e=dialEstado;
-  cancelAnimationFrame(e.raf);
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ e.x=objetivo;e.v=0;dialPintarGiro();return; }
+  cancelAnimationFrame(e.raf); e.obj=objetivo;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ e.x=objetivo;e.v=0;e.obj=null;dialPintarGiro();alFin&&alFin();return; }
   const k=Math.pow(2*Math.PI/resp,2), c=4*Math.PI*amort/resp;
   let t0=performance.now();
   const paso=t=>{
     const dt=Math.min(.032,(t-t0)/1000);t0=t;
     e.v+=(-k*(e.x-objetivo)-c*e.v)*dt; e.x+=e.v*dt;
-    if(Math.abs(e.x-objetivo)<.05&&Math.abs(e.v)<1){ e.x=objetivo;e.v=0;dialPintarGiro();return; }
+    if(Math.abs(e.x-objetivo)<.05&&Math.abs(e.v)<1){ e.x=objetivo;e.v=0;e.obj=null;dialPintarGiro();alFin&&alFin();return; }
     dialPintarGiro(); e.raf=requestAnimationFrame(paso);
   };
   e.raf=requestAnimationFrame(paso);
 }
 
-// Gira hasta la sección i por el camino más corto.
-function dialGirarA(i){
-  let d=i-dialIndice(dialEstado.x); if(d>2)d-=5; if(d<-2)d+=5;
-  dialMuelle(Math.round(dialEstado.x/DIAL_PASO)*DIAL_PASO-d*DIAL_PASO);
+/* Gira hasta la sección i por el camino más corto. Si ya va girando, cuenta
+   desde donde se iba a parar: dos flechas seguidas avanzan dos secciones. */
+function dialGirarA(i,alFin){
+  const desde=dialEstado.obj??Math.round(dialEstado.x/DIAL_PASO)*DIAL_PASO;
+  let d=i-dialIndice(desde); if(d>2)d-=5; if(d<-2)d+=5;
+  dialMuelle(desde-d*DIAL_PASO,undefined,alFin);
 }
+
+// Al pararse el giro: si no ha quedado en Inicio, entra (como el mini-dial).
+function dialAlParar(){ if(dialEstado.sel!==0)dialEntrar(dialEstado.sel); }
 
 function dialEntrar(i){
   if(i===0) irAProximaSesion();
@@ -7036,7 +7045,7 @@ function dialEntrar(i){
   /* De vuelta en Inicio, el dial vuelve a apuntar a Inicio. Se hace ya, sin
      animación: la pantalla ya no está a la vista. */
   cancelAnimationFrame(dialEstado.raf);
-  dialEstado.x=0; dialEstado.v=0; dialPintarGiro();
+  dialEstado.x=0; dialEstado.v=0; dialEstado.obj=null; dialPintarGiro();
 }
 
 function iniciarDial(){
@@ -7068,7 +7077,7 @@ function iniciarDial(){
   const proyectar=v=>(v/1000)*.995/(1-.995);
   let ini=null, hist=[], movido=false, tocado=null;
   aro.addEventListener('pointerdown',ev=>{
-    cancelAnimationFrame(dialEstado.raf);
+    cancelAnimationFrame(dialEstado.raf); dialEstado.obj=null;
     aro.setPointerCapture(ev.pointerId);aro.classList.add('agarrado');
     tocado=ev.target.closest('g[data-i]');
     ini={ang:angulo(ev),x:ev.clientX,y:ev.clientY};hist=[{t:performance.now(),r:dialEstado.x}];movido=false;
@@ -7085,17 +7094,18 @@ function iniciarDial(){
   const fin=()=>{
     if(!ini)return; aro.classList.remove('agarrado'); ini=null;
     if(!movido){
-      if(tocado){ const i=+tocado.dataset.i; if(i===dialEstado.sel&&i!==0)dialEntrar(i); else dialGirarA(i); }
+      if(tocado)dialGirarA(+tocado.dataset.i,dialAlParar);
       return;
     }
     const a=hist[0], b=hist[hist.length-1], dt=(b.t-a.t)/1000||1, v=(b.r-a.r)/dt;
     dialEstado.v=v;
-    dialMuelle(Math.round((dialEstado.x+proyectar(v))/DIAL_PASO)*DIAL_PASO,{amort:.8,resp:.4});
+    dialMuelle(Math.round((dialEstado.x+proyectar(v))/DIAL_PASO)*DIAL_PASO,{amort:.8,resp:.4},dialAlParar);
   };
   aro.addEventListener('pointerup',fin);aro.addEventListener('pointercancel',fin);
   aro.addEventListener('keydown',ev=>{
-    if(ev.key==='ArrowRight'||ev.key==='ArrowDown'){ev.preventDefault();dialGirarA((dialEstado.sel+1)%5);}
-    else if(ev.key==='ArrowLeft'||ev.key==='ArrowUp'){ev.preventDefault();dialGirarA((dialEstado.sel+4)%5);}
+    const ahora=dialEstado.obj===null?dialEstado.sel:dialIndice(dialEstado.obj);
+    if(ev.key==='ArrowRight'||ev.key==='ArrowDown'){ev.preventDefault();dialGirarA((ahora+1)%5);}
+    else if(ev.key==='ArrowLeft'||ev.key==='ArrowUp'){ev.preventDefault();dialGirarA((ahora+4)%5);}
     else if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();dialEntrar(dialEstado.sel);}
   });
   document.getElementById('dial-centro').addEventListener('click',()=>dialEntrar(dialEstado.sel));

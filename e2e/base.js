@@ -53,18 +53,17 @@ async function appLista(page, { nombre = 'Prueba', rutina = /Primer Mes/ } = {})
 }
 
 /* Ir a una sección como lo haría una persona (desde el 21/10/2026 no hay
-   barra de pestañas): en Inicio, con el dial grande —tocar la etiqueta y luego
-   el centro—; en las demás, con el mini-dial de abajo: tocar la etiqueta si se
+   barra de pestañas): en Inicio, con el dial grande —tocar la etiqueta, que
+   gira y entra (desde el 22/10)—; en las demás, con el mini-dial de abajo: tocar la etiqueta si se
    ve y, si queda lejos de la marca, arrastrarlo de lado hasta ella. */
 const SECCIONES = ['Inicio', 'Entrenar', 'Resumen', 'Medidas', 'Ajustes'];
 async function irA(page, nombre){
   if(await page.locator('#pane-inicio').evaluate(e => e.classList.contains('active'))){
     await page.evaluate(() => scrollTo(0, 0));
-    if(await page.locator('#dial-aro').getAttribute('aria-valuetext') !== nombre){
-      await page.locator('#dial-etiquetas g').filter({ hasText: nombre }).click();
-      await expect.poll(() => page.locator('#dial-aro').getAttribute('aria-valuetext')).toBe(nombre);
-    }
-    await page.locator('#dial-centro').click();
+    if(nombre === 'Inicio'){ await page.locator('#dial-centro').click(); return; }
+    await page.locator('#dial-etiquetas g').filter({ hasText: nombre }).click();
+    if(nombre === 'Ajustes') await expect(page.locator('#config-panel')).not.toHaveClass(/hidden/);
+    else await expect(page.locator('#pane-inicio')).not.toHaveClass(/active/);
     return;
   }
   // Si aún está girando hacia la sección de ahora, se espera a que pare: una persona también lo haría.
