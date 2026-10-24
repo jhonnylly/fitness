@@ -191,7 +191,11 @@
   --dark:#0d1526;--green:#2d7a4f;--orange:#c97820;
   --text:#0b1220;--muted:#4c5a76;--radius:12px;--radius-sm:8px;
 }
+/* color-scheme: sin esto el navegador pinta los controles nativos (desplegables,
+   calendario, barras de scroll) siempre en claro. */
+:root{color-scheme:light;}
 @media(prefers-color-scheme:dark){
+  :root{color-scheme:dark;}
   :root{--bg:#0b1220;--card:#111a2e;--surface:#18243d;--border:#26365a;--text:#eef2fa;--muted:#93a0bb;
     --accent-ink:#ffd84a;--danger-ink:#ff6a4d;}
 }
@@ -262,6 +266,62 @@ header{background:var(--dark);color:#eef2fa;padding:12px 16px;position:sticky;to
      tema claro. Con el emoji no se notaba porque tenía color propio. */
   color:inherit;display:flex;align-items:center;justify-content:center;}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#888;flex-shrink:0;}
+/* ── AJUSTES por grupos (25/10/2026) ──
+   Eran 8 tarjetas iguales llenas de párrafos, con lo más usado abajo del todo
+   (la crítica de Impeccable: «es un manual, no una pantalla de ajustes»).
+   Ahora: tres grupos con el nombre al estilo de los rótulos del dial
+   (ENTRENAMIENTO, TÚ, APP), filas como las de los ajustes del iPhone (nombre a
+   la izquierda, control a la derecha), interruptores en el cian de «elegido» y
+   las explicaciones largas plegadas en un «¿Qué es?». Los ids no cambian. */
+.aj-grupo{font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  margin:22px 4px 8px;}
+.aj-lista{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;}
+.aj-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;
+  padding:10px 16px;margin:0;border-top:1px solid var(--border);}
+.aj-lista>:first-child{border-top:0;}
+label.aj-fila{font-size:inherit;color:inherit;text-transform:none;letter-spacing:0;cursor:pointer;}
+.aj-fila-col{flex-direction:column;align-items:stretch;gap:8px;padding-block:14px;}
+.aj-fila-cab{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.aj-texto{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.aj-et,label.aj-et{font-size:15px;font-weight:600;color:var(--text);text-transform:none;letter-spacing:0;margin:0;display:block;}
+.aj-ayuda{font-size:13px;color:var(--muted);line-height:1.45;margin:0;}
+.aj-ayuda b{color:var(--text);}
+.aj-fila select{width:auto;max-width:58%;flex:none;border:0;background-color:transparent;color:var(--muted);
+  font-size:15px;padding:8px 26px 8px 8px;background-position:right 2px center;text-align:right;text-align-last:right;}
+.aj-fila select:focus{box-shadow:none;color:var(--text);}
+.aj-fila select:focus-visible{outline:2px solid var(--dial-cian);outline-offset:2px;border-radius:var(--radius-sm);}
+.aj-medida{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:15px;}
+.aj-medida input{width:84px;text-align:right;font-size:15px;font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+.aj-valor{display:flex;align-items:baseline;gap:10px;font-size:15px;text-align:right;min-width:0;}
+.aj-valor a{color:var(--accent-ink);font-weight:700;font-size:14px;white-space:nowrap;}
+.aj-nota{padding:0 16px 12px;font-size:13px;color:var(--muted);line-height:1.45;}
+.aj-nota:empty{display:none;}
+details.aj-mas{border-top:1px solid var(--border);padding:4px 16px 0;}
+details.aj-mas>summary{min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:14px;font-weight:600;color:var(--accent-ink);cursor:pointer;list-style:none;}
+details.aj-mas>summary::-webkit-details-marker{display:none;}
+details.aj-mas>summary::after{content:'';width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s ease;}
+details.aj-mas[open]>summary::after{transform:rotate(225deg) translate(-2px,-2px);}
+details.aj-mas>summary:focus-visible{outline:2px solid var(--dial-cian);outline-offset:-2px;border-radius:var(--radius-sm);}
+details.aj-mas p{font-size:14px;color:var(--muted);line-height:1.55;margin:0 0 12px;max-width:65ch;}
+.aj-cache{text-align:right;margin:-4px 4px 4px;font-size:13px;}
+.aj-cache a{color:var(--muted);text-underline-offset:3px;}
+/* Interruptor (el de los ajustes del iPhone): encendido, en cian. */
+.interruptor{-webkit-appearance:none;appearance:none;flex:none;width:51px;height:31px;margin:0;padding:0;border:0;
+  border-radius:999px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--border);position:relative;
+  cursor:pointer;transition:background-color .2s ease;}
+.interruptor::after{content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;
+  background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:transform .22s cubic-bezier(.2,.8,.2,1);}
+.interruptor:checked{background:var(--dial-cian);box-shadow:none;}
+.interruptor:checked::after{transform:translateX(20px);}
+.interruptor:focus-visible{outline:3px solid var(--dial-cian);outline-offset:2px;}
+#diag-coach:empty{display:none;}
+/* «Importar» es un <label> (lleva dentro el input de fichero): sin esto heredaba
+   las mayúsculas espaciadas de las etiquetas de formulario. */
+label.btn-sm{letter-spacing:normal;text-transform:none;}
+@media(prefers-reduced-motion:reduce){ .interruptor,.interruptor::after,details.aj-mas>summary::after{transition:none;} }
+
 /* ── EL BOTÓN DEL DIAL, abajo (25/10/2026) ──
    Sustituye al mini-dial (un trozo de bisel abajo, del 21/10). Jhon probó en
    un prototipo las dos opciones y eligió esta: un botón amarillo que abre el
@@ -634,6 +694,19 @@ details[open] > .det-resumen::after{transform:rotate(-135deg);}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;}
 label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;}
 select,input,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:14px;outline:none;font-family:inherit;}
+/* Desplegables con el estilo de la app (25/10/2026). Antes eran los del
+   sistema y, en tema oscuro, salían como cajas blancas con el texto casi
+   invisible (lo vio la crítica de Impeccable en Ajustes y Medidas). La flecha
+   es un SVG con el color de --muted de cada tema. */
+select{-webkit-appearance:none;appearance:none;padding-right:36px;background-repeat:no-repeat;
+  background-position:right 12px center;background-size:14px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234c5a76' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");}
+@media(prefers-color-scheme:dark){ select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2393a0bb' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");} }
+/* Los textos de ejemplo (placeholder) salían en el gris del sistema, a 1,9:1. */
+::placeholder{color:var(--muted);opacity:1;}
+/* Casillas y botones de opción en el cian de «elegido», no en el azul del sistema. */
+input[type=checkbox],input[type=radio]{accent-color:var(--dial-cian);}
 select:focus,input:focus,textarea:focus{border-color:var(--accent);}
 /* Un aro violeta en el campo donde estás escribiendo (18/10/2026): con una
    rejilla de 3×2 casillas iguales, el borde solo no bastaba para saber cuál era. */
@@ -1866,20 +1939,129 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <!-- La versión, ARRIBA DEL TODO (15/09/2026). Estaba al final de Ajustes y
          para actualizar había que bajar hasta ella; Jhon la quiso como un botón
          a mano y con aviso cuando hay una nueva. Lo pinta pintarVersion(). -->
+    <!-- La versión, ARRIBA DEL TODO (15/09/2026). Estaba al final de Ajustes y
+         para actualizar había que bajar hasta ella; Jhon la quiso como un botón
+         a mano y con aviso cuando hay una nueva. Lo pinta pintarVersion(). -->
     <div id="cfg-version"></div>
-    <div style="font-size:11.5px;text-align:right;margin:-4px 4px 14px;">
-      <a href="#" onclick="limpiarCache();return false;" style="color:var(--muted);">¿No se actualiza? Vaciar caché y recargar</a>
+    <div class="aj-cache">
+      <a href="#" onclick="limpiarCache();return false;">¿No se actualiza? Vaciar caché y recargar</a>
     </div>
 
-    <!-- Cuentas: solo el admin (lo esconde el CSS sin body.es-admin). Estaba en
-         el panel de Entrenadores y Jhon lo movió aquí (15/09/2026): allí se
-         confundía con llevar clientes, y es gestión de la app, no de un
-         entrenador. Se busca por CORREO EXACTO a propósito: listar todas las
-         cuentas enseñaría datos de todo el mundo sin necesidad. -->
-    <!-- Quién ha pedido otro entrenador: FUERA de la tarjeta y arriba del todo,
-         en violeta. Solo tiene contenido para el admin (pintarPeticionesEntrenador). -->
+    <!-- Quién ha pedido otro entrenador: FUERA de las tarjetas y arriba del
+         todo, en violeta. Solo tiene contenido para el admin (pintarPeticionesEntrenador). -->
     <div id="rol-peticiones"></div>
 
+    <!-- Lo que más se toca, primero. -->
+    <h3 class="aj-grupo">Entrenamiento</h3>
+    <div class="aj-lista">
+      <div class="aj-fila aj-fila-col">
+        <div class="aj-fila-cab">
+          <label class="aj-et" for="cfg-dias">Días por semana</label>
+          <select id="cfg-dias">
+            <option value="1">1 día</option><option value="2">2 días</option>
+            <option value="3">3 días</option><option value="4">4 días</option>
+            <option value="5">5 días</option><option value="6">6 días</option>
+            <option value="7">7 días</option>
+          </select>
+        </div>
+        <p class="aj-ayuda">Ahora tienes <b id="cfg-dias-actual">—</b> por semana. Cambiarlo solo reorganiza las
+          semanas que todavía no has empezado.</p>
+        <div id="cfg-dias-msg"></div>
+        <button class="btn btn-primary" id="cfg-dias-btn" onclick="proponerCambioDias()">Ver cómo quedaría</button>
+      </div>
+      <label class="aj-fila" for="cfg-sonido">
+        <span class="aj-texto"><span class="aj-et">Pitido al terminar el descanso</span>
+          <span class="aj-ayuda">Suena a las 0:00, sin parar tu música.</span></span>
+        <input type="checkbox" class="interruptor" id="cfg-sonido" onchange="alternarSonido(this.checked)">
+      </label>
+      <details class="aj-mas">
+        <summary>¿Por qué a veces no suena?</summary>
+        <p>En iPhone no suena con el interruptor de silencio puesto ni con la pantalla bloqueada.</p>
+      </details>
+      <!-- Opcional a propósito: quien no entrena mirando el RIR tendría una
+           casilla más que rellenar cuarenta veces por semana a cambio de nada. -->
+      <label class="aj-fila" for="cfg-rir">
+        <span class="aj-texto"><span class="aj-et">Anotar el esfuerzo (RIR)</span>
+          <span class="aj-ayuda">Una casilla más en cada serie.</span></span>
+        <input type="checkbox" class="interruptor" id="cfg-rir" onchange="alternarRIR(this.checked)">
+      </label>
+      <details class="aj-mas">
+        <summary>¿Qué es el RIR?</summary>
+        <p>Las repeticiones que te quedaban en el depósito al acabar la serie: 0 es al fallo, 2 es «aguantaba dos más».</p>
+        <p>Sirve para ver progreso donde el peso no lo enseña: si el mismo 60×10 te dejaba RIR 0 y ahora te deja
+          RIR 3, has mejorado aunque la gráfica de cargas salga plana.</p>
+      </details>
+    </div>
+
+    <!-- Propuesta editable antes de aplicar nada -->
+    <div class="card hidden" id="cfg-propuesta">
+      <div class="section-title">Así quedarían tus semanas</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:10px;" id="cfg-propuesta-info"></div>
+      <div id="cfg-propuesta-lista"></div>
+      <div id="cfg-aplicar-msg"></div>
+      <button class="btn btn-primary" onclick="aplicarCambioDias()">Aplicar a las semanas sin empezar</button>
+      <button class="btn btn-secondary" onclick="cancelarCambioDias()">Cancelar</button>
+    </div>
+
+    <!-- Lo de "Sobre ti" del registro (27/09/2026). El nombre está en "Tu
+         cuenta" (tocando tu foto) y el peso se registra por semana en Medidas:
+         dos sitios para el mismo dato se contradicen. -->
+    <h3 class="aj-grupo">Tú</h3>
+    <div class="aj-lista">
+      <div class="aj-fila">
+        <label class="aj-et" for="cfg-sexo">Sexo</label>
+        <select id="cfg-sexo" onchange="guardarSobreTi('sexo',this.value)">
+          <option value="">Sin indicar</option><option value="h">Hombre</option>
+          <option value="m">Mujer</option><option value="x">Prefiero no decirlo</option>
+        </select>
+      </div>
+      <div class="aj-fila">
+        <label class="aj-et" for="cfg-nivel">Nivel</label>
+        <select id="cfg-nivel" onchange="guardarSobreTi('nivel',this.value)">
+          <option value="">Sin indicar</option><option value="ini">Empiezo</option>
+          <option value="med">Llevo unos meses</option><option value="ava">Más de un año</option>
+        </select>
+      </div>
+      <div class="aj-fila">
+        <label class="aj-et" for="cfg-altura">Altura</label>
+        <span class="aj-medida"><input type="text" inputmode="numeric" id="cfg-altura" placeholder="175" onchange="guardarAltura(this.value)"> cm</span>
+      </div>
+      <div class="aj-fila">
+        <span class="aj-et">Peso</span>
+        <span class="aj-valor"><b id="cfg-peso">—</b>
+          <a href="#" onclick="irAMedidas();return false;">Registrar</a></span>
+      </div>
+      <div id="cfg-imc" class="aj-nota"></div>
+    </div>
+
+    <!-- Mantenimiento: copia, instalar y el canal del entrenador. -->
+    <h3 class="aj-grupo">App</h3>
+    <div class="aj-lista">
+      <div class="aj-fila aj-fila-col">
+        <span class="aj-texto"><span class="aj-et">Copia de seguridad</span>
+          <span class="aj-ayuda">Un fichero con todo lo que has registrado, por si le pasa algo al móvil o a la nube. Exporta de vez en cuando.</span></span>
+      <div class="action-row">
+        <button class="btn-sm" onclick="exportJSON()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Exportar JSON</button>
+        <!-- text-transform:none porque es un <label>, y la regla de las etiquetas
+             de formulario lo pondría en mayúsculas al lado de dos botones que no
+             lo están. -->
+        <label class="btn-sm" style="cursor:pointer;text-align:center;text-transform:none;"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> Importar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
+        <button class="btn-sm" onclick="copyForChat()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar para chat</button>
+      </div>
+        <!-- Solo aparece si la app guardó algo antes de sobrescribir. -->
+        <div id="copia-previa"></div>
+      </div>
+    </div>
+    <!-- Se pinta sola si se puede instalar; si ya está instalada o el navegador
+         no lo permite, ni aparece. -->
+    <div id="instalar-ajustes" class="card hidden"></div>
+    <!-- Estado del canal del entrenador: una foto de esto dice qué llegó y qué
+         se aplica (en el móvil no hay consola). Vacía, no se ve. -->
+    <div class="card" id="diag-coach"></div>
+
+    <!-- Cuentas: solo el admin (lo esconde el CSS sin body.es-admin). Se busca
+         por CORREO EXACTO a propósito: listar todas las cuentas enseñaría datos
+         de todo el mundo sin necesidad. -->
     <div class="card" id="pane-cuentas">
       <div class="section-title">Cuentas <span style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0;">· solo tú</span></div>
       <div id="pane-rol">
@@ -1896,130 +2078,6 @@ body:not(.es-admin) #pane-cuentas{display:none;}
         <div id="rol-msg" style="margin-top:8px;"></div>
         <div id="rol-resultado"></div>
       </div>
-    </div>
-
-    <!-- Vivían arriba del todo de la pestaña Historial, que era lo primero que
-         se veía al entrar ahí y lo que menos se usa. Son mantenimiento, no
-         entrenamiento: su sitio es Ajustes. -->
-    <div class="card">
-      <div class="section-title">Copia de seguridad</div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
-        Exporta de vez en cuando: es un fichero con todo lo que has registrado y
-        te deja a salvo pase lo que pase con el móvil o con la nube.
-      </div>
-      <div class="action-row">
-        <button class="btn-sm" onclick="exportJSON()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Exportar JSON</button>
-        <!-- text-transform:none porque es un <label>, y la regla de las etiquetas
-             de formulario lo pondría en mayúsculas al lado de dos botones que no
-             lo están. -->
-        <label class="btn-sm" style="cursor:pointer;text-align:center;text-transform:none;"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> Importar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
-        <button class="btn-sm" onclick="copyForChat()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar para chat</button>
-      </div>
-      <!-- Solo aparece si la app guardó algo antes de sobrescribir. -->
-      <div id="copia-previa" style="margin-top:10px;"></div>
-    </div>
-
-    <!-- Estaba en el panel de Cuenta, donde ya chirriaba: es información de la
-         APP, no de la cuenta (lo decía el propio comentario que tenía al lado).
-         Aquí acompaña a la copia de seguridad, que es el mismo tipo de cosa:
-         mantenimiento. En Cuenta se queda lo de identidad y sincronización. -->
-    <!-- Se pinta sola si se puede instalar; si ya está instalada o el navegador
-         no lo permite, ni aparece. -->
-    <div id="instalar-ajustes" class="card hidden"></div>
-
-    <!-- Estado del canal del entrenador. Tarjeta propia y con título porque la
-         primera versión (09/09) era texto gris de 11 px colgado debajo de la
-         versión: Jhon lo estuvo buscando y no lo encontró. Lo que hay que poder
-         hacer aquí es una foto y mandarla, así que tiene que saltar a la vista.
-         El aviso y el cambio de día son invisibles cuando fallan y en el móvil
-         no hay consola: sin esto se depura a ciegas. -->
-    <div class="card" id="diag-coach"></div>
-
-    <div class="card">
-      <div class="section-title">Tus datos</div>
-      <!-- Lo de "Sobre ti" del registro (27/09/2026). Los días no están aquí:
-           tienen su tarjeta propia más abajo, que reparte el plan. -->
-      <div class="grid2" style="margin-bottom:10px;">
-        <div><label>Sexo</label>
-          <select id="cfg-sexo" onchange="guardarSobreTi('sexo',this.value)">
-            <option value="">Sin indicar</option><option value="h">Hombre</option>
-            <option value="m">Mujer</option><option value="x">Prefiero no decirlo</option>
-          </select></div>
-        <div><label>Nivel</label>
-          <select id="cfg-nivel" onchange="guardarSobreTi('nivel',this.value)">
-            <option value="">Sin indicar</option><option value="ini">Empiezo</option>
-            <option value="med">Llevo unos meses</option><option value="ava">Más de un año</option>
-          </select></div>
-      </div>
-      <label>Altura (cm)</label>
-      <input type="text" inputmode="numeric" id="cfg-altura" placeholder="175" onchange="guardarAltura(this.value)">
-      <!-- El peso NO se escribe aquí: se registra por semana en Medidas y
-           alimenta la gráfica. Dos sitios para el mismo dato se contradicen. -->
-      <!-- El nombre vivía aquí; desde el 15/09/2026 está en "Tu cuenta", junto a
-           la foto (se abre tocando tu foto en la cabecera). -->
-      <div style="margin-top:10px;font-size:12px;color:var(--muted);">
-        Peso: <b id="cfg-peso" style="color:var(--text);">—</b>
-        <a href="#" onclick="irAMedidas();return false;" style="color:var(--accent-ink);font-weight:700;margin-left:6px;">Registrar en Medidas</a>
-      </div>
-      <div id="cfg-imc" style="margin-top:6px;font-size:12px;color:var(--muted);"></div>
-    </div>
-
-    <!-- Opcional a propósito: quien no entrena mirando el RIR tendría una
-         casilla más que rellenar cuarenta veces por semana a cambio de nada. -->
-    <div class="card">
-      <div class="section-title">Anotar el esfuerzo (RIR)</div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px;">
-        El <b>RIR</b> son las repeticiones que te quedaban en el depósito al acabar
-        la serie: 0 es al fallo, 2 es "aguantaba dos más".<br><br>
-        Sirve para ver progreso donde el peso no lo enseña: si el mismo 60×10 te
-        dejaba RIR 0 y ahora te deja RIR 3, has mejorado aunque la gráfica de
-        cargas salga plana.
-      </div>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;text-transform:none;font-size:13px;">
-        <input type="checkbox" id="cfg-rir" onchange="alternarRIR(this.checked)" style="width:auto;margin:0;">
-        Añadir una casilla de RIR a cada serie
-      </label>
-    </div>
-
-    <div class="card">
-      <div class="section-title">Aviso al terminar el descanso</div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px;">
-        Suena un pitido cuando el descanso llega a 0:00. Se mezcla con tu música
-        sin pararla. En iPhone no suena con el interruptor de silencio puesto ni
-        con la pantalla bloqueada.
-      </div>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;text-transform:none;font-size:13px;">
-        <input type="checkbox" id="cfg-sonido" onchange="alternarSonido(this.checked)" style="width:auto;margin:0;">
-        Pitido al terminar el descanso
-      </label>
-    </div>
-
-    <div class="card">
-      <div class="section-title">Días de entrenamiento</div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;">
-        Tu rutina tiene ahora <b id="cfg-dias-actual" style="color:var(--text);">—</b> por semana.
-        Cambiarlo reorganiza las semanas que <b>todavía no has empezado</b>; lo
-        ya entrenado no se toca.
-      </div>
-      <label>Días por semana</label>
-      <select id="cfg-dias">
-        <option value="1">1 día</option><option value="2">2 días</option>
-        <option value="3">3 días</option><option value="4">4 días</option>
-        <option value="5">5 días</option><option value="6">6 días</option>
-        <option value="7">7 días</option>
-      </select>
-      <div id="cfg-dias-msg"></div>
-      <button class="btn btn-primary" id="cfg-dias-btn" onclick="proponerCambioDias()">Ver cómo quedaría</button>
-    </div>
-
-    <!-- Propuesta editable antes de aplicar nada -->
-    <div class="card hidden" id="cfg-propuesta">
-      <div class="section-title">Así quedarían tus semanas</div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px;" id="cfg-propuesta-info"></div>
-      <div id="cfg-propuesta-lista"></div>
-      <div id="cfg-aplicar-msg"></div>
-      <button class="btn btn-primary" onclick="aplicarCambioDias()">Aplicar a las semanas sin empezar</button>
-      <button class="btn btn-secondary" onclick="cancelarCambioDias()">Cancelar</button>
     </div>
 
   </div>
@@ -3621,7 +3679,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 01:16';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 01:46';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 

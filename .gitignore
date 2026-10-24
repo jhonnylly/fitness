@@ -42,3 +42,6 @@ ui-debug.log
 # Playwright: informe y capturas de cada pasada
 e2e/informe/
 e2e/resultados/
+
+# Informes de la skill Impeccable (críticas de diseño): notas locales, no van al repo
+.impeccable/
