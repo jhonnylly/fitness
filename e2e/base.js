@@ -54,8 +54,8 @@ async function appLista(page, { nombre = 'Prueba', rutina = /Primer Mes/ } = {})
 
 /* Ir a una sección como lo haría una persona (desde el 21/10/2026 no hay
    barra de pestañas): en Inicio, con el dial grande —tocar el segmento, que
-   gira hasta él, y el centro, que entra directo (aro 3D desde el 24/10)—; en las demás, con el mini-dial de abajo: tocar la etiqueta si se
-   ve y, si queda lejos de la marca, arrastrarlo de lado hasta ella. */
+   gira hasta él, y el centro, que entra directo (aro 3D desde el 24/10)—; en las demás, con el botón
+   amarillo de abajo: mantenerlo y deslizar de lado hasta la sección. */
 const SECCIONES = ['Inicio', 'Entrenar', 'Resumen', 'Medidas', 'Ajustes'];
 async function irA(page, nombre){
   if(await page.locator('#pane-inicio').evaluate(e => e.classList.contains('active'))){
@@ -70,23 +70,24 @@ async function irA(page, nombre){
     else await expect(page.locator('#pane-inicio')).not.toHaveClass(/active/);
     return;
   }
-  // Si aún está girando hacia la sección de ahora, se espera a que pare: una persona también lo haría.
-  await page.waitForFunction(() => miniEstado.v === 0 && Math.abs(miniEstado.x + miniEstado.seccion * MINI_PASO) < .01);
-  const boton = page.locator('#mini-dial .tab').filter({ hasText: nombre });
-  if(!await boton.isVisible()){
-    const [desde, pxPorPaso] = await page.evaluate(() => [miniEstado.seccion, MINI_PASO / MINI_GANANCIA]);
-    const pasos = SECCIONES.indexOf(nombre) - desde;
-    const caja = await page.locator('#mini-dial').boundingBox();
-    const x = caja.x + caja.width / 2, y = caja.y + caja.height / 2;
-    // Despacio, sin impulso, lo justo para que la sección quede bajo la marca.
-    await page.mouse.move(x, y);
-    await page.mouse.down();
-    for(let i = 1; i <= 20; i++) await page.mouse.move(x - pasos * pxPorPaso * i / 20, y);
-    await page.waitForTimeout(150);
-    await page.mouse.up();
-    return;
-  }
-  await boton.click();
+  /* Fuera de Inicio, el botón amarillo de abajo (25/10/2026): mantenerlo y
+     deslizar de lado gira el aro (MINI_GANANCIA grados por px) y al soltar
+     entra en la sección cian. Por el camino corto, como lo haría una persona. */
+  const fab = page.locator('#dial-fab');
+  await expect(fab).not.toHaveClass(/oculto/);
+  await page.waitForTimeout(400);                    // que acabe de asomar
+  const [desde, pxPorPaso] = await page.evaluate(() => [seccionActual(), DIAL_PASO / MINI_GANANCIA]);
+  let pasos = SECCIONES.indexOf(nombre) - desde;
+  if(pasos > 2) pasos -= 5;
+  if(pasos < -2) pasos += 5;
+  const caja = await fab.boundingBox();
+  const x = caja.x + caja.width / 2, y = caja.y + caja.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for(let i = 1; i <= 20; i++) await page.mouse.move(x + pasos * pxPorPaso * i / 20, y);
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
 }
 
 module.exports = { test, expect, appLista, comprobarLocal, irA };

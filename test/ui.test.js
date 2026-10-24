@@ -94,7 +94,7 @@ async function appLista(page, url){
     }));
     ok(arranque.backend === 'local', 'sin sesión iniciada, se guarda en el dispositivo');
     ok(!!arranque.rutina, 'el onboarding deja una rutina activa: '+arranque.rutina);
-    ok(arranque.pestanas === 5, 'el mini-dial tiene 5 etiquetas: 4 secciones y Ajustes');
+    ok(arranque.pestanas === 5, 'hay 5 botones de sección: 4 secciones y Ajustes');
 
     console.log('\n1b. La cabecera saluda al abrir y luego dice dónde estás');
     // 26/09/2026: el "¡Hola, NOMBRE!" se quedaba fijo toda la sesión.
@@ -3057,60 +3057,55 @@ async function appLista(page, url){
     ok(finura.saltado || (finura.sinTarjetaSuelta && finura.completos),
        'al soltar no queda ninguna tarjeta levantada ni se pierde ningún ejercicio');
 
-    console.log('\n13aa. El mini-dial, abajo');
-    /* 21/10/2026: la barra de pestañas (23/09) se cambió por un trozo del bisel
-       de Inicio, pedido por Jhon. Los botones son los mismos (mismos ids). */
+    console.log('\n13aa. El botón del dial, abajo');
+    /* 25/10/2026: el mini-dial (21/10), que a su vez sustituyó a la barra de
+       pestañas (23/09), se cambia por un botón amarillo que abre el aro de
+       Inicio en una capa. Jhon comparó las dos opciones en un prototipo. Los
+       botones de sección siguen (mismos ids), ocultos a la vista. */
     const barra = await page.evaluate(async ()=>{
       const tic = (ms=60) => new Promise(res => setTimeout(res, ms));
-      const quieto = async () => { for(let i=0;i<60&&(miniEstado.v!==0||Math.abs(miniEstado.x+miniEstado.seccion*MINI_PASO)>.01);i++) await tic(30); };
       const r = {};
       showTab('resumen', document.getElementById('tab-resumen'));
-      await quieto(); await tic(500);
-      const mini = document.getElementById('mini-dial');
-      const cs = getComputedStyle(mini);
-      const caja = mini.getBoundingClientRect();
-      r.fija = cs.position === 'fixed';
-      r.pegadaAbajo = Math.abs(caja.bottom - window.innerHeight) < 2;
-      r.orden = [...mini.querySelectorAll('.tab')].map(b => b.textContent.trim());
+      await tic(500);
+      const fab = document.getElementById('dial-fab');
+      const cs = getComputedStyle(fab);
+      const caja = fab.getBoundingClientRect();
+      const W = window.innerWidth, H = window.innerHeight;
+      r.fijo = cs.position === 'fixed';
+      r.centrado = Math.abs(caja.left + caja.width/2 - W/2) < 2;
+      r.abajo = caja.bottom <= H && H - caja.bottom < 40;
+      r.tactil = caja.width >= 44 && caja.height >= 44;
+      r.visible = !fab.classList.contains('oculto');
+      const nav = document.getElementById('mini-dial');
+      r.orden = [...nav.querySelectorAll('.tab')].map(b => b.textContent.trim());
+      r.navOculta = nav.getBoundingClientRect().width <= 1;
 
-      /* Las esquinas de la pantalla son REDONDEADAS (Jhon, en un iPhone 17 Pro):
-         ninguna etiqueta a la vista puede caer bajo la curva. Se comprueba con
-         un rectángulo redondeado de 70 px de radio, más de lo que curva ningún
-         iPhone actual. Se ven la actual y sus dos vecinas; las demás, al girar. */
-      const R = 70, W = window.innerWidth, H = window.innerHeight;
-      const dentroDeLaCurva = (x, y) => {
-        if(y <= H - R) return true;
-        if(x < R)      return Math.hypot(R - x, y - (H - R)) <= R;
-        if(x > W - R)  return Math.hypot(x - (W - R), y - (H - R)) <= R;
-        return true;
-      };
-      const visibles = [...mini.querySelectorAll('.tab')].filter(b => getComputedStyle(b).visibility !== 'hidden');
-      r.cuantasSeVen = visibles.length;
-      r.esquinas = visibles.every(b => { const e = b.querySelector('span').getBoundingClientRect();
-        return dentroDeLaCurva(e.left, e.bottom) && dentroDeLaCurva(e.right, e.bottom) && e.left >= 0 && e.right <= W; });
-      r.tactiles = visibles.every(b => b.getBoundingClientRect().height >= 44);
-      // La activa, bajo la marca y en amarillo.
-      const act = document.getElementById('tab-resumen').getBoundingClientRect();
-      r.activaEnLaMarca = Math.abs(act.left + act.width/2 - W/2) < 3;
-      r.activaResalta = getComputedStyle(document.getElementById('tab-resumen')).color
-                     !== getComputedStyle(document.getElementById('tab-log')).color;
-
-      // Lo último de la pantalla no puede quedar debajo del mini-dial.
+      // Lo último de la pantalla no puede quedar debajo del botón.
       window.scrollTo(0, document.documentElement.scrollHeight);
       await tic();
       const ultimo = [...document.querySelectorAll('#pane-resumen > *')]
         .filter(e => e.getBoundingClientRect().height > 0).pop();
-      r.contenidoLibre = ultimo.getBoundingClientRect().bottom <= caja.top + 1 + 30;  // el degradado de arriba deja ver
+      r.contenidoLibre = ultimo.getBoundingClientRect().bottom <= caja.top + 1;
+
+      // Un toque abre el aro con la sección marcada; «Cerrar» lo devuelve a Inicio.
+      abrirMenuDial();
+      await tic(300);
+      r.abreElAro = document.getElementById('dial-velo').classList.contains('ver')
+                 && document.getElementById('dial-velo').contains(document.getElementById('dial'));
+      r.marcaLaSeccion = document.getElementById('dial-aro').getAttribute('aria-valuetext') === 'Resumen';
+      cerrarMenuDial();
+      await tic(300);
+      r.vuelveAInicio = document.getElementById('dial-zona').contains(document.getElementById('dial'));
 
       // En Inicio, con el dial grande a la vista, se esconde.
       showTab('inicio', document.getElementById('tab-inicio'));
-      await tic(300);
-      r.escondidoEnInicio = mini.classList.contains('oculto');
+      window.scrollTo(0, 0);
+      await tic(400);
+      r.escondidoEnInicio = fab.classList.contains('oculto');
 
       // Ajustes: abre su panel y NO cambia de pestaña.
       r.engranajeFueraDeLaCabecera = !document.querySelector('header #config-btn');
       const ajustes = document.getElementById('config-btn');
-      r.ajustesEnLaBarra = ajustes.classList.contains('tab') && mini.contains(ajustes);
       ajustes.click();
       await tic(400);
       const panel = document.getElementById('config-panel');
@@ -3123,20 +3118,19 @@ async function appLista(page, url){
       showTab('inicio', document.getElementById('tab-inicio'));
       return r;
     });
-    ok(barra.fija && barra.pegadaAbajo, 'el mini-dial va fijo al borde de abajo');
+    ok(barra.fijo && barra.centrado && barra.abajo, 'el botón va fijo, abajo y en el centro');
+    ok(barra.tactil && barra.visible, 'es un blanco grande y se ve dentro de las secciones');
     ok(barra.orden.join(',') === 'Inicio,Entrenar,Resumen,Medidas,Ajustes',
-       'en el orden del dial grande: '+barra.orden.join(' · '));
+       'los botones de sección siguen, en el orden del dial: '+barra.orden.join(' · '));
     /* 23/09/2026: se llamaba "Registrar" y varias personas no daban con ella
        para empezar la sesión. Nadie piensa "voy a registrar". */
     ok(barra.orden[1] === 'Entrenar', '🔴 la sección dice lo que vas a hacer, no lo que hace la app');
-    ok(barra.cuantasSeVen === 3, 'se ven la sección actual y sus dos vecinas ('+barra.cuantasSeVen+')');
-    ok(barra.esquinas, '🔴 ninguna etiqueta a la vista cae bajo la curva de la esquina ni se sale');
-    ok(barra.tactiles, 'cada etiqueta es un blanco de 44 px de alto como mínimo');
-    ok(barra.activaEnLaMarca && barra.activaResalta, 'la sección actual queda bajo la marca y resaltada');
-    ok(barra.contenidoLibre, '🔴 el mini-dial no tapa lo último de la pantalla');
+    ok(barra.navOculta, 'y están ocultos a la vista (quedan para los lectores de pantalla)');
+    ok(barra.contenidoLibre, '🔴 el botón no tapa lo último de la pantalla');
+    ok(barra.abreElAro && barra.marcaLaSeccion, 'abre el aro de Inicio con la sección en la que estás');
+    ok(barra.vuelveAInicio, 'al cerrarlo, el aro vuelve a su sitio en Inicio');
     ok(barra.escondidoEnInicio, 'en Inicio se esconde: el dial grande ya hace de navegación');
-    ok(barra.engranajeFueraDeLaCabecera && barra.ajustesEnLaBarra,
-       'Ajustes vive en el mini-dial, no en la cabecera');
+    ok(barra.engranajeFueraDeLaCabecera, 'Ajustes no vive en la cabecera');
     ok(barra.abreAjustes && barra.inicioSigueActivo,
        'Ajustes abre su panel sin cambiar de pestaña: no es una pestaña');
 

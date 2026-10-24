@@ -262,40 +262,40 @@ header{background:var(--dark);color:#eef2fa;padding:12px 16px;position:sticky;to
      tema claro. Con el emoji no se notaba porque tenía color propio. */
   color:inherit;display:flex;align-items:center;justify-content:center;}
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#888;flex-shrink:0;}
-/* ── EL MINI-DIAL, abajo (21/10/2026). Sustituye a la barra de pestañas ──
-   Rediseño pedido por Jhon y probado antes en un prototipo en su iPhone: dentro
-   de cada sección asoma abajo un trozo del bisel de Inicio. Gira con el pulgar
-   de lado a lado y, al soltarlo, entra en la sección que queda bajo la marca;
-   tocar una etiqueta también entra. Los botones son los MISMOS de la barra de
-   antes (mismos ids y onclick: `tab-log`, `config-btn`…), solo cambian de
-   sitio, así que sigue funcionando todo lo que colgaba de ellos: goTo(), el
-   punto de Ajustes (versión nueva) y el de Inicio (mensaje del entrenador).
+/* ── EL BOTÓN DEL DIAL, abajo (25/10/2026) ──
+   Sustituye al mini-dial (un trozo de bisel abajo, del 21/10). Jhon probó en
+   un prototipo las dos opciones y eligió esta: un botón amarillo que abre el
+   aro 3D de Inicio encima de la pantalla. Mantenerlo y deslizar de lado gira
+   el aro y, al soltar, entra en esa sección (un solo gesto).
+   Los botones de sección de antes (#tab-inicio, #tab-log…, #config-btn) se
+   quedan, ocultos a la vista pero no a los lectores de pantalla: de ellos
+   cuelgan goTo(), la sección activa y los puntos de aviso, que ahora también
+   salen en el botón.
    En Inicio se esconde mientras el dial grande está a la vista y asoma al
    bajar: la navegación nunca desaparece del todo.
-   `--nav-h` sigue midiendo lo que ocupa abajo, para el aviso flotante y el
-   hueco del final del contenido. El bisel es oscuro en los dos temas.
-   Historia: de 23/09 a 21/10 fue una barra de 5 pestañas con Inicio en un
-   círculo en medio (propuesta de v0). De ahí viene lo de las esquinas: las
-   etiquetas no pueden caer bajo la curva de la pantalla del iPhone (lo
-   comprueba la prueba 13aa). */
-:root{--nav-h:84px;}
-.tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;
-  z-index:150;height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));overflow:hidden;
-  touch-action:none;user-select:none;-webkit-user-select:none;
-  /* Por fuera del arco, en las esquinas, se funde con el fondo en vez de cortar. */
-  background:linear-gradient(to top,var(--bg) 45%,rgba(0,0,0,0));
-  transition:transform .45s cubic-bezier(.2,.8,.2,1);}
-.tabs.oculto{transform:translate(-50%,115%);}
-.mini-bisel{position:absolute;left:50%;top:12px;width:900px;height:900px;margin-left:-450px;pointer-events:none;}
-.mini-bisel svg{width:100%;height:100%;display:block;overflow:visible;}
-.mini-marca{position:absolute;left:50%;top:5px;margin-left:-8px;width:0;height:0;pointer-events:none;
-  border-left:8px solid transparent;border-right:8px solid transparent;border-top:11px solid var(--accent);}
-/* Letra de 13 px: ya no hay que meter cinco en una fila, cada una tiene su sitio en el arco. */
-.tab{position:absolute;left:0;top:0;min-height:44px;padding:12px 8px;border:none;background:none;
-  color:var(--bisel-txt);font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;white-space:nowrap;cursor:pointer;transition:color .15s ease;}
-.tab.active{color:var(--bisel-sel);}
-.tab:focus-visible{outline:2px solid var(--bisel-sel);outline-offset:-4px;border-radius:10px;}
+   `--nav-h` mide lo que ocupa abajo, para el aviso flotante y el hueco del
+   final del contenido (el botón tapa el centro del final). */
+:root{--nav-h:96px;--dial-velo:rgba(242,244,248,.86);}
+@media(prefers-color-scheme:dark){ :root{--dial-velo:rgba(11,18,32,.88);} }
+.tabs{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.dial-fab{position:fixed;z-index:150;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));width:64px;height:64px;
+  margin-left:-32px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;
+  cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  box-shadow:0 0 0 6px rgba(var(--accent-rgb),.22),0 10px 24px rgba(0,0,0,.3);
+  transition:transform .35s cubic-bezier(.2,.8,.2,1);}
+.dial-fab svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;}
+.dial-fab:active{transform:scale(.95);}
+.dial-fab.oculto{transform:translateY(160%);}
+.dial-fab:focus-visible{outline:3px solid var(--dial-cian,#35c9e6);outline-offset:4px;}
+.dial-fab.con-punto::after{content:'';position:absolute;top:3px;right:3px;width:12px;height:12px;border-radius:50%;
+  background:var(--danger);box-shadow:0 0 0 2px var(--bg);}
+.dial-velo{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background:var(--dial-velo);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);touch-action:none;
+  opacity:0;pointer-events:none;transition:opacity .2s ease;}
+.dial-velo.ver{opacity:1;pointer-events:auto;}
+.dial-velo-caja{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));}
+@media(prefers-reduced-motion:reduce){ .dial-velo,.dial-fab{transition:none;} }
 /* Iconos de trazo, el mismo juego que estas pestañas. Sustituyen a los emoji
    que había (🏋️ 🔥 ❤️ 📏 ⚡ 🏆): un emoji lo dibuja cada sistema a su manera
    —en el iPhone salen los de Apple, aquí los de Google— y trae sus propios
@@ -329,8 +329,8 @@ header{background:var(--dark);color:#eef2fa;padding:12px 16px;position:sticky;to
 body.es-entrenador .modo-sel{display:flex;}
 .modo-sel button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
 .modo-sel button.active{background:var(--accent-fill);border-color:var(--accent);color:var(--on-accent);}
-body.modo-clientes .tabs,body.modo-clientes .pane,
-body.modo-coaches .tabs,body.modo-coaches .pane{display:none;}
+body.modo-clientes .tabs,body.modo-clientes .pane,body.modo-clientes .dial-fab,
+body.modo-coaches .tabs,body.modo-coaches .pane,body.modo-coaches .dial-fab{display:none;}
 /* Sin barra abajo no hace falta guardarle sitio (23/09/2026). */
 body.modo-clientes,body.modo-coaches{padding-bottom:12px;}
 #pane-clientes,#pane-coaches{display:none;padding:12px;}
@@ -965,10 +965,20 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .dial.sub #dial-etiquetas .sel .base{fill-opacity:.6;}
 .dial.sub #dial-etiquetas .dial-ico{opacity:.45;}
 .dial.sub .dial-guia{stroke:var(--dial-cian);stroke-width:3;}
+/* En la capa del botón (.flotante): la sección en la que estás lleva borde,
+   el centro es «Cerrar» y el aro entra girando. */
+.dial-seg.aqui .base{stroke:var(--text);stroke-width:2.5;}
+.dial-cerrar{display:none;font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;}
+.dial.flotante .dial-centro{width:30%;}
+.dial.flotante .dial-centro>span{display:none;}
+.dial.flotante:not(.sub) .dial-centro>.dial-cerrar{display:block;}
+.dial.flotante .dial-3d{animation:dial-entra .45s cubic-bezier(.16,1,.3,1);}
+@keyframes dial-entra{from{transform:rotateX(35deg) rotateY(-22.75deg) rotate(-100deg) scale(.55);opacity:0;}}
+@media(prefers-reduced-motion:reduce){ .dial.flotante .dial-3d{animation:none;} }
 .dial-volver{display:none;font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;}
-.dial.sub .dial-centro{width:25%;}
+.dial.sub .dial-centro,.dial.flotante.sub .dial-centro{width:25%;}
 .dial.sub .dial-centro>span{display:none;}
-.dial.sub .dial-centro>.dial-volver{display:block;}
+.dial.sub .dial-centro>.dial-volver,.dial.flotante.sub .dial-centro>.dial-volver{display:block;}
 /* Al llegar a un apartado desde el aro, se resalta un momento */
 .dial-resalta{animation:dial-resalta 1.6s ease;}
 @keyframes dial-resalta{0%,45%{box-shadow:0 0 0 3px var(--dial-cian);}100%{box-shadow:0 0 0 3px transparent;}}
@@ -2035,12 +2045,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   <button id="modo-btn-coaches" onclick="setModo('coaches')">Entrenadores</button>
 </div>
 
-<!-- El MINI-DIAL (21/10/2026): la navegación de abajo. Ver el CSS de .tabs. -->
-<div class="tabs" id="mini-dial" aria-label="Secciones">
-  <div class="mini-bisel" aria-hidden="true">
-    <svg viewBox="0 0 900 900"><circle cx="450" cy="450" r="448" fill="var(--bisel)" stroke="var(--bisel-borde)" stroke-width="2"/><g id="mini-tics"></g></svg>
-  </div>
-  <div class="mini-marca" aria-hidden="true"></div>
+<!-- Las secciones (25/10/2026): los botones de siempre, ocultos a la vista
+     (de ellos cuelgan goTo() y los puntos de aviso); se navega con el botón
+     amarillo, que abre el aro de Inicio en una capa. Ver el CSS de .dial-fab. -->
+<nav class="tabs" id="mini-dial" aria-label="Secciones">
   <!-- "Entrenar" y no "Registrar" (23/09/2026): varias personas no daban con
        esta pestaña para empezar su sesión. Nadie piensa "voy a registrar",
        piensa "voy a entrenar". El id sigue siendo `tab-log` y el pane
@@ -2052,6 +2060,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   <!-- Ajustes no es una pestaña: abre su panel y no tiene pane. Conserva el id
        `config-btn` y su punto de "hay algo que mirar". -->
   <button class="tab" id="config-btn" onclick="toggleConfigPanel()" title="Ajustes"><span>Ajustes</span></button>
+</nav>
+<button type="button" class="dial-fab oculto" id="dial-fab" aria-label="Secciones" aria-haspopup="dialog" aria-controls="dial-velo">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><path d="M9.5 3.8 12 6.5l2.5-2.7"/></svg>
+</button>
+<div class="dial-velo" id="dial-velo" role="dialog" aria-modal="true" aria-label="Ir a una sección" aria-hidden="true">
+  <div class="dial-velo-caja" id="dial-velo-caja"></div>
 </div>
 
 <!-- INICIO -->
@@ -2136,6 +2150,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
         <span class="dial-mes" id="dial-mes"></span>
         <span class="dial-destino" id="dial-destino" aria-live="polite"></span>
         <span class="dial-volver">Volver</span>
+        <span class="dial-cerrar">Cerrar</span>
       </button>
     </div>
     <div class="dial-rotulo"><b id="dial-nombre">Inicio</b><span id="dial-ayuda">Gira el aro para elegir una sección</span></div>
@@ -3606,7 +3621,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 00:25';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 01:02';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7112,8 +7127,10 @@ const DIAL_SUBS=[
     {n:'Versión',i:'info',ir:()=>dialAjustesEn('#cfg-version')} ]
 ];
 const dialEstado={x:0,v:0,raf:0,sel:0,obj:null,etiquetas:null,destinos:{},espera:0,
-  nivel:0,subs:[],subSel:0,subEtq:[]};   // obj: adonde va el muelle; nivel 1 = aro de dentro abierto
+  nivel:0,subs:[],subSel:0,subEtq:[],aqui:-1,desliza:false};   // aqui: tu sección, en la capa del botón   // obj: adonde va el muelle; nivel 1 = aro de dentro abierto
 const dialSub={x:0,v:0,raf:0,obj:null};   // el giro del aro de dentro
+// La capa del botón de abajo (ver EL BOTÓN DEL DIAL): aquí, porque dialPintarGiro() la mira desde el arranque.
+const menuDial={abierto:false};
 
 const dialIdx=(rot,n)=>((Math.round(-rot/(360/n))%n)+n)%n;
 function dialIndice(rot){ return dialIdx(rot,5); }
@@ -7146,9 +7163,10 @@ function dialPintarGiro(){
   for(const t of e.etiquetas) t.up.setAttribute('transform','rotate('+(-e.x).toFixed(2)+')');
   const i=dialIndice(e.x);
   let cambio=i!==e.sel; e.sel=i;
-  e.etiquetas.forEach((t,j)=>t.g.classList.toggle('sel',j===e.sel));
-  let nombre=DIAL_SECCIONES[e.sel], ayuda=e.sel===0
-    ?'Gira el aro o toca el cian para ver más':'Espera o toca el cian para ver sus opciones';
+  e.etiquetas.forEach((t,j)=>{ t.g.classList.toggle('sel',j===e.sel); t.g.classList.toggle('aqui',j===e.aqui); });
+  let nombre=DIAL_SECCIONES[e.sel], ayuda=e.desliza?'Suelta para ir a '+nombre
+    :e.sel===e.aqui?'Ya estás aquí · toca el cian para ver sus opciones'
+    :e.sel===0&&e.aqui<0?'Gira el aro o toca el cian para ver más':'Espera o toca el cian para ver sus opciones';
   if(e.nivel===1&&e.subs.length){
     document.getElementById('dial-svg-sub').style.transform='rotate('+dialSub.x.toFixed(2)+'deg)';
     for(const t of e.subEtq) t.up.setAttribute('transform','rotate('+(-dialSub.x).toFixed(2)+')');
@@ -7163,7 +7181,8 @@ function dialPintarGiro(){
   aro.setAttribute('aria-valuenow',e.nivel?e.subSel:e.sel);
   aro.setAttribute('aria-valuemax',e.nivel?e.subs.length-1:4);
   aro.setAttribute('aria-valuetext',nombre);
-  document.getElementById('dial-centro').setAttribute('aria-label',e.nivel?'Volver a las secciones':DIAL_SECCIONES[e.sel]);
+  document.getElementById('dial-centro').setAttribute('aria-label',
+    e.nivel?'Volver a las secciones':menuDial.abierto?'Cerrar':DIAL_SECCIONES[e.sel]);
   document.getElementById('dial-destino').textContent=e.destinos[DIAL_SECCIONES[e.sel]]||'';
   document.getElementById('dial-nombre').textContent=nombre;
   document.getElementById('dial-ayuda').textContent=ayuda;
@@ -7241,6 +7260,7 @@ function dialCerrarSubs(){
 /* De vuelta en Inicio, el dial vuelve a apuntar a Inicio y cerrado. Se hace
    ya, sin animación: la pantalla ya no está a la vista. */
 function dialReiniciar(){
+  if(menuDial.abierto)cerrarMenuDial();
   dialCerrarSubs();
   cancelAnimationFrame(dialEstado.raf);
   dialEstado.x=0; dialEstado.v=0; dialEstado.obj=null; dialPintarGiro();
@@ -7367,139 +7387,133 @@ function iniciarDial(){
     if(dialEstado.nivel)dialCerrarSubs();
   },true);
   document.getElementById('dial-centro').addEventListener('click',()=>{
-    if(dialEstado.nivel)dialCerrarSubs(); else dialEntrar(dialEstado.sel);
+    if(dialEstado.nivel)dialCerrarSubs();
+    else if(menuDial.abierto){ cerrarMenuDial(); document.getElementById('dial-fab').focus(); }
+    else dialEntrar(dialEstado.sel);
   });
   dialPintarGiro();
 }
 
-/* ═══════════ EL MINI-DIAL de abajo (21/10/2026) ═══════════
-   Un trozo del bisel grande: un círculo de 900 px del que asoma el borde de
-   arriba. Las etiquetas son los botones de siempre (#tab-inicio, #tab-log…),
-   colocados sobre el arco. Arrastrar de lado lo gira (0,3° por px: el pulgar
-   va de lado, no en círculo), con topes elásticos en Inicio y en Ajustes; al
-   soltar se asienta con un muelle y entra en la sección de la marca. Tocar una
-   etiqueta es un toque normal: hace lo que hacía en la barra.
-   Solo enseña la sección actual y sus dos vecinas, como el prototipo: las
-   cinco no caben en el ancho de un móvil sin pisarse, y las de los extremos
-   caerían bajo la curva de la esquina del iPhone (medido, prueba 13aa). Las
-   demás aparecen al girar. */
-const MINI_IDS=['tab-inicio','tab-log','tab-resumen','tab-medidas','config-btn'];
+/* ═══════════ EL BOTÓN DEL DIAL, abajo (25/10/2026) ═══════════
+   Sustituye al mini-dial (21/10). Jhon comparó las dos opciones en un
+   prototipo en su iPhone y eligió esta. Toque: abre el aro de Inicio (el
+   mismo #dial, que se muda a la capa #dial-velo y vuelve al cerrar) con la
+   sección en la que estás arriba en cian y con borde; dentro funciona igual
+   que en Inicio, con sus opciones. El centro es «Cerrar», igual que tocar
+   fuera del aro o Escape.
+   Mantener y deslizar de lado: gira el aro (0,8° por px: dos secciones caben
+   en medio ancho de pantalla, y por el camino corto ninguna queda más lejos)
+   y al soltar entra en la sección cian. Un solo gesto, como el mini-dial. */
 const MINI_SECCION={inicio:0,log:1,resumen:2,medidas:3};
-const MINI_PASO=15, MINI_GANANCIA=.3, MINI_R=450, MINI_RE=418;   // grados por sección y por px de arrastre
-const miniEstado={x:0,v:0,raf:0,listo:false,botones:null,tics:null,seccion:0,dialALaVista:true};
+const MINI_GANANCIA=.8;
+const miniEstado={listo:false,seccion:0,dialALaVista:true};
 
-function miniPintar(){
-  const e=miniEstado; if(!e.listo)return;
-  const barra=document.getElementById('mini-dial'), w=barra.clientWidth, cy=12+MINI_R;
-  e.tics.setAttribute('transform','rotate('+e.x.toFixed(2)+' 450 450)');
-  e.botones.forEach((b,i)=>{
-    const ang=i*MINI_PASO+e.x, a=ang*Math.PI/180;
-    const x=w/2+MINI_RE*Math.sin(a), y=cy-MINI_RE*Math.cos(a);
-    const d=Math.abs(ang), op=d<=1.15*MINI_PASO?1:Math.max(0,1-(d-1.15*MINI_PASO)/(.45*MINI_PASO));
-    b.style.transform='translate('+(x-b.offsetWidth/2).toFixed(1)+'px,'+(y-b.offsetHeight/2).toFixed(1)+'px)';
-    b.style.opacity=op; b.style.visibility=op<.05?'hidden':'visible';
-  });
-}
-
-function miniMuelle(objetivo,{amort=1,resp=.35}={},alFin){
-  const e=miniEstado;
-  cancelAnimationFrame(e.raf);
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ e.x=objetivo;e.v=0;miniPintar();alFin&&alFin();return; }
-  const k=Math.pow(2*Math.PI/resp,2), c=4*Math.PI*amort/resp;
-  let t0=performance.now();
-  const paso=t=>{
-    const dt=Math.min(.032,(t-t0)/1000);t0=t;
-    e.v+=(-k*(e.x-objetivo)-c*e.v)*dt; e.x+=e.v*dt;
-    if(Math.abs(e.x-objetivo)<.03&&Math.abs(e.v)<.5){ e.x=objetivo;e.v=0;miniPintar();alFin&&alFin();return; }
-    miniPintar(); e.raf=requestAnimationFrame(paso);
-  };
-  e.raf=requestAnimationFrame(paso);
-}
-
-/* Lo llama showTab(): el mini-dial gira hasta la sección en la que se ha entrado. */
+/* Lo llama showTab(): recuerda en qué sección estás. */
 function miniDialA(id){
-  const e=miniEstado;
-  if(!(id in MINI_SECCION))return;
-  e.seccion=MINI_SECCION[id];
-  if(!e.listo)return;
-  miniMuelle(-e.seccion*MINI_PASO);
+  if(id in MINI_SECCION)miniEstado.seccion=MINI_SECCION[id];
   miniVisibilidad();
 }
-
 // En Inicio, con el dial grande a la vista, sobra.
 function miniVisibilidad(){
-  const barra=document.getElementById('mini-dial');
-  if(barra)barra.classList.toggle('oculto',miniEstado.seccion===0&&miniEstado.dialALaVista);
+  const b=document.getElementById('dial-fab');
+  if(b)b.classList.toggle('oculto',miniEstado.seccion===0&&miniEstado.dialALaVista&&!menuDial.abierto);
+}
+// Ajustes es un panel encima de la sección: si está abierto, estás en Ajustes.
+function seccionActual(){
+  const p=document.getElementById('config-panel');
+  return p&&!p.classList.contains('hidden')?4:miniEstado.seccion;
+}
+function irASeccion(i){
+  const p=document.getElementById('config-panel');
+  if(i===4){ if(p.classList.contains('hidden'))toggleConfigPanel(); return; }
+  if(!p.classList.contains('hidden'))p.classList.add('hidden');
+  goTo(['inicio','log','resumen','medidas'][i]);
+}
+// Los puntos de aviso de Inicio y Ajustes, también en el botón.
+function pintarPuntoFab(){
+  const b=document.getElementById('dial-fab'); if(!b)return;
+  const conPunto=['tab-inicio','config-btn'].some(id=>{ const t=document.getElementById(id);
+    return t&&(t.classList.contains('con-aviso')||t.classList.contains('con-punto')); });
+  b.classList.toggle('con-punto',conPunto);
+  b.setAttribute('aria-label',conPunto?'Secciones · hay algo nuevo':'Secciones');
+}
+
+function abrirMenuDial(){
+  if(menuDial.abierto)return;
+  const dial=document.getElementById('dial'), velo=document.getElementById('dial-velo');
+  if(!dial||!velo)return;
+  dialCancelarEspera(); dialCerrarSubs();
+  const caja=document.getElementById('dial-velo-caja');
+  caja.appendChild(dial); caja.appendChild(document.querySelector('.dial-rotulo'));
+  menuDial.abierto=true;
+  cancelAnimationFrame(dialEstado.raf); dialEstado.obj=null; dialEstado.v=0;
+  dialEstado.aqui=seccionActual(); dialEstado.x=-dialEstado.aqui*DIAL_PASO;
+  dial.classList.remove('flotante'); void dial.offsetWidth; dial.classList.add('flotante');
+  velo.classList.add('ver'); velo.setAttribute('aria-hidden','false');
+  dialPintarGiro(); miniVisibilidad();
+  try{ document.getElementById('dial-aro').focus({preventScroll:true}); }catch(_){/* sin foco */}
+}
+function cerrarMenuDial(){
+  if(!menuDial.abierto)return;
+  menuDial.abierto=false;
+  dialCancelarEspera(); dialCerrarSubs();
+  const dial=document.getElementById('dial'), velo=document.getElementById('dial-velo');
+  velo.classList.remove('ver'); velo.setAttribute('aria-hidden','true');
+  dial.classList.remove('flotante');
+  // De vuelta a su sitio en Inicio, delante de la tira de semanas.
+  const zona=document.getElementById('dial-zona'), semanas=document.getElementById('dial-semanas');
+  zona.insertBefore(dial,semanas); zona.insertBefore(document.querySelector('.dial-rotulo'),semanas);
+  cancelAnimationFrame(dialEstado.raf);
+  dialEstado.aqui=-1; dialEstado.desliza=false; dialEstado.x=0; dialEstado.v=0; dialEstado.obj=null;
+  dialPintarGiro(); miniVisibilidad();
 }
 
 function iniciarMiniDial(){
-  const e=miniEstado, barra=document.getElementById('mini-dial');
-  if(e.listo||!barra)return;
-  const NS='http://www.w3.org/2000/svg', tics=document.getElementById('mini-tics');
-  for(let k=-24;k<=40;k++){
-    const gordo=k%4===0&&k>=0&&k<=16, l=document.createElementNS(NS,'line');
-    l.setAttribute('x1',450);l.setAttribute('y1',8);l.setAttribute('x2',450);l.setAttribute('y2',gordo?20:14);
-    l.setAttribute('class','dial-tic'+(gordo?' gordo':''));
-    l.setAttribute('transform','rotate('+(k*MINI_PASO/4)+' 450 450)');
-    tics.appendChild(l);
-  }
-  e.tics=tics;
-  e.botones=MINI_IDS.map(id=>document.getElementById(id));
-  e.x=-e.seccion*MINI_PASO; e.listo=true;
-  miniPintar();
-  addEventListener('resize',miniPintar);
-  // Las medidas de las etiquetas cambian cuando llega la fuente; se recolocan.
-  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(miniPintar);
-
+  if(miniEstado.listo)return;
+  const fab=document.getElementById('dial-fab'), velo=document.getElementById('dial-velo');
+  if(!fab||!velo)return;
+  miniEstado.listo=true;
   const dial=document.getElementById('dial');
   if(dial&&'IntersectionObserver' in window){
     // Asoma en cuanto queda a la vista menos de la mitad del dial grande.
+    /* Sin saltarse avisos con la capa abierta: el navegador solo avisa de
+       los CAMBIOS, y de la capa (a la vista) a Inicio (a la vista) no avisa. */
     new IntersectionObserver(ents=>{
-      e.dialALaVista=ents[0].intersectionRatio>=.5; miniVisibilidad();
+      miniEstado.dialALaVista=ents[0].intersectionRatio>=.5; miniVisibilidad();
     },{threshold:[0,.5,1]}).observe(dial);
-  }else{ e.dialALaVista=false; }
-  miniVisibilidad();
+  }else{ miniEstado.dialALaVista=false; }
+  miniVisibilidad(); pintarPuntoFab();
 
-  /* El arrastre. Mientras no pase de 8 px es un toque y el botón hace lo suyo;
-     a partir de ahí es un giro y el clic de después se anula. */
-  const MIN=-4*MINI_PASO, MAX=0;
-  const goma=(sobra,dim=40,k=.55)=>(sobra*dim*k)/(dim+k*Math.abs(sobra));
-  let ini=null, libre=0, hist=[], girando=false, anularClic=false;
-  barra.addEventListener('pointerdown',ev=>{
+  // El botón: un toque abre el aro; mantener y deslizar de lado lo gira.
+  let f=null;
+  fab.addEventListener('pointerdown',ev=>{
     if(ev.button>0)return;
-    cancelAnimationFrame(e.raf);
-    ini={x:ev.clientX,y:ev.clientY,id:ev.pointerId,px:ev.clientX}; libre=e.x; hist=[{t:performance.now(),r:e.x}];
-    girando=false; anularClic=false;
+    ev.preventDefault();
+    try{fab.setPointerCapture(ev.pointerId);}catch(_){/* ya soltado */}
+    abrirMenuDial();
+    f={x:ev.clientX,y:ev.clientY,base:dialEstado.x,mov:false};
   });
-  barra.addEventListener('pointermove',ev=>{
-    if(!ini||ev.pointerId!==ini.id)return;
-    if(!girando){
-      if(Math.hypot(ev.clientX-ini.x,ev.clientY-ini.y)<8)return;
-      girando=true; anularClic=true;
-      try{barra.setPointerCapture(ev.pointerId);}catch(_){/* ya soltado */}
-    }
-    libre+=(ev.clientX-ini.px)*MINI_GANANCIA; ini.px=ev.clientX;
-    e.x=libre<MIN?MIN+goma(libre-MIN):libre>MAX?MAX+goma(libre-MAX):libre;
-    hist.push({t:performance.now(),r:e.x}); if(hist.length>6)hist.shift();
-    e.v=0; miniPintar();
+  fab.addEventListener('pointermove',ev=>{
+    if(!f)return;
+    const dx=ev.clientX-f.x;
+    if(!f.mov){ if(Math.hypot(dx,ev.clientY-f.y)<10)return; f.mov=true; dialEstado.desliza=true; }
+    dialEstado.x=f.base-dx*MINI_GANANCIA; dialPintarGiro();
   });
-  const fin=ev=>{
-    if(!ini||ev.pointerId!==ini.id)return;
-    ini=null;
-    if(!girando){ miniMuelle(-e.seccion*MINI_PASO); return; }   // por si un toque lo pilló a medio giro
-    const a=hist[0], b=hist[hist.length-1], v=(b.r-a.r)/((b.t-a.t)/1000||1);
-    const proy=(v/1000)*.99/(1-.99);
-    const i=Math.max(0,Math.min(4,Math.round(-(e.x+proy)/MINI_PASO)));
-    e.v=v;
-    miniMuelle(-i*MINI_PASO,{amort:.8,resp:.4},()=>{
-      if(i===e.seccion)return;
-      document.getElementById(MINI_IDS[i]).click();
-      // Ajustes no es una sección: abre su panel y el dial vuelve a donde estabas.
-      if(i===4)miniMuelle(-e.seccion*MINI_PASO);
-    });
+  const soltar=()=>{
+    if(!f)return; const mov=f.mov; f=null;
+    if(!mov)return;
+    dialEstado.desliza=false;
+    const i=dialIndice(dialEstado.x);
+    dialGirarA(i,()=>{ const antes=seccionActual(); cerrarMenuDial(); if(i!==antes)irASeccion(i); });
   };
-  barra.addEventListener('pointerup',fin); barra.addEventListener('pointercancel',fin);
-  barra.addEventListener('click',ev=>{ if(anularClic){ ev.stopPropagation(); ev.preventDefault(); anularClic=false; } },true);
+  fab.addEventListener('pointerup',soltar); fab.addEventListener('pointercancel',soltar);
+  fab.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); abrirMenuDial(); } });
+  // Tocar fuera del aro (en el velo, no en el aro ni en su rótulo) lo cierra.
+  velo.addEventListener('pointerdown',ev=>{ if(!ev.target.closest('#dial,.dial-rotulo'))cerrarMenuDial(); });
+  document.addEventListener('keydown',ev=>{
+    if(!menuDial.abierto||ev.key!=='Escape')return;
+    ev.preventDefault(); if(dialEstado.nivel)dialCerrarSubs(); else{ cerrarMenuDial(); fab.focus(); }
+  });
 }
 
 /* Los textos del dial y la tira de semanas. La llama updateHome(), así que
@@ -7686,6 +7700,7 @@ function pintarPuntoAjustes(){
   if(nueva)partes.push('hay una versión nueva');
   if(n)partes.push(n===1?'1 persona pide entrenador':n+' personas piden entrenador');
   btn.title=partes.length?'Ajustes · '+partes.join(' · '):'Ajustes';
+  pintarPuntoFab();
 }
 window.fijarPeticionesAjustes=function(n){ estadoPuntoAjustes.peticiones=n||0; pintarPuntoAjustes(); };
 
@@ -14335,6 +14350,7 @@ function pintarPuntoInicio(){
   const soyCliente = !!(meData && meData.role !== 'trainer' && meData.trainerId);
   const sinLeer = !!(miAviso && miAviso.texto && !miAviso.visto && soyCliente);
   tab.classList.toggle('con-aviso', sinLeer);
+  pintarPuntoFab();
 }
 
 /* MARCAR, no borrar. Lo primero que se probó (09/09) borraba el aviso entero,
