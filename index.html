@@ -3621,7 +3621,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 01:02';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 01:16';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7082,6 +7082,7 @@ const DIAL_ICONOS=[
   'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'
 ];
 const DIAL_ICO={
+  casa:'M4 11 12 4l8 7v9h-5v-6H9v6H4z',
   hoy:'M8 5v14l11-7z',
   cambiar:'M4 8h14l-4-4M20 16H6l4 4',
   mas:'M12 5v14M5 12h14',
@@ -7102,7 +7103,11 @@ const DIAL_ICO={
    Solo llevan a sitios: nada de aquí borra ni cambia datos ("Añadir rutina"
    abre el asistente de siempre). `si` esconde la opción cuando no aplica. */
 const DIAL_SUBS=[
-  [ {n:'Entrenamiento de hoy',i:'hoy',ir:()=>irAProximaSesion()},
+  [ /* Solo desde el botón de abajo: en la pantalla de Inicio ya estás en ella.
+       Sin esta, desde otra sección no había forma de volver a Inicio por las
+       opciones (lo vio Jhon el 25/10/2026; deslizando el botón sí se podía). */
+    {n:'Pantalla de Inicio',i:'casa',si:()=>menuDial.abierto,ir:()=>irASeccion(0)},
+    {n:'Entrenamiento de hoy',i:'hoy',ir:()=>irAProximaSesion()},
     {n:'Cambiar rutina',i:'cambiar',ir:()=>toggleRoutinePanel()},
     {n:'Añadir rutina',i:'mas',ir:()=>anadirRutinaDesdeInicio()} ],
   [ {n:'Semana en curso',i:'semana',ir:()=>{ goTo('log'); const a=getActive(); if(a&&(a.plan||[]).length)openWeekDetail(semanaEnCurso(a)); }},

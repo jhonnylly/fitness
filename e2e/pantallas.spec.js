@@ -83,6 +83,22 @@ test('desde el botón, una opción del aro lleva a su apartado', async ({ page }
   await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
 });
 
+test('desde el botón, Inicio ofrece volver a su pantalla', async ({ page }) => {
+  await appLista(page);
+  await irA(page, 'Resumen');
+  await page.locator('#dial-fab').click();
+  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
+  await page.locator('#dial-etiquetas g[aria-label="Inicio"]').click();
+  await expect(page.locator('#dial')).toHaveClass(/sub/);
+  await expect(page.locator('#dial-sub .dial-seg')).toHaveCount(4);
+  // La primera, ya en cian: un toque y estás en Inicio.
+  await expect(page.locator('#dial-nombre')).toHaveText('Pantalla de Inicio');
+  const c = await page.locator('#dial-sub g[aria-label="Pantalla de Inicio"] .dial-ico').boundingBox();
+  await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
+  await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
+  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
+});
+
 test('tocar fuera del aro lo cierra sin cambiar de sección', async ({ page }) => {
   await appLista(page);
   await irA(page, 'Medidas');
