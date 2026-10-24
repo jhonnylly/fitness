@@ -7,6 +7,14 @@ const { test, expect, appLista, irA } = require('./base');
 
 const etiqueta = (page, nombre) => page.locator(`#dial-etiquetas g[aria-label="${nombre}"]`);
 const seleccionada = page => page.locator('#dial-aro').getAttribute('aria-valuetext');
+// Los del aro de dentro no reciben el dedo (lo coge el de fuera y decide por la
+// distancia al centro), así que se tocan en su sitio, como un dedo.
+async function tocarSub(page, nombre){
+  // En el icono: con dos opciones cada una es medio aro y el centro de su caja cae en el hueco.
+  const c = await page.locator(`#dial-sub g[aria-label="${nombre}"] .dial-ico`).boundingBox();
+  await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
+}
+const abierto = page => page.locator('#dial').evaluate(d => d.classList.contains('sub'));
 
 test('arranca en Inicio, con la fecha y lo que toca hoy', async ({ page }) => {
   await appLista(page);
@@ -36,9 +44,17 @@ test('girar hasta una sección muestra lo que hay en ella', async ({ page }) => 
   await expect(page.locator('#pane-inicio')).toHaveClass(/active/);   // con el teclado no entra solo
 });
 
-test('tocar una etiqueta gira hasta ella y entra', async ({ page }) => {
+test('tocar una sección gira hasta ella y, al segundo, abre sus opciones', async ({ page }) => {
   await appLista(page);
   await etiqueta(page, 'Resumen').click();
+  await expect.poll(() => abierto(page)).toBe(true);
+  await expect(page.locator('#dial-nombre')).toHaveText('Racha y progreso');
+  // Sin fotos no se ofrece comparar.
+  await expect(page.locator('#dial-sub .dial-seg')).toHaveCount(2);
+  await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
+
+  // Tocar otra opción gira hasta ella y, al segundo, entra.
+  await tocarSub(page, 'Tus fotos');
   await expect(page.locator('#pane-resumen')).toHaveClass(/active/);
 
   // Al volver a Inicio el dial vuelve a apuntar a Inicio.
@@ -46,7 +62,7 @@ test('tocar una etiqueta gira hasta ella y entra', async ({ page }) => {
   expect(await seleccionada(page)).toBe('Inicio');
 });
 
-test('arrastrar el bisel y soltarlo en una sección entra en ella', async ({ page }) => {
+test('arrastrar el aro y soltarlo en una sección abre sus opciones', async ({ page }) => {
   await appLista(page);
   const caja = await page.locator('#dial').boundingBox();
   const cx = caja.x + caja.width / 2, cy = caja.y + caja.height / 2, r = caja.width * 0.44;
@@ -59,7 +75,52 @@ test('arrastrar el bisel y soltarlo en una sección entra en ella', async ({ pag
     await page.mouse.move(cx + r * Math.cos(a), cy + r * Math.sin(a));
   }
   await page.mouse.up();
+  await expect.poll(() => abierto(page)).toBe(true);
+  await expect(page.locator('#dial-nombre')).toHaveText('Semana en curso');
+  // Tocar la opción cian entra ya: la semana en la que vas.
+  await tocarSub(page, 'Semana en curso');
   await expect(page.locator('#pane-log')).toHaveClass(/active/);
+  await expect(page.locator('#week-detail-title')).toHaveText(/Semana 1/);
+});
+
+test('con las opciones abiertas, el centro vuelve y el aro de fuera cambia de sección', async ({ page }) => {
+  await appLista(page);
+  await etiqueta(page, 'Ajustes').click();
+  await expect.poll(() => abierto(page)).toBe(true);
+  await expect(page.locator('#dial-sub .dial-seg')).toHaveCount(5);
+  await expect(page.locator('#dial-centro')).toHaveText(/Volver/);
+  await page.locator('#dial-centro').click();
+  expect(await abierto(page)).toBe(false);
+  await expect(page.locator('#dial-num')).toBeVisible();
+
+  // Abiertas las de Ajustes, tocar Medidas por fuera abre las de Medidas.
+  await etiqueta(page, 'Ajustes').click();
+  await expect.poll(() => abierto(page)).toBe(true);
+  await etiqueta(page, 'Medidas').click({ force: true });
+  await expect(page.locator('#dial-nombre')).toHaveText('Añadir medición');
+  await expect.poll(() => seleccionada(page)).toBe('Añadir medición');
+});
+
+test('una opción de Ajustes abre Ajustes en ese apartado', async ({ page }) => {
+  await appLista(page);
+  await page.locator('#dial-aro').focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(() => seleccionada(page)).toBe('Ajustes');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => seleccionada(page)).toBe('Tus datos');
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => seleccionada(page)).toBe('Días de entrenamiento');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#config-panel')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#cfg-dias')).toBeInViewport();
+});
+
+test('tocar fuera del dial cierra las opciones', async ({ page }) => {
+  await appLista(page);
+  await etiqueta(page, 'Medidas').click();
+  await expect.poll(() => abierto(page)).toBe(true);
+  await page.locator('#dial-nombre').click();
+  expect(await abierto(page)).toBe(false);
 });
 
 test('soltarlo de vuelta en Inicio no hace nada', async ({ page }) => {
@@ -86,7 +147,27 @@ test('el teclado también lo mueve', async ({ page }) => {
   await page.keyboard.press('ArrowLeft');
   await expect.poll(() => seleccionada(page)).toBe('Ajustes');
   await page.keyboard.press('Enter');
-  await expect(page.locator('#config-panel')).not.toHaveClass(/hidden/);
+  await expect.poll(() => seleccionada(page)).toBe('Tus datos');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => seleccionada(page)).toBe('Ajustes');
+});
+
+test('en Inicio, tocar el cian abre sus opciones y «Cambiar rutina» abre el listado', async ({ page }) => {
+  await appLista(page);
+  await etiqueta(page, 'Inicio').click();
+  await expect.poll(() => abierto(page)).toBe(true);
+  await expect(page.locator('#dial-nombre')).toHaveText('Entrenamiento de hoy');
+  await tocarSub(page, 'Cambiar rutina');
+  await expect(page.locator('#routine-panel')).not.toHaveClass(/hidden/);
+});
+
+test('girado y con las opciones abiertas, la página no se mueve de lado', async ({ page }) => {
+  await appLista(page);
+  // Los <svg> del aro son cuadrados: girados, sus esquinas sobresalían (24/10/2026).
+  await etiqueta(page, 'Ajustes').click();
+  await expect.poll(() => abierto(page)).toBe(true);
+  const ancho = await page.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+  expect(ancho[0]).toBeLessThanOrEqual(ancho[1]);
 });
 
 test('tocar una semana abre sus sesiones', async ({ page }) => {
