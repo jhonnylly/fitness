@@ -5,7 +5,7 @@
 
 const { test, expect, appLista, irA } = require('./base');
 
-const etiqueta = (page, nombre) => page.locator('#dial-etiquetas g').filter({ hasText: nombre });
+const etiqueta = (page, nombre) => page.locator(`#dial-etiquetas g[aria-label="${nombre}"]`);
 const seleccionada = page => page.locator('#dial-aro').getAttribute('aria-valuetext');
 
 test('arranca en Inicio, con la fecha y lo que toca hoy', async ({ page }) => {
