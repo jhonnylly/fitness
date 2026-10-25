@@ -99,6 +99,24 @@ test('desde el botón, Inicio ofrece volver a su pantalla', async ({ page }) => 
   await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
 });
 
+test('el botón se aparta al bajar y al escribir, y vuelve al subir', async ({ page }) => {
+  await appLista(page);
+  await page.setViewportSize({ width: 390, height: 600 });
+  await irA(page, 'Medidas');
+  const fab = page.locator('#dial-fab');
+  await expect(fab).not.toHaveClass(/apartado/);
+  await page.evaluate(() => scrollBy(0, 400));
+  await expect(fab).toHaveClass(/apartado/);
+  await page.evaluate(() => scrollBy(0, -120));
+  await expect(fab).not.toHaveClass(/apartado/);
+  // Mientras escribes el peso, también se aparta; al salir del campo, vuelve.
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.locator('#med-peso').focus();
+  await expect(fab).toHaveClass(/apartado/);
+  await page.locator('#med-peso').blur();
+  await expect(fab).not.toHaveClass(/apartado/);
+});
+
 test('tocar fuera del aro lo cierra sin cambiar de sección', async ({ page }) => {
   await appLista(page);
   await irA(page, 'Medidas');

@@ -384,6 +384,9 @@ label.btn-sm{letter-spacing:normal;text-transform:none;}
 .dial-fab svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;}
 .dial-fab:active{transform:scale(.95);}
 .dial-fab.oculto{transform:translateY(160%);}
+/* Al bajar por la pantalla o mientras escribes, se aparta (25/10/2026): tapaba
+   las casillas de kg y repeticiones (crítica de Impeccable). Vuelve al subir. */
+.dial-fab.apartado{transform:translateY(160%);}
 .dial-fab:focus-visible{outline:3px solid var(--dial-cian,#35c9e6);outline-offset:4px;}
 .dial-fab.con-punto::after{content:'';position:absolute;top:3px;right:3px;width:12px;height:12px;border-radius:50%;
   background:var(--danger);box-shadow:0 0 0 2px var(--bg);}
@@ -3745,7 +3748,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 02:04';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 02:18';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7620,9 +7623,13 @@ const MINI_SECCION={inicio:0,log:1,resumen:2,medidas:3};
 const MINI_GANANCIA=.8;
 const miniEstado={listo:false,seccion:0,dialALaVista:true};
 
-/* Lo llama showTab(): recuerda en qué sección estás. */
+/* Lo llama showTab(): recuerda en qué sección estás. La sección nueva empieza
+   arriba del todo, así que el botón vuelve a verse si se había apartado. */
 function miniDialA(id){
   if(id in MINI_SECCION)miniEstado.seccion=MINI_SECCION[id];
+  const b=document.getElementById('dial-fab');
+  if(b&&!(document.activeElement&&document.activeElement.matches&&document.activeElement.matches('input,textarea,select')))
+    b.classList.remove('apartado');
   miniVisibilidad();
 }
 // En Inicio, con el dial grande a la vista, sobra.
@@ -7720,6 +7727,29 @@ function iniciarMiniDial(){
   };
   fab.addEventListener('pointerup',soltar); fab.addEventListener('pointercancel',soltar);
   fab.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); abrirMenuDial(); } });
+
+  /* Apartarse al bajar y volver al subir. Arriba del todo siempre se ve; los
+     movimientos de menos de 6 px (el rebote de iOS, un dedo que tiembla) no
+     cuentan. Mientras escribes en un campo, apartado: el teclado y la casilla
+     mandan. */
+  let ultimaY=window.scrollY, pedido=false, escribiendo=false, bajando=false;
+  const apartar=()=>fab.classList.toggle('apartado',escribiendo||bajando);
+  addEventListener('scroll',()=>{
+    if(pedido)return; pedido=true;
+    requestAnimationFrame(()=>{
+      pedido=false;
+      const y=window.scrollY, dy=y-ultimaY;
+      if(y<80)bajando=false;
+      else if(dy>6)bajando=true;
+      else if(dy<-6)bajando=false;
+      else return;                       // ni sube ni baja: no se toca la referencia
+      ultimaY=y; apartar();
+    });
+  },{passive:true});
+  const esCampo=el=>!!el&&el.matches&&el.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),textarea,select')
+    &&!el.closest('#dial-velo');
+  document.addEventListener('focusin',ev=>{ if(esCampo(ev.target)){ escribiendo=true; apartar(); } });
+  document.addEventListener('focusout',ev=>{ if(esCampo(ev.target)){ escribiendo=false; apartar(); } });
   // Tocar fuera del aro (en el velo, no en el aro ni en su rótulo) lo cierra.
   velo.addEventListener('pointerdown',ev=>{ if(!ev.target.closest('#dial,.dial-rotulo'))cerrarMenuDial(); });
   document.addEventListener('keydown',ev=>{

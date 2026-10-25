@@ -74,7 +74,9 @@ async function irA(page, nombre){
      deslizar de lado gira el aro (MINI_GANANCIA grados por px) y al soltar
      entra en la sección cian. Por el camino corto, como lo haría una persona. */
   const fab = page.locator('#dial-fab');
-  await expect(fab).not.toHaveClass(/oculto/);
+  // Al bajar por la pantalla el botón se aparta (25/10/2026): como una persona, se sube un poco.
+  await page.evaluate(() => { document.activeElement && document.activeElement.blur && document.activeElement.blur(); scrollTo(0, 0); });
+  await expect(fab).not.toHaveClass(/oculto|apartado/);
   await page.waitForTimeout(400);                    // que acabe de asomar
   const [desde, pxPorPaso] = await page.evaluate(() => [seccionActual(), DIAL_PASO / MINI_GANANCIA]);
   let pasos = SECCIONES.indexOf(nombre) - desde;
