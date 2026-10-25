@@ -111,7 +111,9 @@ async function appLista(page, url){
       return r;
     });
     ok(/^¡Hola, prueba! 👋$/i.test(cab.inicial), 'al abrir, saluda con el nombre: '+cab.inicial);
-    ok(cab.log === 'Registra tu sesión de hoy', 'en Entrenar dice qué hacer: '+cab.log);
+    /* 25/10/2026: la frase («Registra tu sesión de hoy») pasó a ser el NOMBRE de
+       la sección, como los rótulos del dial; dónde estás dentro lo dice el camino. */
+    ok(cab.log === 'Entrenar', 'en Entrenar dice el nombre de la sección: '+cab.log);
     ok(cab.resumen !== cab.log && cab.medidas !== cab.log && !/Hola/.test(cab.resumen+cab.medidas),
        'cada pestaña tiene su frase: '+cab.resumen+' / '+cab.medidas);
     ok(cab.inicio === 'Tu día de hoy', 'al volver a Inicio ya no repite el saludo: '+cab.inicio);
@@ -387,7 +389,9 @@ async function appLista(page, url){
       skipTimer(); renderEx(); await tic();
       r.botonTras = document.getElementById('desc-valor').textContent;
       delete DB.descansos[clave]; renderEx();
-      r.tapaCabecera = cajaCrono.height >= document.querySelector('header').getBoundingClientRect().height - 1 && cajaCrono.height < 100;
+      /* Desde el 25/10/2026 la cabecera crece con el camino y la tira: la franja la
+         sigue (--cab-h). El tope solo vigila que no se coma media pantalla. */
+      r.tapaCabecera = cajaCrono.height >= document.querySelector('header').getBoundingClientRect().height - 1 && cajaCrono.height < 200;
       /* 27/09/2026 (Jhon): fuera la línea "Descanso entre series" de arriba de
          la sesión. El general sigue, oculto: es el de partida de cada ejercicio. */
       r.sinLineaDescanso = !/Descanso entre series/.test(document.getElementById('session-form').textContent)
@@ -2458,7 +2462,8 @@ async function appLista(page, url){
       const panel = document.getElementById('config-panel');
       if(panel.classList.contains('hidden')) toggleConfigPanel();
       await comprobarVersionNueva(true);            // contra el propio servidor de la prueba: es la misma
-      const cuerpo = panel.querySelector('.routine-panel-header').nextElementSibling;
+      // Entre la cabecera y el contenido va la tira de secciones (25/10/2026).
+      const cuerpo = panel.querySelector('.routine-panel-header ~ div:not(.panel-tira)');
       const c = document.getElementById('cfg-version');
       const punto = () => document.getElementById('config-btn').classList.contains('con-punto');
       r.arriba = cuerpo.firstElementChild === c;

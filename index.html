@@ -60,8 +60,10 @@
 #rest-timer{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;z-index:200;
   background:var(--dark);color:#eef2fa;box-shadow:0 6px 20px rgba(0,0,0,.35);transition:transform .3s ease;}
 #rest-timer.hidden{transform:translate(-50%,-110%);}
-/* Tan alta como la cabecera, que queda debajo: más baja dejaba asomar el avatar. */
-.rt-fila{display:flex;align-items:center;gap:8px;min-height:78px;padding:8px 12px;}
+/* Tan alta como la cabecera, que queda debajo: más baja dejaba asomar el avatar.
+   Desde el 25/10/2026 la cabecera cambia de alto (camino y tira): pintarCabecera()
+   deja su alto en --cab-h y la franja lo copia (menos los 4 px de su barra). */
+.rt-fila{display:flex;align-items:center;gap:8px;min-height:calc(var(--cab-h,82px) - 4px);padding:8px 12px;}
 .rt-ico{width:20px;height:20px;flex-shrink:0;stroke:var(--accent-ink);}
 .timer-secs{font-size:24px;font-weight:800;color:var(--accent-ink);line-height:1;min-width:58px;}
 .timer-txt{flex:1;min-width:0;font-size:12px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -243,6 +245,39 @@ header{background:var(--dark);color:#eef2fa;padding:12px 16px;position:sticky;to
   background:none;border:none;padding:0;margin:0;color:inherit;font-family:inherit;
   cursor:pointer;display:block;max-width:100%;text-align:left;}
 .cab-saludo:active{opacity:.7;}
+/* ── CABECERA COMÚN (25/10/2026) ──
+   Dentro de una sección la cabecera habla el idioma del dial: el nombre de la
+   sección como rótulo (en vez de una frase), el camino recorrido cuando entras
+   en algo (Entrenar › Semana 1 › Full Body A, cada parte se toca para volver) y
+   la tira de 5 segmentos del dial con tu sección en cian, que se toca para ir a
+   otra. Jhon eligió esta variante (la B) en un prototipo. En Inicio no hay
+   tira: allí el propio dial dice dónde estás. La pinta pintarCabecera(). */
+header.en-seccion .cab-avatar{width:40px;height:40px;font-size:16px;}
+header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform:uppercase;}
+.cab-atras{flex:none;width:44px;height:44px;margin-left:-10px;border:0;background:none;color:var(--accent);
+  display:grid;place-items:center;cursor:pointer;border-radius:10px;}
+/* Sin esto, el display de cada clase ganaría al atributo hidden. */
+.cab-atras[hidden],.cab-avatar[hidden],.cab-migas[hidden],.cab-tira[hidden]{display:none;}
+.cab-atras svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;}
+.cab-atras:focus-visible{outline:2px solid var(--dial-cian);}
+.cab-migas{display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;margin-top:6px;font-size:13px;color:#a9b6d1;}
+.cab-migas button{border:0;background:none;padding:6px 0;min-height:32px;color:var(--accent);font-family:inherit;
+  font-size:13px;font-weight:600;cursor:pointer;text-underline-offset:3px;}
+.cab-migas button:focus-visible{outline:2px solid var(--dial-cian);border-radius:4px;}
+.cab-migas b{color:#eef2fa;font-weight:600;min-width:0;max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cab-migas .sep{opacity:.6;}
+.cab-tira{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:10px;}
+.cab-tira button{min-height:44px;border:0;border-radius:6px;cursor:pointer;display:grid;place-items:center;padding:0;
+  color:var(--on-accent);
+  background:repeating-linear-gradient(135deg,rgba(var(--accent-rgb),.95) 0 2px,rgba(var(--accent-rgb),.82) 2px 5px);
+  clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);transition:transform .12s ease;}
+.cab-tira button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.cab-tira button.aqui{background:var(--dial-cian);color:var(--dial-cian-tinta);}
+.cab-tira button:focus-visible{outline:2px solid #eef2fa;outline-offset:2px;}
+.cab-tira button:active{transform:scale(.96);}
+/* En los paneles (Ajustes) la tira va bajo su cabecera, en la misma franja oscura. */
+.panel-tira{background:var(--dark);padding:0 16px 12px;}
+.panel-tira .cab-tira{margin-top:0;}
 .recordatorio-guardar{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);
   margin:-4px 0 10px;}
 .recordatorio-guardar b{color:var(--text);}
@@ -1234,7 +1269,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .routine-panel{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;height:100vh;height:100dvh;background:var(--bg);z-index:300;display:flex;flex-direction:column;transition:transform .3s ease;}
 .routine-panel.hidden{transform:translate(-50%,-110%);}
 .routine-panel-header{background:var(--dark);color:#eef2fa;padding:16px;display:flex;justify-content:space-between;align-items:center;}
-.routine-panel-header h2{font-size:16px;font-weight:800;letter-spacing:1px;}
+.routine-panel-header h2{font-size:20px;font-weight:800;letter-spacing:.08em;}
 /* Cada rutina en bloque, no en fila: con tres botones y dos líneas de datos no
    caben en horizontal en 390 px, y apretarlos era parte de lo que hacía esta
    pantalla confusa. */
@@ -1645,6 +1680,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <!-- Tocar tu foto abre TU CUENTA (15/09/2026, pedido por Jhon): foto, nombre
          y sesión en un solo sitio. Antes la foto abría el visor y la cuenta
          tenía su propio botón de nube a la derecha. -->
+    <!-- Dentro de una semana, sesión o ejercicio, la flecha de volver ocupa el sitio de la foto. -->
+    <button type="button" class="cab-atras" id="cab-atras" onclick="cabAtras()" aria-label="Atrás" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div id="profile-pic" class="cab-avatar sin-foto" onclick="toggleAuthPanel()" role="button" aria-label="Tu cuenta"></div>
     <input type="file" id="profile-input" accept="image/*" onchange="saveProfilePic(this)" style="display:none;">
 
@@ -1674,6 +1711,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
          esquina de arriba a la derecha es donde peor llega el pulgar. La
          cuenta se sigue abriendo tocando tu foto o el saludo. -->
   </div>
+  <nav class="cab-migas" id="cab-migas" aria-label="Dónde estás" hidden></nav>
+  <nav class="cab-tira" id="cab-tira" aria-label="Secciones" hidden></nav>
 </header>
 
 
@@ -1935,6 +1974,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <button class="btn-volver" onclick="toggleConfigPanel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver</span></button>
     <h2>AJUSTES</h2>
   </div>
+  <div class="panel-tira"><nav class="cab-tira" id="cfg-tira" aria-label="Secciones"></nav></div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
     <!-- La versión, ARRIBA DEL TODO (15/09/2026). Estaba al final de Ajustes y
          para actualizar había que bajar hasta ella; Jhon la quiso como un botón
@@ -3679,7 +3719,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 01:46';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 02:12';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -6015,11 +6055,14 @@ function importJSON(e){
    cabecera dice qué se hace en la pestaña en la que estás, y al volver a
    Inicio ya no repite el saludo. Frases cortas: la línea no parte y a 390 px
    caben ~25 caracteres antes de los puntos suspensivos. */
+/* Dentro de una sección, la cabecera dice su NOMBRE (25/10/2026): antes era una
+   frase («Registra tu sesión de hoy») que no cambiaba al entrar en una semana o
+   un ejercicio. Dónde estás dentro lo dice el camino de debajo. */
 const TEXTO_SECCION={
   inicio:'Tu día de hoy',
-  log:'Registra tu sesión de hoy',
-  resumen:'Tu progreso y tus fotos',
-  medidas:'Apunta tu peso y medidas'
+  log:'Entrenar',
+  resumen:'Resumen',
+  medidas:'Medidas'
 };
 let seccionCab='inicio';
 let saludoHecho=false;
@@ -6954,7 +6997,91 @@ function pintarSaludo(){
   el.textContent = (seccionCab==='inicio' && !saludoHecho)
     ? '¡Hola'+(nombre?', '+nombre:'')+'! 👋'
     : (TEXTO_SECCION[seccionCab]||'');
+  pintarCabecera();
 }
+
+/* ── LA CABECERA COMÚN (25/10/2026): camino y tira ── */
+const TIRA_ICONOS=['M4 11 12 4l8 7v9h-5v-6H9v6H4z','M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12',
+  'M5 20V11M11 20V5M17 20v-6M3 20h18','M4 16a8 8 0 1 1 16 0M12 16l4-5M3 20h18',
+  'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'];
+const TIRA_NOMBRES=['Inicio','Entrenar','Resumen','Medidas','Ajustes'];
+// Una tira de 5 botones; `aqui` es tu sección (en cian). Tocar otra lleva a ella.
+function pintarTira(nav,aqui){
+  if(!nav)return;
+  if(!nav.children.length){
+    nav.innerHTML=TIRA_NOMBRES.map((n,i)=>'<button type="button" data-i="'+i+'" aria-label="'+n+'">'+
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+TIRA_ICONOS[i]+'"/></svg></button>').join('');
+    nav.addEventListener('click',ev=>{
+      const b=ev.target.closest('button[data-i]'); if(!b)return;
+      const i=+b.dataset.i; if(i!==seccionActual())irASeccion(i);
+    });
+  }
+  [...nav.children].forEach((b,i)=>{ b.classList.toggle('aqui',i===aqui);
+    if(i===aqui)b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+}
+/* El camino dentro de Entrenar: semana, sesión y lo que tengas abierto en ella.
+   Las vistas se muestran y esconden con style.display. */
+function caminoEntrenar(){
+  const abierto=id=>{ const e=document.getElementById(id); return !!e&&!!e.style.display&&e.style.display!=='none'; };
+  const semana=curWeekNum!=null?'Semana '+curWeekNum:'Semana';
+  if(abierto('session-form')){
+    const c=['Entrenar',semana,(document.getElementById('form-title')||{}).textContent||'Sesión'];
+    const paso=pasoActual();
+    if(paso==='ejercicio')c.push((document.getElementById('ex-detail-title')||{}).value||'Ejercicio');
+    else if(paso==='cardio')c.push('Cardio');
+    else if(paso==='nota')c.push('Nota');
+    return c;
+  }
+  if(abierto('session-list-view'))return ['Entrenar',semana];
+  return [];
+}
+function pintarCabecera(){
+  // Las pruebas de almacenamiento corren con un DOM de mentira, sin querySelector.
+  if(typeof document.querySelector!=='function')return;
+  const h=document.querySelector('header'); if(!h)return;
+  const enSeccion=seccionCab!=='inicio';
+  h.classList.toggle('en-seccion',enSeccion);
+  const tira=document.getElementById('cab-tira');
+  if(tira){ tira.hidden=!enSeccion; if(enSeccion)pintarTira(tira,MINI_SECCION[seccionCab]); }
+  pintarTira(document.getElementById('cfg-tira'),4);
+  const camino=seccionCab==='log'?caminoEntrenar():[];
+  const m=document.getElementById('cab-migas');
+  if(m){
+    m.hidden=camino.length<2;
+    m.innerHTML=camino.map((t,k)=>k===camino.length-1
+      ?'<b>'+escaparHTML(t)+'</b>'
+      :'<button type="button" data-nivel="'+k+'">'+escaparHTML(t)+'</button>').join('<span class="sep" aria-hidden="true">›</span>');
+  }
+  const dentro=camino.length>=2;
+  const atras=document.getElementById('cab-atras'), foto=document.getElementById('profile-pic');
+  if(atras)atras.hidden=!dentro;
+  if(foto)foto.hidden=dentro;
+  // Para la franja del descanso, que tiene que tapar la cabecera entera.
+  if(h.offsetHeight)document.documentElement.style.setProperty('--cab-h',h.offsetHeight+'px');
+}
+// Volver un nivel (la flecha) o hasta un nivel del camino (0 = lista de semanas).
+function cabAtras(){
+  const abierto=id=>{ const e=document.getElementById(id); return !!e&&e.style.display!=='none'; };
+  if(abierto('session-form'))volverAtras(); else closeWeekDetail();
+  pintarCabecera();
+}
+function cabIrANivel(n){
+  const largo=()=>caminoEntrenar().length;
+  for(let i=0;i<4&&largo()>n+1;i++){
+    if(largo()===2)closeWeekDetail(); else volverAtras();
+  }
+  pintarCabecera();
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const m=document.getElementById('cab-migas');
+  if(m)m.addEventListener('click',ev=>{ const b=ev.target.closest('button[data-nivel]'); if(b)cabIrANivel(+b.dataset.nivel); });
+  // Las vistas de Entrenar cambian por style.display desde muchos sitios: se vigilan todas.
+  if('MutationObserver' in window){
+    const obs=new MutationObserver(()=>pintarCabecera());
+    ['week-list-view','session-list-view','session-form','ex-detail-view','cardio-panel','nota-panel','form-title']
+      .forEach(id=>{ const e=document.getElementById(id); if(e)obs.observe(e,{attributes:true,attributeFilter:['style'],childList:id==='form-title'}); });
+  }
+});
 
 window.irAProximaSesion=function(){
   const act=getActive();
