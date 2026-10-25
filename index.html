@@ -281,7 +281,7 @@ header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform
 /* En los paneles (Ajustes) la tira va bajo su cabecera, en la misma franja oscura. */
 .panel-tira{background:var(--dark);padding:0 16px 12px;}
 .panel-tira .cab-tira{margin-top:0;}
-.recordatorio-guardar{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);
+.recordatorio-guardar{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
   margin:-4px 0 10px;}
 .recordatorio-guardar b{color:var(--text);}
 .recordatorio-guardar.recordatorio-pie{margin:14px 0 4px;}
@@ -295,8 +295,9 @@ header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform
 /* Y la tarjeta, que se quedaría vacía (el «Volver» está en la cabecera desde el
    25/10/2026), no se ve. */
 #session-form.en-paso > .card{display:none;}
-.cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:11px;
-  color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;}
+/* #a9b6d1 sobre la cabecera oscura: el blanco al 45 % se quedaba en 4,48:1. */
+.cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:12px;
+  color:#a9b6d1;white-space:nowrap;overflow:hidden;}
 .cab-ico{background:rgba(255,255,255,0.08);border:none;border-radius:10px;width:36px;height:36px;
   font-size:15px;cursor:pointer;flex-shrink:0;line-height:1;
   /* inherit y no var(--text): la cabecera es oscura en los DOS temas (fija su
@@ -569,7 +570,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 @media (prefers-reduced-motion:reduce){
   .reto-llama{animation:none;box-shadow:0 0 18px rgba(239,68,68,.28);}
 }
-.reto-tag{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-ink);font-weight:700;}
+.reto-tag{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-ink);font-weight:700;}
 .reto-tit{font-size:16px;font-weight:800;margin-top:4px;}
 .reto-sub{font-size:12px;color:var(--muted);line-height:1.45;margin-top:4px;}
 /* Sobre el marino: texto blanco con distinta fuerza y la etiqueta en amarillo. */
@@ -617,7 +618,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 .preset-op.elegida{border-color:var(--accent);background:rgba(var(--accent-rgb),0.1);}
 .preset-op-name{font-size:13px;font-weight:700;}
 .preset-op-desc{font-size:11px;color:var(--muted);margin-top:2px;}
-.preset-op-meta{font-size:10px;color:var(--muted);margin-top:4px;opacity:.8;}
+.preset-op-meta{font-size:11px;color:var(--muted);margin-top:4px;}
 .fila-check{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;cursor:pointer;}
 .fila-check input{width:auto;margin:0;flex-shrink:0;}
 .sem-selector{display:flex;gap:5px;flex-wrap:wrap;}
@@ -631,9 +632,9 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 .ej-bloque:last-child{margin-bottom:0;}
 .ej-nombre{font-size:12px;font-weight:700;margin-bottom:5px;}
 .serie-chips{display:flex;gap:5px;flex-wrap:wrap;}
-.chip-serie{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;font-size:11.5px;color:var(--muted);white-space:nowrap;}
+.chip-serie{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;font-size:12px;color:var(--muted);white-space:nowrap;}
 .chip-serie.tope{border-color:var(--accent);color:var(--accent-ink);font-weight:700;}
-.ses-extra{font-size:11.5px;color:var(--muted);margin-top:8px;}
+.ses-extra{font-size:12px;color:var(--muted);margin-top:8px;}
 .fila-ej{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:10px;}
 .fila-ej input{margin:0;padding:7px 8px;font-size:12px;}
 .fila-ej .ej-in-nombre{flex:3;min-width:0;}
@@ -641,7 +642,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 /* La nota del entrenador ocupa toda la línea de abajo. Apretada como tercer
    campo de la fila no cabía nada: aquí se escribe una indicación de verdad
    ("multiserie: 10 con 40, 6 con 32, 4 con 25"), no una palabra. */
-.fila-ej .ej-in-nota{flex-basis:100%;font-size:11.5px;}
+.fila-ej .ej-in-nota{flex-basis:100%;font-size:12px;}
 /* Debajo del nombre: qué músculo trabaja ese ejercicio o, si no lo conocemos,
    los parecidos del catálogo (24/09/2026). Lo pidió Jhon por los entrenadores
    que no son profesionales: "algunos no recuerdan los ejercicios o tienen otros
@@ -659,7 +660,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
    en una pantalla estrecha, dos flechas sueltas al final se confundían con la ✕
    de borrar. */
 .ej-mover{display:flex;flex-direction:column;gap:2px;}
-.ej-flecha{padding:7px 9px;font-size:10px;line-height:1;border:1px solid var(--border);
+.ej-flecha{padding:7px 9px;font-size:11px;line-height:1;border:1px solid var(--border);
   background:var(--surface);color:var(--muted);border-radius:4px;cursor:pointer;font-family:inherit;
   /* 26 px de alto cada una: con el triángulo justo (9 px de alto real) el botón
      salía de 22 px y se fallaba el toque con el dedo. */
@@ -683,7 +684,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
    violeta a la izquierda: se lee como "esto lo dice tu coach" sin necesidad de
    escribirlo cada vez. Sin `white-space:nowrap` a propósito, al revés que el
    esquema: aquí sí queremos que una frase larga baje de línea. */
-.plan-nota{font-size:11.5px;line-height:1.45;color:var(--muted);
+.plan-nota{font-size:12px;line-height:1.45;color:var(--muted);
   border-left:2px solid var(--accent);padding:1px 0 1px 8px;margin:2px 0 6px 0;}
 /* La misma indicación, pero en la pantalla donde el cliente está a punto de
    hacer la serie. Aquí sí lleva fondo: compite con los campos de kg y reps,
@@ -691,7 +692,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 .ex-nota-coach{background:var(--surface);border-left:3px solid var(--accent);
   border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 12px;margin-bottom:10px;
   font-size:12.5px;line-height:1.5;color:var(--text);}
-.ex-nota-tag{display:block;font-size:10px;font-weight:800;letter-spacing:.06em;
+.ex-nota-tag{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;
   text-transform:uppercase;color:var(--accent-ink);margin-bottom:3px;}
 /* Un punto y no un texto: en el mosaico solo hace falta saber QUE hay
    indicación; el qué se lee al abrir el ejercicio. */
@@ -703,9 +704,9 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
 .aviso-vigente{background:var(--surface);border:1px solid var(--border);
   border-left:3px solid var(--accent);border-radius:0 var(--radius-sm) var(--radius-sm) 0;
   padding:10px 12px;margin-bottom:10px;font-size:12.5px;line-height:1.5;}
-.aviso-vigente-tag{display:block;font-size:10px;font-weight:800;letter-spacing:.06em;
+.aviso-vigente-tag{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;
   text-transform:uppercase;color:var(--accent-ink);margin-bottom:4px;}
-.aviso-vigente-ses{font-size:11.5px;color:var(--muted);margin-top:5px;}
+.aviso-vigente-ses{font-size:12px;color:var(--muted);margin-top:5px;}
 
 /* Cabecera de una tarjeta plegable. La flecha por defecto de <summary> se
    quita y se pinta una propia a la derecha, que es donde el pulgar la busca en
@@ -717,7 +718,7 @@ body.es-admin .modo-sel button{font-size:11px;padding:9px 4px;line-height:1.25;}
   border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
   transform:rotate(45deg);margin-right:4px;transition:transform .2s ease;}
 details[open] > .det-resumen::after{transform:rotate(-135deg);}
-.det-pista{font-size:11.5px;color:var(--muted);text-align:right;}
+.det-pista{font-size:12px;color:var(--muted);text-align:right;}
 .fila-cliente{display:flex;gap:10px;align-items:center;}
 .cliente-avatar{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);background:var(--card);}
 .cliente-avatar.sin-foto{display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--muted);}
@@ -808,7 +809,7 @@ textarea{resize:vertical;min-height:60px;}
 /* Peticiones de entrenador en Ajustes: una fila por persona sobre el violeta. */
 .peticion-fila{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.14);border-radius:12px;
   padding:10px 12px;margin-top:8px;color:#fff;font-size:13.5px;}
-.peticion-sub{font-size:11.5px;color:rgba(255,255,255,.85);word-break:break-all;}
+.peticion-sub{font-size:12px;color:rgba(255,255,255,.85);word-break:break-all;}
 .aviso-coach .peticion-fila .aviso-coach-btn{margin:0;flex:none;background:#fff;border:1.5px solid #fff;
   color:var(--accent-ink);padding:8px 14px;font-size:13px;}
 /* "Cuentas" en Ajustes: solo para el admin. */
@@ -833,7 +834,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   overflow:hidden;background:var(--surface);cursor:pointer;font-family:inherit;position:relative;}
 .foto-item.marcada .foto-toque{border-color:var(--accent);}
 .foto-toque img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;}
-.foto-fecha{display:block;font-size:10px;color:var(--muted);padding:4px 2px;text-align:center;}
+.foto-fecha{display:block;font-size:11px;color:var(--muted);padding:4px 2px;text-align:center;}
 .foto-item.marcada .foto-fecha{color:var(--accent-ink);font-weight:700;}
 /* El número dice si es la 1ª o la 2ª de la comparación: sin él, dos marcos
    naranjas no explican en qué orden van a salir. */
@@ -879,7 +880,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   align-items:center;gap:6px;color:var(--text);}
 .mus-btn img{height:78px;width:auto;max-width:100%;object-fit:contain;}
 .mus-btn span{font-size:11px;font-weight:700;text-align:center;line-height:1.25;}
-.mus-btn small{font-size:10px;color:var(--muted);font-weight:400;}
+.mus-btn small{font-size:11px;color:var(--muted);font-weight:400;}
 .sel-ej{display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid var(--border);}
 .sel-ej-nombre{flex:1;min-width:0;font-size:13.5px;}
 .sel-ej.puesto{opacity:.55;}
@@ -902,7 +903,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 #comp-cuerpo.comp-simple{justify-content:center;}
 .comp-figura{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
 .comp-figura img{width:100%;flex:1;min-height:0;object-fit:contain;border-radius:var(--radius-sm);background:var(--surface);}
-.comp-figura figcaption{font-size:11.5px;color:var(--muted);text-align:center;}
+.comp-figura figcaption{font-size:12px;color:var(--muted);text-align:center;}
 .comp-hueco{flex:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);border:1px dashed var(--border);border-radius:var(--radius-sm);}
 .auth-tabs{display:flex;gap:6px;margin-bottom:12px;}
 .auth-tabs button{flex:1;padding:9px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;}
@@ -999,7 +1000,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .medida-row:last-child{border-bottom:none;}
 .delta-pos{color:var(--accent-ink);font-size:12px;}
 .delta-neg{color:var(--green);font-size:12px;}
-.week-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(var(--accent-rgb),0.1);color:var(--accent-ink);}
+.week-badge{font-size:11px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(var(--accent-rgb),0.1);color:var(--accent-ink);}
 .home-prog{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;}
 .home-prog-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;margin-bottom:8px;}
 .home-prog-head span:last-child{color:var(--accent-ink);font-size:11px;}
@@ -1007,7 +1008,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .home-card{position:relative;overflow:hidden;border-radius:16px;padding:16px 14px;min-height:150px;display:flex;flex-direction:column;cursor:pointer;border:none;text-align:left;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.14);transition:transform .15s ease;font-family:inherit;}
 .home-card:active{transform:scale(.96);}
 .home-card svg{position:absolute;right:-16px;top:-12px;width:115px;height:115px;opacity:.16;pointer-events:none;}
-.hc-tag{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;margin-bottom:auto;position:relative;}
+.hc-tag{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;opacity:.75;margin-bottom:auto;position:relative;}
 .hc-title{font-size:18px;font-weight:800;letter-spacing:.5px;position:relative;margin-top:24px;}
 .hc-sub{font-size:11px;opacity:.85;margin-top:4px;position:relative;line-height:1.4;min-height:15px;}
 
@@ -1164,7 +1165,9 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .hp-anillo svg{width:76px;height:76px;transform:rotate(-90deg);}
 .hp-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .hp-centro b{font-size:17px;font-weight:800;}
-.hp-centro span{font-size:7px;letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin-top:1px;}
+/* «Hecho» y no «Completado» (25/10/2026): a 7 px no se leía y la palabra larga
+   no cabe en el anillo a 11 px, el mínimo para un texto que hay que leer. */
+.hp-centro span{font-size:11px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-top:1px;}
 /* Las tres acciones de rutina (22/09/2026). Empezaron siendo tres botones
    estirados de lado a lado y desencajaban: esta pantalla es de tarjetas, no de
    barras de herramientas. Ahora son pastillas del ancho de su texto, con el
@@ -1176,7 +1179,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .hp-acciones{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;
   border-top:1px solid var(--border);}
 .hp-accion{display:inline-flex;align-items:center;gap:5px;border:none;cursor:pointer;
-  background:var(--surface);color:var(--muted);font-family:inherit;font-size:11.5px;
+  background:var(--surface);color:var(--muted);font-family:inherit;font-size:12px;
   font-weight:600;padding:7px 12px;border-radius:999px;white-space:nowrap;
   transition:transform .12s ease;}
 .hp-accion:active{transform:scale(.96);}
@@ -1258,7 +1261,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    .stat-val.vacio, que es la misma idea). */
 .hoy-racha.vacio .racha-num{color:rgba(255,255,255,.42);}
 .hoy-racha.vacio .racha-llama{color:rgba(255,255,255,.30);}
-.hoy-racha.vacio .hoy-tag{color:rgba(255,255,255,.45);}
+.hoy-racha.vacio .hoy-tag{color:rgba(255,255,255,.62);}   /* al 45 % quedaba a 4,2:1 */
 /* Los últimos catorce días. Una cifra sola ("5 días") no dice si vienes de un
    mes constante o de encadenar cinco después de dos semanas parado. */
 .racha-cal{display:flex;gap:4px;margin-top:14px;position:relative;}
@@ -1302,14 +1305,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .routine-item-nombre{display:block;width:100%;background:none;border:none;padding:0;margin:0;
   text-align:left;font-family:inherit;color:inherit;cursor:pointer;}
 .routine-item-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.routine-item-meta{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5;display:block;}
+.routine-item-meta{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;display:block;}
 /* «En curso», en el cian de «actual» (25/10/2026); 11 px, que a 10 no llegaba al mínimo. */
 .routine-badge{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
   color:var(--sel-tinta);background:var(--sel);padding:2px 8px;border-radius:20px;}
 .routine-item .acciones-fila{margin-left:0;margin-top:10px;}
 .routine-actions{display:flex;gap:6px;}
 .feeling-btn{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:24px;min-width:64px;}
-.feeling-btn span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+.feeling-btn span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
 .feeling-btn.selected{border-color:var(--accent);background:rgba(var(--accent-rgb),0.08);}
 .ex-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;text-align:left;font-family:inherit;}
 .ex-btn-info{flex:1;}
@@ -1319,7 +1322,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ex-btn-done{border-color:var(--green);}
 .ex-btn-done .ex-btn-name{color:var(--green);}
 .ex-order-btns{display:flex;flex-direction:column;gap:2px;margin-right:8px;}
-.ex-order-btn{background:var(--surface);border:1px solid var(--border);border-radius:4px;width:24px;height:20px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);}
+.ex-order-btn{background:var(--surface);border:1px solid var(--border);border-radius:4px;width:24px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);}
 .ex-detail-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
 /* ── Ficha del ejercicio, estilo Synergym (27/09/2026, elegido por Jhon) ──
    Arriba, a todo el ancho y 260 px de alto, el vídeo explicativo o la foto del
@@ -1418,7 +1421,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .mos-tit{font-size:11px;color:var(--muted);line-height:1.35;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .mos-pie{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:6px;}
-.mos-badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+.mos-badge{font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap;}
 .mos-card .prog-bar{height:5px;margin:0;}
 /* Mientras se reordena: la tarjeta cogida se levanta y el contenedor deja de
    interpretar el gesto como desplazamiento de la pantalla. */
@@ -1513,7 +1516,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .cel-centro{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;}
 .cel-centro b{font-size:26px;font-weight:800;font-family:'Cifras',-apple-system,sans-serif;}
-.cel-centro span{font-size:8px;letter-spacing:.9px;color:var(--muted);text-transform:uppercase;margin-top:2px;}
+.cel-centro span{font-size:11px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-top:2px;}
 .cel-tit{font-size:21px;font-weight:800;line-height:1.2;}
 .cel-sub{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.45;}
 .cel-lineas{margin-top:14px;display:flex;flex-direction:column;gap:7px;}
@@ -1530,7 +1533,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* La rutina siguiente, al terminar el plan: tarjeta violeta con su botón. */
 .cel-siguiente{margin-top:14px;padding:14px;border-radius:var(--radius);text-align:left;
   background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.35);}
-.cel-sig-tag{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent-ink);}
+.cel-sig-tag{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent-ink);}
 .cel-sig-nombre{font-size:17px;font-weight:800;margin-top:3px;}
 .cel-sig-desc{font-size:12.5px;color:var(--muted);line-height:1.45;margin:4px 0 12px;}
 .cel-siguiente .btn{margin:0;}
@@ -1566,7 +1569,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .ob-peso span{font-size:13px;color:var(--muted);}
 /* Las rutinas, en dos grupos cuando hay perfil: las recomendadas y el resto. */
 .ob-grupo{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 8px;text-align:left;}
-.ob-reco{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:800;
+.ob-reco{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:800;
   color:var(--accent-ink);background:rgba(var(--accent-rgb),0.14);vertical-align:1px;}
 
 /* ── Elegir VARIAS rutinas (15/09/2026, pedido por quienes la probaron) ──
@@ -1876,7 +1879,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       <div class="msg msg-info" id="registro-cerrado-aviso">
         El registro está cerrado: las cuentas se crean por invitación.
       </div>
-      <div style="font-size:11.5px;text-align:center;margin-top:4px;">
+      <div style="font-size:12px;text-align:center;margin-top:4px;">
         <a href="legal.html#privacidad" target="_blank" rel="noopener" style="color:var(--muted);">Privacidad</a>
         <span style="color:var(--muted);"> · </span>
         <a href="legal.html#terminos" target="_blank" rel="noopener" style="color:var(--muted);">Términos</a>
@@ -2304,7 +2307,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
           <circle class="anillo-fill" id="home-anillo" cx="44" cy="44" r="37"
                   stroke-dasharray="232.5" stroke-dashoffset="232.5"/>
         </svg>
-        <div class="hp-centro"><b id="home-prog-pct">0%</b><span>Completado</span></div>
+        <div class="hp-centro"><b id="home-prog-pct">0%</b><span>Hecho</span></div>
       </div>
       <div style="min-width:0;">
         <div class="hp-label">Programa actual</div>
@@ -2687,7 +2690,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
         <circle class="anillo-fill" id="cel-aro" cx="52" cy="52" r="44"
                 stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
       </svg>
-      <div class="cel-centro"><b id="cel-pct">0%</b><span>Completado</span></div>
+      <div class="cel-centro"><b id="cel-pct">0%</b><span>Hecho</span></div>
     </div>
     <div class="cel-tit" id="cel-tit">¡Sesión completada!</div>
     <div class="cel-sub" id="cel-sub"></div>
@@ -2903,7 +2906,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     </div>
     <div id="cfg-app-msg" style="margin-top:8px;"></div>
     <button class="btn btn-primary" id="cfg-app-btn" onclick="guardarConfigApp()">Guardar</button>
-    <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:10px;word-break:break-all;">
+    <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px;word-break:break-all;">
       Enlace del alta abierta: <span id="cfg-enlace"></span><br>
       <a href="legal.html#privacidad" target="_blank" rel="noopener" style="color:var(--accent-ink);font-weight:700;">Ver privacidad</a> ·
       <a href="legal.html#terminos" target="_blank" rel="noopener" style="color:var(--accent-ink);font-weight:700;">Ver términos</a>
@@ -3749,7 +3752,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 03:02';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 03:16';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7918,7 +7921,7 @@ function pintarVersion(){
         <div style="min-width:0;flex:1;">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Versión de la app</div>
           <div style="font-size:14px;font-weight:800;margin-top:2px;" id="version-txt">${escaparHTML(APP_VERSION)}</div>
-          <div id="version-aviso" style="font-size:11.5px;color:var(--muted);margin-top:2px;"></div>
+          <div id="version-aviso" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
         </div>
         <button class="btn-sm" id="version-btn" onclick="buscarActualizacion()">Buscar actualización</button>
       </div>`;
@@ -9941,7 +9944,7 @@ function nrPintarPaso(){
         <select id="nr-semanas" onchange="nrSemanas=parseInt(this.value)">
           ${[4,6,8,10,12,16].map(n=>`<option${n===nrSemanas?' selected':''}>${n}</option>`).join('')}
         </select>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:8px;">
+        <div style="font-size:12px;color:var(--muted);margin-top:8px;">
           Puedes añadir o quitar semanas más adelante.
         </div>
       </div>`;
@@ -11232,7 +11235,7 @@ async function pintarEntrenador(){
       <div style="min-width:0;">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Tu entrenador</div>
         <div style="font-size:15px;font-weight:800;">${escaparHTML(nombre || 'Asignado')}</div>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">Prepara tus rutinas y sigue tu progreso.</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">Prepara tus rutinas y sigue tu progreso.</div>
       </div></div>`;
   }
 }
@@ -12082,7 +12085,7 @@ async function pintarEntrenadoresDeAlta(usadas){
     if(!perfil){
       return `<div class="client-item"><div style="font-size:12.5px;">
         ${alta.nota ? escaparHTML(alta.nota) : 'Entrenador'}
-        <div style="font-size:11.5px;color:var(--muted);margin-top:3px;">
+        <div style="font-size:12px;color:var(--muted);margin-top:3px;">
           Su cuenta existe pero no se pudo leer su perfil.</div>
       </div></div>`;
     }
@@ -12095,7 +12098,7 @@ async function pintarEntrenadoresDeAlta(usadas){
       <div style="min-width:0;flex:1;">
         <div style="font-size:14px;font-weight:800;">${escaparHTML(nombre)}</div>
         ${perfil.gimnasio ? `<div style="font-size:12px;color:var(--muted);">${escaparHTML(perfil.gimnasio)}</div>` : ''}
-        <div style="font-size:11.5px;color:var(--muted);margin-top:3px;word-break:break-all;">
+        <div style="font-size:12px;color:var(--muted);margin-top:3px;word-break:break-all;">
           ${escaparHTML(perfil.email||'')}${perfil.telefono ? ' · '+escaparHTML(perfil.telefono) : ''}
         </div>
         ${desde ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">Entró el ${escaparHTML(desde)}</div>` : ''}
@@ -12282,7 +12285,7 @@ function pintarCuentaRol(){
       ${avatarPersona(p.profilePic, nombre, {ampliable:false})}
       <div style="min-width:0;flex:1;">
         <div style="font-size:14px;font-weight:800;">${escaparHTML(nombre)}</div>
-        <div style="font-size:11.5px;color:var(--muted);word-break:break-all;">${escaparHTML(p.email || '')}</div>
+        <div style="font-size:12px;color:var(--muted);word-break:break-all;">${escaparHTML(p.email || '')}</div>
         <span class="badge ${esEntrenador ? 'badge-accent' : 'badge-green'}" style="margin-top:4px;display:inline-block;">${esEntrenador ? 'Entrenador' : 'Cliente'}</span>
       </div>
     </div>${cuerpo}<div id="rol-aplicar-msg"></div>`;
@@ -12756,7 +12759,7 @@ function pintarDetalle(){
       return `<button class="preset-op${activa?' elegida':''}" data-id="${escaparHTML(x.id)}" onclick="verRutinaDetalle(this.dataset.id)">
         <div style="display:flex;align-items:center;gap:8px;">
           <div style="flex:1;min-width:0;">
-            <div class="preset-op-name">${escaparHTML(x.name||'(sin nombre)')}${activa?' <span style="color:var(--green);font-size:10px;">· activa</span>':''}</div>
+            <div class="preset-op-name">${escaparHTML(x.name||'(sin nombre)')}${activa?' <span style="color:var(--green);font-size:11px;">· activa</span>':''}</div>
             <div class="preset-op-meta">${p.hechas}/${p.total} sesiones · ${escaparHTML(origenRutina(x))}</div>
           </div>
           <svg class="rutina-flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
