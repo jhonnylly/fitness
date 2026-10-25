@@ -1114,6 +1114,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .dial-rotulo{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:-4px;text-align:center;}
 .dial-rotulo b{font-size:20px;letter-spacing:.08em;text-transform:uppercase;line-height:1.1;}
 .dial-rotulo span{font-size:13px;color:var(--muted);}
+.dial-rotulo span.aviso-aqui{color:var(--sel-borde);font-weight:700;}
 .dial-centro{position:absolute;left:50%;top:50%;width:42%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:0;background:var(--esfera);color:var(--text);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;
   box-shadow:inset 0 0 0 1px var(--border),0 8px 24px rgba(0,0,0,.25);font-family:inherit;padding:0;
@@ -3748,7 +3749,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 02:18';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 02:40';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7442,6 +7443,7 @@ function dialCancelarEspera(){
 function dialEsperarYEntrar(){
   dialCancelarEspera();
   const e=dialEstado, dentro=e.nivel===1, n=dentro?e.subs.length:5, i=dentro?e.subSel:e.sel;
+  if(!dentro&&dialEnInicio(i)){ dialYaEstas(); return; }
   const t=(dentro?e.subEtq:e.etiquetas||[])[i];
   if(!t)return;
   const p=360/n, rr=(dentro?DIAL_S2:DIAL_R2)+5, a0=i*p-p/2+4, a1=i*p+p/2-4;
@@ -7487,6 +7489,22 @@ function dialEntrar(i){
   else if(i===4) toggleConfigPanel();
   else goTo(['','log','resumen','medidas'][i]);
   dialReiniciar();
+}
+/* En el aro de la pantalla de Inicio, «Inicio» es donde ya estás: no abre
+   opciones (la primera era «Entrenamiento de hoy» y un segundo toque te sacaba
+   a la sesión). Lo dice debajo del aro, en cian. */
+function dialEnInicio(i){ return i===0&&!menuDial.abierto; }
+function dialYaEstas(){
+  const a=document.getElementById('dial-ayuda'); if(!a)return;
+  a.textContent='Ya estás en Inicio'; a.classList.add('aviso-aqui');
+  clearTimeout(dialYaEstas.t);
+  dialYaEstas.t=setTimeout(()=>{ a.classList.remove('aviso-aqui'); dialPintarGiro(); },2000);
+}
+// Ir a la pantalla de una sección desde el aro (segundo toque).
+function dialIrASeccion(i){
+  if(dialEnInicio(i)){ dialCerrarSubs(); dialYaEstas(); return; }
+  dialReiniciar();
+  if(i!==seccionActual())irASeccion(i);
 }
 function dialEntrarSub(j){
   const s=dialEstado.subs[j];
@@ -7572,10 +7590,14 @@ function iniciarDial(){
         // Tocar el cian entra ya; tocar otro gira hasta él y arranca la barra.
         if(tocado===e.subSel)dialEntrarSub(tocado); else dialGirarSubA(tocado,dialAlParar);
       }else if(e.nivel===1){
-        // Con el de dentro abierto: la misma sección vuelve; otra, abre la suya.
-        if(tocado===e.sel)dialCerrarSubs();
+        /* Con sus opciones abiertas, un segundo toque en la MISMA sección lleva
+           a ella (25/10/2026, Jhon: desde un ejercicio, Inicio dos veces se
+           quedaba en la sesión). Otra sección abre las suyas. */
+        if(tocado===e.sel)dialIrASeccion(tocado);
         else{ dialCerrarSubs(); dialGirarA(tocado,()=>dialAbrirSubs(tocado)); }
-      }else if(tocado===e.sel)dialAbrirSubs(tocado);
+      }else if(tocado===e.sel){
+        if(dialEnInicio(tocado))dialYaEstas(); else dialAbrirSubs(tocado);
+      }
       else dialGirarA(tocado,dialAlParar);
       return;
     }
@@ -7592,7 +7614,7 @@ function iniciarDial(){
     const girar=j=>{ dialCancelarEspera(); if(dentro)dialGirarSubA(j); else dialGirarA(j); };
     if(ev.key==='ArrowRight'||ev.key==='ArrowDown'){ev.preventDefault();girar((ahora+1)%n);}
     else if(ev.key==='ArrowLeft'||ev.key==='ArrowUp'){ev.preventDefault();girar((ahora+n-1)%n);}
-    else if(ev.key==='Enter'||ev.key===' '){ev.preventDefault(); if(dentro)dialEntrarSub(e.subSel); else dialAbrirSubs(e.sel);}
+    else if(ev.key==='Enter'||ev.key===' '){ev.preventDefault(); if(dentro)dialEntrarSub(e.subSel); else if(dialEnInicio(e.sel))dialYaEstas(); else dialAbrirSubs(e.sel);}
     else if(ev.key==='Escape'&&dentro){ev.preventDefault();dialCerrarSubs();}
   });
   // Tocar cualquier otra cosa cancela la barra y cierra el aro de dentro.

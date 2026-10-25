@@ -152,13 +152,13 @@ test('el teclado también lo mueve', async ({ page }) => {
   await expect.poll(() => seleccionada(page)).toBe('Ajustes');
 });
 
-test('en Inicio, tocar el cian abre sus opciones y «Cambiar rutina» abre el listado', async ({ page }) => {
+test('en Inicio, tocar Inicio no abre opciones: dice que ya estás aquí', async ({ page }) => {
   await appLista(page);
   await etiqueta(page, 'Inicio').click();
-  await expect.poll(() => abierto(page)).toBe(true);
-  await expect(page.locator('#dial-nombre')).toHaveText('Entrenamiento de hoy');
-  await tocarSub(page, 'Cambiar rutina');
-  await expect(page.locator('#routine-panel')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#dial-ayuda')).toHaveText('Ya estás en Inicio');
+  await page.waitForTimeout(1300);                 // ni barra ni opciones
+  expect(await abierto(page)).toBe(false);
+  await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
 });
 
 test('girado y con las opciones abiertas, la página no se mueve de lado', async ({ page }) => {

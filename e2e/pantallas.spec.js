@@ -117,6 +117,21 @@ test('el botón se aparta al bajar y al escribir, y vuelve al subir', async ({ p
   await expect(fab).not.toHaveClass(/apartado/);
 });
 
+test('desde un ejercicio, Inicio dos veces en el aro lleva a la pantalla de Inicio', async ({ page }) => {
+  await appLista(page);
+  await page.evaluate(() => { goTo('log'); openWeekDetail(1); });
+  await page.evaluate(() => { const b = document.querySelector('#session-list [onclick]'); b && b.click(); });
+  await page.evaluate(() => { const b = document.querySelector('#ex-buttons-container [onclick]'); b && b.click(); });
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.locator('#dial-fab').click();
+  await page.locator('#dial-etiquetas g[aria-label="Inicio"]').click();
+  await expect(page.locator('#dial')).toHaveClass(/sub/);      // primer toque: sus opciones
+  const c = await page.locator('#dial-etiquetas g[aria-label="Inicio"] .dial-ico').boundingBox();
+  await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);   // segundo toque: a Inicio
+  await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
+  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
+});
+
 test('tocar fuera del aro lo cierra sin cambiar de sección', async ({ page }) => {
   await appLista(page);
   await irA(page, 'Medidas');
