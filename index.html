@@ -248,23 +248,26 @@ header{background:var(--dark);color:#eef2fa;padding:12px 16px;position:sticky;to
 /* ── CABECERA COMÚN (25/10/2026) ──
    Dentro de una sección la cabecera habla el idioma del dial: el nombre de la
    sección como rótulo (en vez de una frase), el camino recorrido cuando entras
-   en algo (Entrenar › Semana 1 › Full Body A, cada parte se toca para volver) y
-   la tira de 5 segmentos del dial con tu sección en cian, que se toca para ir a
+   en algo (Entrenar › Semana 1 › Full Body A, cada parte se toca para volver,
+   bajo la tira y con un botón «Volver» con texto) y la tira de 5 segmentos del dial con tu sección en cian, que se toca para ir a
    otra. Jhon eligió esta variante (la B) en un prototipo. En Inicio no hay
    tira: allí el propio dial dice dónde estás. La pinta pintarCabecera(). */
 header.en-seccion .cab-avatar{width:40px;height:40px;font-size:16px;}
 header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform:uppercase;}
-.cab-atras{flex:none;width:44px;height:44px;margin-left:-10px;border:0;background:none;color:var(--accent);
-  display:grid;place-items:center;cursor:pointer;border-radius:10px;}
+.cab-ruta{display:flex;align-items:center;gap:12px;margin-top:10px;min-width:0;}
+.cab-atras{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 16px 0 8px;
+  border:0;border-radius:999px;background:rgba(255,255,255,.09);color:var(--accent);
+  font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:transform .12s ease;}
+.cab-atras:active{transform:scale(.96);}
 /* Sin esto, el display de cada clase ganaría al atributo hidden. */
-.cab-atras[hidden],.cab-avatar[hidden],.cab-migas[hidden],.cab-tira[hidden]{display:none;}
-.cab-atras svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;}
+.cab-ruta[hidden],.cab-tira[hidden]{display:none;}
+.cab-atras svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;}
 .cab-atras:focus-visible{outline:2px solid var(--dial-cian);}
-.cab-migas{display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;margin-top:6px;font-size:13px;color:#a9b6d1;}
+.cab-migas{display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;min-width:0;font-size:13px;color:#a9b6d1;}
 .cab-migas button{border:0;background:none;padding:6px 0;min-height:32px;color:var(--accent);font-family:inherit;
   font-size:13px;font-weight:600;cursor:pointer;text-underline-offset:3px;}
 .cab-migas button:focus-visible{outline:2px solid var(--dial-cian);border-radius:4px;}
-.cab-migas b{color:#eef2fa;font-weight:600;min-width:0;max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cab-migas b{color:#eef2fa;font-weight:600;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cab-migas .sep{opacity:.6;}
 .cab-tira{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:10px;}
 .cab-tira button{min-height:44px;border:0;border-radius:6px;cursor:pointer;display:grid;place-items:center;padding:0;
@@ -1680,8 +1683,6 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <!-- Tocar tu foto abre TU CUENTA (15/09/2026, pedido por Jhon): foto, nombre
          y sesión en un solo sitio. Antes la foto abría el visor y la cuenta
          tenía su propio botón de nube a la derecha. -->
-    <!-- Dentro de una semana, sesión o ejercicio, la flecha de volver ocupa el sitio de la foto. -->
-    <button type="button" class="cab-atras" id="cab-atras" onclick="cabAtras()" aria-label="Atrás" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div id="profile-pic" class="cab-avatar sin-foto" onclick="toggleAuthPanel()" role="button" aria-label="Tu cuenta"></div>
     <input type="file" id="profile-input" accept="image/*" onchange="saveProfilePic(this)" style="display:none;">
 
@@ -1711,8 +1712,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
          esquina de arriba a la derecha es donde peor llega el pulgar. La
          cuenta se sigue abriendo tocando tu foto o el saludo. -->
   </div>
-  <nav class="cab-migas" id="cab-migas" aria-label="Dónde estás" hidden></nav>
   <nav class="cab-tira" id="cab-tira" aria-label="Secciones" hidden></nav>
+  <!-- Volver y el camino, DEBAJO de la tira (25/10/2026, Jhon): arriba del todo
+       quedaba muy lejos y una persona nueva no lo encontraba. «Volver» lleva
+       texto, no solo la flecha. -->
+  <div class="cab-ruta" id="cab-ruta" hidden>
+    <button type="button" class="cab-atras" id="cab-atras" onclick="cabAtras()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver</span></button>
+    <nav class="cab-migas" id="cab-migas" aria-label="Dónde estás"></nav>
+  </div>
 </header>
 
 
@@ -3720,7 +3727,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 02:35';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 02:53';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7047,15 +7054,12 @@ function pintarCabecera(){
   const camino=seccionCab==='log'?caminoEntrenar():[];
   const m=document.getElementById('cab-migas');
   if(m){
-    m.hidden=camino.length<2;
     m.innerHTML=camino.map((t,k)=>k===camino.length-1
       ?'<b>'+escaparHTML(t)+'</b>'
       :'<button type="button" data-nivel="'+k+'">'+escaparHTML(t)+'</button>').join(' <span class="sep" aria-hidden="true">›</span> ');
   }
-  const dentro=camino.length>=2;
-  const atras=document.getElementById('cab-atras'), foto=document.getElementById('profile-pic');
-  if(atras)atras.hidden=!dentro;
-  if(foto)foto.hidden=dentro;
+  const ruta=document.getElementById('cab-ruta');
+  if(ruta)ruta.hidden=camino.length<2;
   // Para la franja del descanso, que tiene que tapar la cabecera entera.
   if(h.offsetHeight)document.documentElement.style.setProperty('--cab-h',h.offsetHeight+'px');
 }

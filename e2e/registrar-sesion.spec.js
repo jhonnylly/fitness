@@ -14,7 +14,7 @@ async function apuntarPrimeraSerie(page, kg, reps){
   await page.getByLabel('Repeticiones de la serie 1').blur();   // el valor se anota en onchange
 
   // Volver a la lista de ejercicios: con la flecha de la cabecera (25/10/2026).
-  await page.getByRole('button', { name: 'Atrás', exact: true }).click();
+  await page.locator('#cab-atras').click();
   await page.locator('#session-form').getByRole('button', { name: 'Guardar sesión' }).click();
 }
 

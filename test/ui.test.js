@@ -2006,9 +2006,10 @@ async function appLista(page, url){
       const camino = () => document.getElementById('cab-migas').textContent.replace(/\s+/g,' ').trim();
       openWeekDetail(1);
       await tic();
-      const rotulo = document.getElementById('cab-saludo');
       r.semana = { visible: v(atras), camino: camino(), flecha: !!atras.querySelector('svg'),
-                   arribaIzq: atras.getBoundingClientRect().right <= rotulo.getBoundingClientRect().left + 2,
+                   // 25/10/2026 (Jhon): arriba del todo se perdía; va debajo de la tira, con texto.
+                   bajoLaTira: atras.getBoundingClientRect().top >= document.getElementById('cab-tira').getBoundingClientRect().bottom - 1
+                     && /Volver/.test(atras.textContent),
                    sinBotonViejo: !document.querySelector('#session-list-view .btn-volver') };
       openSession(act.plan[0].days[0].s);
       await tic();
@@ -2040,8 +2041,8 @@ async function appLista(page, url){
     });
     ok(volver.semana.visible && volver.semana.flecha && /Entrenar › Semana 1/.test(volver.semana.camino),
        'dentro de una semana, la cabecera lleva flecha de volver y el camino: '+volver.semana.camino);
-    ok(volver.semana.arribaIzq && volver.semana.sinBotonViejo,
-       'la flecha va arriba a la izquierda, antes del nombre (donde el iPhone pone "atrás"), y ya no hay un «Volver» dentro de la tarjeta');
+    ok(volver.semana.bajoLaTira && volver.semana.sinBotonViejo,
+       '«Volver» va debajo de la tira, con texto, y ya no hay otro dentro de la tarjeta');
     ok(/Semana 1 › /.test(volver.sesion) && volver.ejercicio.startsWith(volver.sesion+' › ') && volver.flechaSigue,
        'el camino crece al entrar en la sesión y en el ejercicio: '+volver.ejercicio);
     ok(volver.cabEnSesion && !volver.cabEnEjercicio && volver.avisoAlPie && volver.cabVuelve,
