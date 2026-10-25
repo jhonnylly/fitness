@@ -768,6 +768,11 @@ textarea{resize:vertical;min-height:60px;}
    respuesta al dedo, la app se siente muerta aunque vaya rápida. */
 .btn{display:block;width:100%;padding:12px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:700;cursor:pointer;text-align:center;letter-spacing:0.5px;transition:transform .12s ease, opacity .12s ease;}
 .btn:active{transform:scale(.97);opacity:.9;}
+/* «+ Añadir semana / sesión / ejercicio» (25/10/2026): iban tan gruesos y
+   rellenos como el contenido al que añaden y le quitaban protagonismo. Borde
+   discontinuo, sin relleno: el hueco donde irá lo nuevo. */
+.btn.btn-anadir{background:transparent;border:1.5px dashed var(--border);color:var(--muted);font-weight:700;}
+.btn.btn-anadir:hover{border-color:var(--muted);color:var(--text);}
 .btn-sm{transition:transform .12s ease, opacity .12s ease;}
 .btn-sm:active{transform:scale(.94);opacity:.85;}
 /* La tarjeta arrastrada tiene su propio transform: si el :active se lo pisara,
@@ -1024,12 +1029,11 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    antes: el anillo va a la IZQUIERDA (así lo pone la propuesta, y es lo primero
    que se mira) y mide 76 px en vez de 88, para devolverle a la tarjeta de hoy
    parte de lo que le quita. */
-/* ═══ EL DIAL de Inicio (21/10/2026, rediseño pedido por Jhon) ═══
-   La portada es la esfera de un reloj de buceo: el bisel gira con el dedo y la
-   marca de arriba señala una sección; tocar el centro entra en ella. Salió de un
-   prototipo que Jhon probó en su iPhone ("gira bien"). El bisel es OSCURO en los
-   dos temas, como en un reloj: es una superficie siempre oscura con su tinta. */
-:root{--bisel:#0d1526;--bisel-borde:#2c3d63;--bisel-txt:#a9b6d1;--bisel-sel:#ffd84a;--esfera:#fbfcff;}
+/* ═══ EL DIAL de Inicio (21/10/2026; aro 3D desde el 24/10) ═══
+   Rediseño pedido por Jhon y probado en prototipos en su iPhone. Lo que queda
+   aquí de la primera versión (un bisel de reloj de buceo) es el centro con la
+   fecha, --esfera; el aro está en las reglas .dial-* de más abajo. */
+:root{--esfera:#fbfcff;}
 @media(prefers-color-scheme:dark){ :root{--esfera:#101a2d;} }
 /* overflow-x:clip: los <svg> del aro son cuadrados y, al girar, sus esquinas
    (vacías) sobresalían por el lado y dejaban mover la página de lado. clip y
@@ -1215,8 +1219,9 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    destacada no se leía como "una de las semanas", sino como otra cosa. En su
    sitio y con el mismo trato, no hay forma de confundirse. */
 .hoy.sem-actual{grid-column:1/-1;margin-bottom:0;}
-.hoy::after{content:"";position:absolute;right:-30px;top:-30px;width:170px;height:170px;border-radius:50%;
-  background:radial-gradient(circle,var(--accent) 0%,transparent 70%);opacity:.28;pointer-events:none;}
+/* Aquí había un halo amarillo difuminado en la esquina (::after). Se quitó el
+   25/10/2026: la crítica de Impeccable lo señalaba como el elemento más
+   genérico de la app («dashboard de plantilla») y no decía nada. */
 /* display:block obligatorio: son <span> dentro de un <button>, y sin esto
    salen los tres seguidos en la misma línea. Se vio en la primera captura. */
 .hoy-tag{display:block;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-ink);
@@ -2398,7 +2403,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   <!-- Vista semanas -->
   <div id="week-list-view">
     <div id="week-buttons-container"></div>
-    <button class="btn btn-secondary" onclick="addWeek()">+ Añadir semana</button>
+    <button class="btn btn-secondary btn-anadir" onclick="addWeek()">+ Añadir semana</button>
   </div>
 
   <!-- Vista sesiones de la semana -->
@@ -2408,7 +2413,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
            la flecha y el camino «Entrenar › Semana 1» hacen lo mismo. -->
       <div style="font-size:15px;font-weight:800;margin-bottom:10px;" id="week-detail-title"></div>
       <div id="session-list"></div>
-      <button class="btn btn-secondary" onclick="addSessionToWeek(curWeekNum)">+ Añadir sesión</button>
+      <button class="btn btn-secondary btn-anadir" onclick="addSessionToWeek(curWeekNum)">+ Añadir sesión</button>
       <!-- Duplicar y borrar la semana vivían en cada tarjeta del listado. En el
            mosaico de dos columnas engordaban la celda y se perdía lo ganado, y
            además este es el sitio donde de verdad decides sobre ESTA semana:
@@ -2444,7 +2449,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <div id="ex-list-view">
       <div class="section-title">Ejercicios</div>
       <div id="ex-buttons-container"></div>
-      <button class="btn btn-secondary" onclick="addExerciseAndOpen()">+ Añadir ejercicio</button>
+      <button class="btn btn-secondary btn-anadir" onclick="addExerciseAndOpen()">+ Añadir ejercicio</button>
       <div style="margin-top:8px;display:flex;gap:8px;">
         <button class="btn btn-secondary" style="flex:1;" onclick="openCardioPanel()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3 4.7 13a4.5 4.5 0 0 1 6.4-6.3l.9.9.9-.9A4.5 4.5 0 0 1 19.3 13z"/></svg> Cardio</button>
         <button class="btn btn-secondary" style="flex:1;" onclick="openNotaPanel()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg> Nota</button>
@@ -3752,7 +3757,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 03:16';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 03:26';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
