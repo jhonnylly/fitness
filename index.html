@@ -960,7 +960,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* Vacío = más apagado, pero legible: a .55 quedaba a 2,3:1 (auditoría 21/10/2026). */
 .stat-val.vacio{color:var(--muted);opacity:.8;}
 .stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
-.prog-bar{background:var(--border);border-radius:4px;height:8px;overflow:hidden;margin-bottom:12px;}
+/* Lo que falta de la barra, rayado: pendiente. */
+.prog-bar{background:var(--rayado);border-radius:4px;height:8px;overflow:hidden;margin-bottom:12px;}
 /* La barra se llena al aparecer. Con scaleX y no con width: el ancho lo pone el
    JS en línea, así que animarlo obligaría a tocar cada sitio que la pinta;
    escalando desde la izquierda se llena sola dondequiera que esté. */
@@ -1036,6 +1037,18 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    plano para que se lea bien. La caja es más baja que ancha porque el aro
    inclinado ocupa menos de alto. */
 :root{--dial-cian:#35c9e6;--dial-cian-tinta:#03222b;--dial-canto:#8f7100;}
+/* ── COLORES CON SIGNIFICADO (25/10/2026) ──
+   Lo que el dial enseñó, en toda la app (crítica de Impeccable: el cian solo
+   existía en el dial y el amarillo hacía de todo):
+     verde  = hecho          (ya lo era: semanas completas, barras, puntos)
+     cian   = actual / lo siguiente (semana en curso, «Siguiente», rutina activa)
+     rayado = pendiente      (lo que falta de una barra, las sesiones que quedan)
+     amarillo = acciones     (botones), como siempre.
+   El cian como relleno lleva su tinta oscura; como borde, en claro se oscurece
+   (#0e8aa3) porque #35c9e6 sobre blanco no llega a 3:1. */
+:root{--sel:var(--dial-cian);--sel-tinta:var(--dial-cian-tinta);--sel-borde:#0e8aa3;--sel-fondo:rgba(53,201,230,.10);
+  --rayado:repeating-linear-gradient(135deg,var(--border) 0 2px,var(--surface) 2px 6px);}
+@media(prefers-color-scheme:dark){ :root{--sel-borde:#35c9e6;} }
 .dial{position:relative;width:min(88vw,340px);aspect-ratio:1/.88;max-width:100%;perspective:900px;}
 .dial-3d{position:absolute;left:0;right:0;top:50%;margin-top:-50%;aspect-ratio:1;transform-style:preserve-3d;
   transform:rotateX(35deg) rotateY(-22.75deg);}
@@ -1123,12 +1136,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   padding:8px 4px 9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
   font-family:inherit;font-weight:700;font-size:14px;letter-spacing:.06em;cursor:pointer;scroll-snap-align:start;}
 .dial-sem:active{transform:scale(.97);}
-.dial-sem.actual{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.dial-sem.actual{border-color:var(--sel-borde);box-shadow:inset 0 0 0 1px var(--sel-borde);}
 .dial-sem.futura{color:var(--muted);}
 .dial-sem:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
 .dial-puntos{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:100%;}
 .dial-puntos i{width:7px;height:7px;border-radius:50%;background:var(--surface);box-shadow:inset 0 0 0 1px var(--border);}
-.dial-puntos i.hecho{background:var(--accent);box-shadow:none;}
+.dial-puntos i.hecho{background:var(--green);box-shadow:none;}
 /* 24/09/2026: la tarjeta es un bloque y la fila de anillo + nombre va en
    .hp-fila, para que las acciones quepan DENTRO, al pie (ver .hp-acciones). */
 .hp{background:var(--card);border:1px solid var(--border);
@@ -1222,8 +1235,11 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* Una barra por sesión en vez de una barra de progreso sola: además de cuánto
    llevas dice cuántas sesiones tiene la semana, que es lo que se viene a ver. */
 .sem-puntos{display:flex;gap:5px;margin-top:12px;position:relative;}
-.sem-punto{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.16);}
-.sem-punto.hecha{background:var(--accent-fill);}
+/* Una rayita por sesión: hecha en verde, la que toca en cian, las demás rayadas. */
+.sem-punto{flex:1;height:5px;border-radius:3px;
+  background:repeating-linear-gradient(135deg,rgba(255,255,255,.30) 0 2px,rgba(255,255,255,.08) 2px 5px);}
+.sem-punto.hecha{background:#3fae6e;}
+.sem-punto.toca{background:var(--sel);}
 
 /* La racha no lleva a ninguna parte, así que es un <div> y no un botón: sin
    cursor de mano y sin el encogido al pulsar, que prometerían un destino. */
@@ -1277,13 +1293,15 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    caben en horizontal en 390 px, y apretarlos era parte de lo que hacía esta
    pantalla confusa. */
 .routine-item{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--card);}
-.routine-item.active-routine{border-left:3px solid var(--accent);}
+/* La activa, en el cian de «actual» (era una raya amarilla a la izquierda). */
+.routine-item.active-routine{box-shadow:inset 0 0 0 2px var(--sel-borde);background:var(--sel-fondo);}
 .routine-item-nombre{display:block;width:100%;background:none;border:none;padding:0;margin:0;
   text-align:left;font-family:inherit;color:inherit;cursor:pointer;}
 .routine-item-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .routine-item-meta{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5;display:block;}
-.routine-badge{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
-  color:var(--accent-ink);background:rgba(var(--accent-rgb),.12);padding:2px 8px;border-radius:20px;}
+/* «En curso», en el cian de «actual» (25/10/2026); 11 px, que a 10 no llegaba al mínimo. */
+.routine-badge{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--sel-tinta);background:var(--sel);padding:2px 8px;border-radius:20px;}
 .routine-item .acciones-fila{margin-left:0;margin-top:10px;}
 .routine-actions{display:flex;gap:6px;}
 .feeling-btn{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:24px;min-width:64px;}
@@ -1384,12 +1402,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
      navegador: la tarjeta se levanta pero lo que se arrastra es el cursor de
      selección. El callout es el menú de iOS al pulsación larga. */
   user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
-.mos-card.actual{border-color:var(--accent);background:rgba(var(--accent-rgb),0.06);}
+.mos-card.actual{border-color:var(--sel-borde);background:var(--sel-fondo);}
 .mos-card.lista{border-color:var(--green);background:rgba(45,122,79,0.06);}
-/* La sesión que toca en la semana, en violeta: la tarjeta de "Semana en curso"
-   de Entrenar trae aquí y esta es la que hay que encontrar. */
-.mos-card.siguiente{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:rgba(var(--accent-rgb),0.08);}
-.mos-badge-toca{color:var(--accent-ink);background:rgba(var(--accent-rgb),0.16);}
+/* La sesión que toca en la semana, en cian (lo siguiente): la tarjeta de
+   "Semana en curso" de Entrenar trae aquí y esta es la que hay que encontrar. */
+.mos-card.siguiente{border-color:var(--sel-borde);box-shadow:0 0 0 1px var(--sel-borde);background:var(--sel-fondo);}
+.mos-badge-toca{color:var(--sel-tinta);background:var(--sel);}
 .mos-num{font-size:15px;font-weight:800;color:var(--text);}
 /* El título de la semana ("Circuito quema") a dos líneas como mucho: si no,
    una semana con nombre largo estira toda la fila del mosaico. */
@@ -3727,7 +3745,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 02:53';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 02:04';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4898,7 +4916,7 @@ function tarjetaSemanaEnCurso(plan,sessions,num,wi){
   const totalPlan=plan.reduce((a,x)=>a+(x.days||[]).length,0);
   const planEntero=totalPlan>0&&plan.every(x=>(x.days||[]).every(d=>sessions[d.s]));
   const puntos=total?'<span class="sem-puntos">'+dias.map(d=>
-    `<span class="sem-punto${sessions[d.s]?' hecha':''}"></span>`).join('')+'</span>':'';
+    `<span class="sem-punto${sessions[d.s]?' hecha':d===pendiente?' toca':''}"></span>`).join('')+'</span>':'';
 
   let tag,tit,meta,cta;
   if(planEntero){
