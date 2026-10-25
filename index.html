@@ -3749,7 +3749,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 02:40';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 03:02';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7500,6 +7500,19 @@ function dialYaEstas(){
   clearTimeout(dialYaEstas.t);
   dialYaEstas.t=setTimeout(()=>{ a.classList.remove('aviso-aqui'); dialPintarGiro(); },2000);
 }
+/* El «clic fantasma» del iPhone (25/10/2026): tras un toque, Safari dispara un
+   click en ese mismo punto un instante después. Si el toque en el aro cerró la
+   capa o cambió de pantalla, ese click caía en lo que había debajo (el centro
+   del dial de Inicio, la tarjeta de hoy) y te llevaba a la sesión. Lo vio Jhon
+   en su iPhone; con clics de ratón no pasa, con toques sí (prueba con
+   touchscreen.tap). Se traga el siguiente click, solo durante medio segundo. */
+function tragarClicFantasma(){
+  const hasta=Date.now()+500;
+  const h=ev=>{ document.removeEventListener('click',h,true);
+    if(Date.now()<=hasta){ ev.stopPropagation(); ev.preventDefault(); } };
+  document.addEventListener('click',h,true);
+  setTimeout(()=>document.removeEventListener('click',h,true),600);
+}
 // Ir a la pantalla de una sección desde el aro (segundo toque).
 function dialIrASeccion(i){
   if(dialEnInicio(i)){ dialCerrarSubs(); dialYaEstas(); return; }
@@ -7586,6 +7599,8 @@ function iniciarDial(){
     const {dentro,tocado}=ini, e=dialEstado; ini=null;
     if(!movido){
       if(tocado===null)return;
+      // Lo que haga este toque puede quitar el aro de debajo del dedo.
+      tragarClicFantasma();
       if(dentro){
         // Tocar el cian entra ya; tocar otro gira hasta él y arranca la barra.
         if(tocado===e.subSel)dialEntrarSub(tocado); else dialGirarSubA(tocado,dialAlParar);
@@ -7773,7 +7788,7 @@ function iniciarMiniDial(){
   document.addEventListener('focusin',ev=>{ if(esCampo(ev.target)){ escribiendo=true; apartar(); } });
   document.addEventListener('focusout',ev=>{ if(esCampo(ev.target)){ escribiendo=false; apartar(); } });
   // Tocar fuera del aro (en el velo, no en el aro ni en su rótulo) lo cierra.
-  velo.addEventListener('pointerdown',ev=>{ if(!ev.target.closest('#dial,.dial-rotulo'))cerrarMenuDial(); });
+  velo.addEventListener('pointerdown',ev=>{ if(!ev.target.closest('#dial,.dial-rotulo')){ tragarClicFantasma(); cerrarMenuDial(); } });
   document.addEventListener('keydown',ev=>{
     if(!menuDial.abierto||ev.key!=='Escape')return;
     ev.preventDefault(); if(dialEstado.nivel)dialCerrarSubs(); else{ cerrarMenuDial(); fab.focus(); }

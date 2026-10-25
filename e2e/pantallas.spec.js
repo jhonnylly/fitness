@@ -117,19 +117,43 @@ test('el botón se aparta al bajar y al escribir, y vuelve al subir', async ({ p
   await expect(fab).not.toHaveClass(/apartado/);
 });
 
+/* Con TOQUES de verdad (touchscreen.tap), no clics de ratón: en el iPhone, tras
+   un toque Safari dispara un click en el mismo punto, y si el aro ya se había
+   cerrado caía en lo de debajo y llevaba a la sesión (Jhon, 25/10/2026). Con
+   clics de ratón esta prueba pasaba con el fallo dentro. */
+async function tocar(page, locator){
+  const c = await locator.boundingBox();
+  await page.touchscreen.tap(c.x + c.width / 2, c.y + c.height / 2);
+}
 test('desde un ejercicio, Inicio dos veces en el aro lleva a la pantalla de Inicio', async ({ page }) => {
   await appLista(page);
   await page.evaluate(() => { goTo('log'); openWeekDetail(1); });
   await page.evaluate(() => { const b = document.querySelector('#session-list [onclick]'); b && b.click(); });
   await page.evaluate(() => { const b = document.querySelector('#ex-buttons-container [onclick]'); b && b.click(); });
   await page.evaluate(() => scrollTo(0, 0));
-  await page.locator('#dial-fab').click();
-  await page.locator('#dial-etiquetas g[aria-label="Inicio"]').click();
+  await page.waitForTimeout(400);
+  await tocar(page, page.locator('#dial-fab'));
+  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
+  const inicio = page.locator('#dial-etiquetas g[aria-label="Inicio"] .dial-ico');
+  await tocar(page, inicio);
   await expect(page.locator('#dial')).toHaveClass(/sub/);      // primer toque: sus opciones
-  const c = await page.locator('#dial-etiquetas g[aria-label="Inicio"] .dial-ico').boundingBox();
-  await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);   // segundo toque: a Inicio
+  await tocar(page, inicio);                                   // segundo toque: a Inicio
+  await page.waitForTimeout(800);                              // y el click fantasma, si lo hubiera
   await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
   await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
+});
+
+test('tocar fuera del aro no pulsa lo que hay debajo', async ({ page }) => {
+  await appLista(page);
+  await irA(page, 'Entrenar');
+  await page.evaluate(() => scrollTo(0, 0));
+  await tocar(page, page.locator('#dial-fab'));
+  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
+  // Fuera del aro, justo encima de tu foto: si el click pasara, abriría «Tu cuenta».
+  await tocar(page, page.locator('#profile-pic'));
+  await page.waitForTimeout(800);
+  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
+  await expect(page.locator('#auth-panel')).toHaveClass(/hidden/);
 });
 
 test('tocar fuera del aro lo cierra sin cambiar de sección', async ({ page }) => {
