@@ -1999,29 +1999,33 @@ async function appLista(page, url){
       const r = {};
       const act = getActive();
       showTab('log', document.getElementById('tab-log'));
+      /* 25/10/2026 (Jhon): los «Volver» de dentro de las tarjetas se fueron a la
+         cabecera: una flecha arriba a la izquierda (donde el iPhone pone
+         "atrás") y el camino, que dice dónde estás. */
+      const atras = document.getElementById('cab-atras');
+      const camino = () => document.getElementById('cab-migas').textContent.replace(/\s+/g,' ').trim();
       openWeekDetail(1);
-      const bs = document.querySelector('#session-list-view .btn-volver');
-      const tit = document.getElementById('week-detail-title');
-      r.semana = { visible: v(bs), texto: bs && bs.textContent.trim(),
-                   arribaIzq: !!(bs && bs.getBoundingClientRect().bottom <= tit.getBoundingClientRect().top + 2
-                     && bs.getBoundingClientRect().left <= tit.getBoundingClientRect().left + 2),
-                   flecha: !!(bs && bs.querySelector('svg')) };
+      await tic();
+      const rotulo = document.getElementById('cab-saludo');
+      r.semana = { visible: v(atras), camino: camino(), flecha: !!atras.querySelector('svg'),
+                   arribaIzq: atras.getBoundingClientRect().right <= rotulo.getBoundingClientRect().left + 2,
+                   sinBotonViejo: !document.querySelector('#session-list-view .btn-volver') };
       openSession(act.plan[0].days[0].s);
       await tic();
-      r.sesion = document.getElementById('btn-volver').textContent.trim();
+      r.sesion = camino();
       const cabVisible = () => v(document.getElementById('form-title'))
         && v(document.querySelector('#session-form > .card > .recordatorio-guardar'));
       r.cabEnSesion = cabVisible();
       openExDetail(0);
       await tic();
-      r.ejercicio = document.getElementById('btn-volver').textContent.trim();
-      r.flechaSigue = !!document.querySelector('#btn-volver svg');
-      /* 27/09/2026 (Jhon): dentro del ejercicio, arriba solo el botón de volver;
+      r.ejercicio = camino();
+      r.flechaSigue = v(atras);
+      /* 27/09/2026 (Jhon): dentro del ejercicio, arriba nada más que volver;
          el aviso de guardar, al pie del ejercicio. */
       r.cabEnEjercicio = v(document.getElementById('form-title'))
         || v(document.querySelector('#session-form > .card > .recordatorio-guardar'));
       r.avisoAlPie = v(document.querySelector('#ex-detail-view .recordatorio-pie'));
-      volverAtras();
+      atras.click();
       await tic();
       r.cabVuelve = cabVisible();
       volverAtras(); closeWeekDetail();
@@ -2034,11 +2038,12 @@ async function appLista(page, url){
       r.chrome = { pasos: d.querySelectorAll('.pasos-instalar li').length, texto: d.textContent.replace(/\s+/g,' ') };
       return r;
     });
-    ok(volver.semana.visible && volver.semana.texto === 'Volver a semanas' && volver.semana.flecha,
-       'dentro de una semana, el botón dice "Volver a semanas" y lleva flecha');
-    ok(volver.semana.arribaIzq, 'y está arriba a la izquierda, antes del título (donde el iPhone pone "atrás")');
-    ok(volver.sesion === 'Volver a sesiones' && volver.ejercicio === 'Volver a ejercicios' && volver.flechaSigue,
-       'en la sesión y en el ejercicio dice a dónde vuelve, sin perder la flecha');
+    ok(volver.semana.visible && volver.semana.flecha && /Entrenar › Semana 1/.test(volver.semana.camino),
+       'dentro de una semana, la cabecera lleva flecha de volver y el camino: '+volver.semana.camino);
+    ok(volver.semana.arribaIzq && volver.semana.sinBotonViejo,
+       'la flecha va arriba a la izquierda, antes del nombre (donde el iPhone pone "atrás"), y ya no hay un «Volver» dentro de la tarjeta');
+    ok(/Semana 1 › /.test(volver.sesion) && volver.ejercicio.startsWith(volver.sesion+' › ') && volver.flechaSigue,
+       'el camino crece al entrar en la sesión y en el ejercicio: '+volver.ejercicio);
     ok(volver.cabEnSesion && !volver.cabEnEjercicio && volver.avisoAlPie && volver.cabVuelve,
        'dentro del ejercicio no se repite el nombre de la sesión y el aviso de guardar va al pie; al volver, reaparecen');
     ok(volver.safari.pasos === 4 && /•••/.test(volver.safari.texto) && /Compartir/.test(volver.safari.texto)

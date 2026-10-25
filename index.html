@@ -289,9 +289,9 @@ header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform
    actualizarBotonVolver(), que ya se entera de cada cambio de paso. */
 #session-form.en-paso .form-cab,
 #session-form.en-paso > .card > .recordatorio-guardar{display:none;}
-/* Y la tarjeta, que se quedaría casi vacía, suelta el marco: solo el botón. */
-#session-form.en-paso > .card{background:none;border:none;box-shadow:none;padding:0 4px;margin-bottom:6px;}
-#session-form.en-paso > .card > .btn-volver{margin-bottom:0;}
+/* Y la tarjeta, que se quedaría vacía (el «Volver» está en la cabecera desde el
+   25/10/2026), no se ve. */
+#session-form.en-paso > .card{display:none;}
 .cab-sub{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:11px;
   color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;}
 .cab-ico{background:rgba(255,255,255,0.08);border:none;border-radius:10px;width:36px;height:36px;
@@ -2372,7 +2372,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   <!-- Vista sesiones de la semana -->
   <div id="session-list-view" style="display:none;">
     <div class="card">
-      <button class="btn-volver" onclick="closeWeekDetail()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver a semanas</span></button>
+      <!-- El «Volver a semanas» de aquí se fue a la cabecera (25/10/2026, Jhon):
+           la flecha y el camino «Entrenar › Semana 1» hacen lo mismo. -->
       <div style="font-size:15px;font-weight:800;margin-bottom:10px;" id="week-detail-title"></div>
       <div id="session-list"></div>
       <button class="btn btn-secondary" onclick="addSessionToWeek(curWeekNum)">+ Añadir sesión</button>
@@ -2388,9 +2389,9 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   </div>
  <div id="session-form" style="display:none;">
     <div class="card">
-      <!-- El texto lo pone actualizarBotonVolver(): "Volver a sesiones" o
-           "Volver a ejercicios", según dónde estés. -->
-      <button class="btn-volver" id="btn-volver" onclick="volverAtras()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver a sesiones</span></button>
+      <!-- «Volver a sesiones / a ejercicios» vivía aquí hasta el 25/10/2026: ahora
+           lo hacen la flecha y el camino de la cabecera (Jhon pidió quitarlo
+           para no tener dos formas de volver). -->
       <div class="form-cab" style="margin-bottom:12px;">
         <div style="font-size:16px;font-weight:800;" id="form-title"></div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="form-type"></div>
@@ -3719,7 +3720,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 02:12';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 02:35';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5166,14 +5167,13 @@ function pasoActual(){
   return 'sesion';
 }
 
+/* Marca si estás dentro de un paso (ejercicio, cardio o nota) para esconder
+   la cabecera de la sesión. Se llamaba así porque también ponía el texto del
+   botón «Volver a…», que desde el 25/10/2026 vive en la cabecera de la app. */
 function actualizarBotonVolver(){
-  const b=document.getElementById('btn-volver');
-  if(!b)return;
-  // En el <span>: textContent sobre el botón se llevaría la flecha dibujada.
-  const t=b.querySelector('span')||b;
-  t.textContent=pasoActual()==='sesion'?'Volver a sesiones':'Volver a ejercicios';
   const f=document.getElementById('session-form');
   if(f)f.classList.toggle('en-paso',pasoActual()!=='sesion');
+  pintarCabecera();
 }
 
 function volverAtras(){
@@ -7050,7 +7050,7 @@ function pintarCabecera(){
     m.hidden=camino.length<2;
     m.innerHTML=camino.map((t,k)=>k===camino.length-1
       ?'<b>'+escaparHTML(t)+'</b>'
-      :'<button type="button" data-nivel="'+k+'">'+escaparHTML(t)+'</button>').join('<span class="sep" aria-hidden="true">›</span>');
+      :'<button type="button" data-nivel="'+k+'">'+escaparHTML(t)+'</button>').join(' <span class="sep" aria-hidden="true">›</span> ');
   }
   const dentro=camino.length>=2;
   const atras=document.getElementById('cab-atras'), foto=document.getElementById('profile-pic');
