@@ -21,7 +21,10 @@ test('arranca en Inicio, con la fecha y lo que toca hoy', async ({ page }) => {
   await expect(page.locator('#dial')).toBeVisible();
   expect(await seleccionada(page)).toBe('Inicio');
   await expect(page.locator('#dial-num')).toHaveText(String(new Date().getDate()));
-  await expect(page.locator('#dial-destino')).toContainText(/Hoy: S1/);
+  // En Inicio el centro es el botón de empezar, con la sesión que toca (25/10/2026).
+  await expect(page.locator('#dial')).toHaveClass(/empezar/);
+  await expect(page.locator('#dial-empezar')).toHaveText(/Empezar/);
+  await expect(page.locator('#dial-destino')).toContainText(/S1/);
   // Primer Mes son 4 semanas; la primera es la de ahora.
   await expect(page.locator('#dial-tira .dial-sem')).toHaveCount(4);
   await expect(page.locator('#dial-tira .dial-sem.actual')).toHaveText(/S1/);

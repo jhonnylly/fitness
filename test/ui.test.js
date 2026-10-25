@@ -3180,7 +3180,9 @@ async function appLista(page, url){
     ok(/sesiones/.test(anillo.meta) && /Semana/.test(anillo.meta),
        'debajo del nombre, las semanas y las sesiones: '+anillo.meta);
     ok(anillo.abreRutinas, 'tocar el nombre de la rutina sigue abriendo "Mis rutinas"');
-    ok(anillo.pastillas === 3, 'y las tres pastillas de cambiar, añadir y borrar siguen ahí');
+    /* 25/10/2026: «Borrar» se fue a Mis rutinas; en la portada era un toque
+       destructivo al lado de «Cambiar». */
+    ok(anillo.pastillas === 2, 'quedan las pastillas de cambiar y añadir (borrar vive en Mis rutinas)');
     ok(anillo.dentro, 'y van DENTRO del borde de la tarjeta de la rutina, no sueltas debajo');
 
     console.log('\n14. Nada ha reventado por el camino');

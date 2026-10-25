@@ -269,11 +269,18 @@ header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform
 .cab-migas button:focus-visible{outline:2px solid var(--dial-cian);border-radius:4px;}
 .cab-migas b{color:#eef2fa;font-weight:600;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cab-migas .sep{opacity:.6;}
-.cab-tira{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:10px;}
-.cab-tira button{min-height:44px;border:0;border-radius:6px;cursor:pointer;display:grid;place-items:center;padding:0;
+/* El segmento de tu sección se ensancha y dice su nombre (25/10/2026, Jhon):
+   solo con iconos, el medidor de Medidas y las barras de Resumen había que
+   aprenderlos. Los demás, solo icono. */
+.cab-tira{display:flex;gap:5px;margin-top:10px;}
+.cab-tira button{flex:1 1 0;min-width:0;min-height:44px;border:0;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;
+  transition:flex-grow .25s cubic-bezier(.2,.8,.2,1),transform .12s ease;
   color:var(--on-accent);
   background:repeating-linear-gradient(135deg,rgba(var(--accent-rgb),.95) 0 2px,rgba(var(--accent-rgb),.82) 2px 5px);
-  clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);transition:transform .12s ease;}
+  clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);}
+.cab-tira button span{display:none;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
+.cab-tira button.aqui{flex-grow:2.4;}
+.cab-tira button.aqui span{display:inline;}
 .cab-tira button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 .cab-tira button.aqui{background:var(--dial-cian);color:var(--dial-cian-tinta);}
 .cab-tira button:focus-visible{outline:2px solid #eef2fa;outline-offset:2px;}
@@ -397,7 +404,7 @@ label.btn-sm{letter-spacing:normal;text-transform:none;}
 .dial-velo.ver{opacity:1;pointer-events:auto;}
 .dial-velo-caja{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));}
-@media(prefers-reduced-motion:reduce){ .dial-velo,.dial-fab{transition:none;} }
+@media(prefers-reduced-motion:reduce){ .dial-velo,.dial-fab,.cab-tira button{transition:none;} }
 /* Iconos de trazo, el mismo juego que estas pestañas. Sustituyen a los emoji
    que había (🏋️ 🔥 ❤️ 📏 ⚡ 🏆): un emoji lo dibuja cada sistema a su manera
    —en el iPhone salen los de Apple, aquí los de Google— y trae sus propios
@@ -1100,6 +1107,18 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* En la capa del botón (.flotante): la sección en la que estás lleva borde,
    el centro es «Cerrar» y el aro entra girando. */
 .dial-seg.aqui .base{stroke:var(--text);stroke-width:2.5;}
+/* Centro de EMPEZAR: amarillo, el color de las acciones. Solo en la pantalla de
+   Inicio con el aro en Inicio; al girar a otra sección vuelve a ser la fecha. */
+.dial-empezar{display:none;align-items:center;gap:5px;font-size:18px;letter-spacing:.06em;text-transform:uppercase;}
+.dial-empezar b{font-weight:800;}
+.dial-empezar svg{width:18px;height:18px;fill:currentColor;}
+.dial.empezar .dial-centro{background:var(--accent-fill);color:var(--on-accent);box-shadow:0 8px 24px rgba(0,0,0,.25);}
+.dial.empezar .dial-centro>.dial-num,.dial.empezar .dial-centro>.dial-mes{display:none;}
+.dial.empezar .dial-centro>.dial-empezar{display:flex;order:2;}
+.dial.empezar .dial-centro>.dial-dia{order:1;}
+.dial.empezar .dial-centro>.dial-destino{order:3;}
+.dial.empezar .dial-dia{color:rgba(26,20,0,.72);}
+.dial.empezar .dial-destino{color:var(--on-accent);min-height:0;margin-top:4px;font-size:12px;}
 .dial-cerrar{display:none;font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;}
 .dial.flotante .dial-centro{width:30%;}
 .dial.flotante .dial-centro>span{display:none;}
@@ -1275,7 +1294,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .racha-dia.hecho i{background:var(--accent-fill);}
 /* Hoy va marcado con un aro: sin él no se sabe por qué extremo se lee. */
 .racha-dia.es-hoy i{box-shadow:0 0 0 2px rgba(255,255,255,.55);}
-.racha-dia span{display:block;font-size:8.5px;color:rgba(255,255,255,.45);margin-top:4px;}
+.racha-dia span{display:block;font-size:11px;color:rgba(255,255,255,.62);margin-top:4px;}   /* eran 8,5 px al 45 % */
 
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .duo .card{margin-bottom:0;}
@@ -2284,6 +2303,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
         <span class="dial-num" id="dial-num"></span>
         <span class="dial-mes" id="dial-mes"></span>
         <span class="dial-destino" id="dial-destino" aria-live="polite"></span>
+        <!-- En Inicio el centro es el botón de EMPEZAR (25/10/2026): ya abría el
+             entrenamiento de hoy, pero parecía un calendario (crítica de
+             Impeccable: «la acción principal queda escondida»). -->
+        <span class="dial-empezar" id="dial-empezar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><b id="dial-empezar-txt">Empezar</b></span>
         <span class="dial-volver">Volver</span>
         <span class="dial-cerrar">Cerrar</span>
       </button>
@@ -2341,12 +2364,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
           <path d="M12 5v14M5 12h14"/>
         </svg>Añadir
       </button>
-      <button class="hp-accion hp-accion-borrar" onclick="borrarRutinaActiva()">
-        <svg class="ico-btn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-        </svg>Borrar
-      </button>
+      <!-- «Borrar» se fue a Mis rutinas (25/10/2026): en la portada, al lado de
+           «Cambiar», era un toque destructivo en la pantalla que más se toca. -->
     </div>
   </div>
 
@@ -3757,7 +3776,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 03:26';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-25 04:00';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7047,7 +7066,7 @@ function pintarTira(nav,aqui){
   if(!nav)return;
   if(!nav.children.length){
     nav.innerHTML=TIRA_NOMBRES.map((n,i)=>'<button type="button" data-i="'+i+'" aria-label="'+n+'">'+
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+TIRA_ICONOS[i]+'"/></svg></button>').join('');
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+TIRA_ICONOS[i]+'"/></svg><span>'+n+'</span></button>').join('');
     nav.addEventListener('click',ev=>{
       const b=ev.target.closest('button[data-i]'); if(!b)return;
       const i=+b.dataset.i; if(i!==seccionActual())irASeccion(i);
@@ -7390,7 +7409,7 @@ function dialPintarGiro(){
   e.etiquetas.forEach((t,j)=>{ t.g.classList.toggle('sel',j===e.sel); t.g.classList.toggle('aqui',j===e.aqui); });
   let nombre=DIAL_SECCIONES[e.sel], ayuda=e.desliza?'Suelta para ir a '+nombre
     :e.sel===e.aqui?'Ya estás aquí · toca el cian para ver sus opciones'
-    :e.sel===0&&e.aqui<0?'Gira el aro o toca el cian para ver más':'Espera o toca el cian para ver sus opciones';
+    :e.sel===0&&e.aqui<0?'Gira el aro para ir a otra sección':'Espera o toca el cian para ver sus opciones';
   if(e.nivel===1&&e.subs.length){
     document.getElementById('dial-svg-sub').style.transform='rotate('+dialSub.x.toFixed(2)+'deg)';
     for(const t of e.subEtq) t.up.setAttribute('transform','rotate('+(-dialSub.x).toFixed(2)+')');
@@ -7407,7 +7426,14 @@ function dialPintarGiro(){
   aro.setAttribute('aria-valuetext',nombre);
   document.getElementById('dial-centro').setAttribute('aria-label',
     e.nivel?'Volver a las secciones':menuDial.abierto?'Cerrar':DIAL_SECCIONES[e.sel]);
-  document.getElementById('dial-destino').textContent=e.destinos[DIAL_SECCIONES[e.sel]]||'';
+  const empezar=e.sel===0&&!e.nivel&&!menuDial.abierto;
+  document.getElementById('dial').classList.toggle('empezar',empezar);
+  const destino=e.destinos[DIAL_SECCIONES[e.sel]]||'';
+  // En modo empezar, el centro dice la sesión sin el «Hoy:» (ya lo dice el botón).
+  document.getElementById('dial-destino').textContent=empezar?destino.replace(/^Hoy: /,''):destino;
+  const ver=/^Ver/.test((document.getElementById('hoy-cta')||{}).textContent||'');
+  document.getElementById('dial-empezar-txt').textContent=ver?'Ver':'Empezar';
+  if(empezar)document.getElementById('dial-centro').setAttribute('aria-label',(ver?'Ver: ':'Empezar: ')+destino.replace(/^Hoy: /,''));
   document.getElementById('dial-nombre').textContent=nombre;
   document.getElementById('dial-ayuda').textContent=ayuda;
 }
@@ -7539,6 +7565,8 @@ function dialLlevarA(sel,foco){
     const el=document.querySelector(sel);
     if(!el||!el.getClientRects().length)return;
     const c=el.closest('.card')||el;
+    // Este desplazamiento lo hace la app: que el botón amarillo no lo tome por «bajar».
+    window.scrollPorLaApp=Date.now()+1000;
     c.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
     c.classList.remove('dial-resalta'); void c.offsetWidth; c.classList.add('dial-resalta');
     setTimeout(()=>c.classList.remove('dial-resalta'),1700);
@@ -7784,6 +7812,8 @@ function iniciarMiniDial(){
     requestAnimationFrame(()=>{
       pedido=false;
       const y=window.scrollY, dy=y-ultimaY;
+      // Desplazamientos que hace la propia app (llevarte a un apartado): no cuentan.
+      if(Date.now()<(window.scrollPorLaApp||0)){ ultimaY=y; bajando=false; apartar(); return; }
       if(y<80)bajando=false;
       else if(dy>6)bajando=true;
       else if(dy<-6)bajando=false;
