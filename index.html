@@ -51,6 +51,10 @@
 #aviso-flotante.visible{opacity:1;transform:translate(-50%,0);}
 #aviso-flotante.bien{border-left:4px solid var(--green);}
 #aviso-flotante.mal{border-left:4px solid var(--danger);}
+#aviso-flotante.con-accion{pointer-events:auto;display:flex;align-items:center;gap:14px;text-align:left;padding:6px 6px 6px 16px;}
+.aviso-accion{flex:none;min-height:44px;padding:0 14px;border:0;border-radius:8px;background:rgba(255,255,255,.1);
+  color:var(--accent-ink);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;}
+.aviso-accion:active{transform:scale(.96);}
 /* ── El descanso, ARRIBA (28/09/2026, Jhon) ──
    Antes era una tarjeta flotando sobre la barra de pestañas que arrancaba
    sola al apuntar las repeticiones, siempre con 90 s. Ahora solo corre cuando
@@ -840,6 +844,11 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .acciones-fila{display:flex;align-items:center;gap:4px;margin-left:8px;flex-shrink:0;}
 .acciones-fila .btn-sm{padding:6px 8px;font-size:11px;white-space:nowrap;}
 .acciones-fila .sep-peligro{margin-left:10px;}
+.zona-peligro{margin-top:40px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;align-items:center;}
+.enlace-peligro{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:0;background:none;
+  color:var(--danger-ink);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+  text-decoration:underline;text-underline-offset:3px;}
+.enlace-peligro:active{opacity:.6;}
 
 /* Galería de fotos de progreso. Tira horizontal: van a crecer con el tiempo
    y una rejilla obligaría a hacer scroll de toda la página para ver el
@@ -2510,7 +2519,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       <button class="btn btn-primary" onclick="saveSession()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg> Guardar sesión</button>
       <!-- Solo sale si esta sesión ya tiene registro. Deshacer lo apuntado sin
            sacar la sesión del plan: el gesto que hacía la "×" del historial. -->
-      <div id="borrar-registro" style="margin-top:10px;text-align:center;"></div>
+
       <!-- Duplicar y quitar del plan vivían en cada fila de la lista de
            sesiones. Con el mosaico se movieron aquí, igual que las de la
            semana. Las etiquetas distinguen las dos cosas que se pueden borrar:
@@ -2518,7 +2527,13 @@ body:not(.es-admin) #pane-cuentas{display:none;}
            se lleva la sesión entera. -->
       <div class="acciones-fila" style="margin-left:0;margin-top:12px;">
         <button class="btn-sm" onclick="duplicateSession(curWeekNum,curSession)"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Duplicar sesión</button>
-        <button class="btn-sm btn-danger sep-peligro" onclick="deleteSession(curWeekNum,curSession)"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Quitar del plan</button>
+      </div>
+      <!-- Lo que borra, LEJOS de «Guardar sesión» (27/10/2026, 2.ª crítica): estaba
+           justo debajo, con pinta de botón, y era fácil darle pensando en el otro.
+           Ahora al final, tras una raya y como enlaces rojos. -->
+      <div class="zona-peligro">
+        <div id="borrar-registro"></div>
+        <button type="button" class="enlace-peligro" onclick="deleteSession(curWeekNum,curSession)"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Quitar esta sesión del plan</button>
       </div>
     </div>
 
@@ -3807,7 +3822,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-27 18:40';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-27 19:04';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5544,9 +5559,21 @@ function elegirUnidadEjercicio(u){
   aviso(u==='lb'?'«'+nombre+'» se anota en libras':'«'+nombre+'» se anota en kilos','bien');
 }
 
+/* Sin pregunta, pero con «Deshacer» (27/10/2026): la papelera queda encima de
+   los kilos y un toque sin querer se llevaba la serie con lo apuntado. */
 function removeSetFromCurrent(si){
   if(curExIndex===null)return;
-  if(curEx[curExIndex].sets.length>1){curEx[curExIndex].sets.splice(si,1);renderEx();guardarBorrador();}
+  const ex=curEx[curExIndex];
+  if(ex.sets.length<=1)return;
+  const quitada=ex.sets.splice(si,1)[0];
+  renderEx(); guardarBorrador();
+  aviso('Serie '+(si+1)+' borrada','',{texto:'Deshacer',hacer:()=>{
+    // Si ya has salido de esa sesión, el ejercicio no es el de ahora: nada que devolver.
+    if(!curEx.includes(ex))return;
+    ex.sets.splice(Math.min(si,ex.sets.length),0,quitada);
+    if(curEx[curExIndex]===ex)renderEx();
+    guardarBorrador();
+  }});
 }
 
 function addSet(ei){if(bloqueadoPorPausa('añadir series')) return; curEx[ei].sets.push({kg:'',reps:''});renderEx();guardarBorrador();}
@@ -5895,7 +5922,7 @@ function pintarBorrarRegistro(){
   const act=getActive();
   const hay=act&&curSession!=null&&act.sessions[curSession];
   c.innerHTML=hay
-    ? `<button class="btn-sm btn-danger" onclick="borrarRegistroSesion(${curSession})">${ico('papelera','ico-btn')} Borrar lo registrado en esta sesión</button>`
+    ? `<button type="button" class="enlace-peligro" onclick="borrarRegistroSesion(${curSession})">${ico('papelera','ico-btn')} Borrar lo registrado en esta sesión</button>`
     : '';
 }
 
@@ -9360,14 +9387,23 @@ const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#select
    Los confirm() de borrar NO se tocan: ahí el freno del diálogo del sistema es
    una virtud, no un estorbo. */
 let _avisoTimer=null;
-function aviso(texto, tipo){
+/* `accion` (27/10/2026): {texto:'Deshacer', hacer:fn} pone un botón en el
+   aviso. Es para lo que se borra de un toque sin preguntar (una serie): en vez
+   de una pregunta antes, una salida después. Dura más, para que dé tiempo. */
+function aviso(texto, tipo, accion){
   const el=document.getElementById('aviso-flotante');
   if(!el){ console.log('[aviso]',texto); return; }
   el.textContent=texto;
-  el.className='visible '+(tipo==='mal'?'mal':tipo==='bien'?'bien':'');
+  if(accion){
+    const b=document.createElement('button');
+    b.type='button'; b.className='aviso-accion'; b.textContent=accion.texto;
+    b.onclick=()=>{ clearTimeout(_avisoTimer); el.className=''; accion.hacer(); };
+    el.appendChild(b);
+  }
+  el.className='visible '+(tipo==='mal'?'mal':tipo==='bien'?'bien':'')+(accion?' con-accion':'');
   clearTimeout(_avisoTimer);
   // Los errores duran más: si algo ha fallado, hay que poder leerlo entero.
-  _avisoTimer=setTimeout(()=>{ el.className=''; }, tipo==='mal'?4200:2400);
+  _avisoTimer=setTimeout(()=>{ el.className=''; }, accion?5000:tipo==='mal'?4200:2400);
 }
 
 function sincronizarBloqueoFondo(){

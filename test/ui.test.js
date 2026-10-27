@@ -412,6 +412,16 @@ async function appLista(page, url){
       q('.sc-quitar')[q('.sc-quitar').length-1].click(); await tic();
       q('.sc-quitar')[q('.sc-quitar').length-1].click(); await tic();
       r.vuelta = curEx[0].sets.length === antes;
+      /* 27/10/2026: borrar una serie no pregunta, pero el aviso trae «Deshacer»
+         y la devuelve a su sitio con lo apuntado. */
+      curEx[0].sets[1].kg = 33; renderEx(); await tic();
+      q('.sc-quitar')[1].click(); await tic();
+      const av = document.getElementById('aviso-flotante');
+      const deshacer = av.querySelector('.aviso-accion');
+      r.deshacer = { sale: !!deshacer && /Deshacer/.test(deshacer.textContent) && av.classList.contains('con-accion'),
+                     quitada: curEx[0].sets.length === antes - 1 };
+      deshacer.click(); await tic();
+      r.deshacer.vuelve = curEx[0].sets.length === antes && curEx[0].sets[1].kg === 33 && !av.classList.contains('visible');
       /* 06/10/2026 (Jhon): la × junto a "S1" parecía un signo de multiplicar.
          Desde el 21/10/2026 el texto rojo usa --danger-ink (el rojo con
          contraste AA según el tema), no --danger. */
@@ -456,6 +466,8 @@ async function appLista(page, url){
     ok(cols.tras === cols.series + 1 && cols.sinBotonSerie, 'la columna "+" añade una serie (y ya no hay botón "+ Serie")');
     ok(cols.desliza && cols.etiquetaFija, 'con muchas series se desliza de lado y las etiquetas se quedan fijas');
     ok(cols.vuelta, 'la papelera de cada serie la quita');
+    ok(cols.deshacer.sale && cols.deshacer.quitada && cols.deshacer.vuelve,
+       'sin preguntar, pero con «Deshacer» en el aviso: la serie vuelve a su sitio con sus kilos');
     ok(cols.papelera, '🔴 quitar una serie es una papelera roja, no una × que parece "multiplicar"');
     ok(cols.papeleraEjercicio, 'y quitar el ejercicio, junto al nombre, también es una papelera');
     const sinAspas = await page.evaluate(()=>[...document.querySelectorAll('script')].map(x=>x.textContent).join('').match(/btn-danger[^>]*>×<\/button>/g) || []);
@@ -2248,6 +2260,20 @@ async function appLista(page, url){
     ok(cabPaneles.trasTira.cerrado && cabPaneles.trasTira.resumen, 'tocar otra sección en la tira cierra Mis rutinas y lleva a ella');
     ok(cabPaneles.desdeResumen === 'Resumen' && cabPaneles.volverCierra, 'abierta desde Resumen cuelga de Resumen, y «Volver» la cierra');
     ok(cabPaneles.espejo === 'Guardando...', 'el estado de guardado también cambia en estas cabeceras');
+
+    console.log('\n13o3. Lo que borra la sesión va lejos de «Guardar»');
+    const peligro = await page.evaluate(()=>{
+      const f = document.getElementById('session-form');
+      const guardar = [...f.querySelectorAll('button')].find(b => /Guardar sesión/.test(b.textContent));
+      const zona = f.querySelector('.zona-peligro');
+      const quitar = zona && [...zona.querySelectorAll('button')].find(b => /Quitar esta sesión del plan/.test(b.textContent));
+      return { enZona: !!quitar && zona.contains(document.getElementById('borrar-registro')),
+               despues: !!guardar && !!zona && !!(guardar.compareDocumentPosition(zona) & Node.DOCUMENT_POSITION_FOLLOWING),
+               // La papelera del ejercicio (en su ficha, junto al lápiz) es otra cosa.
+               sinBotonRojo: ![...f.querySelectorAll('.btn-danger')].some(b => !b.classList.contains('ex-quitar')) };
+    });
+    ok(peligro.enZona && peligro.despues && peligro.sinBotonRojo,
+       '«Quitar del plan» y «Borrar lo registrado» van al final, tras una raya y como enlaces (no botones rojos bajo «Guardar»)');
 
     console.log('\n13p. Tocar tu foto abre tu cuenta: perfil y sesión juntos');
     /* Jhon (15/09): quitar el botón de la nube y que la foto de la cabecera
