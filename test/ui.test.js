@@ -2198,7 +2198,8 @@ async function appLista(page, url){
       closeNewRoutinePanel();
       return r;
     });
-    ok(volverTodo.total >= 12, 'se revisan todas las cabeceras y barras ('+volverTodo.total+')');
+    // 12 hasta el 27/10/2026: Ajustes y Mis rutinas pasaron a la cabecera de sección (13o2).
+    ok(volverTodo.total >= 10, 'se revisan todas las cabeceras y barras ('+volverTodo.total+')');
     ok(volverTodo.malas.length === 0,
        volverTodo.malas.length ? 'estas aún tienen el botón viejo: '+volverTodo.malas.join(', ')
                                : 'en todas, el primer botón es "Volver" con su flecha y ya no queda ningún "✕ Cerrar"');
@@ -2206,6 +2207,47 @@ async function appLista(page, url){
        'en el selector de ejercicios el botón dice a dónde lleva: la rutina o los músculos');
     ok(volverTodo.trasVolver.etiqueta === 'Volver a la rutina' && volverTodo.trasVolver.abierto && volverTodo.cerrado,
        'y da un paso atrás cada vez: de un músculo a los músculos, y de ahí fuera');
+
+    console.log('\n13o2. Ajustes y Mis rutinas llevan la cabecera de las secciones');
+    /* 27/10/2026 (Jhon eligió «igual que Entrenar»): tenían «Volver» arriba y el
+       título a la derecha, como otra app. Ahora: foto, rótulo, guardado y tira;
+       Mis rutinas además «Volver» y el camino bajo la tira. */
+    const cabPaneles = await page.evaluate(()=>{
+      const r = {};
+      goTo('inicio');
+      const cfg = document.getElementById('config-panel'), rut = document.getElementById('routine-panel');
+      if(cfg.classList.contains('hidden')) toggleConfigPanel();
+      const cc = cfg.querySelector('.cab-panel');
+      r.ajustes = { titulo: cc.querySelector('.cab-saludo').textContent, foto: !!cc.querySelector('#cfg-avatar'),
+                    guardado: cc.querySelector('[data-sync="txt"]').textContent === document.getElementById('sync-txt').textContent,
+                    aqui: cc.querySelector('.cab-tira .aqui').getAttribute('aria-label'), sinVolver: !cc.querySelector('.cab-atras') };
+      toggleConfigPanel();
+      toggleRoutinePanel();
+      const rc = rut.querySelector('.cab-panel');
+      r.rutinas = { titulo: rc.querySelector('.cab-saludo').textContent, aqui: rc.querySelector('.cab-tira .aqui').getAttribute('aria-label'),
+                    camino: rc.querySelector('#rut-migas').textContent.replace(/\s+/g,' ').trim(),
+                    volverBajoTira: rc.querySelector('.cab-tira').compareDocumentPosition(rc.querySelector('.cab-atras')) & Node.DOCUMENT_POSITION_FOLLOWING };
+      // La tira desde Mis rutinas: cierra el panel y lleva a la sección.
+      rc.querySelector('.cab-tira button[aria-label="Resumen"]').click();
+      r.trasTira = { cerrado: rut.classList.contains('hidden'), resumen: document.getElementById('tab-resumen').classList.contains('active') };
+      // Abierta desde Resumen, cuelga de Resumen; «Volver» la cierra.
+      toggleRoutinePanel();
+      r.desdeResumen = rc.querySelector('.cab-tira .aqui').getAttribute('aria-label');
+      rc.querySelector('.cab-atras').click();
+      r.volverCierra = rut.classList.contains('hidden');
+      sync('saving'); r.espejo = rc.querySelector('[data-sync="txt"]').textContent; sync('ok');
+      goTo('inicio');
+      return r;
+    });
+    ok(cabPaneles.ajustes.titulo === 'Ajustes' && cabPaneles.ajustes.foto && cabPaneles.ajustes.guardado
+       && cabPaneles.ajustes.aqui === 'Ajustes' && cabPaneles.ajustes.sinVolver,
+       'Ajustes: foto, rótulo, guardado y la tira con Ajustes en cian, sin «Volver» (como Resumen)');
+    ok(cabPaneles.rutinas.titulo === 'Mis rutinas' && cabPaneles.rutinas.aqui === 'Inicio'
+       && cabPaneles.rutinas.camino === 'Inicio › Mis rutinas' && cabPaneles.rutinas.volverBajoTira,
+       'Mis rutinas desde Inicio: Inicio en cian, «Volver» bajo la tira y el camino «Inicio › Mis rutinas» ('+cabPaneles.rutinas.camino+')');
+    ok(cabPaneles.trasTira.cerrado && cabPaneles.trasTira.resumen, 'tocar otra sección en la tira cierra Mis rutinas y lleva a ella');
+    ok(cabPaneles.desdeResumen === 'Resumen' && cabPaneles.volverCierra, 'abierta desde Resumen cuelga de Resumen, y «Volver» la cierra');
+    ok(cabPaneles.espejo === 'Guardando...', 'el estado de guardado también cambia en estas cabeceras');
 
     console.log('\n13p. Tocar tu foto abre tu cuenta: perfil y sesión juntos');
     /* Jhon (15/09): quitar el botón de la nube y que la foto de la cabecera
@@ -2469,7 +2511,7 @@ async function appLista(page, url){
       if(panel.classList.contains('hidden')) toggleConfigPanel();
       await comprobarVersionNueva(true);            // contra el propio servidor de la prueba: es la misma
       // Entre la cabecera y el contenido va la tira de secciones (25/10/2026).
-      const cuerpo = panel.querySelector('.routine-panel-header ~ div:not(.panel-tira)');
+      const cuerpo = panel.querySelector('.cab-panel ~ div');
       const c = document.getElementById('cfg-version');
       const punto = () => document.getElementById('config-btn').classList.contains('con-punto');
       r.arriba = cuerpo.firstElementChild === c;

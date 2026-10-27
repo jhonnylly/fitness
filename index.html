@@ -285,9 +285,13 @@ header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform
 .cab-tira button.aqui{background:var(--dial-cian);color:var(--dial-cian-tinta);}
 .cab-tira button:focus-visible{outline:2px solid #eef2fa;outline-offset:2px;}
 .cab-tira button:active{transform:scale(.96);}
-/* En los paneles (Ajustes) la tira va bajo su cabecera, en la misma franja oscura. */
-.panel-tira{background:var(--dark);padding:0 16px 12px;}
-.panel-tira .cab-tira{margin-top:0;}
+/* Ajustes y Mis rutinas son paneles por encima de la app, pero llevan la misma
+   cabecera que las secciones (27/10/2026): por eso las reglas de arriba valen
+   también para .cab-panel. */
+.cab-panel{background:var(--dark);color:#eef2fa;padding:12px 16px;flex:none;}
+.cab-panel .cab-avatar{width:40px;height:40px;font-size:16px;}
+.cab-panel .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform:uppercase;cursor:default;}
+.cab-panel .cab-saludo:active{opacity:1;}
 .recordatorio-guardar{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
   margin:-4px 0 10px;}
 .recordatorio-guardar b{color:var(--text);}
@@ -1230,7 +1234,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    cabecera, la barra, el descanso, los avisos): llevan siempre la tinta del
    tema oscuro. Sin esto, en modo claro el texto violeta oscuro quedaba sobre
    fondo casi negro a 2,3:1 (lo cazó el detector el 21/10/2026). */
-.hoy,header,.tabs,#aviso-flotante,#rest-timer,.modo-sel,.comp-barra,.routine-panel-header,.aviso-coach,.reto-aviso.pendiente{
+.hoy,header,.cab-panel,.tabs,#aviso-flotante,#rest-timer,.modo-sel,.comp-barra,.routine-panel-header,.aviso-coach,.reto-aviso.pendiente{
   --accent-ink:#ffd84a;--danger-ink:#ff6a4d;}
 /* La semana en curso vive DENTRO del mosaico y ocupa la fila entera
    (23/09/2026). Estaba arriba del todo, fuera de la lista, y varias personas se
@@ -1772,7 +1776,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 </header>
 
 
-<div id="auth-panel" class="routine-panel hidden">
+<div id="auth-panel" class="routine-panel hidden" style="z-index:310;">
   <div class="routine-panel-header">
     <button class="btn-volver" onclick="toggleAuthPanel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver</span></button>
     <h2>TU CUENTA</h2>
@@ -2026,11 +2030,19 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 
 <!-- ═══════════ Ajustes ═══════════ -->
 <div id="config-panel" class="routine-panel hidden">
-  <div class="routine-panel-header">
-    <button class="btn-volver" onclick="toggleConfigPanel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver</span></button>
-    <h2>AJUSTES</h2>
+  <!-- La misma cabecera que las secciones (27/10/2026, Jhon eligió «igual que
+       Entrenar»): tu foto, el nombre como rótulo, el guardado y la tira. Ajustes
+       es una sección más de la tira, así que, como Resumen, no lleva «Volver». -->
+  <div class="cab-panel">
+    <div class="cab">
+      <div id="cfg-avatar" class="cab-avatar sin-foto" onclick="toggleAuthPanel()" role="button" aria-label="Tu cuenta"></div>
+      <div class="cab-centro">
+        <h2 class="cab-saludo">Ajustes</h2>
+        <div class="cab-sub"><span class="sync-dot" data-sync="dot"></span><span data-sync="txt">Cargando...</span></div>
+      </div>
+    </div>
+    <nav class="cab-tira" id="cfg-tira" aria-label="Secciones"></nav>
   </div>
-  <div class="panel-tira"><nav class="cab-tira" id="cfg-tira" aria-label="Secciones"></nav></div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
     <!-- La versión, ARRIBA DEL TODO (15/09/2026). Estaba al final de Ajustes y
          para actualizar había que bajar hasta ella; Jhon la quiso como un botón
@@ -2180,9 +2192,22 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 </div>
 
 <div id="routine-panel" class="routine-panel hidden">
-  <div class="routine-panel-header">
-    <button class="btn-volver" onclick="toggleRoutinePanel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver</span></button>
-    <h2>MIS RUTINAS</h2>
+  <!-- Cabecera de sección (27/10/2026): Mis rutinas cuelga de la sección desde
+       la que la abres (cian en la tira) y, como dentro de Entrenar, «Volver» y
+       el camino van debajo de la tira. Lo pinta pintarCabecera(). -->
+  <div class="cab-panel">
+    <div class="cab">
+      <div id="rut-avatar" class="cab-avatar sin-foto" onclick="toggleAuthPanel()" role="button" aria-label="Tu cuenta"></div>
+      <div class="cab-centro">
+        <h2 class="cab-saludo">Mis rutinas</h2>
+        <div class="cab-sub"><span class="sync-dot" data-sync="dot"></span><span data-sync="txt">Cargando...</span></div>
+      </div>
+    </div>
+    <nav class="cab-tira" id="rut-tira" aria-label="Secciones"></nav>
+    <div class="cab-ruta">
+      <button type="button" class="cab-atras" onclick="toggleRoutinePanel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Volver</span></button>
+      <nav class="cab-migas" id="rut-migas" aria-label="Dónde estás"></nav>
+    </div>
   </div>
   <div style="padding:12px;flex:1;overflow-y:auto;">
     <div id="routine-list"></div>
@@ -3749,12 +3774,18 @@ let curNotas=Object.create(null);
 let curWeekNum=null;
 
 function sync(st){
-  const d=document.getElementById('sync-dot');
-  const t=document.getElementById('sync-txt');
-  if(st==='ok'){d.style.background='#2d7a4f';t.textContent='Guardado';}
-  else if(st==='saving'){d.style.background='#c97820';t.textContent='Guardando...';}
-  else if(st==='load'){d.style.background='#888';t.textContent='Cargando...';}
-  else{d.style.background='var(--danger)';t.textContent='Error al guardar';}
+  if(st==='ok')ponerSync('#2d7a4f','Guardado');
+  else if(st==='saving')ponerSync('#c97820','Guardando...');
+  else if(st==='load')ponerSync('#888','Cargando...');
+  else ponerSync('var(--danger)','Error al guardar');
+}
+// El estado de guardado sale en la cabecera y en las de Ajustes y Mis rutinas.
+function ponerSync(color,texto){
+  const d=document.getElementById('sync-dot'), t=document.getElementById('sync-txt');
+  if(d)d.style.background=color; if(t)t.textContent=texto;
+  if(typeof document.querySelectorAll!=='function')return;
+  document.querySelectorAll('[data-sync="dot"]').forEach(e=>{ e.style.background=color; });
+  document.querySelectorAll('[data-sync="txt"]').forEach(e=>{ e.textContent=texto; });
 }
 
 /* ─────────── Capa de almacenamiento ───────────
@@ -3776,7 +3807,7 @@ function sync(st){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-25 04:00';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-27 18:40';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4288,10 +4319,7 @@ function guardar(propagar){
     .then(()=>{
       const now=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
       setTimeout(()=>{
-        const t=document.getElementById('sync-txt');
-        if(t)t.textContent='Guardado · '+now;
-        const d=document.getElementById('sync-dot');
-        if(d)d.style.background='#2d7a4f';
+        ponerSync('#2d7a4f','Guardado · '+now);
       },300);
     });
   /* La cola sigue viva pase lo que pase: un guardado que falla no debe
@@ -4642,7 +4670,7 @@ function renderProfilePic(){
     ? `<img src="${DB.profilePic}" style="width:100%;height:100%;object-fit:cover;">`
     : escaparHTML(iniciales(DB.profileName||'JHON'));   // el mismo por defecto que renderProfileName
   // La cabecera y la tarjeta "Tu perfil" de la cuenta enseñan la misma cara.
-  ['profile-pic','cuenta-avatar'].forEach(id=>{
+  ['profile-pic','cuenta-avatar','cfg-avatar','rut-avatar'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
     el.classList.toggle('sin-foto',!hayFoto);
@@ -7069,7 +7097,9 @@ function pintarTira(nav,aqui){
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+TIRA_ICONOS[i]+'"/></svg><span>'+n+'</span></button>').join('');
     nav.addEventListener('click',ev=>{
       const b=ev.target.closest('button[data-i]'); if(!b)return;
-      const i=+b.dataset.i; if(i!==seccionActual())irASeccion(i);
+      const i=+b.dataset.i;
+      if(nav.id==='rut-tira'){ document.getElementById('routine-panel').classList.add('hidden'); if(i===seccionActual())return; }
+      if(i!==seccionActual())irASeccion(i);
     });
   }
   [...nav.children].forEach((b,i)=>{ b.classList.toggle('aqui',i===aqui);
@@ -7100,6 +7130,12 @@ function pintarCabecera(){
   const tira=document.getElementById('cab-tira');
   if(tira){ tira.hidden=!enSeccion; if(enSeccion)pintarTira(tira,MINI_SECCION[seccionCab]); }
   pintarTira(document.getElementById('cfg-tira'),4);
+  // Mis rutinas cuelga de la sección en la que estabas.
+  const deDonde=MINI_SECCION[seccionCab]||0;
+  pintarTira(document.getElementById('rut-tira'),deDonde);
+  const rm=document.getElementById('rut-migas');
+  if(rm)rm.innerHTML='<button type="button" onclick="toggleRoutinePanel()">'+TIRA_NOMBRES[deDonde]+'</button>'+
+    ' <span class="sep" aria-hidden="true">›</span> <b>Mis rutinas</b>';
   const camino=seccionCab==='log'?caminoEntrenar():[];
   const m=document.getElementById('cab-migas');
   if(m){
@@ -7914,7 +7950,7 @@ function borrarRutinaActiva(){
 function toggleRoutinePanel(){
   const p=document.getElementById('routine-panel');
   p.classList.toggle('hidden');
-  if(!p.classList.contains('hidden'))renderRoutineList();
+  if(!p.classList.contains('hidden')){ renderRoutineList(); pintarCabecera(); }
 }
 
 /* El panel de cuenta lo rellena el módulo de Firebase, que carga desde CDN y
