@@ -55,6 +55,24 @@
 .aviso-accion{flex:none;min-height:44px;padding:0 14px;border:0;border-radius:8px;background:rgba(255,255,255,.1);
   color:var(--accent-ink);font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;}
 .aviso-accion:active{transform:scale(.96);}
+/* La ventana de preguntar() (27/10/2026). El rojo lleno es más oscuro que
+   --danger: con letra blanca, --danger no llega a 4,5:1. */
+#pregunta{margin:auto;width:min(420px,calc(100% - 32px));padding:0;border:1px solid var(--border);
+  border-radius:16px;background:var(--card);color:var(--text);box-shadow:0 20px 50px rgba(0,0,0,.35);}
+#pregunta::backdrop{background:rgba(5,10,20,.6);}
+#pregunta[open]{animation:pregunta-entra .18s cubic-bezier(.2,.8,.2,1);}
+@keyframes pregunta-entra{from{opacity:0;transform:scale(.96);}}
+.pregunta-caja{padding:20px 20px 16px;}
+.pregunta-titulo{font-size:17px;font-weight:800;line-height:1.35;margin-bottom:8px;}
+.pregunta-texto p{font-size:14px;line-height:1.5;color:var(--muted);margin-top:8px;white-space:pre-line;}
+.pregunta-botones{display:flex;flex-wrap:wrap-reverse;gap:10px;margin-top:20px;}
+.pregunta-botones button{flex:1 1 140px;min-height:48px;padding:0 14px;border-radius:var(--radius-sm);
+  font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;}
+.pregunta-no{background:var(--surface);border:1px solid var(--border);color:var(--text);}
+.pregunta-si{background:var(--accent-fill);border:0;color:var(--on-accent);}
+.pregunta-si.peligro{background:#c4321a;color:#fff;}
+.pregunta-botones button:active{transform:scale(.97);}
+@media(prefers-reduced-motion:reduce){ #pregunta[open]{animation:none;} }
 /* ── El descanso, ARRIBA (28/09/2026, Jhon) ──
    Antes era una tarjeta flotando sobre la barra de pestañas que arrancaba
    sola al apuntar las repeticiones, siempre con 90 s. Ahora solo corre cuando
@@ -1693,6 +1711,17 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 </head>
 <body>
 <div id="aviso-flotante" role="status" aria-live="polite"></div>
+<!-- Las preguntas de la app (27/10/2026): ver preguntar(). -->
+<dialog id="pregunta" aria-labelledby="pregunta-titulo">
+  <form method="dialog" class="pregunta-caja">
+    <h2 id="pregunta-titulo" class="pregunta-titulo"></h2>
+    <div class="pregunta-texto"></div>
+    <div class="pregunta-botones">
+      <button type="submit" value="no" class="pregunta-no">Cancelar</button>
+      <button type="submit" value="si" class="pregunta-si"></button>
+    </div>
+  </form>
+</dialog>
 
 <!-- La espera de la nube vive en el HTML y no se crea desde JS: tiene que poder
      tapar la app desde el primer pintado, antes de que load() ponga nada en
@@ -3822,7 +3851,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-27 19:04';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-27 19:28';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4211,9 +4240,9 @@ async function restaurarCopiaPrevia(){
   const copia=leerCopiaPrevia();
   if(!copia||!copia.db)return;
   const res=resumenDB(copia.db);
-  if(!confirm('Vas a volver a '+textoResumen(res)+', de '+
+  if(!await preguntar('Vas a volver a '+textoResumen(res)+', de '+
               new Date(copia.ts||0).toLocaleString('es-ES')+'.\n\n'+
-              'Lo que tienes ahora se guardará como copia por si acaso.\n\n¿Seguir?'))return;
+              'Lo que tienes ahora se guardará como copia por si acaso.\n\n¿Seguir?',{si:'Restaurar'}))return;
   const actual=JSON.parse(JSON.stringify(DB));
   const restaurada=JSON.parse(JSON.stringify(copia.db));
   restaurada.fotos=DB.fotos||[];        // las fotos de ahora no se tocan
@@ -5898,15 +5927,18 @@ function confeti(n){
    porque la lista de semanas ya enseña lo mismo mejor; el gesto sí hacía
    falta, así que ahora está dentro de la propia sesión, que es donde te das
    cuenta de que la registraste mal. */
-function borrarRegistroSesion(n){
+async function borrarRegistroSesion(n){
   const act=getActive();
   if(!act||!act.sessions[n])return;
   const day=findDay(n);
   const reg=act.sessions[n];
-  if(!confirm('Vas a borrar lo que registraste en "'+((day&&day.name)||('sesión '+n))+'"'+
+  if(!await preguntar('Vas a borrar lo que registraste en "'+((day&&day.name)||('sesión '+n))+'"'+
               (reg.date?' el '+reg.date:'')+'.\n\n'+
               'La sesión sigue en tu plan y podrás volver a hacerla, pero los pesos '+
-              'y las repeticiones que apuntaste no se pueden recuperar.\n\n¿Seguir?'))return;
+              'y las repeticiones que apuntaste no se pueden recuperar.\n\n¿Seguir?',
+              {si:'Borrar lo registrado',peligro:true}))return;
+  // Mientras se preguntaba ha podido llegar la nube y cambiar la rutina.
+  if(getActive()!==act||!act.sessions[n])return;
   delete act.sessions[n];
   save();
   pintarBorrarRegistro();
@@ -6104,8 +6136,9 @@ if(!med.length){c.innerHTML=estadoVacio({icono:'lista', titulo:'Sin medidas aún
   }).join('');
 }
 
-function delMedida(sem){
-  if(!confirm('¿Eliminar medida semana '+sem+'?'))return;
+async function delMedida(sem){
+  if(!await preguntar('¿Borrar la medida de la semana '+sem+'?\n\nNo se puede recuperar.',
+                      {si:'Borrar medida',peligro:true}))return;
   getActive().medidas=getActive().medidas.filter(m=>m.semana!==sem);
   save();renderMedidas();
 }
@@ -8697,7 +8730,7 @@ function activateRoutine(id){
 
 /* El aviso dice qué se pierde, con la cifra delante: "todos sus datos" no
    deja ver que ahí dentro puede haber meses de entrenamientos. */
-function deleteRoutine(id){
+async function deleteRoutine(id){
   const r=DB.routines.find(x=>x.id===id);
   if(!r)return;
   const hechas=Object.keys(r.sessions||{}).length;
@@ -8706,7 +8739,7 @@ function deleteRoutine(id){
       ' que registraste en ella.\n\nEse historial no se puede recuperar.\n\n¿Seguir?'
     : 'Vas a borrar "'+r.name+'".\n\nNo la has entrenado todavía, así que no '+
       'pierdes historial.\n\n¿Seguir?';
-  if(!confirm(aviso))return;
+  if(!await preguntar(aviso,{si:'Borrar rutina',peligro:true}))return;
   DB.routines=DB.routines.filter(r=>r.id!==id);
   if(DB.activeRoutine===id)DB.activeRoutine=DB.routines.length?DB.routines[0].id:null;
   save();
@@ -8821,10 +8854,11 @@ function savePhoto(input){
 
 /* La confirmación nombra la fecha: con una lista de fotos parecidas, "¿eliminar
    esta foto?" no basta para saber cuál te estás cargando. */
-window.deletePhoto=function(id){
+window.deletePhoto=async function(id){
   const f=(DB.fotos||[]).find(x=>x.id===id);
   if(!f)return;
-  if(!confirm('¿Borrar la foto del '+(f.fecha||'sin fecha')+'?\n\nNo se puede recuperar.'))return;
+  if(!await preguntar('¿Borrar la foto del '+(f.fecha||'sin fecha')+'?\n\nNo se puede recuperar.',
+                      {si:'Borrar foto',peligro:true}))return;
   DB.fotos=(DB.fotos||[]).filter(x=>x.id!==id);
   marcadas=marcadas.filter(x=>x!==id);
   save();
@@ -9311,9 +9345,12 @@ window.aplicarRenombrado=function(ambito){
   aviso('Cambiado en '+dias+' día'+(dias===1?'':'s')+' del plan','bien');
 };
 
-function removeCurrentEx(){
+async function removeCurrentEx(){
   if(curExIndex===null)return;
-  if(!confirm('¿Eliminar este ejercicio?'))return;
+  if(!await preguntar('¿Quitar «'+(curEx[curExIndex].name||'este ejercicio')+'» de la sesión?\n\n'+
+                      'Se van con él las series que hayas apuntado.',
+                      {si:'Quitar ejercicio',peligro:true}))return;
+  if(curExIndex===null)return;
   curEx.splice(curExIndex,1);
   closeExDetail();
   guardarBorrador();
@@ -9384,8 +9421,8 @@ const SELECTOR_CAPAS='#onboarding,.routine-panel,#comparador,#visor-foto,#select
 
 /* Sustituye a aviso(). Tres motivos: no bloquea, no obliga a pulsar nada y se
    ve como la app y no como el navegador.
-   Los confirm() de borrar NO se tocan: ahí el freno del diálogo del sistema es
-   una virtud, no un estorbo. */
+   Para borrar se pregunta con preguntar(), que sí frena, pero con la cara de
+   la app (desde el 27/10/2026; antes era el confirm() del sistema). */
 let _avisoTimer=null;
 /* `accion` (27/10/2026): {texto:'Deshacer', hacer:fn} pone un botón en el
    aviso. Es para lo que se borra de un toque sin preguntar (una serie): en vez
@@ -9405,6 +9442,39 @@ function aviso(texto, tipo, accion){
   // Los errores duran más: si algo ha fallado, hay que poder leerlo entero.
   _avisoTimer=setTimeout(()=>{ el.className=''; }, accion?5000:tipo==='mal'?4200:2400);
 }
+
+/* Sustituye a confirm() (27/10/2026, 2.ª crítica). La del sistema en el iPhone
+   es gris, no se parece a la app y su botón dice «Aceptar», que no explica qué
+   va a pasar. Esta dice el verbo («Borrar foto») y, si se pierde algo, lo pinta
+   en rojo. Devuelve una promesa: `if(!await preguntar(...))return;`.
+   El texto se escribe como antes: el primer párrafo es el título, los demás
+   van debajo, y el «¿Seguir?» del final sobra porque ya lo dice el botón.
+   Cancelar, Escape o tocar fuera = no. Cancelar lleva el foco: un Intro sin
+   mirar no borra nada. */
+function preguntar(texto, op){
+  op=op||{};
+  const dlg=document.getElementById('pregunta');
+  if(!dlg||!dlg.showModal) return Promise.resolve(confirm(texto));
+  if(dlg.open) return Promise.resolve(false);      // ya hay una pregunta abierta
+  const partes=String(texto).split(/\n\n+/).filter(t=>!/^¿(Seguir|Seguro)\?$/.test(t.trim()));
+  dlg.querySelector('.pregunta-titulo').textContent=partes[0]||'';
+  dlg.querySelector('.pregunta-texto').replaceChildren(...partes.slice(1).map(t=>{
+    const el=document.createElement('p'); el.textContent=t; return el; }));
+  const si=dlg.querySelector('.pregunta-si');
+  si.textContent=op.si||'Aceptar';
+  si.classList.toggle('peligro', !!op.peligro);
+  dlg.returnValue='';
+  return new Promise(resolver=>{
+    dlg.addEventListener('close',()=>resolver(dlg.returnValue==='si'),{once:true});
+    dlg.showModal();
+    dlg.querySelector('.pregunta-no').focus();
+  });
+}
+// Tocar el fondo oscuro es cancelar. El clic cae en el propio <dialog> solo
+// fuera de la caja, porque la caja lo ocupa entero.
+document.getElementById('pregunta')?.addEventListener('click',e=>{
+  if(e.target===e.currentTarget) e.currentTarget.close('no');
+});
 
 function sincronizarBloqueoFondo(){
   const hayCapa=[...document.querySelectorAll(SELECTOR_CAPAS)]
@@ -10436,7 +10506,7 @@ function renumberWeeks(act){
    "¿Eliminar esta semana y todas sus sesiones?": ni qué semana, ni cuánto.
    Una semana sin entrenar y una con cuatro sesiones hechas se preguntaban
    exactamente igual. */
-function deleteWeek(weekNum){
+async function deleteWeek(weekNum){
   const act=getActive();
   if(!act)return;
   const week=act.plan.find(w=>w.num===weekNum);
@@ -10449,7 +10519,8 @@ function deleteWeek(weekNum){
       'Ese historial no se puede recuperar.\n\n¿Seguir?'
     : 'Vas a borrar '+etiquetaSemana(week)+'.\n\n'+
       'No tiene ninguna sesión registrada, así que no pierdes historial.\n\n¿Seguir?';
-  if(!confirm(aviso))return;
+  if(!await preguntar(aviso,{si:'Borrar semana',peligro:true}))return;
+  if(getActive()!==act)return;
   week.days.forEach(d=>{delete act.sessions[d.s];});
   act.plan=act.plan.filter(w=>w.num!==weekNum);
   renumberWeeks(act);
@@ -10494,7 +10565,7 @@ function quitarDiaDelPlan(act,s){
   return {ok:true,nombre:dia.name||'',semana:week.num};
 }
 
-function deleteSession(weekNum,s){
+async function deleteSession(weekNum,s){
   const act=getActive();
   if(!act)return;
   const week=act.plan.find(w=>w.num===weekNum);
@@ -10506,7 +10577,8 @@ function deleteSession(weekNum,s){
       (reg.date||'día que la entrenaste')+'.\n\nEse registro no se puede recuperar.\n\n¿Seguir?'
     : 'Vas a quitar "'+((dia&&dia.name)||'esta sesión')+'" del plan.\n\n'+
       'No la has entrenado todavía, así que no pierdes historial.\n\n¿Seguir?';
-  if(!confirm(aviso))return;
+  if(!await preguntar(aviso,{si:'Quitar del plan',peligro:true}))return;
+  if(getActive()!==act)return;
   week.days=week.days.filter(d=>d.s!==s);
   delete act.sessions[s];
   /* Renumeraba con el índice DENTRO de la semana, así que en la semana 2 dejaba
@@ -10571,8 +10643,8 @@ function registrarServiceWorker(){
    el dispositivo: si alguna vez sirve algo viejo o roto, esto lo borra entero y
    recarga limpio, sin tener que explicar cómo se borran los datos del sitio. */
 async function limpiarCache(){
-  if(!confirm('Se borrará lo que la app guarda para funcionar sin conexión y se '+
-              'recargará.\n\nTus entrenamientos NO se tocan.\n\n¿Seguir?'))return;
+  if(!await preguntar('Se borrará lo que la app guarda para funcionar sin conexión y se '+
+              'recargará.\n\nTus entrenamientos NO se tocan.\n\n¿Seguir?',{si:'Vaciar y recargar'}))return;
   try{
     if(navigator.serviceWorker && navigator.serviceWorker.controller){
       navigator.serviceWorker.controller.postMessage('limpiar');
@@ -12238,7 +12310,8 @@ async function pintarEntrenadoresDeAlta(usadas){
    en el móvil no puede provocarlo. */
 window.suspenderEntrenador = async function(uid){
   const fila = document.getElementById('coaches-lista');
-  if(!confirm('¿Suspender a este entrenador?\n\nDejará de ver a sus clientes y de poder trabajar con ellos hasta que lo reactives. Sus clientes seguirán entrenando con normalidad.')) return;
+  if(!await preguntar('¿Suspender a este entrenador?\n\nDejará de ver a sus clientes y de poder trabajar con ellos hasta que lo reactives. Sus clientes seguirán entrenando con normalidad.',
+                      {si:'Suspender',peligro:true})) return;
   try{
     await setDoc(doc(fdb,'users',uid), { suspendido:true }, { merge:true });
     aviso('Entrenador suspendido','bien');
@@ -12265,7 +12338,8 @@ window.reactivarEntrenador = async function(uid){
    clientes en ese momento. Se confirma porque no tiene vuelta atrás desde aquí:
    la fecha no se puede volver a poner desde la app. */
 window.quitarPlazoEntrenador = async function(uid){
-  if(!confirm('¿Quitarle la fecha de fin?\n\nTendrá acceso sin límite, hasta que lo suspendas tú.')) return;
+  if(!await preguntar('¿Quitarle la fecha de fin?\n\nTendrá acceso sin límite, hasta que lo suspendas tú.',
+                      {si:'Quitar la fecha'})) return;
   try{
     // El aviso de "quiere pagar" se va con la fecha: ya está atendido.
     await setDoc(doc(fdb,'users',uid), { accesoHasta:null, quierePagar:null }, { merge:true });
@@ -12432,9 +12506,10 @@ window.asignarEntrenadorCuenta = async function(){
     msg.innerHTML = '<div class="msg msg-info" style="margin-top:8px;">Ya tiene ese entrenador.</div>'; return;
   }
   const coach = nuevo ? ((entrenadoresParaAsignar.find(e => e.uid === nuevo) || {}).nombre || 'ese entrenador') : '';
-  if(!confirm(nuevo
+  if(!await preguntar(nuevo
       ? '¿Asignar a ' + nombre + ' a ' + coach + '?\n\n' + coach + ' verá sus rutinas, medidas y fotos.'
-      : '¿Dejar a ' + nombre + ' sin entrenador?\n\nNo pierde nada de lo suyo.')) return;
+      : '¿Dejar a ' + nombre + ' sin entrenador?\n\nNo pierde nada de lo suyo.',
+      { si: nuevo ? 'Asignar' : 'Dejar sin entrenador' })) return;
   try{
     // Con entrenador nuevo, su petición de "quiero otro entrenador" queda atendida.
     await setDoc(doc(fdb, 'users', uid), nuevo ? { trainerId: nuevo, pideEntrenador: null } : { trainerId: null }, { merge: true });
@@ -12467,12 +12542,12 @@ window.cambiarRolCuenta = async function(destino){
     const acceso = accesoParaCambioRol(tipo, (document.getElementById('rol-hasta') || {}).value,
                                        (document.getElementById('rol-dias') || {}).value);
     if(!acceso.ok){ msg.innerHTML = '<div class="msg msg-err">' + acceso.error + '</div>'; return; }
-    if(!confirm('¿Pasar a ' + nombre + ' a entrenador?\n\n' + (p.trainerId ? 'Dejará de tener entrenador. ' : '')
-        + 'Conserva sus rutinas, medidas y fotos.')) return;
+    if(!await preguntar('¿Pasar a ' + nombre + ' a entrenador?\n\n' + (p.trainerId ? 'Dejará de tener entrenador. ' : '')
+        + 'Conserva sus rutinas, medidas y fotos.', { si:'Pasar a entrenador' })) return;
     cambios = { role:'trainer', trainerId:null, accesoHasta: acceso.accesoHasta, accesoTipo: tipo, rolCambiadoEn: Date.now() };
   }else{
-    if(!confirm('¿Pasar a ' + nombre + ' a cliente?\n\nSus clientes se quedarán sin entrenador (no pierden '
-        + 'nada de lo suyo) y se anularán sus invitaciones pendientes.')) return;
+    if(!await preguntar('¿Pasar a ' + nombre + ' a cliente?\n\nSus clientes se quedarán sin entrenador (no pierden '
+        + 'nada de lo suyo) y se anularán sus invitaciones pendientes.', { si:'Pasar a cliente', peligro:true })) return;
     cambios = { role:'client', trainerId:null, accesoHasta:null, accesoTipo:null, rolCambiadoEn: Date.now() };
   }
   msg.innerHTML = '<div class="msg msg-info">Cambiando...</div>';
@@ -12754,13 +12829,13 @@ window.verDetalleCliente = function(uid, nombre, activeRoutine){
    borradores viven en memoria, y al abrir otro cliente se empieza de cero. Por
    eso aquí se pregunta, y solo aquí. `cerrarDetalleCliente` se queda callada:
    la llaman también el código (al desvincular a un cliente) y las pruebas, y un
-   confirm() en medio de eso bloquearía la página. */
-window.salirDeLaFichaCliente = function(){
+   pregunta en medio de eso las dejaría esperando. */
+window.salirDeLaFichaCliente = async function(){
   salirDelEditor();
   const n = Object.keys(detalle.borradores || {}).length;
-  if(n && !confirm(
+  if(n && !await preguntar(
       (n === 1 ? 'Hay una sesión con cambios sin guardar.' : 'Hay '+n+' sesiones con cambios sin guardar.')
-      + '\n\nSi sales de la ficha se pierden. ¿Salir igualmente?')) {
+      + '\n\nSi sales de la ficha se pierden.', { si:'Salir sin guardar', peligro:true })) {
     pintarDetalle();          // por si el aviso lo dejó a medias
     return;
   }
@@ -13591,9 +13666,9 @@ window.quitarDiaCliente = async function(s){
   const buscado = buscarDiaEnPlan(r, s);
   if(!buscado) return;
   const nombre = buscado.dia.name || 'esta sesión';
-  if(!confirm('¿Quitar "' + nombre + '" de la semana ' + buscado.semana + ' del plan de '
+  if(!await preguntar('¿Quitar "' + nombre + '" de la semana ' + buscado.semana + ' del plan de '
       + (detalle.nombre || 'tu cliente') + '?\n\nNo la ha entrenado todavía, así que no pierde '
-      + 'nada de su historial.')) return;
+      + 'nada de su historial.', { si:'Quitar del plan', peligro:true })) return;
   // Sobre una copia: si Firestore lo rechaza, lo que se ve no puede quedar cambiado.
   const copia = { plan: JSON.parse(JSON.stringify(r.plan || [])), sessions: r.sessions || {} };
   const res = quitarDiaDelPlan(copia, s);
@@ -13756,7 +13831,7 @@ window.desvincularCliente = async function(uid){
    asignaste, y de recibir avisos y retos. */
 window.alternarPausaCliente = async function(uid){
   const pausar = !detalle.pausado;
-  if(pausar && !confirm('¿Pausar el seguimiento de este cliente?\n\nDejará de ver el plan que le asignaste y de recibir tus avisos y retos. No pierde nada: su historial, sus medidas y sus fotos siguen ahí, y lo recupera todo al reanudar.')) return;
+  if(pausar && !await preguntar('¿Pausar el seguimiento de este cliente?\n\nDejará de ver el plan que le asignaste y de recibir tus avisos y retos. No pierde nada: su historial, sus medidas y sus fotos siguen ahí, y lo recupera todo al reanudar.', { si:'Pausar' })) return;
   const btn = document.getElementById('btn-pausa-cliente');
   if(btn){ btn.disabled = true; btn.textContent = pausar ? 'Pausando...' : 'Reanudando...'; }
   try{
@@ -14130,12 +14205,13 @@ window.subirEsteDispositivo = async function(){
   const aqui = resumenDB(local);
   if(enNube.sesiones > aqui.sesiones){
     const pierde = enNube.sesiones - aqui.sesiones;
-    if(!confirm(
+    if(!await preguntar(
       'ATENCIÓN: vas a perder '+nSesiones(pierde)+'.\n\n'+
       'En tu cuenta hay '+textoResumen(enNube)+'.\n'+
       'En este dispositivo hay '+textoResumen(aqui)+'.\n\n'+
       'Lo de la cuenta se reemplaza por lo de este dispositivo y no se puede '+
-      'recuperar desde la nube.\n\n¿Seguro?'
+      'recuperar desde la nube.\n\n¿Seguro?',
+      { si:'Reemplazar la cuenta', peligro:true }
     )) return;
   }
 

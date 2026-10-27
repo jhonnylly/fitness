@@ -2275,6 +2275,50 @@ async function appLista(page, url){
     ok(peligro.enZona && peligro.despues && peligro.sinBotonRojo,
        '«Quitar del plan» y «Borrar lo registrado» van al final, tras una raya y como enlaces (no botones rojos bajo «Guardar»)');
 
+    console.log('\n13o4. Las preguntas de borrar son de la app, no del navegador');
+    /* 27/10/2026 (2.ª crítica): el confirm() del sistema en el iPhone es gris y
+       dice «Aceptar». preguntar() dice el verbo, pinta en rojo lo que borra y
+       Cancelar lleva el foco. Tocar fuera también cancela. */
+    const preg = await page.evaluate(async ()=>{
+      const tic = () => new Promise(res => setTimeout(res, 30));
+      const r = {};
+      const act = getActive();
+      act.medidas = (act.medidas || []).concat([{ semana: 99, peso: 80 }]);
+      const hay = () => getActive().medidas.some(m => m.semana === 99);
+      const dlg = document.getElementById('pregunta');
+      let p = delMedida(99); await tic();
+      r.abre = dlg.open;
+      r.titulo = dlg.querySelector('.pregunta-titulo').textContent;
+      r.texto = dlg.querySelector('.pregunta-texto').textContent;
+      r.boton = dlg.querySelector('.pregunta-si').textContent;
+      r.rojo = dlg.querySelector('.pregunta-si').classList.contains('peligro');
+      r.foco = document.activeElement === dlg.querySelector('.pregunta-no');
+      dlg.querySelector('.pregunta-no').click(); await p;
+      r.cancela = hay() && !dlg.open;
+      p = delMedida(99); await tic();
+      dlg.click(); await p;
+      r.fondo = hay() && !dlg.open;
+      p = delMedida(99); await tic();
+      dlg.querySelector('.pregunta-si').click(); await p;
+      r.borra = !hay();
+      // «¿Seguir?» sobra: ya lo dice el botón.
+      p = preguntar('Vas a borrar algo.\n\nNo se recupera.\n\n¿Seguir?', { si: 'Borrar' }); await tic();
+      r.sinSeguir = !/Seguir/.test(dlg.textContent) && !dlg.querySelector('.pregunta-si').classList.contains('peligro');
+      dlg.close('no'); r.noDice = (await p) === false;
+      // El único que queda es el de reserva de preguntar(), para un navegador sin <dialog>.
+      r.sinConfirm = ![...document.querySelectorAll('script')].map(x => x.textContent).join('')
+        .split('\n').filter(l => /\bconfirm\(/.test(l) && !/preguntar|resolve\(confirm\(texto|^\s*(\/\/|\/\*)|^\s{3}\S/.test(l)).length;
+      return r;
+    });
+    ok(preg.abre && preg.titulo === '¿Borrar la medida de la semana 99?' && /No se puede recuperar/.test(preg.texto),
+       'borrar una medida abre la ventana de la app, con título y lo que se pierde');
+    ok(preg.boton === 'Borrar medida' && preg.rojo, 'el botón dice el verbo («Borrar medida») y va en rojo');
+    ok(preg.foco, 'Cancelar lleva el foco: un Intro sin mirar no borra');
+    ok(preg.cancela && preg.fondo, 'Cancelar o tocar fuera no borra nada');
+    ok(preg.borra, 'y «Borrar medida» la borra');
+    ok(preg.sinSeguir && preg.noDice, 'el «¿Seguir?» del final no sale, y cerrar sin elegir es que no');
+    ok(preg.sinConfirm, 'no queda ningún confirm() del navegador en el código');
+
     console.log('\n13p. Tocar tu foto abre tu cuenta: perfil y sesión juntos');
     /* Jhon (15/09): quitar el botón de la nube y que la foto de la cabecera
        abra todo lo de la cuenta: iniciar o cerrar sesión, cambiar la foto,
