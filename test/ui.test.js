@@ -441,7 +441,7 @@ async function appLista(page, url){
       return r;
     });
     ok(cols.columnas === cols.series, 'una columna por serie ('+cols.columnas+')');
-    ok(/^(kg|lb),Reps$/.test(cols.etiquetas), 'de arriba abajo: peso y repeticiones ('+cols.etiquetas+')');
+    ok(/^Serie,(kg|lb),Reps$/.test(cols.etiquetas), 'de arriba abajo: serie, peso y repeticiones ('+cols.etiquetas+')');
     ok(cols.objetivo === cols.esquema.split('×')[1], 'en gris, las repeticiones que pide el plan ('+cols.esquema+' → '+cols.objetivo+')');
     ok(cols.alineadas, 'cada columna, alineada');
     ok(cols.sinFilaDesc, 'ya no hay fila de descanso en cada serie');
@@ -2178,8 +2178,8 @@ async function appLista(page, url){
     });
     const fila = n => borrar.filas.find(f => f.nombre.startsWith(n)) || {};
     ok(borrar.funcion, 'existe la acción de quitar un día del plan del cliente');
-    ok(fila('S2').borrar && fila('S3').borrar, 'los días pendientes llevan "Borrar"');
-    ok(!fila('S1').borrar && fila('S1').editar, '🔴 el día ya entrenado NO lleva "Borrar" (su historial no se toca)');
+    ok(fila('Sesión 2').borrar && fila('Sesión 3').borrar, 'los días pendientes llevan "Borrar"');
+    ok(!fila('Sesión 1').borrar && fila('Sesión 1').editar, '🔴 el día ya entrenado NO lleva "Borrar" (su historial no se toca)');
 
     console.log('\n13o. Todas las ventanas se cierran con "Volver", arriba a la izquierda');
     /* Jhon (15/09): le gustó el "Volver" de Registrar y lo quiso en todos los

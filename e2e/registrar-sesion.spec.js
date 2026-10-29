@@ -6,7 +6,7 @@ const { test, expect, appLista, irA } = require('./base');
 async function apuntarPrimeraSerie(page, kg, reps){
   await irA(page, 'Entrenar');
   await page.getByRole('button', { name: /Ver las sesiones de la semana/ }).click();
-  await page.getByRole('button', { name: /S1 · Full Body A/ }).click();
+  await page.getByRole('button', { name: /Sesión 1 · Full Body A/ }).click();
   await page.locator('#ex-mosaico').getByRole('button', { name: /Prensa 45°/ }).click();
 
   await page.getByLabel('Peso de la serie 1 en kg').fill(kg);

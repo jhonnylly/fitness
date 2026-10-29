@@ -1181,7 +1181,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .dial-num{font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700;
   font-size:clamp(34px,10vw,44px);line-height:.95;font-variant-numeric:tabular-nums;}
 .dial-destino{margin-top:4px;font-size:11px;color:var(--accent-ink);font-weight:700;max-width:80%;
-  text-align:center;line-height:1.3;min-height:2.6em;}
+  text-align:center;line-height:1.3;min-height:2.6em;text-wrap:balance;}
 /* Semanas: la tira bajo el dial. La de ahora va resaltada; tocar una abre sus
    sesiones en Entrenar. Con más de 4 semanas la tira se desliza de lado. */
 .dial-semanas{width:min(84vw,330px);max-width:100%;}
@@ -3851,7 +3851,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-29 14:53';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-29 15:11';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5045,7 +5045,7 @@ function tarjetaSemanaEnCurso(plan,sessions,num,wi){
     tag=ico('rayo')+' Semana en curso';
     tit=escaparHTML(etiquetaSemana(w));
     meta=hechas+' de '+total+' sesiones · '+(quedan===1?'queda 1':'quedan '+quedan)+
-         ' · te toca '+escaparHTML(pendiente.name);
+         ' · te toca '+escaparHTML(verSesion(pendiente.name));
     cta='Ver las sesiones de la semana →';
   }
 
@@ -5085,7 +5085,7 @@ function openWeekDetail(weekNum){
     const toca=d===siguiente;
     const nEj=(d.ex||[]).length;
     return`<button class="mos-card${hecha?' lista':''}${toca?' siguiente':''}" data-ei="${di}" style="--i:${Math.min(di,8)}" onclick="sesToque(${d.s})">
-      <div class="mos-num">${escaparHTML(d.name)}</div>
+      <div class="mos-num">${escaparHTML(verSesion(d.name))}</div>
       <div class="mos-tit">${nEjercicios(nEj)}</div>
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${hecha&&reg.date?escaparHTML(reg.date):''}</span>
@@ -5246,7 +5246,7 @@ function openSession(n){
   const saved=getActiveSessions()[n];
   // El borrador gana sobre lo guardado: es la edición más reciente.
   const borrador=leerBorradores()[(getActive()?getActive().id:'sin-rutina')+'|'+n];
-  document.getElementById('form-title').textContent=day.name;
+  document.getElementById('form-title').textContent=verSesion(day.name);
   document.getElementById('form-type').textContent=day.type+' · Semana '+getActivePlan().find(w=>w.days.some(d=>d.s===n)).num;
   // El borrador manda si existe; si no, lo guardado; si no, valores por defecto.
   const base=borrador||saved;
@@ -5528,7 +5528,7 @@ function columnasSeries(ex,u){
   if(DB.rirActivo) filas.push(['RIR', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp" value="${set.rir!=null?escaparHTML(String(set.rir)):''}" placeholder="RIR"
         aria-label="RIR de la serie ${si+1}" onchange="curEx[${curExIndex}].sets[${si}].rir=this.value">`]);
   let h=`<div class="sc-grid" style="grid-template-columns:40px repeat(${n},minmax(58px,1fr)) 38px">`;
-  h+=`<div class="sc-lab"></div>`+ex.sets.map((_,si)=>col(si,`<div class="sc-cab">S${si+1}<button type="button" class="sc-quitar"
+  h+=`<div class="sc-lab">Serie</div>`+ex.sets.map((_,si)=>col(si,`<div class="sc-cab">${si+1}<button type="button" class="sc-quitar"
         onclick="removeSetFromCurrent(${si})" aria-label="Quitar la serie ${si+1}">${ico('papelera','ico-btn')}</button></div>`)).join('');
   h+=`<button type="button" class="sc-mas" style="grid-column:${n+2};grid-row:1 / span ${filas.length+1}"
         onclick="addSetToCurrentEx()" aria-label="Añadir una serie">+</button>`;
@@ -5797,7 +5797,7 @@ function celebrarSesion({records,hechasAntes,sesion}){
   document.getElementById('cel-tit').textContent=
     hechas===total?'¡Plan terminado!':'¡Sesión completada!';
   document.getElementById('cel-sub').textContent=
-    ((dia&&dia.name)||'Sesión')+' · '+hechas+' de '+total+' sesiones';
+    ((dia&&verSesion(dia.name))||'Sesión')+' · '+hechas+' de '+total+' sesiones';
 
   const filas=[];
   /* Como mucho tres marcas, y las de mayor salto primero. En las primeras
@@ -5932,7 +5932,7 @@ async function borrarRegistroSesion(n){
   if(!act||!act.sessions[n])return;
   const day=findDay(n);
   const reg=act.sessions[n];
-  if(!await preguntar('Vas a borrar lo que registraste en "'+((day&&day.name)||('sesión '+n))+'"'+
+  if(!await preguntar('Vas a borrar lo que registraste en "'+((day&&verSesion(day.name))||('sesión '+n))+'"'+
               (reg.date?' el '+reg.date:'')+'.\n\n'+
               'La sesión sigue en tu plan y podrás volver a hacerla, pero los pesos '+
               'y las repeticiones que apuntaste no se pueden recuperar.\n\n¿Seguir?',
@@ -6156,7 +6156,7 @@ keys.forEach(n=>{
       const sets=ex.sets.filter(v=>v.kg!=='');
       if(!sets.length)return;
       const uEx=unidadDe(DB.unidades,ex.name||'');
-      txt+='  '+ex.name+' [descanso:'+s.rest+'s] → '+sets.map((v,i)=>'S'+(i+1)+': '+pesoTexto(v.kg,uEx)+' x'+v.reps).join(' | ')+'\n';
+      txt+='  '+ex.name+' [descanso:'+s.rest+'s] → '+sets.map((v,i)=>'Serie '+(i+1)+': '+pesoTexto(v.kg,uEx)+' x'+v.reps).join(' | ')+'\n';
     });
     const cd=s.cardio;
     if(cd?.tiempo)txt+='  CARDIO: '+cd.tipo+' · '+cd.tiempo+'min · '+cd.kcal+'kcal · FC:'+cd.fc+'bpm · '+cd.dist+'km\n';
@@ -6448,6 +6448,12 @@ function iniciales(nombre){
     .map(p=>p[0]||'').join('').toUpperCase() || '?';
 }
 
+/* «S1» se leía igual para semana, sesión y serie (29/10/2026, Jhon). Los
+   nombres guardados siguen siendo «S1 · Torso» (no se tocan los datos); solo
+   al enseñarlos pasan a «Sesión 1 · Torso». */
+function verSesion(nombre){
+  return String(nombre||'').replace(/^S(\d+)(?=\s*·|\s*$)/, 'Sesión $1');
+}
 function etiquetaSemana(w,prefijo){
   const p=(prefijo||'Semana')+' '+w.num;
   const t=(w.title||'').trim();
@@ -7317,13 +7323,13 @@ function updateHome(){
   const impuesta = impuestaS!=null ? buscarDiaEnPlan(act, impuestaS) : null;
   if(impuesta){
     if(tag)tag.textContent='Te lo cambia tu entrenador';
-    set('hoy-tit',impuesta.dia.name);
+    set('hoy-tit',verSesion(impuesta.dia.name));
     set('hoy-meta',(impuesta.dia.ex||[]).length+' ejercicio'+((impuesta.dia.ex||[]).length===1?'':'s')+
       (impuesta.dia.type?' · '+impuesta.dia.type:'')+' · Semana '+impuesta.semana);
     if(cta)cta.textContent='Comenzar entrenamiento →';
   }else if(prox){
     if(tag)tag.textContent='Entrenamiento de hoy';
-    set('hoy-tit',prox.dia.name);
+    set('hoy-tit',verSesion(prox.dia.name));
     set('hoy-meta',(prox.dia.ex||[]).length+' ejercicio'+((prox.dia.ex||[]).length===1?'':'s')+
       (prox.dia.type?' · '+prox.dia.type:'')+' · Semana '+prox.semana);
     if(cta)cta.textContent='Comenzar entrenamiento →';
@@ -7332,8 +7338,8 @@ function updateHome(){
     set('hoy-tit','¡Lo has completado! 🏆');
     const sig=siguienteRutinaSugerida();
     if(sig){
-      set('hoy-meta','Las '+total+' sesiones registradas. Te proponemos seguir con «'+sig.name+'».');
-      if(cta)cta.textContent='Empezar «'+sig.name+'» →';
+      set('hoy-meta','Las '+total+' sesiones registradas. Te proponemos seguir con «'+verSesion(sig.name)+'».');
+      if(cta)cta.textContent='Empezar «'+verSesion(sig.name)+'» →';
     }else{
       set('hoy-meta','Las '+total+' sesiones registradas. '+
         (window.tieneEntrenador&&window.tieneEntrenador()?'Tu entrenador te dirá cuál sigue.':'Añade semanas o activa otra rutina.'));
@@ -10573,9 +10579,9 @@ async function deleteSession(weekNum,s){
   const dia=(week.days||[]).find(d=>d.s===s);
   const reg=(act.sessions||{})[s];
   const aviso=reg
-    ? '⚠️ Vas a borrar "'+((dia&&dia.name)||'esta sesión')+'", que registraste el '+
+    ? '⚠️ Vas a borrar "'+((dia&&verSesion(dia.name))||'esta sesión')+'", que registraste el '+
       (reg.date||'día que la entrenaste')+'.\n\nEse registro no se puede recuperar.\n\n¿Seguir?'
-    : 'Vas a quitar "'+((dia&&dia.name)||'esta sesión')+'" del plan.\n\n'+
+    : 'Vas a quitar "'+((dia&&verSesion(dia.name))||'esta sesión')+'" del plan.\n\n'+
       'No la has entrenado todavía, así que no pierdes historial.\n\n¿Seguir?';
   if(!await preguntar(aviso,{si:'Quitar del plan',peligro:true}))return;
   if(getActive()!==act)return;
@@ -13027,7 +13033,7 @@ function pintarRutinaCliente(){
       const sinGuardar = !editando && !!detalle.borradores[detalle.viendo + ':' + d.s];
       return `<div class="week-row" style="flex-direction:column;align-items:stretch;gap:6px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-          <span style="font-size:12.5px;">${escaparHTML(d.name || ('S'+d.s))}</span>
+          <span style="font-size:12.5px;">${escaparHTML(verSesion(d.name || ('S'+d.s)))}</span>
           <span style="display:flex;gap:6px;align-items:center;">
             ${sinGuardar ? '<span class="badge badge-sin-guardar">sin guardar</span>' : ''}
             ${sinGuardar && !hecha ? ''
@@ -13151,7 +13157,7 @@ function panelAvisoCoach(){
       <label style="margin-top:8px;">Y mándale a esta sesión (opcional)</label>
       <select id="aviso-sesion">
         <option value="">Que siga con la que le toca</option>
-        ${dias.map(d => `<option value="${d.s}">Semana ${d.sem} · ${escaparHTML(d.name)}</option>`).join('')}
+        ${dias.map(d => `<option value="${d.s}">Semana ${d.sem} · ${escaparHTML(verSesion(d.name))}</option>`).join('')}
       </select>` : ''}
     <div id="aviso-msg"></div>
     <button class="btn btn-primary" style="margin-top:8px;" id="aviso-enviar" onclick="enviarAvisoCoach()">Enviar aviso</button>
@@ -13166,9 +13172,9 @@ function panelAvisoCoach(){
    el día a S3 · Push" en vez de soltar un número suelto. */
 function nombreSesion(rutina, s){
   for(const sem of ((rutina && rutina.plan) || [])){
-    for(const d of (sem.days || [])) if(d.s === +s) return d.name || ('S'+d.s);
+    for(const d of (sem.days || [])) if(d.s === +s) return verSesion(d.name || ('S'+d.s));
   }
-  return 'S' + s;
+  return 'Sesión ' + s;
 }
 
 function fechaCorta(ts){
@@ -13665,7 +13671,7 @@ window.quitarDiaCliente = async function(s){
   if(!r) return;
   const buscado = buscarDiaEnPlan(r, s);
   if(!buscado) return;
-  const nombre = buscado.dia.name || 'esta sesión';
+  const nombre = verSesion(buscado.dia.name) || 'esta sesión';
   if(!await preguntar('¿Quitar "' + nombre + '" de la semana ' + buscado.semana + ' del plan de '
       + (detalle.nombre || 'tu cliente') + '?\n\nNo la ha entrenado todavía, así que no pierde '
       + 'nada de su historial.', { si:'Quitar del plan', peligro:true })) return;
