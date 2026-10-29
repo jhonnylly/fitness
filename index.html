@@ -1079,7 +1079,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .dial-zona{display:flex;flex-direction:column;align-items:center;gap:14px;margin:2px 0 18px;overflow-x:clip;}
 /* 24/10/2026: el aro pasa a 3D, inspirado en el menú radial de Resident Evil 6
    (prototipo aprobado por Jhon: inclinación 35°, la sección elegida en cian y
-   entrada automática en 1 s). El aro se inclina; el centro con la fecha queda
+   entrada automática en 0,6 s desde el 29/10). El aro se inclina; el centro con la fecha queda
    plano para que se lea bien. La caja es más baja que ancha porque el aro
    inclinado ocupa menos de alto. */
 :root{--dial-cian:#35c9e6;--dial-cian-tinta:#03222b;--dial-canto:#8f7100;}
@@ -1121,7 +1121,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .dial-tic.gordo{stroke-width:2;opacity:1;}
 /* La barra que se llena sobre la sección cian: cuando acaba, entra sola */
 .dial-carga{fill:none;stroke:var(--text);stroke-width:6;stroke-linecap:round;stroke-dasharray:var(--L) var(--L);
-  stroke-dashoffset:var(--L);animation:dial-carga 1s linear forwards;}
+  stroke-dashoffset:var(--L);animation:dial-carga var(--espera,.6s) linear forwards;}
 @keyframes dial-carga{to{stroke-dashoffset:0;}}
 @media(prefers-reduced-motion:reduce){ .dial-carga{animation:none;stroke-dashoffset:0;} }
 /* Aro interior (24/10/2026): las subopciones de la sección elegida. No recibe
@@ -3851,7 +3851,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-29 15:11';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-10-29 16:45';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7411,7 +7411,8 @@ function updateHome(){
    del dial la página sigue haciendo scroll. */
 const DIAL_SECCIONES=['Inicio','Entrenar','Resumen','Medidas','Ajustes'];
 const DIAL_PASO=360/DIAL_SECCIONES.length;
-const DIAL_INCL_X=35, DIAL_INCL_Y=-22.75, DIAL_ESPERA=1000;   // grados (los del prototipo) y ms
+// DIAL_ESPERA: de 1000 a 600 ms (29/10/2026, Jhon: «1 s es mucho»); se suma a lo que tarda el aro en asentarse.
+const DIAL_INCL_X=35, DIAL_INCL_Y=-22.75, DIAL_ESPERA=600;   // grados (los del prototipo) y ms
 const DIAL_R1=130, DIAL_R2=196, DIAL_S1=72, DIAL_S2=122;      // radios de los aros, en unidades del viewBox (±210)
 const DIAL_ICONOS=[
   'M4 11 12 4l8 7v9h-5v-6H9v6H4z',
@@ -7587,6 +7588,7 @@ function dialEsperarYEntrar(){
   const arco=dialNodo('path',{class:'dial-carga',
     d:'M'+x0.toFixed(1)+' '+y0.toFixed(1)+'A'+rr+' '+rr+' 0 0 1 '+x1.toFixed(1)+' '+y1.toFixed(1)});
   arco.style.setProperty('--L',(rr*(a1-a0)*Math.PI/180).toFixed(1));
+  arco.style.setProperty('--espera',DIAL_ESPERA+'ms');   // la barra y la entrada, a la vez
   t.g.appendChild(arco);
   e.espera=setTimeout(()=>{ dialCancelarEspera(); if(dentro)dialEntrarSub(i); else dialAbrirSubs(i); },DIAL_ESPERA);
 }
