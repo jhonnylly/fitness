@@ -27,7 +27,7 @@ test('arranca en Inicio, con la fecha y lo que toca hoy', async ({ page }) => {
   await expect(page.locator('#dial-destino')).toContainText(/S1/);
   // Primer Mes son 4 semanas; la primera es la de ahora.
   await expect(page.locator('#dial-tira .dial-sem')).toHaveCount(4);
-  await expect(page.locator('#dial-tira .dial-sem.actual')).toHaveText(/S1/);
+  await expect(page.locator('#dial-tira .dial-sem.actual')).toHaveText(/Sem 1/);
 });
 
 test('el centro, en Inicio, abre el entrenamiento de hoy', async ({ page }) => {
