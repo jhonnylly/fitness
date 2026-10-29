@@ -92,4 +92,18 @@ async function irA(page, nombre){
   await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
 }
 
-module.exports = { test, expect, appLista, comprobarLocal, irA };
+/* La caja de algo del aro cuando ya ha dejado de girar (29/10/2026): medirla
+   a mitad del giro hacía que el toque cayera fuera, y la prueba fallaba a
+   ratos (~1 de cada 4). Espera a dos medidas seguidas iguales. */
+async function cajaQuieta(locator){
+  let antes = null;
+  for(let i = 0; i < 40; i++){
+    const c = await locator.boundingBox();
+    if(c && antes && Math.abs(c.x - antes.x) < 0.5 && Math.abs(c.y - antes.y) < 0.5) return c;
+    antes = c;
+    await locator.page().waitForTimeout(60);
+  }
+  return antes;
+}
+
+module.exports = { test, expect, appLista, comprobarLocal, irA, cajaQuieta };

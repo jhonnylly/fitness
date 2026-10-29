@@ -3,7 +3,7 @@
    entrada a todo, así que va con el dedo de verdad: arrastres y toques, no
    llamadas a funciones. */
 
-const { test, expect, appLista, irA } = require('./base');
+const { test, expect, appLista, irA, cajaQuieta } = require('./base');
 
 const etiqueta = (page, nombre) => page.locator(`#dial-etiquetas g[aria-label="${nombre}"]`);
 const seleccionada = page => page.locator('#dial-aro').getAttribute('aria-valuetext');
@@ -11,7 +11,7 @@ const seleccionada = page => page.locator('#dial-aro').getAttribute('aria-valuet
 // distancia al centro), así que se tocan en su sitio, como un dedo.
 async function tocarSub(page, nombre){
   // En el icono: con dos opciones cada una es medio aro y el centro de su caja cae en el hueco.
-  const c = await page.locator(`#dial-sub g[aria-label="${nombre}"] .dial-ico`).boundingBox();
+  const c = await cajaQuieta(page.locator(`#dial-sub g[aria-label="${nombre}"] .dial-ico`));
   await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
 }
 const abierto = page => page.locator('#dial').evaluate(d => d.classList.contains('sub'));

@@ -1,6 +1,6 @@
 /* Cada sección se abre (con el dial), cabe en el móvil y Ajustes enseña la versión. */
 
-const { test, expect, appLista, irA } = require('./base');
+const { test, expect, appLista, irA, cajaQuieta } = require('./base');
 
 const PESTANAS = [
   ['Entrenar', '#tab-log'],
@@ -77,7 +77,7 @@ test('desde el botón, una opción del aro lleva a su apartado', async ({ page }
   await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
   await page.locator('#dial-etiquetas g[aria-label="Medidas"]').click();
   await expect(page.locator('#dial')).toHaveClass(/sub/);
-  const c = await page.locator('#dial-sub g[aria-label="Historial"] .dial-ico').boundingBox();
+  const c = await cajaQuieta(page.locator('#dial-sub g[aria-label="Historial"] .dial-ico'));
   await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
   await expect(page.locator('#pane-medidas')).toHaveClass(/active/);
   await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
@@ -93,7 +93,7 @@ test('desde el botón, Inicio ofrece volver a su pantalla', async ({ page }) => 
   await expect(page.locator('#dial-sub .dial-seg')).toHaveCount(4);
   // La primera, ya en cian: un toque y estás en Inicio.
   await expect(page.locator('#dial-nombre')).toHaveText('Pantalla de Inicio');
-  const c = await page.locator('#dial-sub g[aria-label="Pantalla de Inicio"] .dial-ico').boundingBox();
+  const c = await cajaQuieta(page.locator('#dial-sub g[aria-label="Pantalla de Inicio"] .dial-ico'));
   await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
   await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
   await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
@@ -122,7 +122,7 @@ test('el botón se aparta al bajar y al escribir, y vuelve al subir', async ({ p
    cerrado caía en lo de debajo y llevaba a la sesión (Jhon, 25/10/2026). Con
    clics de ratón esta prueba pasaba con el fallo dentro. */
 async function tocar(page, locator){
-  const c = await locator.boundingBox();
+  const c = await cajaQuieta(locator);
   await page.touchscreen.tap(c.x + c.width / 2, c.y + c.height / 2);
 }
 test('desde un ejercicio, Inicio dos veces en el aro lleva a la pantalla de Inicio', async ({ page }) => {
