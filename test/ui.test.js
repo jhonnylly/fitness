@@ -647,7 +647,46 @@ async function appLista(page, url){
     ok(resumen.hechos === 1, 'y solo el día entrenado encendido');
     ok(!resumen.cifras.some(t=>/racha/i.test(t)),
        'la racha ya no es una cifra más de la rejilla: '+resumen.cifras.join(', '));
-    ok(resumen.cifras.length === 4, 'que se queda en cuatro');
+    ok(resumen.cifras.join(',') === 'Sesiones,Progreso',
+       'sin cardio registrado no salen sus dos ceros (02/11/2026): '+resumen.cifras.join(', '));
+
+    /* 02/11/2026: la racha cuenta SEMANAS que cumplen el plan, no días. Quien
+       entrena lunes, miércoles y viernes la veía en 0 casi siempre. */
+    const semanal = await page.evaluate(()=>{
+      const act = getActive(), copia = JSON.stringify(act.sessions);
+      const objetivo = rachaSemanal().objetivo;
+      const fecha = d => d.toLocaleDateString('es-ES');
+      const lunes = lunesDe(new Date());
+      const dia = (sem, n) => { const d = new Date(lunes); d.setDate(d.getDate() - 7*sem + n); return fecha(d); };
+      const llenar = semanas => {           // semanas = [[sem, sesiones], ...]
+        act.sessions = {}; let k = 1;
+        semanas.forEach(([sem, n]) => { for(let i=0;i<n;i++) act.sessions[k++] = {exercises:[], date: dia(sem, i)}; });
+      };
+      // Dos semanas completas atrás y esta semana una sesión.
+      llenar([[2, objetivo], [1, objetivo], [0, 1]]);
+      const seguida = rachaSemanal().actual;
+      // La semana pasada se quedó corta: la racha empieza de nuevo esta semana.
+      llenar([[2, objetivo], [1, objetivo - 1], [0, 1]]);
+      const cortada = rachaSemanal();
+      // Esta semana todavía sin entrenar no corta la que venía.
+      llenar([[2, objetivo], [1, objetivo]]);
+      const sinEmpezar = rachaSemanal().actual;
+      // Cardio guardado como texto (sesiones antiguas): se suma, no se pega.
+      act.sessions = {1:{exercises:[], date: dia(0,0), cardio:{tiempo:'20', kcal:'150'}},
+                      2:{exercises:[], date: dia(0,0), cardio:{tiempo:10, kcal:50}}};
+      renderResumen();
+      const cardio = [...document.querySelectorAll('#resumen-content .stat')]
+        .map(e=>e.querySelector('.stat-lbl').textContent+'='+e.querySelector('.stat-val').textContent);
+      act.sessions = JSON.parse(copia); renderResumen();
+      return {objetivo, tipica: getActivePlan()[1].days.length, seguida, cortada, sinEmpezar, cardio};
+    });
+    ok(semanal.objetivo === semanal.tipica, 'el objetivo es lo que pide el plan por semana: '+semanal.objetivo);
+    ok(semanal.seguida === 3, '🔴 dos semanas cumplidas + la que va en curso = 3: '+semanal.seguida);
+    ok(semanal.cortada.actual === 1 && semanal.cortada.mejor === 1,
+       'una semana corta la rompe: '+JSON.stringify(semanal.cortada));
+    ok(semanal.sinEmpezar === 2, 'el lunes, sin haber entrenado aún, no se cae a 0: '+semanal.sinEmpezar);
+    ok(semanal.cardio.includes('Kcal cardio=200') && semanal.cardio.includes('Tiempo cardio=30m'),
+       'con cardio salen sus cifras, sumadas aunque vengan como texto: '+semanal.cardio.join(', '));
 
     console.log('\n7. Solo se etiqueta lo que ha pasado, y el avatar es tuyo');
     const etiquetas = await page.evaluate(()=>{

@@ -1668,6 +1668,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    Un párrafo decía "toca Compartir", pero en el Safari nuevo Compartir ya no
    está en la barra: está dentro de "•••". Pasos numerados y con el dibujo de
    cada botón, que es lo que se busca con el dedo. */
+.pasos-instalar.plegados{display:none;}
+.pasos-abiertos .pasos-instalar.plegados{display:block;}
 .pasos-instalar{list-style:none;padding:0;margin:10px 0 0;counter-reset:paso;}
 .pasos-instalar li{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5;
   margin-bottom:9px;color:var(--text);}
@@ -2185,14 +2187,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     <div class="aj-lista">
       <div class="aj-fila aj-fila-col">
         <span class="aj-texto"><span class="aj-et">Copia de seguridad</span>
-          <span class="aj-ayuda">Un fichero con todo lo que has registrado, por si le pasa algo al móvil o a la nube. Exporta de vez en cuando.</span></span>
+          <span class="aj-ayuda"><b>Guardar</b> descarga un fichero con todo lo que has registrado, por si le pasa algo al móvil o a la nube: hazlo de vez en cuando. <b>Copiar</b> copia tus sesiones en texto, para pegarlas en WhatsApp o mandárselas a quien quieras.</span></span>
       <div class="action-row">
-        <button class="btn-sm" onclick="exportJSON()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Exportar JSON</button>
-        <!-- text-transform:none porque es un <label>, y la regla de las etiquetas
+        <button class="btn-sm" onclick="exportJSON()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Guardar</button>
+        <!-- text-transform:none y margin:0 porque es un <label>, y la regla de las etiquetas
              de formulario lo pondría en mayúsculas al lado de dos botones que no
              lo están. -->
-        <label class="btn-sm" style="cursor:pointer;text-align:center;text-transform:none;"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> Importar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
-        <button class="btn-sm" onclick="copyForChat()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar para chat</button>
+        <label class="btn-sm" style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;margin:0;text-transform:none;"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> Recuperar<input type="file" accept=".json" onchange="importJSON(event)" style="display:none;"></label>
+        <button class="btn-sm" onclick="copyForChat()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copiar</button>
       </div>
         <!-- Solo aparece si la app guardó algo antes de sobrescribir. -->
         <div id="copia-previa"></div>
@@ -2328,7 +2330,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     </p>
     <p style="font-size:12px;color:var(--muted);line-height:1.5;">
       Tus datos siguen siendo tuyos: puedes descargarlos cuando quieras desde
-      <b>Ajustes → Exportar JSON</b>.
+      <b>Ajustes → Copia de seguridad</b>.
     </p>
   </div>
 
@@ -3851,7 +3853,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-10-29 16:45';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-11-02 17:04';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -4817,7 +4819,7 @@ async function load(){
   if(!storageAvailable()){
     const banner=document.createElement('div');
     banner.style.cssText='background:var(--danger);color:#fff;padding:10px 16px;font-size:12px;line-height:1.5;text-align:center;';
-    banner.innerHTML='⚠️ El guardado automático no está disponible. Usa <b>Exportar JSON</b> para no perder datos.';
+    banner.innerHTML='⚠️ El guardado automático no está disponible. Usa <b>Ajustes → Copia de seguridad</b> para no perder datos.';
     document.body.insertBefore(banner,document.body.firstChild);
   }
   try{
@@ -4922,30 +4924,47 @@ function fechasEntrenadas(){
   )].sort((a,b)=>new Date(a)-new Date(b));
 }
 
-function calcStreak(){
-  const unique=fechasEntrenadas().reverse();     // de hoy hacia atrás
-  if(!unique.length)return 0;
-  const today=new Date().toDateString();
-  const yesterday=new Date(Date.now()-864e5).toDateString();
-  if(unique[0]!==today&&unique[0]!==yesterday)return 0;
-  let streak=1;
-  for(let i=1;i<unique.length;i++){
-    const diff=(new Date(unique[i-1])-new Date(unique[i]))/864e5;
-    if(Math.round(diff)===1)streak++;
-    else break;
-  }
-  return streak;
+/* La racha cuenta SEMANAS seguidas cumpliendo el plan, no días (02/11/2026).
+   En días, quien entrena lunes, miércoles y viernes la veía casi siempre en 0
+   o 1 aunque lo estuviera haciendo perfecto: el descanso, que es parte del
+   plan, se la rompía. Ahora una semana (de lunes a domingo) cuenta si tiene
+   tantas sesiones como pide el plan por semana. La semana en curso suma en
+   cuanto tiene una sesión —no tiene sentido ver un 0 recién entrenado— y solo
+   se juzga al terminar: si se queda corta, la racha se corta la siguiente. */
+function lunesDe(d){
+  const l=new Date(d); l.setHours(0,0,0,0);
+  l.setDate(l.getDate()-((l.getDay()+6)%7));   // setDate: el cambio de hora no descuadra
+  return l;
 }
-function calcMaxStreak(){
-  const dates=fechasEntrenadas();
-  if(!dates.length)return 0;
-  let max=1,cur=1;
-  for(let i=1;i<dates.length;i++){
-    const diff=(new Date(dates[i])-new Date(dates[i-1]))/864e5;
-    if(Math.round(diff)===1){cur++;max=Math.max(max,cur);}
-    else cur=1;
+function rachaSemanal(){
+  const plan=getActivePlan()||[];
+  // Lo que pide el plan por semana: lo más repetido (la 1.ª o la última pueden ser cortas).
+  const veces={};
+  plan.forEach(w=>{const n=w.days.length; if(n)veces[n]=(veces[n]||0)+1;});
+  const objetivo=Math.min(7,+Object.keys(veces).sort((a,b)=>veces[b]-veces[a]||b-a)[0]||1);
+  const porSemana={};
+  Object.values(getActiveSessions()||{}).forEach(s=>{
+    if(!s.date)return;
+    const[dd,mm,yyyy]=s.date.split('/');
+    const k=lunesDe(new Date(yyyy,mm-1,dd)).toDateString();
+    porSemana[k]=(porSemana[k]||0)+1;
+  });
+  const esta=lunesDe(new Date());
+  const enCurso=porSemana[esta.toDateString()]||0;
+  const cumple=k=>(porSemana[k]||0)>=objetivo;
+  const atras=(d,n)=>{const r=new Date(d); r.setDate(r.getDate()-7*n); return r;};
+
+  let actual=enCurso?1:0;
+  for(let i=1;cumple(atras(esta,i).toDateString());i++)actual++;
+
+  // La mejor: tramos de semanas cumplidas, desde la primera con sesiones.
+  const claves=Object.keys(porSemana).map(k=>new Date(k)).sort((a,b)=>a-b);
+  let mejor=actual,tramo=0;
+  if(claves.length)for(let d=new Date(claves[0]);d<esta;d.setDate(d.getDate()+7)){
+    tramo=cumple(d.toDateString())?tramo+1:0;
+    mejor=Math.max(mejor,tramo);
   }
-  return max;
+  return {actual,mejor,enCurso,objetivo};
 }
 
 function findDay(n){const p=getActivePlan();if(!p)return null;for(const w of p)for(const d of w.days)if(d.s===n)return d;return null;}
@@ -5635,7 +5654,9 @@ function saveSession(){
     },
     note:document.getElementById('sess-note').value,
 feeling:curFeeling||null,
-    date:new Date().toLocaleDateString('es-ES')
+    /* Corregir una sesión antigua no la mueve a hoy: la racha y el calendario
+       de Resumen van por esta fecha. */
+    date:act.sessions[curSession]?.date||new Date().toLocaleDateString('es-ES')
   };
   borrarBorrador(curSession);
   ocultarAvisoBorrador();
@@ -5792,7 +5813,7 @@ function celebrarSesion({records,hechasAntes,sesion}){
   const pct=total?Math.round(hechas/total*100):0;
   const dia=findDay(sesion);
   const semana=semanaDeSesion(act,sesion);
-  const racha=calcStreak();
+  const racha=rachaSemanal().actual;
 
   document.getElementById('cel-tit').textContent=
     hechas===total?'¡Plan terminado!':'¡Sesión completada!';
@@ -5814,7 +5835,7 @@ function celebrarSesion({records,hechasAntes,sesion}){
       'Y <b>'+resto+'</b> marca'+(resto===1?'':'s')+' personal'+(resto===1?'':'es')+' más'));
   }
   if(racha>1)filas.push(celLinea('','llama',
-    'Llevas <b>'+racha+' días</b> seguidos entrenando'));
+    'Llevas <b>'+racha+' semanas</b> seguidas cumpliendo tu plan'));
   if(semana&&semana.hechas===semana.total)filas.push(celLinea('hito','trofeo',
     'Semana <b>'+semana.num+'</b> completa'+(semana.titulo?' — '+escaparHTML(semana.titulo):''),
     semana.total+'/'+semana.total));
@@ -5965,7 +5986,7 @@ function pintarBorrarRegistro(){
    Debajo, los últimos catorce días. "5 días" solo no distingue venir de un mes
    constante de encadenar cinco tras dos semanas parado; el calendario sí. */
 function tarjetaRacha(){
-  const racha=calcStreak(), mejor=calcMaxStreak();
+  const {actual:racha,mejor,enCurso,objetivo}=rachaSemanal();
   const dias=new Set(fechasEntrenadas());
   const LETRAS=['D','L','M','X','J','V','S'];
   const hoy=new Date(); hoy.setHours(0,0,0,0);
@@ -5977,15 +5998,18 @@ function tarjetaRacha(){
     celdas+=`<span class="racha-dia${dias.has(d.toDateString())?' hecho':''}${i?'':' es-hoy'}">`+
             `<i></i><span>${LETRAS[d.getDay()]}</span></span>`;
   }
+  /* Lo que lleva la semana en curso va delante: es lo que decide si la racha
+     sigue el lunes que viene. */
+  const semana='Esta semana: '+Math.min(enCurso,objetivo)+' de '+objetivo+' sesiones';
   const meta=racha>0
-    ? (mejor>racha?'Tu mejor racha: '+mejor+' días':'Es tu mejor racha hasta ahora')
-    : (mejor?'Tu mejor racha fueron '+mejor+' días seguidos':'Registra una sesión y empieza una.');
+    ? semana+(mejor>racha?' · tu mejor racha: '+mejor+' semanas':'')
+    : (mejor?'Tu mejor racha fueron '+mejor+' semanas · ':'')+semana;
   return`<div class="hoy hoy-racha${racha?'':' vacio'}">
     <span class="hoy-tag">Racha</span>
     <span class="racha-fila">
       ${ico('llama','racha-llama')}
       <b class="racha-num">${racha}</b>
-      <span class="racha-dias">${racha===0?'Sin racha ahora mismo':racha===1?'día seguido':'días seguidos'}</span>
+      <span class="racha-dias">${racha===0?'Sin racha ahora mismo':racha===1?'semana':'semanas seguidas'}</span>
     </span>
     <span class="hoy-meta">${meta}</span>
     <span class="racha-cal">${celdas}</span>
@@ -6002,8 +6026,9 @@ const keys=Object.keys(act.sessions).map(Number);
 const done=keys.length;
 const totalSes=act.plan.reduce((s,w)=>s+w.days.length,0);
 const pct=Math.round(done/totalSes*100);
-const kcal=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.kcal||0),0);
-const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
+// Number(): las sesiones antiguas pueden traer las cifras como texto, y 0+'450' daba '0450'.
+const kcal=keys.reduce((s,n)=>s+(Number(act.sessions[n].cardio?.kcal)||0),0);
+const mins=keys.reduce((s,n)=>s+(Number(act.sessions[n].cardio?.tiempo)||0),0);
   const c=document.getElementById('resumen-content');
   /* En violeta solo lo que ya has hecho; un 0 sale apagado. Con la rutina
      recién empezada esto eran cifras de acento diciendo cero. */
@@ -6015,16 +6040,18 @@ const mins=keys.reduce((s,n)=>s+(act.sessions[n].cardio?.tiempo||0),0);
     `<div class="stat-lbl">${lbl}</div></div>`;
   /* Racha y mejor racha ya no son dos celdas más de la rejilla: son la
      protagonista de la pestaña y van arriba, en grande. */
+  /* Sin ninguna sesión, la racha era un «0» grande justo encima de «Tu progreso
+     empieza hoy», que ya dice que ahí aparecerá. Y quien no hace cardio veía
+     dos ceros para siempre: esas dos cifras salen cuando haya algo que contar. */
   c.innerHTML=`
-    ${tarjetaRacha()}
+    ${done?tarjetaRacha():''}
     ${done===0?'<div class="card">'+estadoVacio({icono:'rayo', titulo:'Tu progreso empieza hoy',
       texto:'Registra tu primera sesión y aquí irán apareciendo tu racha, tus récords y las gráficas de cada ejercicio.',
       boton:'Ir a entrenar', accion:"goTo('log')"})+'</div>':''}
     <div class="stat-grid">
       ${stat(done+'/'+totalSes,'Sesiones',done>0)}
       ${stat(pct+'%','Progreso',pct>0)}
-      ${stat(kcal,'Kcal cardio',kcal>0)}
-      ${stat(mins+'m','Tiempo cardio',mins>0)}
+      ${kcal||mins?stat(kcal,'Kcal cardio',kcal>0)+stat(mins+'m','Tiempo cardio',mins>0):''}
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     ${(()=>{
@@ -6159,7 +6186,9 @@ keys.forEach(n=>{
       txt+='  '+ex.name+' [descanso:'+s.rest+'s] → '+sets.map((v,i)=>'Serie '+(i+1)+': '+pesoTexto(v.kg,uEx)+' x'+v.reps).join(' | ')+'\n';
     });
     const cd=s.cardio;
-    if(cd?.tiempo)txt+='  CARDIO: '+cd.tipo+' · '+cd.tiempo+'min · '+cd.kcal+'kcal · FC:'+cd.fc+'bpm · '+cd.dist+'km\n';
+    /* Solo lo apuntado: antes salía «· kcal · FC:bpm · km» con los huecos vacíos. */
+    if(cd?.tiempo)txt+='  CARDIO: '+[cd.tipo,cd.tiempo+' min',cd.kcal&&cd.kcal+' kcal',
+      cd.fc&&'FC '+cd.fc+' bpm',cd.dist&&cd.dist+' km'].filter(Boolean).join(' · ')+'\n';
     if(s.note)txt+='  Nota: '+s.note+'\n';
     txt+='\n';
   });
@@ -6167,7 +6196,7 @@ keys.forEach(n=>{
     txt+='=== MEDIDAS ===\n';
     act.medidas.forEach(m=>txt+='Sem '+m.semana+': '+(m.peso||'—')+'kg · '+(m.cintura||'—')+'cm ('+m.fecha+')\n');
   }
-  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>aviso('¡Copiado! Pégalo en el chat con Claude.','bien')).catch(()=>aviso(txt));}
+  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>aviso('Copiado. Pégalo en WhatsApp, en un correo o donde quieras.','bien')).catch(()=>aviso(txt));}
   else{aviso(txt);}
 }
 
@@ -7077,7 +7106,10 @@ function ocultarInstalar(){
    `ua` solo lo pasan las pruebas. */
 const ICO_COMPARTIR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M7 10H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1"/></svg>';
 const ICO_ANADIR_INICIO = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg>';
-function cuerpoInstalarIOS(ua = navigator.userAgent){
+/* `plegada`: en Inicio los pasos van dentro de «Ver cómo» (02/11/2026). Abiertos
+   ocupaban media pantalla al final de Inicio; en Ajustes, que es donde se va a
+   buscarlo, siguen a la vista. */
+function cuerpoInstalarIOS(ua = navigator.userAgent, plegada = false){
   const enChrome = /CriOS/.test(ua);
   const pasos = enChrome
     ? `<li><span>Toca <span class="tecla">${ICO_COMPARTIR}</span> <b>arriba a la derecha</b>, junto a la dirección.</span></li>
@@ -7091,8 +7123,9 @@ function cuerpoInstalarIOS(ua = navigator.userAgent){
     <div style="font-size:12.5px;color:var(--muted);line-height:1.5;">
       Ponla en la pantalla de inicio: se abre a pantalla completa y funciona
       también sin cobertura.</div>
-    <ol class="pasos-instalar">${pasos}</ol>
-    <div class="acciones-fila" style="margin-left:0;margin-top:4px;">
+    <ol class="pasos-instalar${plegada?' plegados':''}">${pasos}</ol>
+    <div class="acciones-fila" style="margin-left:0;margin-top:${plegada?10:4}px;">
+      ${plegada?`<button class="btn-sm" onclick="this.closest('.card').classList.add('pasos-abiertos');this.remove()">Ver cómo</button>`:''}
       <button class="btn-sm" onclick="ocultarInstalar()">Ya la tengo</button>
     </div>`;
 }
@@ -7104,7 +7137,7 @@ function pintarInstalar(){
   try{ descartado = localStorage.getItem(CLAVE_INSTALAR) === 'no'; }catch(e){}
 
   const puede = !yaInstalada() && (!!promptInstalar || esIOS());
-  const cuerpo = !puede ? '' : (promptInstalar
+  const cuerpo = (plegada=false) => !puede ? '' : (promptInstalar
     ? `<div class="section-title">Tenla a mano</div>
        <div style="font-size:12.5px;color:var(--muted);line-height:1.5;">
          Instálala en la pantalla de inicio: se abre como cualquier otra app,
@@ -7119,16 +7152,16 @@ function pintarInstalar(){
        puede salirle esto en Safari. Por eso el botón dice "ya la tengo" y no
        "entendido": con un toque se calla para siempre en ese móvil, y mientras
        tanto el texto no da por hecho que le falte nada. */
-    : cuerpoInstalarIOS());
+    : cuerpoInstalarIOS(undefined, plegada));
 
   /* En Inicio se puede decir "ahora no" y no vuelve a salir; en Ajustes sigue
      estando siempre, que es donde se busca después de haberlo descartado. */
   if(enInicio){
-    enInicio.innerHTML = cuerpo;
+    enInicio.innerHTML = cuerpo(true);
     enInicio.classList.toggle('hidden', !puede || descartado);
   }
   if(enAjustes){
-    enAjustes.innerHTML = cuerpo;
+    enAjustes.innerHTML = cuerpo();
     enAjustes.classList.toggle('hidden', !puede);
   }
 }
