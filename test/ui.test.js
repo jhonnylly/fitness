@@ -1909,6 +1909,24 @@ async function appLista(page, url){
     ok(mas.reco5 === 'preset_5dias', 'un hombre con 5 días recibe primero la de 5 días');
     ok(!mas.recoSalud, 'Salud y Movilidad no se recomienda sola (no sabemos la edad)');
 
+    /* 02/11/2026: hecha con los datos de Jhon para bajar grasa sin perder fuerza. */
+    const rf = await page.evaluate(()=>{
+      const p = PRESET_ROUTINES.find(x => x.id === 'preset_recomp_fuerza5');
+      if(!p) return null;
+      const basicos = p.plan.flatMap(w => [w.days[0].ex[0][1], w.days[1].ex[0][1]]);
+      return {dias: p.plan[0].days.length, semanas: p.plan.length,
+              basicos6: basicos.every(e => /×6$/.test(e)),
+              cinta: p.plan.every(w => w.days[4].ex.some(e => e[0] === 'Caminadora' && e[1] === '1×30min')),
+              descs: !!(PRESET_DESC[p.id] && PRESET_DESC_PANEL[p.id]),
+              reco: rutinasRecomendadas({sexo:'h', nivel:'ava', dias:5})};
+    });
+    ok(rf && rf.dias === 5 && rf.semanas === 8, 'Recomposición Fuerza: 5 días y 8 semanas');
+    ok(rf && rf.basicos6, 'press banca y sentadilla se quedan a 6 reps las 8 semanas (la progresión no los baja)');
+    ok(rf && rf.cinta, 'el quinto día lleva 30 min de cinta todas las semanas, sin convertirse en series');
+    ok(rf && rf.descs, 'con su descripción corta y larga');
+    ok(rf && rf.reco.includes('preset_recomp_fuerza5'),
+       'a un hombre con más de un año y 5 días se le recomienda: '+(rf&&rf.reco.join(', ')));
+
     console.log('\n13k3e. Al terminar una rutina, la app propone la siguiente');
     /* 28/09/2026 (Jhon): al acabar se quedaba en "Añade semanas o activa otra
        rutina". Ahora propone una con su perfil, sin repetir lo terminado. */
