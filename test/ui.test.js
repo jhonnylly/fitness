@@ -434,7 +434,9 @@ async function appLista(page, url){
       // El RIR, abajo del todo, solo si está activo.
       alternarRIR(true); renderEx(); await tic();
       r.rir = q('.sc-lab').map(e => e.textContent.trim()).filter(Boolean).pop();
-      r.rirCasillas = q('input[placeholder="RIR"]').length === curEx[0].sets.length;
+      r.rirCasillas = q('input.set-rir').length === curEx[0].sets.length;
+      // En gris, el objetivo (02/11/2026): el primer ejercicio del día es principal.
+      r.rirObjetivo = (q('input.set-rir')[0] || {}).placeholder;
       alternarRIR(false); renderEx(); await tic();
       r.sinRir = !q('input[placeholder="RIR"]').length;
       curEx[0].sets.forEach(st => { st.kg = ''; st.reps = ''; delete st.desc; }); renderEx();
@@ -474,6 +476,7 @@ async function appLista(page, url){
     ok(sinAspas.length === 0,
        'ningún botón de borrar se queda con la × (medidas y editores de rutina también con papelera)'+(sinAspas.length?': '+sinAspas.join(' | '):''));
     ok(cols.rir === 'RIR' && cols.rirCasillas, 'con el RIR activo, su fila va abajo del todo');
+    ok(cols.rirObjetivo === '1-2', 'y en gris dice cuánto dejar en reserva: 1-2 en el principal ('+cols.rirObjetivo+')');
     ok(cols.sinRir, 'y sin RIR no aparece');
 
     console.log('\n4. Reordenar los ejercicios arrastrando');
@@ -744,7 +747,7 @@ async function appLista(page, url){
       const r = getActive();
       showTab('log', document.getElementById('tab-log'));
       openWeekDetail(1); openSession(r.plan[0].days[0].s); openExDetail(0);
-      const casilla = document.querySelector('#sets-container input[placeholder="RIR"]');
+      const casilla = document.querySelector('#sets-container input.set-rir');
       // La gráfica se arma aparte: hacen falta dos sesiones y aquí solo hay una.
       const puntos = [{s:1,kg:60,rir:2,fecha:'1/9/2026'},
                       {s:2,kg:60,rir:null,fecha:'3/9/2026'},
@@ -3353,6 +3356,53 @@ async function appLista(page, url){
        destructivo al lado de «Cambiar». */
     ok(anillo.pastillas === 2, 'quedan las pastillas de cambiar y añadir (borrar vive en Mis rutinas)');
     ok(anillo.dentro, 'y van DENTRO del borde de la tarjeta de la rutina, no sueltas debajo');
+
+    console.log('\n13zz. Medirse cada semana y recordar los cambios de ejercicio (02/11/2026)');
+    const mejoras = await page.evaluate(async ()=>{
+      const tic = (ms=60) => new Promise(res => setTimeout(res, ms));
+      const act = getActive(), copia = JSON.stringify({s: act.sessions, m: act.medidas, p: act.plan});
+      const sem = act.plan.find(w => w.num === semanaEnCurso(act)) || act.plan[0];
+      const r = {};
+      // Una sesión hecha esta semana y ninguna medida de esta semana: toca medirse.
+      act.medidas = act.medidas.filter(m => +m.semana !== +sem.num);
+      act.sessions[sem.days[0].s] = act.sessions[sem.days[0].s] ||
+        {exercises: [], date: new Date().toLocaleDateString('es-ES')};
+      showTab('inicio', document.getElementById('tab-inicio')); updateHome();
+      const tarjeta = document.getElementById('duo-peso-card');
+      r.toca = tarjeta.classList.contains('toca-medir');
+      r.texto = document.getElementById('duo-peso-sub').textContent;
+      tarjeta.click(); await tic();
+      r.vaAMedidas = document.getElementById('pane-medidas').classList.contains('active');
+      act.medidas.push({semana: sem.num, peso: 80, fecha: '1/1/2026'});
+      updateHome();
+      r.yaMedido = !tarjeta.classList.contains('toca-medir');
+
+      // Cambio recordado: la sesión anterior del mismo día se hizo con otro ejercicio.
+      const dias = act.plan.flatMap(w => w.days);
+      const d1 = dias[0], d2 = dias.find(d => d.s > d1.s && d.name.split('·')[1] === d1.name.split('·')[1]);
+      const planEx = d1.ex.map(e => e[0]);
+      act.sessions = {};
+      act.sessions[d1.s] = {date: '1/9/2026', exercises: planEx.map((n, i) =>
+        ({name: i === 0 ? 'Ejercicio de prueba' : n, sets: [{kg: 50, reps: 10}]}))};
+      showTab('log', document.getElementById('tab-log'));
+      openSession(d2.s); await tic();
+      const av = document.getElementById('aviso-cambios');
+      r.aviso = av.style.display !== 'none' && av.textContent.includes('Ejercicio de prueba');
+      av.querySelector('button').click(); await tic();          // «Usar los mismos»
+      r.usado = curEx[0].name === 'Ejercicio de prueba' && String(curEx[0].sets[0].kg) === '50';
+      r.planIntacto = d2.ex[0][0] === planEx[0];
+      r.avisoFuera = av.style.display === 'none';
+      borrarBorrador(d2.s); closeForm();
+      const o = JSON.parse(copia); act.sessions = o.s; act.medidas = o.m; act.plan = o.p; save(); updateHome();
+      return r;
+    });
+    ok(mejoras.toca && /Toca medirte/.test(mejoras.texto),
+       'con una sesión esta semana y sin medida, la tarjeta del peso dice: '+mejoras.texto);
+    ok(mejoras.vaAMedidas, 'y tocarla lleva a Medidas');
+    ok(mejoras.yaMedido, 'con la medida de la semana apuntada, se calla');
+    ok(mejoras.aviso, 'al abrir la sesión siguiente del mismo día, recuerda el cambio de la última vez');
+    ok(mejoras.usado, '«Usar los mismos» lo cambia en la sesión, con los kilos de ese ejercicio');
+    ok(mejoras.planIntacto && mejoras.avisoFuera, 'sin tocar el plan, y el aviso se va');
 
     console.log('\n14. Nada ha reventado por el camino');
     ok(errores.length === 0, errores.length ? 'errores en consola: '+errores.join(' | ')

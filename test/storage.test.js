@@ -101,6 +101,7 @@ const puente = `
   sugerenciasEjercicio, tieneFotoEjercicio, diasConEjercicio, renombrarEnPlan, moverUnidad,
   claveEjercicio, claveEjercicioLaxa, buscarImagenEjercicio, serieDeCargas, getPrevKgs,
   ejerciciosDeRutina, progresoReto,
+  cambiosRecordados, sinPeso, serieDeRepeticiones, unidadReps, recordsDeSesion,
   leerDecisionSync, guardarDecisionSync,
   PRESET_ROUTINES, PLAN,
   get DB(){ return DB }, set DB(v){ DB = v }
@@ -1083,6 +1084,50 @@ const ok = (cond, msg) => {
      'lo que no está devuelve null, no una imagen de otro ejercicio');
   ok(app.buscarImagenEjercicio('Sentadilla', null) === null, 'sin librería cargada no revienta');
   ok(app.buscarImagenEjercicio('', mapa) === null, 'un nombre vacío no casa con nada');
+
+  console.log('\n20. mejoras sacadas de los datos de Jhon (02/11/2026)');
+  {
+    // Recordar los cambios: en la semana 1 hizo Hip thrust máquina en vez de Hip thrust.
+    const dia = (s, ex) => ({ s, name: 'S' + s + ' · Glúteo', type: 'Lower', ex: ex.map(n => [n, '3×10']) });
+    const plan = [{ num: 1, days: [dia(1, ['Hip thrust', 'Prensa 45°'])] },
+                  { num: 2, days: [dia(2, ['Hip thrust', 'Prensa 45°'])] },
+                  { num: 3, days: [dia(3, ['Hip thrust', 'Prensa 45°'])] }];
+    const hecho = nombres => ({ date: '1/9/2026', exercises: nombres.map(n => ({ name: n, sets: [{ kg: 60, reps: 10 }] })) });
+    const r = { plan, sessions: { 1: hecho(['Hip thrust máquina', 'Prensa 45°']) } };
+    const c = app.cambiosRecordados(r, plan[1].days[0]);
+    ok(c.length === 1 && c[0].de === 'Hip thrust' && c[0].a === 'Hip thrust máquina',
+       'si la última vez cambió un ejercicio, se le propone el mismo cambio: ' + JSON.stringify(c));
+    r.sessions[2] = hecho(['Hip thrust', 'Prensa 45°']);
+    ok(app.cambiosRecordados(r, plan[2].days[0]).length === 0, 'si después volvió al del plan, se olvida');
+    const r2 = { plan, sessions: { 1: hecho(['Prensa 45°']) } };
+    ok(app.cambiosRecordados(r2, plan[1].days[0]).length === 0, 'saltarse un ejercicio no es cambiarlo');
+    const r3 = { plan, sessions: { 1: hecho(['Hip thrust máquina', 'Prensa 45°', 'Abductores en máquina']) } };
+    ok(app.cambiosRecordados(r3, plan[1].days[0]).length === 0, 'con uno de más y ninguno que falte, no se adivina nada');
+
+    // Peso corporal: las dominadas van por repeticiones.
+    const dom = n => ({ date: '1/9/2026', exercises: [{ name: 'Dominadas', sets: [{ kg: 0, reps: n }, { kg: '', reps: n - 2 }] }] });
+    const rd = { plan: [{ num: 1, days: [{ s: 1, ex: [['Dominadas', '3×8'], ['Plancha', '3×40s']] }] }],
+                 sessions: { 1: dom(6), 2: dom(8) } };
+    ok(app.sinPeso(rd, 'Dominadas'), 'unas dominadas sin kilos son de peso corporal');
+    ok(app.serieDeRepeticiones(rd, 'Dominadas').map(p => p.kg).join() === '6,8',
+       'y su progresión es la mejor serie de cada día (6 → 8)');
+    ok(app.unidadReps(rd, 'Dominadas') === 'reps' && app.unidadReps(rd, 'Plancha') === 's',
+       'en repeticiones, o en segundos si el plan las pide en tiempo');
+    const rec = app.recordsDeSesion(rd, [{ name: 'Dominadas', sets: [{ kg: '', reps: '10' }] }]);
+    ok(rec.length === 1 && rec[0].kg === 10 && rec[0].mas === 2 && rec[0].unidad === 'reps',
+       '🔴 hacer más repeticiones que nunca es marca personal: ' + JSON.stringify(rec));
+    rd.sessions[3] = { date: '2/9/2026', exercises: [{ name: 'Dominadas', sets: [{ kg: 10, reps: 5 }] }] };
+    ok(!app.sinPeso(rd, 'Dominadas'), 'con lastre (algún kilo) vuelve a ir por kilos');
+
+    // Nombres de las rutinas predeterminadas: cada ejercicio escrito de una sola forma.
+    const porClave = {};
+    app.PRESET_ROUTINES.forEach(p => p.plan.forEach(w => w.days.forEach(d => d.ex.forEach(([n]) => {
+      const k = app.claveEjercicioLaxa(n);
+      (porClave[k] = porClave[k] || new Set()).add(n.replace(/\s*\([^)]*\)/, ''));
+    }))));
+    const dobles = Object.values(porClave).filter(s => s.size > 1).map(s => [...s].join(' / '));
+    ok(dobles.length === 0, 'en las predeterminadas cada ejercicio se escribe igual' + (dobles.length ? ': ' + dobles.join(' · ') : ''));
+  }
 
   console.log('\nService Worker: el catálogo de ejercicios nunca llega viejo');
   {

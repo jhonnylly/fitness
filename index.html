@@ -1337,6 +1337,9 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* Tarjetas bajas (22/09/2026): menos aire y la gráfica más fina, para que
    debajo quepa el aviso del entrenador sin tener que bajar. */
 .duo-mini{padding:11px 12px;}
+.duo-peso{cursor:pointer;}
+.duo-peso.toca-medir{border-color:var(--accent);}
+.duo-peso.toca-medir .duo-sub{color:var(--accent-ink);font-weight:700;}
 .duo-mini .duo-val{font-size:22px;margin-top:3px;}
 .duo-mini .chispa,.duo-mini .adh-barras{height:20px;margin-top:5px;}
 .chispa{width:100%;height:30px;margin-top:6px;display:block;overflow:visible;}
@@ -2448,7 +2451,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
        finas. El texto largo ("0 de 6 de la semana 1") se fue: lo dice el
        propio "0/6". -->
   <div class="duo">
-    <div class="card duo-mini">
+    <!-- Toca para ir a Medidas. Si esta semana toca medirse, lo dice
+         (updateHome, clase .toca-medir). -->
+    <div class="card duo-mini duo-peso" id="duo-peso-card" role="button" tabindex="0"
+         onclick="goTo('medidas')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goTo('medidas');}">
       <div class="duo-label">
         <svg class="ico-txt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -2522,6 +2528,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
            de los ejercicios y del "¿Cómo te has sentido?". -->
       <div class="recordatorio-guardar"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Al terminar, pulsa <b>Guardar sesión</b> (abajo del todo)</span></div>
       <div id="aviso-borrador" class="msg msg-info" style="display:none;"></div>
+      <!-- "La última vez cambiaste X por Y": lo pinta pintarCambiosRecordados(). -->
+      <div id="aviso-cambios" class="msg msg-info" style="display:none;"></div>
       <!-- 27/09/2026, Jhon: fuera la línea "Descanso entre series". Queda el
            campo, oculto, como descanso GENERAL: lo que usa un ejercicio al que
            nunca le has cambiado el tiempo (ver descansoDe). Se guarda con la
@@ -3156,7 +3164,7 @@ const PRESET_ROUTINES=[
   {id:'preset_quema',name:'Quema de Grasa',plan:[
     {num:1,title:"Activación metabólica",days:[
       {s:1,name:"S1 · Upper",type:"Upper",ex:[["Press banca mancuernas","4×15"],["Remo mancuerna","4×15"],["Press hombros en máquina","3×15"],["Elevaciones laterales","4×20"],["Curl bíceps","3×15"],["Tríceps polea","3×15"]]},
-      {s:2,name:"S2 · Lower",type:"Lower",ex:[["Sentadilla goblet","4×15"],["Prensa 45°","4×15"],["Hip thrust","4×15"],["Curl femoral","4×15"],["Extensión piernas","3×20"],["Abductores","3×20"]]},
+      {s:2,name:"S2 · Lower",type:"Lower",ex:[["Sentadilla goblet","4×15"],["Prensa 45°","4×15"],["Hip thrust","4×15"],["Curl femoral","4×15"],["Extensión piernas","3×20"],["Abductores en máquina","3×20"]]},
       {s:3,name:"S3 · Push",type:"Push",ex:[["Press inclinado mancuernas","4×15"],["Cruces polea","4×20"],["Press Arnold","4×15"],["Elevaciones laterales en polea","4×20"],["Patada de tríceps","3×20"],["Fondos en banco","3×15"]]},
       {s:4,name:"S4 · Pull",type:"Pull",ex:[["Jalón al pecho","4×15"],["Remo polea baja","4×15"],["Pullover polea","3×20"],["Face pull","4×20"],["Curl martillo","3×15"],["Curl en polea","3×15"]]},
       {s:5,name:"S5 · Full Body",type:"Full",ex:[["Flexiones","3×15"],["Dominadas","3×10"],["Sentadilla","3×15"],["Press Arnold","3×15"],["Hip thrust","3×15"],["Curl bíceps","3×15"],["Tríceps","3×15"]]},
@@ -3164,7 +3172,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:2,title:"Intensidad metabólica",days:[
       {s:7,name:"S7 · Upper",type:"Upper",ex:[["Press banca mancuernas","4×15"],["Remo mancuerna","4×15"],["Press hombros en máquina","4×15"],["Elevaciones laterales","5×20"],["Curl bíceps","4×15"],["Tríceps polea","4×15"]]},
-      {s:8,name:"S8 · Lower",type:"Lower",ex:[["Sentadilla goblet","5×15"],["Zancada caminando","4×12"],["Hip thrust","5×15"],["Curl femoral","4×15"],["Extensión piernas","4×20"],["Abductores","4×20"]]},
+      {s:8,name:"S8 · Lower",type:"Lower",ex:[["Sentadilla goblet","5×15"],["Zancada caminando","4×12"],["Hip thrust","5×15"],["Curl femoral","4×15"],["Extensión piernas","4×20"],["Abductores en máquina","4×20"]]},
       {s:9,name:"S9 · Push",type:"Push",ex:[["Press inclinado mancuernas","5×15"],["Cruces polea","5×20"],["Press Arnold","4×15"],["Elevaciones laterales en polea","5×20"],["Patada de tríceps","4×20"],["Fondos en banco","4×15"]]},
       {s:10,name:"S10 · Pull",type:"Pull",ex:[["Jalón al pecho","5×15"],["Remo polea baja","5×15"],["Face pull","5×20"],["Curl martillo","4×15"],["Curl en polea","4×15"],["Pullover polea","3×20"]]},
       {s:11,name:"S11 · Full Body",type:"Full",ex:[["Flexiones","4×15"],["Dominadas","4×10"],["Sentadilla","4×15"],["Press Arnold","4×15"],["Hip thrust","4×15"],["Curl bíceps","4×15"],["Tríceps","4×15"]]},
@@ -3172,7 +3180,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:3,title:"Circuito quema",days:[
       {s:13,name:"S13 · Upper",type:"Upper",ex:[["Press banca mancuernas","5×15"],["Remo mancuerna","5×15"],["Press hombros en máquina","4×15"],["Elevaciones laterales","5×20"],["Curl bíceps","4×15"],["Tríceps polea","4×15"]]},
-      {s:14,name:"S14 · Lower",type:"Lower",ex:[["Sentadilla goblet","5×15"],["Zancada kettlebell","5×12"],["Hip thrust","5×15"],["Curl femoral","5×15"],["Extensión piernas","4×20"],["Abductores","4×20"]]},
+      {s:14,name:"S14 · Lower",type:"Lower",ex:[["Sentadilla goblet","5×15"],["Zancada kettlebell","5×12"],["Hip thrust","5×15"],["Curl femoral","5×15"],["Extensión piernas","4×20"],["Abductores en máquina","4×20"]]},
       {s:15,name:"S15 · Push",type:"Push",ex:[["Press inclinado mancuernas","5×15"],["Cruces polea","5×20"],["Press Arnold","5×15"],["Elevaciones laterales en polea","6×20"],["Patada de tríceps","5×20"],["Fondos en banco","4×15"]]},
       {s:16,name:"S16 · Pull",type:"Pull",ex:[["Jalón al pecho","5×15"],["Remo polea baja","5×15"],["Face pull","6×20"],["Curl martillo","5×15"],["Curl en polea","4×15"],["Pullover polea","4×20"]]},
       {s:17,name:"S17 · Full Body",type:"Full",ex:[["Flexiones","4×15"],["Dominadas","4×10"],["Sentadilla","4×15"],["Press Arnold","4×15"],["Hip thrust","4×15"],["Curl bíceps","4×15"],["Tríceps","4×15"]]},
@@ -3180,7 +3188,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:4,title:"Deload activo",days:[
       {s:19,name:"S19 · Upper",type:"Upper",ex:[["Press banca mancuernas","3×15"],["Remo mancuerna","3×15"],["Elevaciones laterales","3×20"],["Curl bíceps","2×15"],["Tríceps polea","2×15"],["Press hombros en máquina","2×15"]]},
-      {s:20,name:"S20 · Lower",type:"Lower",ex:[["Sentadilla goblet","3×15"],["Hip thrust","3×15"],["Curl femoral","3×15"],["Extensión piernas","3×20"],["Abductores","2×20"],["Zancada","2×12"]]},
+      {s:20,name:"S20 · Lower",type:"Lower",ex:[["Sentadilla goblet","3×15"],["Hip thrust","3×15"],["Curl femoral","3×15"],["Extensión piernas","3×20"],["Abductores en máquina","2×20"],["Zancada","2×12"]]},
       {s:21,name:"S21 · Push",type:"Push",ex:[["Press inclinado mancuernas","3×15"],["Press Arnold","3×15"],["Elevaciones laterales en polea","3×20"],["Patada de tríceps","3×20"],["Cruces polea","2×20"],["Fondos en banco","2×15"]]},
       {s:22,name:"S22 · Pull",type:"Pull",ex:[["Jalón al pecho","3×15"],["Remo mancuerna","3×15"],["Face pull","3×20"],["Curl martillo","3×15"],["Curl en polea","2×15"],["Pullover polea","2×20"]]},
       {s:23,name:"S23 · Full Body",type:"Full",ex:[["Flexiones","3×15"],["Dominadas","3×8"],["Hip thrust","3×15"],["Press Arnold","3×15"],["Curl bíceps","2×15"],["Tríceps","2×15"],["Sentadilla","2×15"]]},
@@ -3188,7 +3196,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:5,title:"Fase choque metabólico",days:[
       {s:25,name:"S25 · Upper",type:"Upper",ex:[["Press banca mancuernas","5×15"],["Remo mancuerna","5×15"],["Press hombros en máquina","5×15"],["Elevaciones laterales","6×20"],["Curl bíceps","5×15"],["Tríceps polea","5×15"]]},
-      {s:26,name:"S26 · Lower",type:"Lower",ex:[["Sentadilla goblet","5×15"],["Zancada kettlebell","5×12"],["Hip thrust","5×15"],["Curl femoral","5×15"],["Extensión piernas","5×20"],["Abductores","5×20"]]},
+      {s:26,name:"S26 · Lower",type:"Lower",ex:[["Sentadilla goblet","5×15"],["Zancada kettlebell","5×12"],["Hip thrust","5×15"],["Curl femoral","5×15"],["Extensión piernas","5×20"],["Abductores en máquina","5×20"]]},
       {s:27,name:"S27 · Push",type:"Push",ex:[["Press inclinado mancuernas","5×15"],["Cruces polea","6×20"],["Press Arnold","5×15"],["Elevaciones laterales en polea","6×25"],["Patada de tríceps","5×20"],["Fondos en banco","5×15"]]},
       {s:28,name:"S28 · Pull",type:"Pull",ex:[["Jalón al pecho","5×15"],["Remo polea baja","5×15"],["Face pull","6×20"],["Curl martillo","5×15"],["Curl en polea","5×15"],["Pullover polea","4×20"]]},
       {s:29,name:"S29 · Full Body",type:"Full",ex:[["Flexiones","5×15"],["Dominadas","5×10"],["Sentadilla","5×15"],["Press Arnold","5×15"],["Hip thrust","5×15"],["Curl bíceps","5×15"],["Tríceps","5×15"]]},
@@ -3196,7 +3204,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:6,title:"Peak quema",days:[
       {s:31,name:"S31 · Upper",type:"Upper",ex:[["Press banca mancuernas","6×15"],["Remo mancuerna","6×15"],["Press hombros en máquina","5×15"],["Elevaciones laterales","6×20"],["Curl bíceps","5×15"],["Tríceps polea","5×15"]]},
-      {s:32,name:"S32 · Lower",type:"Lower",ex:[["Sentadilla goblet","6×15"],["Zancada kettlebell","5×12"],["Hip thrust","6×15"],["Curl femoral","5×15"],["Extensión piernas","5×20"],["Abductores","5×20"]]},
+      {s:32,name:"S32 · Lower",type:"Lower",ex:[["Sentadilla goblet","6×15"],["Zancada kettlebell","5×12"],["Hip thrust","6×15"],["Curl femoral","5×15"],["Extensión piernas","5×20"],["Abductores en máquina","5×20"]]},
       {s:33,name:"S33 · Push",type:"Push",ex:[["Press inclinado mancuernas","6×15"],["Cruces polea","6×20"],["Press Arnold","5×15"],["Elevaciones laterales en polea","6×25"],["Patada de tríceps","6×20"],["Fondos en banco","5×15"]]},
       {s:34,name:"S34 · Pull",type:"Pull",ex:[["Jalón al pecho","6×15"],["Remo polea baja","6×15"],["Face pull","6×20"],["Curl martillo","5×15"],["Curl en polea","5×15"],["Pullover polea","5×20"]]},
       {s:35,name:"S35 · Full Body",type:"Full",ex:[["Flexiones","5×15"],["Dominadas","5×10"],["Sentadilla","5×15"],["Press Arnold","5×15"],["Hip thrust","5×15"],["Curl bíceps","5×15"],["Tríceps","5×15"]]},
@@ -3204,7 +3212,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:7,title:"Consolidación",days:[
       {s:37,name:"S37 · Upper",type:"Upper",ex:[["Press banca mancuernas","4×15"],["Remo mancuerna","4×15"],["Press hombros en máquina","4×15"],["Elevaciones laterales","4×20"],["Curl bíceps","4×15"],["Tríceps polea","4×15"]]},
-      {s:38,name:"S38 · Lower",type:"Lower",ex:[["Sentadilla goblet","4×15"],["Hip thrust","4×15"],["Curl femoral","4×15"],["Extensión piernas","4×20"],["Abductores","4×20"],["Zancada","3×12"]]},
+      {s:38,name:"S38 · Lower",type:"Lower",ex:[["Sentadilla goblet","4×15"],["Hip thrust","4×15"],["Curl femoral","4×15"],["Extensión piernas","4×20"],["Abductores en máquina","4×20"],["Zancada","3×12"]]},
       {s:39,name:"S39 · Push",type:"Push",ex:[["Press inclinado mancuernas","4×15"],["Cruces polea","4×20"],["Press Arnold","4×15"],["Elevaciones laterales en polea","4×20"],["Patada de tríceps","4×20"],["Fondos en banco","3×15"]]},
       {s:40,name:"S40 · Pull",type:"Pull",ex:[["Jalón al pecho","4×15"],["Remo polea baja","4×15"],["Face pull","4×20"],["Curl martillo","4×15"],["Curl en polea","3×15"],["Pullover polea","3×20"]]},
       {s:41,name:"S41 · Full Body",type:"Full",ex:[["Flexiones","4×15"],["Dominadas","4×10"],["Sentadilla","4×15"],["Press Arnold","4×15"],["Hip thrust","4×15"],["Curl bíceps","4×15"],["Tríceps","4×15"]]},
@@ -3212,7 +3220,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:8,title:"Semana final 🏆",days:[
       {s:43,name:"S43 · Upper",type:"Upper",ex:[["Press banca mancuernas","5×15"],["Remo mancuerna","5×15"],["Press hombros en máquina","5×15"],["Elevaciones laterales","5×20"],["Curl bíceps","5×15"],["Tríceps polea","5×15"]]},
-      {s:44,name:"S44 · Lower",type:"Lower",ex:[["Sentadilla goblet","5×15"],["Zancada kettlebell","5×12"],["Hip thrust","5×15"],["Curl femoral","5×15"],["Extensión piernas","5×20"],["Abductores","5×20"]]},
+      {s:44,name:"S44 · Lower",type:"Lower",ex:[["Sentadilla goblet","5×15"],["Zancada kettlebell","5×12"],["Hip thrust","5×15"],["Curl femoral","5×15"],["Extensión piernas","5×20"],["Abductores en máquina","5×20"]]},
       {s:45,name:"S45 · Push",type:"Push",ex:[["Press inclinado mancuernas","5×15"],["Cruces polea","5×20"],["Press Arnold","5×15"],["Elevaciones laterales en polea","5×25"],["Patada de tríceps","5×20"],["Fondos en banco","5×15"]]},
       {s:46,name:"S46 · Pull",type:"Pull",ex:[["Jalón al pecho","5×15"],["Remo polea baja","5×15"],["Face pull","5×20"],["Curl martillo","5×15"],["Curl en polea","5×15"],["Pullover polea","4×20"]]},
       {s:47,name:"S47 · Full Body",type:"Full",ex:[["Flexiones","5×15"],["Dominadas","5×10"],["Sentadilla","5×15"],["Press Arnold","5×15"],["Hip thrust","5×15"],["Curl bíceps","5×15"],["Tríceps","5×15"]]},
@@ -3264,7 +3272,7 @@ const PRESET_ROUTINES=[
       {s:31,name:"S31 · Upper",type:"Upper",ex:[["Press banca barra","5×10"],["Remo barra","5×10"],["Press inclinado mancuernas","5×12"],["Remo en máquina","5×12"],["Elevaciones laterales","5×20"],["Curl bíceps","4×12"],["Tríceps polea","4×15"]]},
       {s:32,name:"S32 · Lower",type:"Lower",ex:[["Sentadilla barra","5×10"],["Prensa 45°","5×12"],["Hip thrust","5×12"],["Curl femoral","5×12"],["Belt squat","4×12"],["Extensión piernas","4×15"]]},
       {s:33,name:"S33 · Push",type:"Push",ex:[["Press inclinado mancuernas","5×12"],["Press declinado","5×15"],["Press hombros","5×10"],["Elevaciones laterales","6×20"],["Press francés","4×12"],["Press banca agarre cerrado","4×12"]]},
-      {s:34,name:"S34 · Pull",type:"Pull",ex:[["Dominadas agarre neutro","5×8"],["Jalón agarre estrecho","5×12"],["Remo polea baja","5×12"],["Face pull","5×20"],["Curl invertido","5×12"],["Curl máquina","4×12"]]},
+      {s:34,name:"S34 · Pull",type:"Pull",ex:[["Dominadas agarre neutro","5×8"],["Jalón agarre estrecho","5×12"],["Remo polea baja","5×12"],["Face pull","5×20"],["Curl invertido","5×12"],["Curl bíceps máquina","4×12"]]},
       {s:35,name:"S35 · Full Body",type:"Full",ex:[["Press banca","5×10"],["Dominadas","4×8"],["Prensa 45°","5×12"],["Press Arnold","4×10"],["Hip thrust","5×12"],["Curl bíceps","4×12"],["Tríceps","4×15"]]},
       {s:36,name:"S36 · Cardio+Core",type:"Cardio",ex:[["Plancha","5×60s"],["Rueda abdominal","5×25"],["Elevación de piernas","5×20"],["Caminadora","1×30min"],["Leñador en polea","5×20"],["Plancha lateral","4×45s"]]},
     ]},
@@ -3272,7 +3280,7 @@ const PRESET_ROUTINES=[
       {s:37,name:"S37 · Upper",type:"Upper",ex:[["Press banca barra","4×8"],["Remo barra","4×8"],["Press inclinado mancuernas","4×10"],["Remo en máquina","4×10"],["Elevaciones laterales","4×20"],["Curl bíceps","3×12"],["Tríceps","3×15"]]},
       {s:38,name:"S38 · Lower",type:"Lower",ex:[["Sentadilla barra","4×8"],["Prensa 45°","4×10"],["Hip thrust","4×10"],["Curl femoral","4×12"],["Extensión piernas","3×15"],["Elevación de gemelo en máquina","3×20"]]},
       {s:39,name:"S39 · Push",type:"Push",ex:[["Press inclinado mancuernas","4×10"],["Press declinado","4×15"],["Press hombros mancuernas","4×10"],["Elevaciones laterales","4×20"],["Press francés","3×12"],["Press banca agarre cerrado","3×12"]]},
-      {s:40,name:"S40 · Pull",type:"Pull",ex:[["Jalón agarre estrecho","4×10"],["Remo polea baja","4×10"],["Pullover mancuerna","3×12"],["Face pull","4×20"],["Curl invertido","3×12"],["Curl máquina","3×12"]]},
+      {s:40,name:"S40 · Pull",type:"Pull",ex:[["Jalón agarre estrecho","4×10"],["Remo polea baja","4×10"],["Pullover mancuerna","3×12"],["Face pull","4×20"],["Curl invertido","3×12"],["Curl bíceps máquina","3×12"]]},
       {s:41,name:"S41 · Full Body",type:"Full",ex:[["Press banca","4×8"],["Remo mancuerna","4×10"],["Prensa 45°","4×10"],["Press Arnold","3×10"],["Hip thrust","4×10"],["Curl bíceps","3×12"],["Tríceps","3×15"]]},
       {s:42,name:"S42 · Cardio+Core",type:"Cardio",ex:[["Plancha","4×60s"],["Rueda abdominal","4×20"],["Elevación de piernas","4×15"],["Caminadora","1×25min"],["Leñador en polea","4×20"],["Plancha lateral","3×45s"]]},
     ]},
@@ -3280,7 +3288,7 @@ const PRESET_ROUTINES=[
       {s:43,name:"S43 · Upper",type:"Upper",ex:[["Press banca barra","5×8"],["Dominadas agarre neutro","5×8"],["Press inclinado mancuernas","4×10"],["Remo en máquina","4×10"],["Elevaciones laterales","5×20"],["Curl bíceps","4×10"],["Tríceps cuerda","4×15"]]},
       {s:44,name:"S44 · Lower",type:"Lower",ex:[["Sentadilla barra","5×8"],["Prensa 45°","5×10"],["Hip thrust","5×10"],["Curl femoral","4×10"],["Belt squat","4×12"],["Extensión piernas","4×15"]]},
       {s:45,name:"S45 · Push",type:"Push",ex:[["Press inclinado mancuernas","5×10"],["Press declinado","5×15"],["Press hombros","5×10"],["Elevaciones laterales","5×20"],["Press francés","4×10"],["Press banca agarre cerrado","4×12"]]},
-      {s:46,name:"S46 · Pull",type:"Pull",ex:[["Dominadas lastradas","5×8"],["Jalón agarre estrecho","5×10"],["Remo polea baja","5×10"],["Face pull","5×20"],["Curl invertido","4×12"],["Curl máquina","4×12"]]},
+      {s:46,name:"S46 · Pull",type:"Pull",ex:[["Dominadas lastradas","5×8"],["Jalón agarre estrecho","5×10"],["Remo polea baja","5×10"],["Face pull","5×20"],["Curl invertido","4×12"],["Curl bíceps máquina","4×12"]]},
       {s:47,name:"S47 · Full Body",type:"Full",ex:[["Press banca","5×8"],["Dominadas","5×8"],["Prensa 45°","4×10"],["Press hombros","4×10"],["Hip thrust","4×10"],["Curl bíceps","4×10"],["Tríceps","4×15"]]},
       {s:48,name:"S48 · Cardio+Core 🏆",type:"Cardio",ex:[["Plancha","6×60s"],["Rueda abdominal","6×25"],["Elevación de piernas","6×20"],["Caminadora","1×30min"],["Leñador en polea","6×20"],["Plancha lateral","5×45s"]]},
     ]},
@@ -3420,7 +3428,7 @@ const PRESET_ROUTINES=[
   {id:'preset_mantenimiento',name:'Mantenimiento',plan:[
     {num:1,title:"Semana 1",days:[
       {s:1,name:"S1 · Upper",type:"Upper",ex:[["Press banca barra","3×10"],["Remo barra","3×10"],["Press pecho en máquina","3×12"],["Elevaciones laterales","3×15"],["Curl bíceps barra","3×12"],["Tríceps polea","3×12"]]},
-      {s:2,name:"S2 · Lower",type:"Lower",ex:[["Sentadilla barra","3×10"],["Prensa 45°","3×12"],["Hip thrust","3×12"],["Curl femoral","3×12"],["Extensión piernas","3×15"],["Abductores","3×20"]]},
+      {s:2,name:"S2 · Lower",type:"Lower",ex:[["Sentadilla barra","3×10"],["Prensa 45°","3×12"],["Hip thrust","3×12"],["Curl femoral","3×12"],["Extensión piernas","3×15"],["Abductores en máquina","3×20"]]},
       {s:3,name:"S3 · Push",type:"Push",ex:[["Press banca inclinado","3×12"],["Aperturas con mancuernas","3×15"],["Press hombros en máquina","3×10"],["Elevaciones frontales","3×20"],["Tríceps cuerda","3×15"],["Fondos","3×12"]]},
       {s:4,name:"S4 · Pull",type:"Pull",ex:[["Jalón al pecho","3×12"],["Remo en máquina","3×12"],["Aperturas inversas en máquina","3×15"],["Curl martillo","3×12"],["Curl predicador","3×12"],["Pullover mancuerna","3×12"]]},
       {s:5,name:"S5 · Full Body",type:"Full",ex:[["Press banca","3×10"],["Dominadas","3×8"],["Sentadilla","3×10"],["Press Arnold","3×10"],["Hip thrust","3×12"],["Curl bíceps","3×12"],["Tríceps","3×12"]]},
@@ -3428,7 +3436,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:2,title:"Semana 2",days:[
       {s:7,name:"S7 · Upper",type:"Upper",ex:[["Press banca barra","3×10"],["Remo barra","3×10"],["Press pecho en máquina","3×12"],["Elevaciones laterales","3×15"],["Curl bíceps barra","3×12"],["Tríceps polea","3×12"]]},
-      {s:8,name:"S8 · Lower",type:"Lower",ex:[["Sentadilla barra","3×10"],["Prensa 45°","3×12"],["Hip thrust","3×12"],["Curl femoral","3×12"],["Extensión piernas","3×15"],["Abductores","3×20"]]},
+      {s:8,name:"S8 · Lower",type:"Lower",ex:[["Sentadilla barra","3×10"],["Prensa 45°","3×12"],["Hip thrust","3×12"],["Curl femoral","3×12"],["Extensión piernas","3×15"],["Abductores en máquina","3×20"]]},
       {s:9,name:"S9 · Push",type:"Push",ex:[["Press banca inclinado","3×12"],["Aperturas con mancuernas","3×15"],["Press hombros en máquina","3×10"],["Elevaciones frontales","3×20"],["Tríceps cuerda","3×15"],["Fondos","3×12"]]},
       {s:10,name:"S10 · Pull",type:"Pull",ex:[["Jalón al pecho","3×12"],["Remo en máquina","3×12"],["Aperturas inversas en máquina","3×15"],["Curl martillo","3×12"],["Curl predicador","3×12"],["Pullover mancuerna","3×12"]]},
       {s:11,name:"S11 · Full Body",type:"Full",ex:[["Press banca","3×10"],["Dominadas","3×8"],["Sentadilla","3×10"],["Press Arnold","3×10"],["Hip thrust","3×12"],["Curl bíceps","3×12"],["Tríceps","3×12"]]},
@@ -3436,7 +3444,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:3,title:"Semana 3",days:[
       {s:13,name:"S13 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Remo barra","4×10"],["Press pecho en máquina","3×12"],["Elevaciones laterales","4×15"],["Curl bíceps barra","3×12"],["Tríceps polea","3×12"]]},
-      {s:14,name:"S14 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","3×15"],["Abductores","3×20"]]},
+      {s:14,name:"S14 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","3×15"],["Abductores en máquina","3×20"]]},
       {s:15,name:"S15 · Push",type:"Push",ex:[["Press banca inclinado","4×12"],["Aperturas con mancuernas","4×15"],["Press hombros en máquina","3×10"],["Elevaciones frontales","4×20"],["Tríceps cuerda","3×15"],["Fondos","3×12"]]},
       {s:16,name:"S16 · Pull",type:"Pull",ex:[["Jalón al pecho","4×12"],["Remo en máquina","4×12"],["Aperturas inversas en máquina","4×15"],["Curl martillo","3×12"],["Curl predicador","3×12"],["Pullover mancuerna","3×12"]]},
       {s:17,name:"S17 · Full Body",type:"Full",ex:[["Press banca","4×10"],["Dominadas","3×8"],["Sentadilla","4×10"],["Press Arnold","3×10"],["Hip thrust","4×12"],["Curl bíceps","3×12"],["Tríceps","3×12"]]},
@@ -3444,7 +3452,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:4,title:"Semana 4",days:[
       {s:19,name:"S19 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Remo barra","4×10"],["Press pecho en máquina","3×12"],["Elevaciones laterales","4×15"],["Curl bíceps barra","3×12"],["Tríceps polea","3×12"]]},
-      {s:20,name:"S20 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","3×15"],["Abductores","3×20"]]},
+      {s:20,name:"S20 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","3×15"],["Abductores en máquina","3×20"]]},
       {s:21,name:"S21 · Push",type:"Push",ex:[["Press banca inclinado","4×12"],["Aperturas con mancuernas","4×15"],["Press hombros en máquina","3×10"],["Elevaciones frontales","4×20"],["Tríceps cuerda","3×15"],["Fondos","3×12"]]},
       {s:22,name:"S22 · Pull",type:"Pull",ex:[["Jalón al pecho","4×12"],["Remo en máquina","4×12"],["Aperturas inversas en máquina","4×15"],["Curl martillo","3×12"],["Curl predicador","3×12"],["Pullover mancuerna","3×12"]]},
       {s:23,name:"S23 · Full Body",type:"Full",ex:[["Press banca","4×10"],["Dominadas","3×8"],["Sentadilla","4×10"],["Press Arnold","3×10"],["Hip thrust","4×12"],["Curl bíceps","3×12"],["Tríceps","3×12"]]},
@@ -3452,7 +3460,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:5,title:"Semana 5",days:[
       {s:25,name:"S25 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Remo barra","4×10"],["Press pecho en máquina","4×12"],["Elevaciones laterales","4×15"],["Curl bíceps barra","4×12"],["Tríceps polea","4×12"]]},
-      {s:26,name:"S26 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","4×15"],["Abductores","4×20"]]},
+      {s:26,name:"S26 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","4×15"],["Abductores en máquina","4×20"]]},
       {s:27,name:"S27 · Push",type:"Push",ex:[["Press banca inclinado","4×12"],["Aperturas con mancuernas","4×15"],["Press hombros en máquina","4×10"],["Elevaciones frontales","4×20"],["Tríceps cuerda","4×15"],["Fondos","4×12"]]},
       {s:28,name:"S28 · Pull",type:"Pull",ex:[["Jalón al pecho","4×12"],["Remo en máquina","4×12"],["Aperturas inversas en máquina","4×15"],["Curl martillo","4×12"],["Curl predicador","4×12"],["Pullover mancuerna","4×12"]]},
       {s:29,name:"S29 · Full Body",type:"Full",ex:[["Press banca","4×10"],["Dominadas","4×8"],["Sentadilla","4×10"],["Press Arnold","4×10"],["Hip thrust","4×12"],["Curl bíceps","4×12"],["Tríceps","4×12"]]},
@@ -3460,7 +3468,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:6,title:"Semana 6",days:[
       {s:31,name:"S31 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Remo barra","4×10"],["Press pecho en máquina","4×12"],["Elevaciones laterales","4×15"],["Curl bíceps barra","4×12"],["Tríceps polea","4×12"]]},
-      {s:32,name:"S32 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","4×15"],["Abductores","4×20"]]},
+      {s:32,name:"S32 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","4×15"],["Abductores en máquina","4×20"]]},
       {s:33,name:"S33 · Push",type:"Push",ex:[["Press banca inclinado","4×12"],["Aperturas con mancuernas","4×15"],["Press hombros en máquina","4×10"],["Elevaciones frontales","4×20"],["Tríceps cuerda","4×15"],["Fondos","4×12"]]},
       {s:34,name:"S34 · Pull",type:"Pull",ex:[["Jalón al pecho","4×12"],["Remo en máquina","4×12"],["Aperturas inversas en máquina","4×15"],["Curl martillo","4×12"],["Curl predicador","4×12"],["Pullover mancuerna","4×12"]]},
       {s:35,name:"S35 · Full Body",type:"Full",ex:[["Press banca","4×10"],["Dominadas","4×8"],["Sentadilla","4×10"],["Press Arnold","4×10"],["Hip thrust","4×12"],["Curl bíceps","4×12"],["Tríceps","4×12"]]},
@@ -3468,7 +3476,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:7,title:"Semana 7",days:[
       {s:37,name:"S37 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Remo barra","4×10"],["Press pecho en máquina","4×12"],["Elevaciones laterales","4×15"],["Curl bíceps barra","4×12"],["Tríceps polea","4×12"]]},
-      {s:38,name:"S38 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","4×15"],["Abductores","4×20"]]},
+      {s:38,name:"S38 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","4×15"],["Abductores en máquina","4×20"]]},
       {s:39,name:"S39 · Push",type:"Push",ex:[["Press banca inclinado","4×12"],["Aperturas con mancuernas","4×15"],["Press hombros en máquina","4×10"],["Elevaciones frontales","4×20"],["Tríceps cuerda","4×15"],["Fondos","4×12"]]},
       {s:40,name:"S40 · Pull",type:"Pull",ex:[["Jalón al pecho","4×12"],["Remo en máquina","4×12"],["Aperturas inversas en máquina","4×15"],["Curl martillo","4×12"],["Curl predicador","4×12"],["Pullover mancuerna","4×12"]]},
       {s:41,name:"S41 · Full Body",type:"Full",ex:[["Press banca","4×10"],["Dominadas","4×8"],["Sentadilla","4×10"],["Press Arnold","4×10"],["Hip thrust","4×12"],["Curl bíceps","4×12"],["Tríceps","4×12"]]},
@@ -3476,7 +3484,7 @@ const PRESET_ROUTINES=[
     ]},
     {num:8,title:"Semana final 🏆",days:[
       {s:43,name:"S43 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Remo barra","4×10"],["Press pecho en máquina","4×12"],["Elevaciones laterales","4×15"],["Curl bíceps barra","4×12"],["Tríceps polea","4×12"]]},
-      {s:44,name:"S44 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","4×15"],["Abductores","4×20"]]},
+      {s:44,name:"S44 · Lower",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Hip thrust","4×12"],["Curl femoral","4×12"],["Extensión piernas","4×15"],["Abductores en máquina","4×20"]]},
       {s:45,name:"S45 · Push",type:"Push",ex:[["Press banca inclinado","4×12"],["Aperturas con mancuernas","4×15"],["Press hombros en máquina","4×10"],["Elevaciones frontales","4×20"],["Tríceps cuerda","4×15"],["Fondos","4×12"]]},
       {s:46,name:"S46 · Pull",type:"Pull",ex:[["Jalón al pecho","4×12"],["Remo en máquina","4×12"],["Aperturas inversas en máquina","4×15"],["Curl martillo","4×12"],["Curl predicador","4×12"],["Pullover mancuerna","4×12"]]},
       {s:47,name:"S47 · Full Body",type:"Full",ex:[["Press banca","4×10"],["Dominadas","4×8"],["Sentadilla","4×10"],["Press Arnold","4×10"],["Hip thrust","4×12"],["Curl bíceps","4×12"],["Tríceps","4×12"]]},
@@ -3485,9 +3493,9 @@ const PRESET_ROUTINES=[
   ]},
   {id:'preset_definicion',name:'Definición',plan:[
     {num:1,title:"Adaptación al déficit",days:[
-      {s:1,name:"S1 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Remo barra agarre supino","4×10"],["Press inclinado mancuernas","3×12"],["Remo invertido","3×12"],["Elevaciones laterales","4×15"],["Curl bíceps barra","3×12"],["Tríceps polea cuerda","3×15"]]},
+      {s:1,name:"S1 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Remo barra agarre supino","4×10"],["Press inclinado mancuernas","3×12"],["Remo invertido","3×12"],["Elevaciones laterales","4×15"],["Curl bíceps barra","3×12"],["Tríceps cuerda","3×15"]]},
       {s:2,name:"S2 · Lower",type:"Lower",ex:[["Prensa 45°","4×12"],["Sentadilla hack","4×12"],["Hip thrust máquina","4×12"],["Curl femoral tumbado","4×12"],["Extensión piernas","3×15"],["Gemelo en prensa","3×20"]]},
-      {s:3,name:"S3 · Push",type:"Push",ex:[["Press banca inclinado mancuernas","4×12"],["Cruces polea","4×15"],["Press Arnold","4×10"],["Elevaciones laterales en polea","4×20"],["Press francés barra","3×12"],["Fondos captain's chair","3×12"]]},
+      {s:3,name:"S3 · Push",type:"Push",ex:[["Press inclinado mancuernas","4×12"],["Cruces polea","4×15"],["Press Arnold","4×10"],["Elevaciones laterales en polea","4×20"],["Press francés barra","3×12"],["Fondos captain's chair","3×12"]]},
       {s:4,name:"S4 · Pull",type:"Pull",ex:[["Jalón al pecho","4×12"],["Remo polea baja","4×12"],["Pullover mancuerna","3×12"],["Cruces inversos en polea","4×15"],["Curl martillo alternado","3×12"],["Curl bíceps máquina","3×15"]]},
       {s:5,name:"S5 · Full Body",type:"Full",ex:[["Press banca barra","3×10"],["Remo mancuerna","3×10"],["Prensa 45°","3×12"],["Press Arnold","3×10"],["Hip thrust","3×12"],["Curl bíceps","3×12"],["Tríceps polea","3×15"]]},
       {s:6,name:"S6 · Cardio+Core",type:"Cardio",ex:[["Caminadora","1×30min"],["Plancha","4×45s"],["Rueda abdominal","4×20"],["Elevación de piernas","4×15"],["Plancha lateral","3×30s"],["Mountain climbers","3×20"]]},
@@ -3495,7 +3503,7 @@ const PRESET_ROUTINES=[
     {num:2,title:"Déficit activo",days:[
       {s:7,name:"S7 · Upper",type:"Upper",ex:[["Press banca barra","4×10"],["Dominadas agarre neutro","4×8"],["Press inclinado mancuernas","4×12"],["Remo invertido","4×12"],["Elevaciones laterales","4×20"],["Curl bíceps barra","3×12"],["Tríceps polea","3×15"]]},
       {s:8,name:"S8 · Lower",type:"Lower",ex:[["Prensa 45°","4×12"],["Sentadilla en Smith","4×12"],["Hip thrust máquina","4×12"],["Curl femoral","4×12"],["Zancada kettlebell","3×12"],["Extensión piernas","3×15"]]},
-      {s:9,name:"S9 · Push",type:"Push",ex:[["Press banca plano mancuernas","4×12"],["Cruces polea alta","4×15"],["Press hombros mancuernas","4×10"],["Elevaciones laterales en polea","5×20"],["Tríceps sobre cabeza","3×12"],["Fondos captain's chair","3×12"]]},
+      {s:9,name:"S9 · Push",type:"Push",ex:[["Press banca mancuernas","4×12"],["Cruces polea alta","4×15"],["Press hombros mancuernas","4×10"],["Elevaciones laterales en polea","5×20"],["Tríceps sobre cabeza","3×12"],["Fondos captain's chair","3×12"]]},
       {s:10,name:"S10 · Pull",type:"Pull",ex:[["Jalón al pecho","4×12"],["Remo polea baja","4×12"],["Pullover polea","3×15"],["Cruces inversos en polea","4×20"],["Curl martillo","3×12"],["Curl concentrado","3×12"]]},
       {s:11,name:"S11 · Full Body",type:"Full",ex:[["Press inclinado mancuernas","3×12"],["Dominadas","3×8"],["Sentadilla hack","3×12"],["Press Arnold","3×10"],["Hip thrust","3×12"],["Curl bíceps","3×12"],["Tríceps","3×15"]]},
       {s:12,name:"S12 · Cardio+Core",type:"Cardio",ex:[["Caminadora","1×30min"],["Plancha","4×60s"],["Rueda abdominal","4×20"],["Elevación de piernas","4×15"],["Plancha lateral","4×30s"],["Mountain climbers","4×20"]]},
@@ -3504,7 +3512,7 @@ const PRESET_ROUTINES=[
       {s:13,name:"S13 · Upper",type:"Upper",ex:[["Press banca barra","5×10"],["Remo barra","5×10"],["Press inclinado mancuernas","4×12"],["Remo invertido","4×12"],["Elevaciones laterales","5×20"],["Curl bíceps barra","4×12"],["Tríceps polea","4×15"]]},
       {s:14,name:"S14 · Lower",type:"Lower",ex:[["Prensa 45°","5×12"],["Sentadilla barra","4×10"],["Hip thrust","5×12"],["Curl femoral","4×12"],["Extensión piernas","4×15"],["Gemelo en prensa","4×20"]]},
       {s:15,name:"S15 · Push",type:"Push",ex:[["Press banca inclinado","5×12"],["Cruces polea","5×15"],["Press hombros mancuernas","4×10"],["Elevaciones laterales en polea","5×20"],["Press francés","4×12"],["Fondos","3×12"]]},
-      {s:16,name:"S16 · Pull",type:"Pull",ex:[["Dominadas agarre neutro","5×8"],["Jalón al pecho","4×12"],["Remo polea baja","4×12"],["Cruces inversos en polea","5×20"],["Curl martillo","4×12"],["Curl máquina","4×12"]]},
+      {s:16,name:"S16 · Pull",type:"Pull",ex:[["Dominadas agarre neutro","5×8"],["Jalón al pecho","4×12"],["Remo polea baja","4×12"],["Cruces inversos en polea","5×20"],["Curl martillo","4×12"],["Curl bíceps máquina","4×12"]]},
       {s:17,name:"S17 · Full Body",type:"Full",ex:[["Press banca","4×10"],["Remo mancuerna","4×10"],["Prensa 45°","4×12"],["Press Arnold","4×10"],["Hip thrust","4×12"],["Curl bíceps","4×12"],["Tríceps","4×15"]]},
       {s:18,name:"S18 · Cardio+Core",type:"Cardio",ex:[["Caminadora","1×35min"],["Plancha","5×60s"],["Rueda abdominal","5×20"],["Elevación de piernas","5×15"],["Plancha lateral","4×30s"],["Mountain climbers","4×25"]]},
     ]},
@@ -3512,7 +3520,7 @@ const PRESET_ROUTINES=[
       {s:19,name:"S19 · Upper",type:"Upper",ex:[["Press banca barra","3×10"],["Remo barra","3×10"],["Press inclinado mancuernas","3×12"],["Elevaciones laterales","3×15"],["Curl bíceps","2×12"],["Tríceps polea","2×15"]]},
       {s:20,name:"S20 · Lower",type:"Lower",ex:[["Prensa 45°","3×12"],["Hip thrust","3×12"],["Curl femoral","3×12"],["Extensión piernas","3×15"],["Gemelo en prensa","2×20"]]},
       {s:21,name:"S21 · Push",type:"Push",ex:[["Press inclinado mancuernas","3×12"],["Press hombros","3×10"],["Elevaciones laterales en polea","3×15"],["Tríceps polea","3×15"],["Cruces polea","2×15"]]},
-      {s:22,name:"S22 · Pull",type:"Pull",ex:[["Jalón al pecho","3×12"],["Remo mancuerna","3×12"],["Cruces inversos en polea","3×20"],["Curl martillo","3×12"],["Curl máquina","2×15"]]},
+      {s:22,name:"S22 · Pull",type:"Pull",ex:[["Jalón al pecho","3×12"],["Remo mancuerna","3×12"],["Cruces inversos en polea","3×20"],["Curl martillo","3×12"],["Curl bíceps máquina","2×15"]]},
       {s:23,name:"S23 · Full Body",type:"Full",ex:[["Press banca","3×10"],["Remo mancuerna","3×10"],["Hip thrust","3×12"],["Press Arnold","3×10"],["Curl bíceps","2×12"],["Tríceps","2×15"]]},
       {s:24,name:"S24 · Cardio+Core",type:"Cardio",ex:[["Caminadora","1×25min"],["Plancha","3×45s"],["Rueda abdominal","3×15"],["Plancha lateral","3×30s"],["Elevación de piernas","3×12"]]},
     ]},
@@ -3528,7 +3536,7 @@ const PRESET_ROUTINES=[
       {s:31,name:"S31 · Upper",type:"Upper",ex:[["Press banca barra","5×10"],["Remo barra agarre supino","5×10"],["Press inclinado mancuernas","5×12"],["Remo invertido","5×12"],["Elevaciones laterales","5×20"],["Curl bíceps","4×12"],["Tríceps polea","4×15"]]},
       {s:32,name:"S32 · Lower",type:"Lower",ex:[["Prensa 45°","5×12"],["Sentadilla barra","4×10"],["Hip thrust","5×12"],["Curl femoral","5×12"],["Sentadilla en Smith","4×12"],["Extensión piernas","4×15"]]},
       {s:33,name:"S33 · Push",type:"Push",ex:[["Press inclinado mancuernas","5×12"],["Cruces polea","5×15"],["Press hombros","5×10"],["Elevaciones laterales en polea","6×20"],["Press francés","4×12"],["Fondos","4×12"]]},
-      {s:34,name:"S34 · Pull",type:"Pull",ex:[["Dominadas agarre neutro","5×8"],["Jalón al pecho","5×12"],["Remo polea baja","5×12"],["Cruces inversos en polea","5×20"],["Curl martillo","5×12"],["Curl máquina","4×12"]]},
+      {s:34,name:"S34 · Pull",type:"Pull",ex:[["Dominadas agarre neutro","5×8"],["Jalón al pecho","5×12"],["Remo polea baja","5×12"],["Cruces inversos en polea","5×20"],["Curl martillo","5×12"],["Curl bíceps máquina","4×12"]]},
       {s:35,name:"S35 · Full Body",type:"Full",ex:[["Press banca","5×10"],["Dominadas","4×8"],["Prensa 45°","5×12"],["Press Arnold","4×10"],["Hip thrust","5×12"],["Curl bíceps","4×12"],["Tríceps","4×15"]]},
       {s:36,name:"S36 · Cardio+Core",type:"Cardio",ex:[["Caminadora","1×35min"],["Plancha","5×60s"],["Rueda abdominal","6×25"],["Elevación de piernas","6×20"],["Plancha lateral","5×45s"],["Mountain climbers","5×30"]]},
     ]},
@@ -3536,7 +3544,7 @@ const PRESET_ROUTINES=[
       {s:37,name:"S37 · Upper",type:"Upper",ex:[["Press banca barra","4×8"],["Dominadas agarre neutro","4×8"],["Press inclinado mancuernas","4×10"],["Remo invertido","4×10"],["Elevaciones laterales","4×20"],["Curl bíceps","3×12"],["Tríceps","3×15"]]},
       {s:38,name:"S38 · Lower",type:"Lower",ex:[["Prensa 45°","4×10"],["Hip thrust","4×10"],["Curl femoral","4×12"],["Extensión piernas","3×15"],["Gemelo en prensa","3×20"],["Zancada kettlebell","3×12"]]},
       {s:39,name:"S39 · Push",type:"Push",ex:[["Press inclinado mancuernas","4×10"],["Cruces polea","4×15"],["Press hombros mancuernas","4×10"],["Elevaciones laterales en polea","4×20"],["Press francés","3×12"],["Fondos","3×12"]]},
-      {s:40,name:"S40 · Pull",type:"Pull",ex:[["Jalón al pecho","4×10"],["Remo polea baja","4×10"],["Pullover mancuerna","3×12"],["Cruces inversos en polea","4×20"],["Curl martillo","3×12"],["Curl máquina","3×12"]]},
+      {s:40,name:"S40 · Pull",type:"Pull",ex:[["Jalón al pecho","4×10"],["Remo polea baja","4×10"],["Pullover mancuerna","3×12"],["Cruces inversos en polea","4×20"],["Curl martillo","3×12"],["Curl bíceps máquina","3×12"]]},
       {s:41,name:"S41 · Full Body",type:"Full",ex:[["Press banca","4×8"],["Remo mancuerna","4×10"],["Prensa 45°","4×10"],["Press Arnold","3×10"],["Hip thrust","4×10"],["Curl bíceps","3×12"],["Tríceps","3×15"]]},
       {s:42,name:"S42 · Cardio+Core",type:"Cardio",ex:[["Caminadora","1×30min"],["Plancha","4×60s"],["Rueda abdominal","4×20"],["Elevación de piernas","4×15"],["Plancha lateral","4×45s"],["Mountain climbers","4×25"]]},
     ]},
@@ -3544,66 +3552,66 @@ const PRESET_ROUTINES=[
       {s:43,name:"S43 · Upper",type:"Upper",ex:[["Press banca barra","5×8"],["Dominadas agarre neutro","5×8"],["Press inclinado mancuernas","4×10"],["Remo invertido","4×10"],["Elevaciones laterales","5×20"],["Curl bíceps","4×10"],["Tríceps cuerda","4×15"]]},
       {s:44,name:"S44 · Lower",type:"Lower",ex:[["Prensa 45°","5×10"],["Hip thrust","5×10"],["Curl femoral","4×10"],["Sentadilla en Smith","4×12"],["Extensión piernas","4×15"],["Gemelo en prensa","4×20"]]},
       {s:45,name:"S45 · Push",type:"Push",ex:[["Press inclinado mancuernas","5×10"],["Cruces polea","5×15"],["Press hombros","5×10"],["Elevaciones laterales en polea","5×20"],["Press francés","4×10"],["Fondos","4×12"]]},
-      {s:46,name:"S46 · Pull",type:"Pull",ex:[["Dominadas lastradas","5×8"],["Jalón al pecho","5×10"],["Remo polea baja","5×10"],["Cruces inversos en polea","5×20"],["Curl martillo","4×12"],["Curl máquina","4×12"]]},
+      {s:46,name:"S46 · Pull",type:"Pull",ex:[["Dominadas lastradas","5×8"],["Jalón al pecho","5×10"],["Remo polea baja","5×10"],["Cruces inversos en polea","5×20"],["Curl martillo","4×12"],["Curl bíceps máquina","4×12"]]},
       {s:47,name:"S47 · Full Body",type:"Full",ex:[["Press banca","5×8"],["Dominadas","5×8"],["Prensa 45°","4×10"],["Press hombros","4×10"],["Hip thrust","4×10"],["Curl bíceps","4×10"],["Tríceps","4×15"]]},
       {s:48,name:"S48 · Cardio+Core 🏆",type:"Cardio",ex:[["Caminadora","1×35min"],["Plancha","6×60s"],["Rueda abdominal","6×25"],["Elevación de piernas","6×20"],["Plancha lateral","6×45s"],["Mountain climbers","6×30"]]},
     ]},
   ]},
   {id:'preset_gluteo_pierna',name:'Glúteo & Pierna',plan:[
     {num:1,title:"Base glúteo-pierna",days:[
-      {s:1,name:"S1 · Piernas",type:"Lower",ex:[["Sentadilla con barra","4×10"],["Prensa 45°","4×12"],["Zancada caminando (mancuernas)","3×12"],["Extensión de piernas","3×15"],["Hip thrust con barra","4×12"],["Elevación de gemelo de pie","4×15"]]},
-      {s:2,name:"S2 · Empuje",type:"Push",ex:[["Press banca con barra","4×10"],["Press inclinado mancuernas","3×12"],["Press de hombros mancuernas","3×12"],["Elevaciones laterales","4×15"],["Fondos en banco","3×12"],["Tríceps en polea","3×12"]]},
+      {s:1,name:"S1 · Piernas",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Zancada caminando (mancuernas)","3×12"],["Extensión piernas","3×15"],["Hip thrust con barra","4×12"],["Elevación de gemelo de pie","4×15"]]},
+      {s:2,name:"S2 · Empuje",type:"Push",ex:[["Press banca barra","4×10"],["Press inclinado mancuernas","3×12"],["Press hombros mancuernas","3×12"],["Elevaciones laterales","4×15"],["Fondos en banco","3×12"],["Tríceps polea","3×12"]]},
       {s:3,name:"S3 · Glúteo",type:"Lower",ex:[["Peso muerto rumano","4×10"],["Hip thrust con barra","4×12"],["Curl femoral tumbado","4×12"],["Patada de glúteo en polea","3×15"],["Hiperextensiones","3×12"],["Abductores en máquina","3×20"]]},
-      {s:4,name:"S4 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","4×8"],["Remo con barra","4×10"],["Remo en máquina","3×12"],["Pájaros con mancuernas","4×15"],["Curl bíceps con barra","3×12"],["Curl martillo","3×12"]]},
+      {s:4,name:"S4 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","4×8"],["Remo barra","4×10"],["Remo en máquina","3×12"],["Pájaros con mancuernas","4×15"],["Curl bíceps barra","3×12"],["Curl martillo","3×12"]]},
       {s:5,name:"S5 · Piernas+Abs",type:"Lower",ex:[["Sentadilla búlgara","3×12"],["Step up con mancuernas","3×12"],["Hip thrust a una pierna","3×12"],["Abductores en polea","3×15"],["Plancha","4×45s"],["Elevación de piernas colgado","4×15"],["Leñador en polea","4×20"]]},
     ]},
     {num:2,title:"Progresión",days:[
-      {s:6,name:"S6 · Piernas",type:"Lower",ex:[["Sentadilla con barra","5×10"],["Prensa 45°","4×12"],["Zancada caminando (mancuernas)","3×12"],["Extensión de piernas","4×15"],["Hip thrust con barra","5×12"],["Elevación de gemelo de pie","4×15"]]},
-      {s:7,name:"S7 · Empuje",type:"Push",ex:[["Press banca con barra","5×10"],["Press inclinado mancuernas","4×12"],["Press de hombros mancuernas","3×12"],["Elevaciones laterales","4×15"],["Fondos en banco","4×12"],["Tríceps en polea","4×12"]]},
+      {s:6,name:"S6 · Piernas",type:"Lower",ex:[["Sentadilla barra","5×10"],["Prensa 45°","4×12"],["Zancada caminando (mancuernas)","3×12"],["Extensión piernas","4×15"],["Hip thrust con barra","5×12"],["Elevación de gemelo de pie","4×15"]]},
+      {s:7,name:"S7 · Empuje",type:"Push",ex:[["Press banca barra","5×10"],["Press inclinado mancuernas","4×12"],["Press hombros mancuernas","3×12"],["Elevaciones laterales","4×15"],["Fondos en banco","4×12"],["Tríceps polea","4×12"]]},
       {s:8,name:"S8 · Glúteo",type:"Lower",ex:[["Peso muerto rumano","5×10"],["Hip thrust con barra","4×12"],["Curl femoral tumbado","4×12"],["Patada de glúteo en polea","4×15"],["Hiperextensiones","3×12"],["Abductores en máquina","4×20"]]},
-      {s:9,name:"S9 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×8"],["Remo con barra","4×10"],["Remo en máquina","4×12"],["Pájaros con mancuernas","4×15"],["Curl bíceps con barra","4×12"],["Curl martillo","4×12"]]},
+      {s:9,name:"S9 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×8"],["Remo barra","4×10"],["Remo en máquina","4×12"],["Pájaros con mancuernas","4×15"],["Curl bíceps barra","4×12"],["Curl martillo","4×12"]]},
       {s:10,name:"S10 · Piernas+Abs",type:"Lower",ex:[["Sentadilla búlgara","4×12"],["Step up con mancuernas","3×12"],["Hip thrust a una pierna","3×12"],["Abductores en polea","4×15"],["Plancha","4×50s"],["Elevación de piernas colgado","4×15"],["Leñador en polea","4×20"]]},
     ]},
     {num:3,title:"Intensidad",days:[
-      {s:11,name:"S11 · Piernas",type:"Lower",ex:[["Sentadilla con barra","5×8"],["Prensa 45°","5×10"],["Zancada caminando (mancuernas)","4×10"],["Extensión de piernas","4×15"],["Hip thrust con barra","5×10"],["Elevación de gemelo de pie","5×15"]]},
-      {s:12,name:"S12 · Empuje",type:"Push",ex:[["Press banca con barra","5×8"],["Press inclinado mancuernas","4×10"],["Press de hombros mancuernas","4×10"],["Elevaciones laterales","5×15"],["Fondos en banco","4×12"],["Tríceps en polea","4×12"]]},
+      {s:11,name:"S11 · Piernas",type:"Lower",ex:[["Sentadilla barra","5×8"],["Prensa 45°","5×10"],["Zancada caminando (mancuernas)","4×10"],["Extensión piernas","4×15"],["Hip thrust con barra","5×10"],["Elevación de gemelo de pie","5×15"]]},
+      {s:12,name:"S12 · Empuje",type:"Push",ex:[["Press banca barra","5×8"],["Press inclinado mancuernas","4×10"],["Press hombros mancuernas","4×10"],["Elevaciones laterales","5×15"],["Fondos en banco","4×12"],["Tríceps polea","4×12"]]},
       {s:13,name:"S13 · Glúteo",type:"Lower",ex:[["Peso muerto rumano","5×8"],["Hip thrust con barra","5×10"],["Curl femoral tumbado","5×10"],["Patada de glúteo en polea","4×15"],["Hiperextensiones","4×12"],["Abductores en máquina","4×20"]]},
-      {s:14,name:"S14 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×6"],["Remo con barra","5×8"],["Remo en máquina","4×10"],["Pájaros con mancuernas","5×15"],["Curl bíceps con barra","4×10"],["Curl martillo","4×12"]]},
+      {s:14,name:"S14 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×6"],["Remo barra","5×8"],["Remo en máquina","4×10"],["Pájaros con mancuernas","5×15"],["Curl bíceps barra","4×10"],["Curl martillo","4×12"]]},
       {s:15,name:"S15 · Piernas+Abs",type:"Lower",ex:[["Sentadilla búlgara","4×10"],["Step up con mancuernas","4×12"],["Hip thrust a una pierna","4×12"],["Abductores en polea","4×15"],["Plancha","4×60s"],["Elevación de piernas colgado","5×15"],["Leñador en polea","5×20"]]},
     ]},
     {num:4,title:"Deload",days:[
-      {s:16,name:"S16 · Piernas",type:"Lower",ex:[["Sentadilla con barra","3×10"],["Prensa 45°","3×12"],["Zancada caminando (mancuernas)","2×12"],["Extensión de piernas","3×15"],["Hip thrust con barra","3×12"],["Elevación de gemelo de pie","3×15"]]},
-      {s:17,name:"S17 · Empuje",type:"Push",ex:[["Press banca con barra","3×10"],["Press inclinado mancuernas","3×12"],["Press de hombros mancuernas","2×12"],["Elevaciones laterales","3×15"],["Fondos en banco","2×12"],["Tríceps en polea","2×12"]]},
+      {s:16,name:"S16 · Piernas",type:"Lower",ex:[["Sentadilla barra","3×10"],["Prensa 45°","3×12"],["Zancada caminando (mancuernas)","2×12"],["Extensión piernas","3×15"],["Hip thrust con barra","3×12"],["Elevación de gemelo de pie","3×15"]]},
+      {s:17,name:"S17 · Empuje",type:"Push",ex:[["Press banca barra","3×10"],["Press inclinado mancuernas","3×12"],["Press hombros mancuernas","2×12"],["Elevaciones laterales","3×15"],["Fondos en banco","2×12"],["Tríceps polea","2×12"]]},
       {s:18,name:"S18 · Glúteo",type:"Lower",ex:[["Peso muerto rumano","3×10"],["Hip thrust con barra","3×12"],["Curl femoral tumbado","3×12"],["Patada de glúteo en polea","3×15"],["Hiperextensiones","2×12"],["Abductores en máquina","2×20"]]},
-      {s:19,name:"S19 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","3×8"],["Remo con barra","3×10"],["Remo en máquina","2×12"],["Pájaros con mancuernas","3×15"],["Curl bíceps con barra","2×12"],["Curl martillo","2×12"]]},
+      {s:19,name:"S19 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","3×8"],["Remo barra","3×10"],["Remo en máquina","2×12"],["Pájaros con mancuernas","3×15"],["Curl bíceps barra","2×12"],["Curl martillo","2×12"]]},
       {s:20,name:"S20 · Piernas+Abs",type:"Lower",ex:[["Sentadilla búlgara","2×12"],["Step up con mancuernas","2×12"],["Hip thrust a una pierna","2×12"],["Abductores en polea","2×15"],["Plancha","3×30s"],["Elevación de piernas colgado","3×12"],["Leñador en polea","3×15"]]},
     ]},
     {num:5,title:"Choque glúteo-pierna",days:[
-      {s:21,name:"S21 · Piernas",type:"Lower",ex:[["Sentadilla con barra","5×10"],["Prensa 45°","5×12"],["Zancada caminando (mancuernas)","4×12"],["Extensión de piernas","4×15"],["Hip thrust con barra","5×12"],["Elevación de gemelo de pie","5×15"]]},
-      {s:22,name:"S22 · Empuje",type:"Push",ex:[["Press banca con barra","5×10"],["Press inclinado mancuernas","4×12"],["Press de hombros mancuernas","4×12"],["Elevaciones laterales","5×15"],["Fondos en banco","4×12"],["Tríceps en polea","4×12"]]},
+      {s:21,name:"S21 · Piernas",type:"Lower",ex:[["Sentadilla barra","5×10"],["Prensa 45°","5×12"],["Zancada caminando (mancuernas)","4×12"],["Extensión piernas","4×15"],["Hip thrust con barra","5×12"],["Elevación de gemelo de pie","5×15"]]},
+      {s:22,name:"S22 · Empuje",type:"Push",ex:[["Press banca barra","5×10"],["Press inclinado mancuernas","4×12"],["Press hombros mancuernas","4×12"],["Elevaciones laterales","5×15"],["Fondos en banco","4×12"],["Tríceps polea","4×12"]]},
       {s:23,name:"S23 · Glúteo",type:"Lower",ex:[["Peso muerto rumano","5×10"],["Hip thrust con barra","5×12"],["Curl femoral tumbado","5×12"],["Patada de glúteo en polea","4×15"],["Hiperextensiones","4×12"],["Abductores en máquina","4×20"]]},
-      {s:24,name:"S24 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×8"],["Remo con barra","5×10"],["Remo en máquina","4×12"],["Pájaros con mancuernas","5×15"],["Curl bíceps con barra","4×12"],["Curl martillo","4×12"]]},
+      {s:24,name:"S24 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×8"],["Remo barra","5×10"],["Remo en máquina","4×12"],["Pájaros con mancuernas","5×15"],["Curl bíceps barra","4×12"],["Curl martillo","4×12"]]},
       {s:25,name:"S25 · Piernas+Abs",type:"Lower",ex:[["Sentadilla búlgara","4×12"],["Step up con mancuernas","4×12"],["Hip thrust a una pierna","4×12"],["Abductores en polea","4×15"],["Plancha","5×60s"],["Elevación de piernas colgado","5×15"],["Leñador en polea","5×20"]]},
     ]},
     {num:6,title:"Peak",days:[
-      {s:26,name:"S26 · Piernas",type:"Lower",ex:[["Sentadilla con barra","6×10"],["Prensa 45°","5×12"],["Zancada caminando (mancuernas)","4×12"],["Extensión de piernas","5×15"],["Hip thrust con barra","6×12"],["Elevación de gemelo de pie","5×15"]]},
-      {s:27,name:"S27 · Empuje",type:"Push",ex:[["Press banca con barra","5×10"],["Press inclinado mancuernas","5×12"],["Press de hombros mancuernas","5×10"],["Elevaciones laterales","5×20"],["Fondos en banco","4×12"],["Tríceps en polea","5×12"]]},
+      {s:26,name:"S26 · Piernas",type:"Lower",ex:[["Sentadilla barra","6×10"],["Prensa 45°","5×12"],["Zancada caminando (mancuernas)","4×12"],["Extensión piernas","5×15"],["Hip thrust con barra","6×12"],["Elevación de gemelo de pie","5×15"]]},
+      {s:27,name:"S27 · Empuje",type:"Push",ex:[["Press banca barra","5×10"],["Press inclinado mancuernas","5×12"],["Press hombros mancuernas","5×10"],["Elevaciones laterales","5×20"],["Fondos en banco","4×12"],["Tríceps polea","5×12"]]},
       {s:28,name:"S28 · Glúteo",type:"Lower",ex:[["Peso muerto rumano","5×8"],["Hip thrust con barra","5×12"],["Curl femoral tumbado","5×10"],["Patada de glúteo en polea","5×15"],["Hiperextensiones","5×12"],["Abductores en máquina","5×20"]]},
-      {s:29,name:"S29 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×6"],["Remo con barra","5×10"],["Remo en máquina","5×12"],["Pájaros con mancuernas","5×20"],["Curl bíceps con barra","5×10"],["Curl martillo","5×12"]]},
+      {s:29,name:"S29 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×6"],["Remo barra","5×10"],["Remo en máquina","5×12"],["Pájaros con mancuernas","5×20"],["Curl bíceps barra","5×10"],["Curl martillo","5×12"]]},
       {s:30,name:"S30 · Piernas+Abs",type:"Lower",ex:[["Sentadilla búlgara","4×10"],["Step up con mancuernas","4×12"],["Hip thrust a una pierna","4×12"],["Abductores en polea","5×15"],["Plancha","5×60s"],["Elevación de piernas colgado","5×20"],["Leñador en polea","5×25"]]},
     ]},
     {num:7,title:"Consolidación",days:[
-      {s:31,name:"S31 · Piernas",type:"Lower",ex:[["Sentadilla con barra","4×10"],["Prensa 45°","4×12"],["Zancada caminando (mancuernas)","3×12"],["Extensión de piernas","4×15"],["Hip thrust con barra","4×12"],["Elevación de gemelo de pie","4×15"]]},
-      {s:32,name:"S32 · Empuje",type:"Push",ex:[["Press banca con barra","4×10"],["Press inclinado mancuernas","4×12"],["Press de hombros mancuernas","4×12"],["Elevaciones laterales","4×15"],["Fondos en banco","3×12"],["Tríceps en polea","3×12"]]},
+      {s:31,name:"S31 · Piernas",type:"Lower",ex:[["Sentadilla barra","4×10"],["Prensa 45°","4×12"],["Zancada caminando (mancuernas)","3×12"],["Extensión piernas","4×15"],["Hip thrust con barra","4×12"],["Elevación de gemelo de pie","4×15"]]},
+      {s:32,name:"S32 · Empuje",type:"Push",ex:[["Press banca barra","4×10"],["Press inclinado mancuernas","4×12"],["Press hombros mancuernas","4×12"],["Elevaciones laterales","4×15"],["Fondos en banco","3×12"],["Tríceps polea","3×12"]]},
       {s:33,name:"S33 · Glúteo",type:"Lower",ex:[["Peso muerto rumano","4×10"],["Hip thrust con barra","4×12"],["Curl femoral tumbado","4×12"],["Patada de glúteo en polea","4×15"],["Hiperextensiones","3×12"],["Abductores en máquina","3×20"]]},
-      {s:34,name:"S34 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","4×8"],["Remo con barra","4×10"],["Remo en máquina","4×12"],["Pájaros con mancuernas","4×15"],["Curl bíceps con barra","3×12"],["Curl martillo","3×12"]]},
+      {s:34,name:"S34 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","4×8"],["Remo barra","4×10"],["Remo en máquina","4×12"],["Pájaros con mancuernas","4×15"],["Curl bíceps barra","3×12"],["Curl martillo","3×12"]]},
       {s:35,name:"S35 · Piernas+Abs",type:"Lower",ex:[["Sentadilla búlgara","3×12"],["Step up con mancuernas","3×12"],["Hip thrust a una pierna","3×12"],["Abductores en polea","4×15"],["Plancha","4×45s"],["Elevación de piernas colgado","4×15"],["Leñador en polea","4×20"]]},
     ]},
     {num:8,title:"Semana final 🏆",days:[
-      {s:36,name:"S36 · Piernas",type:"Lower",ex:[["Sentadilla con barra","5×10"],["Prensa 45°","5×12"],["Zancada caminando (mancuernas)","4×12"],["Extensión de piernas","5×15"],["Hip thrust con barra","5×12"],["Elevación de gemelo de pie","5×15"]]},
-      {s:37,name:"S37 · Empuje",type:"Push",ex:[["Press banca con barra","5×10"],["Press inclinado mancuernas","5×12"],["Press de hombros mancuernas","5×10"],["Elevaciones laterales","5×20"],["Fondos en banco","4×12"],["Tríceps en polea","5×12"]]},
+      {s:36,name:"S36 · Piernas",type:"Lower",ex:[["Sentadilla barra","5×10"],["Prensa 45°","5×12"],["Zancada caminando (mancuernas)","4×12"],["Extensión piernas","5×15"],["Hip thrust con barra","5×12"],["Elevación de gemelo de pie","5×15"]]},
+      {s:37,name:"S37 · Empuje",type:"Push",ex:[["Press banca barra","5×10"],["Press inclinado mancuernas","5×12"],["Press hombros mancuernas","5×10"],["Elevaciones laterales","5×20"],["Fondos en banco","4×12"],["Tríceps polea","5×12"]]},
       {s:38,name:"S38 · Glúteo",type:"Lower",ex:[["Peso muerto rumano","5×8"],["Hip thrust con barra","5×12"],["Curl femoral tumbado","5×10"],["Patada de glúteo en polea","5×15"],["Hiperextensiones","5×12"],["Abductores en máquina","5×20"]]},
-      {s:39,name:"S39 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×6"],["Remo con barra","5×10"],["Remo en máquina","5×12"],["Pájaros con mancuernas","5×20"],["Curl bíceps con barra","5×10"],["Curl martillo","5×12"]]},
+      {s:39,name:"S39 · Tirón",type:"Pull",ex:[["Dominadas (o jalón al pecho)","5×6"],["Remo barra","5×10"],["Remo en máquina","5×12"],["Pájaros con mancuernas","5×20"],["Curl bíceps barra","5×10"],["Curl martillo","5×12"]]},
       {s:40,name:"S40 · Piernas+Abs",type:"Lower",ex:[["Sentadilla búlgara","4×10"],["Step up con mancuernas","4×12"],["Hip thrust a una pierna","4×12"],["Abductores en polea","5×15"],["Plancha","5×60s"],["Elevación de piernas colgado","5×20"],["Leñador en polea","5×25"]]},
     ]},
   ]},
@@ -3866,7 +3874,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-11-02 21:19';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-11-02 21:39';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5186,6 +5194,82 @@ function getPrevKgs(day){
   return map;
 }
 
+/* Los cambios de ejercicio que se quedaron en la sesión (02/11/2026). En los
+   datos de Jhon, 42 ejercicios de una rutina se hicieron con otro distinto del
+   plan (otra máquina, la libre ocupada...) y cada semana había que volver a
+   cambiarlos a mano. Se deducen de lo ya registrado en esta rutina: en un día
+   ya hecho, si faltan del plan tantos ejercicios como sobran de otros, se
+   emparejan por orden (el primero que falta con el primero que sobra). Manda
+   la vez más reciente: si después se volvió a hacer el del plan, se olvida.
+   Devuelve [{de, a}] para los ejercicios del día `day`. */
+function cambiosRecordados(rutina, day){
+  const ses=(rutina&&rutina.sessions)||{};
+  const nombre=e=>Array.isArray(e)?e[0]:(e&&e.name)||'';
+  const hechos=(rutina&&rutina.plan||[]).flatMap(w=>w.days||[])
+    .filter(d=>d.s<day.s&&ses[d.s]).sort((a,b)=>b.s-a.s);      // la más reciente primero
+  const decidido={};                                           // clave del plan → nombre usado o null
+  for(const d of hechos){
+    const plan=(d.ex||[]).map(nombre).filter(Boolean);
+    const hecho=(ses[d.s].exercises||[])
+      .filter(e=>(e.sets||[]).some(v=>v.reps!==''&&v.reps!=null))
+      .map(e=>e.name).filter(Boolean);
+    const kPlan=new Set(plan.map(claveEjercicioLaxa)), kHecho=new Set(hecho.map(claveEjercicioLaxa));
+    const faltan=plan.filter(n=>!kHecho.has(claveEjercicioLaxa(n)));
+    const sobran=hecho.filter(n=>!kPlan.has(claveEjercicioLaxa(n)));
+    plan.forEach(n=>{ const k=claveEjercicioLaxa(n); if(kHecho.has(k)&&!(k in decidido)) decidido[k]=null; });
+    if(faltan.length!==sobran.length) continue;                // se saltó alguno: no se adivina
+    faltan.forEach((n,i)=>{ const k=claveEjercicioLaxa(n); if(!(k in decidido)) decidido[k]=sobran[i]; });
+  }
+  const delDia=new Set((day.ex||[]).map(e=>claveEjercicioLaxa(nombre(e))));
+  return (day.ex||[]).map(nombre)
+    .filter(n=>decidido[claveEjercicioLaxa(n)]&&!delDia.has(claveEjercicioLaxa(decidido[claveEjercicioLaxa(n)])))
+    .map(n=>({de:n,a:decidido[claveEjercicioLaxa(n)]}));
+}
+
+let cambiosPendientes=[];
+function pintarCambiosRecordados(){
+  const el=document.getElementById('aviso-cambios');
+  if(!el)return;
+  if(!cambiosPendientes.length){ el.style.display='none'; el.innerHTML=''; return; }
+  const lista=cambiosPendientes.map(c=>
+    `<li><b>${escaparHTML(c.de)}</b> → <b>${escaparHTML(c.a)}</b></li>`).join('');
+  el.style.display='block';
+  el.innerHTML=`La última vez cambiaste ${cambiosPendientes.length===1?'este ejercicio':'estos ejercicios'}:
+    <ul style="margin:6px 0 0 18px;padding:0;">${lista}</ul>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+      <button class="btn-sm" onclick="usarCambiosRecordados('hoy')">Usar los mismos</button>
+      <button class="btn-sm" onclick="usarCambiosRecordados('plan')">Cambiarlos en todo el plan</button>
+      <button class="btn-sm" onclick="usarCambiosRecordados(null)">Seguir el plan</button>
+    </div>`;
+}
+
+function usarCambiosRecordados(ambito){
+  const cambios=cambiosPendientes;
+  cambiosPendientes=[];
+  pintarCambiosRecordados();
+  if(!ambito||!cambios.length)return;
+  const day=findDay(curSession);
+  const prev=day?getPrevKgs(day):{};
+  cambios.forEach(c=>{
+    const ex=curEx.find(e=>claveEjercicioLaxa(e.name)===claveEjercicioLaxa(c.de));
+    if(!ex)return;
+    ex.name=c.a;
+    // Los kilos de partida, los del ejercicio que se hace de verdad.
+    const kg=prev[claveEjercicioLaxa(c.a)]||'';
+    ex.sets.forEach(v=>{ if(v.reps===''||v.reps==null) v.kg=kg; });
+  });
+  if(ambito==='plan'){
+    const act=getActive();
+    cambios.forEach(c=>renombrarEnPlan(act,c.de,c.a));
+    save();
+    buildSessionList();
+    updateHome();
+  }
+  guardarBorrador();
+  renderExButtons();
+  aviso(ambito==='plan'?'Cambiado en todo el plan':'Cambiado en esta sesión','bien');
+}
+
 /* ─────────── Borradores de sesión ───────────
    Lo que se teclea vivía SOLO en memoria (curEx): salir del formulario sin
    pulsar "Guardar sesión" lo perdía todo, y con dos botones de volver era
@@ -5302,6 +5386,9 @@ if(curFeeling){const map={'😴':'feel-0','😐':'feel-1','💪':'feel-2','🔥'
       return{name,sets:Array.from({length:n},()=>({kg,reps:''}))};
     });
   }
+  // Solo al empezar una sesión nueva: en una ya registrada o a medias, ya se decidió.
+  cambiosPendientes=base?[]:cambiosRecordados(getActive(),day);
+  pintarCambiosRecordados();
   document.getElementById('ex-list-view').style.display='block';
 document.getElementById('ex-detail-view').style.display='none';
 document.getElementById('cardio-panel').style.display='none';
@@ -5557,7 +5644,8 @@ function columnasSeries(ex,u){
     ['Reps', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp set-reps" value="${escaparHTML(String(set.reps||''))}" placeholder="${escaparHTML(obj)}"
         aria-label="Repeticiones de la serie ${si+1}" onchange="anotarReps(${si},this.value)">`]
   ];
-  if(DB.rirActivo) filas.push(['RIR', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp" value="${set.rir!=null?escaparHTML(String(set.rir)):''}" placeholder="RIR"
+  const rirObj=rirObjetivo(ex.name)||'RIR';
+  if(DB.rirActivo) filas.push(['RIR', (set,si)=>`<input type="text" inputmode="numeric" class="set-inp set-rir" value="${set.rir!=null?escaparHTML(String(set.rir)):''}" placeholder="${escaparHTML(rirObj)}"
         aria-label="RIR de la serie ${si+1}" onchange="curEx[${curExIndex}].sets[${si}].rir=this.value">`]);
   let h=`<div class="sc-grid" style="grid-template-columns:40px repeat(${n},minmax(58px,1fr)) 38px">`;
   h+=`<div class="sc-lab">Serie</div>`+ex.sets.map((_,si)=>col(si,`<div class="sc-cab">${si+1}<button type="button" class="sc-quitar"
@@ -5581,6 +5669,24 @@ function objetivoReps(nombre){
   if(!e||!e[1]) return '';
   const partes=String(e[1]).split(/[×x]/);
   return partes.length>1 ? partes[1].trim() : '';
+}
+
+/* Cuántas repeticiones dejar en reserva, en gris en la casilla del RIR, como
+   las repeticiones del plan (02/11/2026). En los datos de Jhon casi una serie
+   de cada cuatro iba al fallo (RIR 0) y otra cuarta parte a 5 o más: lo útil
+   queda en medio. Los dos primeros ejercicios del día son los principales
+   (los que progresa el plan) y piden 1-2; el resto, 0-2. En la semana de
+   descarga, 3-4. Lo que no está en el plan, o se mide en tiempo, no lleva. */
+function rirObjetivo(nombre){
+  const d=buscarDiaEnPlan(getActive(), curSession);
+  if(!d||!nombre) return '';
+  const k=claveEjercicioLaxa(nombre);
+  const i=(d.dia.ex||[]).findIndex(([n])=>claveEjercicioLaxa(n)===k);
+  if(i<0) return '';
+  if(/\d+\s*(s|min)$/.test(String(d.dia.ex[i][1]||''))) return '';   // "3×40s", "1×30min"
+  const sem=(getActivePlan()||[]).find(w=>w.num===d.semana);
+  if(sem && /descarga|deload/i.test(sem.title||'')) return '3-4';
+  return i<2 ? '1-2' : '0-2';
 }
 
 /* Apuntar las repeticiones ya NO arranca el descanso (28/09/2026): arrancaba
@@ -5729,7 +5835,16 @@ function recordsDeSesion(rutina, ejercicios){
   (ejercicios||[]).forEach(ex=>{
     if(!ex||!ex.name)return;
     const kgs=(ex.sets||[]).map(v=>parseFloat(v.kg)).filter(v=>!isNaN(v)&&v>0);
-    if(!kgs.length)return;
+    if(!kgs.length){
+      // Sin kilos: si siempre se ha hecho con el propio peso, cuentan las repeticiones.
+      const reps=(ex.sets||[]).map(v=>parseFloat(String(v.reps).replace(',','.'))).filter(v=>v>0);
+      if(!reps.length||!sinPeso(rutina,ex.name))return;
+      const antes=serieDeRepeticiones(rutina,ex.name).map(p=>p.kg);
+      if(!antes.length)return;
+      const mejor=Math.max(...antes), ahora=Math.max(...reps);
+      if(ahora>mejor)out.push({nombre:ex.name,kg:ahora,mas:ahora-mejor,unidad:unidadReps(rutina,ex.name)});
+      return;
+    }
     const previos=serieDeCargas(rutina,ex.name).map(p=>p.kg);
     if(!previos.length)return;
     const mejor=Math.max(...previos), ahora=Math.max(...kgs);
@@ -5841,7 +5956,7 @@ function celebrarSesion({records,hechasAntes,sesion}){
   const ordenados=records.slice().sort((a,b)=>b.mas-a.mas);
   ordenados.slice(0,TOPE).forEach(r=>filas.push(celLinea('record','trofeo',
     'Marca personal en <b>'+escaparHTML(r.nombre)+'</b>',
-    pesoTexto(r.kg,unidadDe(DB.unidades,r.nombre)))));
+    r.unidad?num(r.kg)+' '+r.unidad:pesoTexto(r.kg,unidadDe(DB.unidades,r.nombre)))));
   if(ordenados.length>TOPE){
     const resto=ordenados.length-TOPE;
     filas.push(celLinea('record','trofeo',
@@ -6591,6 +6706,52 @@ function serieDeCargas(r, nombreEjercicio){
   return puntos;
 }
 
+/* Ejercicios con el propio peso (02/11/2026): dominadas, fondos o plancha se
+   apuntan sin kilos o a 0, y su gráfica era una raya plana en 0 y nunca daban
+   marca personal, aunque cada semana salieran más. Se miden por la mejor
+   serie: repeticiones, o segundos si el plan los pide en tiempo ("3×40s").
+   Cada punto lleva el valor en `kg` para que graficaCargas() valga igual. */
+function sinPeso(r, nombre){
+  const k = claveEjercicioLaxa(nombre);
+  if(!k) return false;
+  let hayReps = false;
+  for(const ses of Object.values((r && r.sessions) || {})){
+    for(const ex of (ses.exercises || [])){
+      if(claveEjercicioLaxa(ex.name) !== k) continue;
+      for(const v of (ex.sets || [])){
+        if(parseFloat(v.kg) > 0) return false;          // con algún kilo, va por kilos
+        if(parseFloat(v.reps) > 0) hayReps = true;
+      }
+    }
+  }
+  return hayReps;
+}
+
+function serieDeRepeticiones(r, nombre){
+  const puntos = [];
+  const k = claveEjercicioLaxa(nombre);
+  if(!k) return puntos;
+  const claves = Object.keys((r && r.sessions) || {}).map(Number).sort((a,b)=>a-b);
+  for(const s of claves){
+    const ses = r.sessions[s];
+    const ex = (ses.exercises || []).find(e => claveEjercicioLaxa(e.name) === k);
+    if(!ex) continue;
+    const reps = (ex.sets || []).map(v => parseFloat(String(v.reps).replace(',','.'))).filter(v => v > 0);
+    if(reps.length) puntos.push({ s, kg: Math.max(...reps), rir: null, fecha: ses.date || '' });
+  }
+  return puntos;
+}
+
+// 's' si en el plan va en tiempo ("3×40s"); si no, 'reps'.
+function unidadReps(r, nombre){
+  const k = claveEjercicioLaxa(nombre);
+  for(const sem of ((r && r.plan) || [])) for(const dia of (sem.days || [])) for(const e of (dia.ex || [])){
+    const [n, esq] = Array.isArray(e) ? e : [e && e.name, e && e.esquema];
+    if(claveEjercicioLaxa(n || '') === k) return /\d\s*s$/.test(String(esq || '')) ? 's' : 'reps';
+  }
+  return 'reps';
+}
+
 /* Los ejercicios distintos que tiene un plan, en orden de aparición. Vivía en
    el módulo (la usa el selector de la ficha del cliente); baja al script
    clásico porque la necesita también el cálculo de los retos, y aquí se puede
@@ -6930,7 +7091,8 @@ function pintarGraficaCargasEjercicio(){
   const r=getActive();
   if(!ex||!ex.name||!r){ wrap.innerHTML=''; return; }
 
-  const puntos=serieDeCargas(r,ex.name);
+  const porReps=sinPeso(r,ex.name);
+  const puntos=porReps?serieDeRepeticiones(r,ex.name):serieDeCargas(r,ex.name);
   if(puntos.length<2){
     wrap.innerHTML='<div class="section-title">Progresión</div>'+
       '<p style="font-size:12px;color:var(--muted);">'+
@@ -6940,12 +7102,12 @@ function pintarGraficaCargasEjercicio(){
     return;
   }
 
-  const u=unidadDe(DB.unidades,ex.name||'');
+  const u=porReps?unidadReps(r,ex.name):unidadDe(DB.unidades,ex.name||'');
   const primero=deKg(puntos[0].kg,u), ultimo=deKg(puntos[puntos.length-1].kg,u);
   const dif=Math.round((ultimo-primero)*10)/10;
   const resumen = dif>0 ? `+${num(dif)} ${u} desde la primera vez`
                 : dif<0 ? `${num(dif)} ${u} desde la primera vez`
-                        : 'mismo peso que la primera vez';
+                        : (porReps?'lo mismo':'mismo peso')+' que la primera vez';
 
   /* El año sobra en el eje: con ocho o diez sesiones las etiquetas se pisan y
      lo que importa es el día. toLocaleDateString('es-ES') no rellena con ceros
@@ -6962,7 +7124,7 @@ function pintarGraficaCargasEjercicio(){
     return;
   }
 
-  const cfg=graficaCargas(puntos,u+' máx. por sesión',
+  const cfg=graficaCargas(puntos,(porReps?(u==='s'?'segundos':'reps')+' en la mejor serie':u+' máx. por sesión'),
     {etiqueta:p=>p.fecha?etiquetaFecha(p.fecha):('S'+p.s), unidad:u});
 
   /* Lo que cuenta el RIR y el peso solo no puede: mismo peso con más margen es
@@ -6993,7 +7155,7 @@ function graficaCargas(puntos, etiquetaKg, cfg){
   cfg = cfg || {};
   /* Los puntos llegan en kilos (es lo que hay guardado); si el ejercicio se
      anota en libras, se convierten aquí, que es lo último antes de dibujar. */
-  const unidad = cfg.unidad === 'lb' ? 'lb' : 'kg';
+  const unidad = cfg.unidad || 'kg';   // 'reps' y 's' para los de peso corporal
   if(unidad === 'lb') puntos = puntos.map(p => Object.assign({}, p, {kg: deKg(p.kg, 'lb')}));
   const oscuro = window.matchMedia('(prefers-color-scheme:dark)').matches;
   const colorTexto = oscuro ? '#93a0bb' : '#4c5a76';
@@ -7417,6 +7579,15 @@ function updateHome(){
      quitó con el rediseño. */
   set('duo-adh',a?(a.hechas+'/'+a.previstas):'—');
   set('duo-adh-sub',a?(a.hechas+' de '+a.previstas+' de la semana '+a.num):'Sin plan activo');
+
+  /* Medirse cada semana (02/11/2026). En los datos de Jhon había cuatro medidas
+     en cinco meses: dejó de apuntarlas a la tercera semana y ya no se podía ver
+     si el plan funcionaba. Si la semana en curso ya tiene alguna sesión y aún
+     no tiene medida, la tarjeta del peso lo dice; tocarla lleva a Medidas. */
+  const tocaMedir=!!(a&&a.hechas>0&&!medidas.some(m=>+m.semana===+a.num));
+  const tarjetaPeso=document.getElementById('duo-peso-card');
+  if(tarjetaPeso)tarjetaPeso.classList.toggle('toca-medir',tocaMedir);
+  if(tocaMedir)set('duo-peso-sub','Toca medirte · semana '+a.num);
   const barras=document.getElementById('duo-adh-barras');
   if(barras){
     barras.innerHTML=a
@@ -13823,7 +13994,9 @@ function pintarSesionCliente(dia, ses){
 function pintarGraficaCargas(r, nombreEjercicio){
   const wrap = document.getElementById('detalle-grafica-wrap');
   if(!wrap) return;
-  const puntos = serieDeCargas(r, nombreEjercicio);
+  // Con el propio peso (dominadas, plancha...), por repeticiones: ver sinPeso().
+  const porReps = sinPeso(r, nombreEjercicio);
+  const puntos = porReps ? serieDeRepeticiones(r, nombreEjercicio) : serieDeCargas(r, nombreEjercicio);
   if(puntos.length < 2){
     wrap.innerHTML = '<p style="font-size:12px;color:var(--muted);">'+
       (puntos.length ? 'Solo hay un registro de este ejercicio: hace falta al menos otro para ver progresión.'
@@ -13835,9 +14008,9 @@ function pintarGraficaCargas(r, nombreEjercicio){
   if(typeof Chart==='undefined'){ wrap.innerHTML='<p style="font-size:12px;color:var(--muted);">La gráfica necesita conexión.</p>'; return; }
   /* La leyenda se queda siempre: aquí es lo único que dice de qué ejercicio es
      la gráfica (en el detalle del ejercicio el nombre está arriba). */
-  const uEx = unidadDe(detalle.unidades, nombreEjercicio);
+  const uEx = porReps ? unidadReps(r, nombreEjercicio) : unidadDe(detalle.unidades, nombreEjercicio);
   window._detalleChart = new Chart(document.getElementById('detalle-chart').getContext('2d'),
-    graficaCargas(puntos, nombreEjercicio + ' (' + uEx + ' máx.)',
+    graficaCargas(puntos, nombreEjercicio + ' (' + (porReps ? uEx + ', mejor serie' : uEx + ' máx.') + ')',
       {fuente:11, punto:5, leyendaSiempre:true, unidad:uEx}));
 }
 
