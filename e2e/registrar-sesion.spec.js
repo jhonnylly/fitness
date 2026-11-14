@@ -47,5 +47,5 @@ test('la sesión guardada sigue ahí al recargar, con sus kilos', async ({ page 
   expect(String(serie.kg).replace(',', '.')).toBe('62.5');
   expect(String(serie.reps)).toBe('8');
   await irA(page, 'Entrenar');
-  await expect(page.getByText(/1 de 3 sesiones/)).toBeVisible();
+  await expect(page.locator('#pane-log').getByText(/1 de 3 sesiones/)).toBeVisible();
 });

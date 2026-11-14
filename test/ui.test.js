@@ -3240,51 +3240,48 @@ async function appLista(page, url){
     ok(finura.saltado || (finura.sinTarjetaSuelta && finura.completos),
        'al soltar no queda ninguna tarjeta levantada ni se pierde ningún ejercicio');
 
-    console.log('\n13aa. El botón del dial, abajo');
-    /* 25/10/2026: el mini-dial (21/10), que a su vez sustituyó a la barra de
-       pestañas (23/09), se cambia por un botón amarillo que abre el aro de
-       Inicio en una capa. Jhon comparó las dos opciones en un prototipo. Los
-       botones de sección siguen (mismos ids), ocultos a la vista. */
+    console.log('\n13aa. La barra de abajo y la esfera de Inicio');
+    /* 14/11/2026: fuera el dial 3D y su botón amarillo. Jhon eligió, con el
+       rediseño de la esfera (prototipo de Ironio), una barra de pestañas
+       visible abajo. Los botones son los de siempre (mismos ids). */
     const barra = await page.evaluate(async ()=>{
       const tic = (ms=60) => new Promise(res => setTimeout(res, ms));
       const r = {};
       showTab('resumen', document.getElementById('tab-resumen'));
-      await tic(500);
-      const fab = document.getElementById('dial-fab');
-      const cs = getComputedStyle(fab);
-      const caja = fab.getBoundingClientRect();
-      const W = window.innerWidth, H = window.innerHeight;
-      r.fijo = cs.position === 'fixed';
-      r.centrado = Math.abs(caja.left + caja.width/2 - W/2) < 2;
-      r.abajo = caja.bottom <= H && H - caja.bottom < 40;
-      r.tactil = caja.width >= 44 && caja.height >= 44;
-      r.visible = !fab.classList.contains('oculto');
+      await tic(400);
       const nav = document.getElementById('mini-dial');
+      const caja = nav.getBoundingClientRect();
+      const W = window.innerWidth, H = window.innerHeight;
+      r.fija = getComputedStyle(nav).position === 'fixed';
+      r.abajo = Math.abs(caja.bottom - H) < 2 && caja.width >= Math.min(W, 600) - 2;
       r.orden = [...nav.querySelectorAll('.tab')].map(b => b.textContent.trim());
-      r.navOculta = nav.getBoundingClientRect().width <= 1;
+      r.tactil = [...nav.querySelectorAll('.tab')].every(b => { const c = b.getBoundingClientRect(); return c.width >= 44 && c.height >= 44; });
+      r.conIcono = [...nav.querySelectorAll('.tab')].every(b => b.querySelector('svg'));
+      r.marcaActiva = document.getElementById('tab-resumen').classList.contains('active');
+      r.sinDial = !document.getElementById('dial-fab') && !document.getElementById('dial-velo') && !document.getElementById('dial');
 
-      // Lo último de la pantalla no puede quedar debajo del botón.
+      // Lo último de la pantalla no puede quedar debajo de la barra.
       window.scrollTo(0, document.documentElement.scrollHeight);
       await tic();
       const ultimo = [...document.querySelectorAll('#pane-resumen > *')]
         .filter(e => e.getBoundingClientRect().height > 0).pop();
       r.contenidoLibre = ultimo.getBoundingClientRect().bottom <= caja.top + 1;
 
-      // Un toque abre el aro con la sección marcada; «Cerrar» lo devuelve a Inicio.
-      abrirMenuDial();
-      await tic(300);
-      r.abreElAro = document.getElementById('dial-velo').classList.contains('ver')
-                 && document.getElementById('dial-velo').contains(document.getElementById('dial'));
-      r.marcaLaSeccion = document.getElementById('dial-aro').getAttribute('aria-valuetext') === 'Resumen';
-      cerrarMenuDial();
-      await tic(300);
-      r.vuelveAInicio = document.getElementById('dial-zona').contains(document.getElementById('dial'));
-
-      // En Inicio, con el dial grande a la vista, se esconde.
+      // Inicio: la esfera con el día, EMPEZAR y la semana de lunes a domingo.
       showTab('inicio', document.getElementById('tab-inicio'));
       window.scrollTo(0, 0);
-      await tic(400);
-      r.escondidoEnInicio = fab.classList.contains('oculto');
+      await tic(300);
+      const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+      r.dia = document.getElementById('esf-dia').textContent === dias[new Date().getDay()];
+      const emp = document.getElementById('esf-empezar');
+      const ce = emp.getBoundingClientRect();
+      r.empezarGrande = ce.height >= 44 && ce.width >= 44;
+      r.empezarDice = /^(Empezar|Ver)$/.test(document.getElementById('esf-empezar-txt').textContent);
+      r.empezarSesion = (emp.getAttribute('aria-label') || '').length > 8;
+      r.sieteDias = document.querySelectorAll('#esf-dias li').length === 7
+                 && document.querySelectorAll('#esf-dias li.es-hoy').length === 1;
+      r.arcos = document.querySelectorAll('#esfera-zona [data-arco] .valor').length === 3;
+      r.empezarVisible = ce.bottom <= caja.top;
 
       // Ajustes: abre su panel y NO cambia de pestaña.
       r.engranajeFueraDeLaCabecera = !document.querySelector('header #config-btn');
@@ -3301,18 +3298,22 @@ async function appLista(page, url){
       showTab('inicio', document.getElementById('tab-inicio'));
       return r;
     });
-    ok(barra.fijo && barra.centrado && barra.abajo, 'el botón va fijo, abajo y en el centro');
-    ok(barra.tactil && barra.visible, 'es un blanco grande y se ve dentro de las secciones');
+    ok(barra.fija && barra.abajo, 'la barra va fija, abajo y de lado a lado');
     ok(barra.orden.join(',') === 'Inicio,Entrenar,Resumen,Medidas,Ajustes',
-       'los botones de sección siguen, en el orden del dial: '+barra.orden.join(' · '));
+       'las cinco secciones, en su orden: '+barra.orden.join(' · '));
     /* 23/09/2026: se llamaba "Registrar" y varias personas no daban con ella
        para empezar la sesión. Nadie piensa "voy a registrar". */
     ok(barra.orden[1] === 'Entrenar', '🔴 la sección dice lo que vas a hacer, no lo que hace la app');
-    ok(barra.navOculta, 'y están ocultos a la vista (quedan para los lectores de pantalla)');
-    ok(barra.contenidoLibre, '🔴 el botón no tapa lo último de la pantalla');
-    ok(barra.abreElAro && barra.marcaLaSeccion, 'abre el aro de Inicio con la sección en la que estás');
-    ok(barra.vuelveAInicio, 'al cerrarlo, el aro vuelve a su sitio en Inicio');
-    ok(barra.escondidoEnInicio, 'en Inicio se esconde: el dial grande ya hace de navegación');
+    ok(barra.tactil && barra.conIcono, 'cada pestaña es un blanco de 44 px como mínimo y lleva icono');
+    ok(barra.marcaActiva, 'la pestaña en la que estás se marca');
+    ok(barra.sinDial, 'el dial y su botón amarillo ya no están');
+    ok(barra.contenidoLibre, '🔴 la barra no tapa lo último de la pantalla');
+    ok(barra.dia, 'la esfera dice el día de hoy');
+    ok(barra.empezarGrande && barra.empezarDice && barra.empezarSesion,
+       'EMPEZAR es un blanco grande y dice a qué sesión lleva');
+    ok(barra.empezarVisible, '🔴 EMPEZAR se ve sin bajar: la barra no lo tapa');
+    ok(barra.sieteDias, 'la semana va de lunes a domingo, con hoy marcado');
+    ok(barra.arcos, 'los arcos de la esfera están (semana y programa)');
     ok(barra.engranajeFueraDeLaCabecera, 'Ajustes no vive en la cabecera');
     ok(barra.abreAjustes && barra.inicioSigueActivo,
        'Ajustes abre su panel sin cambiar de pestaña: no es una pestaña');

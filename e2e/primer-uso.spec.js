@@ -7,7 +7,7 @@ test('el onboarding deja la rutina elegida lista para entrenar', async ({ page }
   await irA(page, 'Entrenar');
 
   await expect(page.getByText('Semana 1 — Adaptación')).toBeVisible();
-  await expect(page.getByText(/0 de 3 sesiones/)).toBeVisible();
+  await expect(page.locator('#pane-log').getByText(/0 de 3 sesiones/)).toBeVisible();
   expect(await page.evaluate(() => getActive().name)).toBe('Primer Mes');
 });
 
