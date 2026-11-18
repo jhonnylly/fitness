@@ -3975,7 +3975,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-11-14 23:48';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-11-18 12:24';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7863,7 +7863,7 @@ function dialPintarGiro(){
     document.getElementById('dial-centro').setAttribute('aria-label',(ver?'Ver: ':'Empezar: ')+sesion);
   }
   document.getElementById('dial-destino').textContent=e.nivel?DIAL_SECCIONES[e.sel]
-    :empezar?(e.destinos.semana||''):destino;
+    :empezar?'':destino;   // en Inicio lo de la semana ya va en la tarjeta de los días (18/11)
   document.getElementById('dial-nombre').textContent=nombre;
   document.getElementById('dial-ayuda').textContent=ayuda;
 }
@@ -7979,11 +7979,14 @@ function dialYaEstas(){
    capa o cambió de pantalla, ese click caía en lo que había debajo (el centro
    del dial de Inicio, la tarjeta de hoy) y te llevaba a la sesión. Lo vio Jhon
    en su iPhone; con clics de ratón no pasa, con toques sí (prueba con
-   touchscreen.tap). Se traga el siguiente click, solo durante medio segundo. */
-function tragarClicFantasma(){
+   touchscreen.tap). Se traga el siguiente click, solo durante medio segundo.
+   18/11/2026: y solo si cae donde fue el toque (el fantasma repite el punto);
+   si no, tocar la esfera justo después de una sección no hacía nada. */
+function tragarClicFantasma(x,y){
   const hasta=Date.now()+500;
   const h=ev=>{ document.removeEventListener('click',h,true);
-    if(Date.now()<=hasta){ ev.stopPropagation(); ev.preventDefault(); } };
+    const lejos=x!=null&&Math.hypot(ev.clientX-x,ev.clientY-y)>40;
+    if(Date.now()<=hasta&&!lejos){ ev.stopPropagation(); ev.preventDefault(); } };
   document.addEventListener('click',h,true);
   setTimeout(()=>document.removeEventListener('click',h,true),600);
 }
@@ -8070,13 +8073,13 @@ function iniciarDial(){
     hist.push({t:performance.now(),r:est.x}); if(hist.length>6)hist.shift();
     est.v=0; dialPintarGiro();
   });
-  const fin=()=>{
+  const fin=ev=>{
     if(!ini)return; capa.classList.remove('agarrado');
     const {dentro,tocado}=ini, e=dialEstado; ini=null;
     if(!movido){
       if(tocado===null)return;
       // Lo que haga este toque puede quitar el aro de debajo del dedo.
-      tragarClicFantasma();
+      tragarClicFantasma(ev&&ev.clientX,ev&&ev.clientY);
       if(dentro){
         // Tocar el cian entra ya; tocar otro gira hasta él y arranca la barra.
         if(tocado===e.subSel)dialEntrarSub(tocado); else dialGirarSubA(tocado,dialAlParar);
@@ -8290,7 +8293,6 @@ function pintarEsferaDial(){
   dial.style.setProperty('--carga',fSem.toFixed(2));
   document.getElementById('dial-arco-sem').setAttribute('stroke-dashoffset',(100-fSem*100).toFixed(1));
   document.getElementById('dial-arco-plan').setAttribute('stroke-dashoffset',(100-fPlan*100).toFixed(1));
-  dialEstado.destinos.semana='Esta semana: '+r.enCurso+' de '+r.objetivo+(r.objetivo===1?' sesión':' sesiones');
 
   const racha=document.getElementById('dial-racha');
   racha.classList.toggle('hidden',!r.actual);

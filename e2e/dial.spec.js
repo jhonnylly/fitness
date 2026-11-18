@@ -26,7 +26,8 @@ test('arranca en Inicio, con la fecha y lo que toca hoy', async ({ page }) => {
   await expect(page.locator('#dial-centro')).toHaveAttribute('aria-label', /^Empezar: .*Sesión 1/);
   await expect(page.locator('#dial-nombre')).toContainText(/Sesión 1/);
   await expect(page.locator('#dial-ayuda')).toHaveText('Toca la esfera para empezar');
-  await expect(page.locator('#dial-destino')).toHaveText(/Esta semana: 0 de \d+ sesi/);
+  await expect(page.locator('#dial-destino')).toBeEmpty();   // ya lo dice la tarjeta
+  await expect(page.locator('#esf-semana-cuenta')).toHaveText(/0 de \d+ sesi/);
   await expect(page.locator('#esf-dias li')).toHaveCount(7);
   // Primer Mes son 4 semanas; la primera es la de ahora.
   await expect(page.locator('#dial-tira .dial-sem')).toHaveCount(4);

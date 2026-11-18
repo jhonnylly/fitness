@@ -65,6 +65,16 @@ async function irA(page, nombre){
     // atajo: sin pasar por sus opciones).
     await page.locator(`#dial-etiquetas g[aria-label="${nombre}"]`).click();
     await expect.poll(() => page.locator('#dial-aro').getAttribute('aria-valuetext')).toBe(nombre);
+    /* Si la máquina va cargada, la barra puede acabar antes del toque y abrir
+       sus opciones (18/11/2026): entonces el centro es «Volver», que las
+       cierra y deja la sección elegida; el siguiente toque ya entra. Se para la
+       barra para no competir con ella. */
+    await page.evaluate(() => dialCancelarEspera());
+    if(await page.locator('#dial').evaluate(d => d.classList.contains('sub'))){
+      await page.locator('#dial-centro').click();
+      await expect(page.locator('#dial')).not.toHaveClass(/\bsub\b/);
+      await page.evaluate(() => dialCancelarEspera());
+    }
     await page.locator('#dial-centro').click();
     if(nombre === 'Ajustes') await expect(page.locator('#config-panel')).not.toHaveClass(/hidden/);
     else await expect(page.locator('#pane-inicio')).not.toHaveClass(/active/);
