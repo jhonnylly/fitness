@@ -295,15 +295,16 @@ header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform
    solo con iconos, el medidor de Medidas y las barras de Resumen había que
    aprenderlos. Los demás, solo icono. */
 .cab-tira{display:flex;gap:5px;margin-top:10px;}
-.cab-tira button{flex:1 1 0;min-width:0;min-height:44px;border:0;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;
+.cab-tira button{flex:1 1 0;min-width:0;min-height:48px;border:0;border-radius:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 6px;
   transition:flex-grow .25s cubic-bezier(.2,.8,.2,1),transform .12s ease;
   color:var(--on-accent);
   background:repeating-linear-gradient(135deg,rgba(var(--accent-rgb),.95) 0 2px,rgba(var(--accent-rgb),.82) 2px 5px);
   clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);}
-.cab-tira button span{display:none;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
-.cab-tira button.aqui{flex-grow:2.4;}
-.cab-tira button.aqui span{display:inline;}
-.cab-tira button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+/* 20/11/2026: nombre en TODOS los botones, no solo en el tuyo (crítica: el
+   velocímetro de Medidas no se adivinaba). Icono encima, nombre debajo, todos
+   del mismo ancho: la tira ya no se recoloca al cambiar de sección. */
+.cab-tira button span{display:block;font-size:11px;font-weight:800;letter-spacing:.02em;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+.cab-tira button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 .cab-tira button.aqui{background:var(--dial-cian);color:var(--dial-cian-tinta);}
 .cab-tira button:focus-visible{outline:2px solid #eef2fa;outline-offset:2px;}
 .cab-tira button:active{transform:scale(.96);}
@@ -417,7 +418,10 @@ label.btn-sm{letter-spacing:normal;text-transform:none;}
   transition:transform .35s cubic-bezier(.2,.8,.2,1);}
 .dial-fab svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;}
 .dial-fab:active{transform:scale(.95);}
-.dial-fab.oculto{transform:translateY(160%);}
+/* Escondido de verdad (20/11/2026): fuera de Inicio ya no se usa, así que
+   tampoco se alcanza con el tabulador ni el lector de pantalla. La visibilidad
+   cambia al final del deslizamiento, para que se vea irse. */
+.dial-fab.oculto{transform:translateY(160%);visibility:hidden;transition:transform .35s cubic-bezier(.2,.8,.2,1),visibility 0s .35s;}
 /* Al bajar por la pantalla o mientras escribes, se aparta (25/10/2026): tapaba
    las casillas de kg y repeticiones (crítica de Impeccable). Vuelve al subir. */
 .dial-fab.apartado{transform:translateY(160%);}
@@ -1215,6 +1219,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 /* «Volver» y «Cerrar», como pastilla encima de la esfera encogida */
 .dial-volver,.dial-cerrar{position:relative;z-index:1;padding:7px 11px;border-radius:999px;
   background:rgba(11,18,32,.88);color:#eef2fa;}
+/* «▶ Empezar» dentro de la esfera (20/11/2026): solo en Inicio con algo que
+   empezar (.dial.empezar). Pastilla amarilla Señal con tinta marino: se lee
+   sobre la luz de la esfera en claro y en oscuro. */
+.dial-empezar{display:none;position:relative;z-index:1;align-items:center;gap:6px;padding:9px 15px 9px 12px;border-radius:999px;
+  background:var(--accent-fill);color:var(--on-accent);font-size:14px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  box-shadow:0 4px 14px rgba(11,18,32,.35);}
+.dial-empezar svg{width:16px;height:16px;fill:currentColor;flex:none;}
+.dial.empezar .dial-centro>.dial-empezar{display:inline-flex;}
 /* Arcos en el plano del aro (no giran con él): amarillo = esta semana sobre el
    objetivo; cian = el programa entero. */
 .dial-arcos circle{fill:none;stroke-linecap:round;}
@@ -1418,7 +1430,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .racha-dia.es-hoy i{box-shadow:0 0 0 2px rgba(255,255,255,.55);}
 .racha-dia span{display:block;font-size:11px;color:rgba(255,255,255,.62);margin-top:4px;}   /* eran 8,5 px al 45 % */
 
-.duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.duo{display:grid;grid-template-columns:1fr;gap:10px;}   /* 20/11/2026: solo el peso; la adherencia repetía «Esta semana» */
 .duo .card{margin-bottom:0;}
 .duo-label{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:700;
   display:flex;align-items:center;gap:5px;}
@@ -1564,6 +1576,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    "Semana en curso" de Entrenar trae aquí y esta es la que hay que encontrar. */
 .mos-card.siguiente{border-color:var(--sel-borde);box-shadow:0 0 0 1px var(--sel-borde);background:var(--sel-fondo);}
 .mos-badge-toca{color:var(--sel-tinta);background:var(--sel);}
+/* «✓ Hecha / Lista / Hecho» (20/11/2026): el verde de siempre daba 3,7:1 sobre
+   su fondo; con la tinta más oscura (y más clara en oscuro) pasa de 6:1. */
+.mos-badge-ok{color:#1d5636;background:rgba(45,122,79,.14);}
+@media(prefers-color-scheme:dark){ .mos-badge-ok{color:#86d6a6;background:rgba(45,122,79,.28);} }
 .mos-num{font-size:15px;font-weight:800;color:var(--text);}
 /* El título de la semana ("Circuito quema") a dos líneas como mucho: si no,
    una semana con nombre largo estira toda la fila del mosaico. */
@@ -2467,11 +2483,14 @@ body:not(.es-admin) #pane-cuentas{display:none;}
         <!-- La esfera (17/11/2026). Vídeo SIN <source>: los pone esferaVideo()
              solo en oscuro, con movimiento y con red. En claro, el PNG. -->
         <span class="dial-esf" aria-hidden="true">
-          <img class="esf-fija" src="img/esfera/esfera.png" alt="" width="640" height="640" decoding="async">
+          <img class="esf-fija" src="img/esfera/esfera.webp" alt="" width="640" height="640" decoding="async">
           <video class="esf-video" id="esf-video" muted loop playsinline preload="none" width="640" height="640"></video>
           <span class="esf-velo"></span><span class="esf-luz"></span>
         </span>
         <span class="dial-anillo" aria-hidden="true"><span class="med der"><i></i></span><span class="med izq"><i></i></span></span>
+        <!-- 20/11/2026 (crítica): el verbo, dentro de la esfera. Antes «empezar»
+             solo lo decía el rótulo de debajo. Lo cambia pintarDial (Empezar/Ver). -->
+        <span class="dial-empezar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg><b id="dial-empezar-txt">Empezar</b></span>
         <span class="dial-volver">Volver</span>
         <span class="dial-cerrar">Cerrar</span>
       </button>
@@ -2496,16 +2515,11 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   <!-- El programa actual, otra vez con su anillo (23/09/2026, propuesta de v0
        que eligió Jhon). Tocar el nombre abre "Mis rutinas"; el chevron es la
        pista, y debajo van las tres acciones escritas por si no basta. -->
+  <!-- 20/11/2026 (crítica Impeccable): fuera el anillo del «0 % HECHO». El
+       mismo avance ya lo cuentan el aro de fuera del dial, la tira de semanas y
+       «0/12 sesiones» aquí debajo: era el mismo dato por cuarta vez. -->
   <div class="hp">
     <div class="hp-fila">
-      <div class="hp-anillo">
-        <svg viewBox="0 0 88 88" aria-hidden="true">
-          <circle class="anillo-fondo" cx="44" cy="44" r="37"/>
-          <circle class="anillo-fill" id="home-anillo" cx="44" cy="44" r="37"
-                  stroke-dasharray="232.5" stroke-dashoffset="232.5"/>
-        </svg>
-        <div class="hp-centro"><b id="home-prog-pct">0%</b><span>Hecho</span></div>
-      </div>
       <div style="min-width:0;">
         <div class="hp-label">Programa actual</div>
         <button class="hp-nombre hp-rutina" onclick="toggleRoutinePanel()" title="Cambiar de rutina">
@@ -2538,6 +2552,9 @@ body:not(.es-admin) #pane-cuentas{display:none;}
     </div>
   </div>
 
+  <!-- 20/11/2026: con una sesión por hacer, esta tarjeta repetía la esfera
+       (dos botones de empezar). Ahora solo sale cuando la esfera no tiene nada
+       que empezar: plan terminado o sin rutina (lo decide updateHome). -->
   <button class="hoy" id="home-hoy" onclick="irAProximaSesion()">
     <span class="hoy-tag" id="hoy-tag">Entrenamiento de hoy</span>
     <span class="hoy-tit" id="hoy-tit">—</span>
@@ -2566,17 +2583,6 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       <div class="duo-val" id="duo-peso">—</div>
       <div class="duo-sub" id="duo-peso-sub">Sin medidas aún</div>
       <svg class="chispa" id="duo-chispa" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"></svg>
-    </div>
-    <div class="card duo-mini">
-      <div class="duo-label">
-        <svg class="ico-txt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M20 6L9 17l-5-5"/>
-        </svg>
-        Adherencia
-      </div>
-      <div class="duo-val" id="duo-adh">—</div>
-      <div class="adh-barras" id="duo-adh-barras"></div>
     </div>
   </div>
   <!-- Solo para clientes: quién les entrena. Lo rellena pintarEntrenador(),
@@ -3231,6 +3237,8 @@ const ICO={
   copiar:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   reloj:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5M12 2v3"/>',
   play:'<path d="M7 4.5v15l12-7.5z"/>',
+  pesa:'<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>',
+  sube:'<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
 };
 const ico=(n,cls)=>`<svg class="${cls||'ico-txt'}" viewBox="0 0 24 24" fill="none" `+
   `stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" `+
@@ -3975,7 +3983,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-11-18 12:24';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-11-20 12:43';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5133,7 +5141,7 @@ if(!plan.length){
       ${soloTitulo?`<div class="mos-tit">${escaparHTML(soloTitulo)}</div>`:''}
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${done}/${total}</span>
-        ${isComplete?'<span class="mos-badge" style="color:var(--green);background:rgba(45,122,79,0.14);">✓ Lista</span>':''}
+        ${isComplete?'<span class="mos-badge mos-badge-ok">✓ Lista</span>':''}
       </div>
       <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     </button>`;
@@ -5230,7 +5238,7 @@ function openWeekDetail(weekNum){
       <div class="mos-tit">${nEjercicios(nEj)}</div>
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${hecha&&reg.date?escaparHTML(reg.date):''}</span>
-        ${hecha?'<span class="mos-badge" style="color:var(--green);background:rgba(45,122,79,0.14);">✓ Hecha</span>':''}
+        ${hecha?'<span class="mos-badge mos-badge-ok">✓ Hecha</span>':''}
         ${toca?'<span class="mos-badge mos-badge-toca">Siguiente</span>':''}
       </div>
     </button>`;
@@ -6026,6 +6034,32 @@ function htmlSiguienteRutina(p){
     </div>`;
 }
 
+/* Lo hecho en una sesión (20/11/2026, crítica Impeccable: la celebración
+   enseñaba el % del plan y no lo que hiciste). Solo cuenta series con
+   repeticiones; los kilos, solo de las que los llevan. Kilos guardados en kg. */
+function resumenSesion(ses){
+  let series=0,reps=0,kilos=0;
+  ((ses&&ses.exercises)||[]).forEach(ex=>(ex&&ex.sets||[]).forEach(v=>{
+    const r=parseFloat(String(v.reps??'').replace(',','.')), k=parseFloat(String(v.kg??'').replace(',','.'));
+    if(!(r>0))return;
+    series++; reps+=r; if(k>0)kilos+=k*r;
+  }));
+  return {series,reps:Math.round(reps),kilos:Math.round(kilos)};
+}
+/* La última vez que hiciste una sesión con el mismo nombre, sin contar `n`. */
+function sesionAnteriorIgual(rutina,n){
+  const dia=findDay(n); if(!dia)return null;
+  const fecha=t=>{ const [d,m,a]=String(t||'').split('/').map(Number); return a?new Date(a,m-1,d).getTime():0; };
+  let mejor=null;
+  Object.keys((rutina&&rutina.sessions)||{}).forEach(id=>{
+    if(String(id)===String(n))return;
+    const d=findDay(+id||id); if(!d||d.name!==dia.name)return;
+    const ses=rutina.sessions[id], t=fecha(ses.date);
+    if(!mejor||t>=mejor.t)mejor={ses,t};
+  });
+  return mejor&&mejor.ses;
+}
+
 /* Una línea de la caja de celebración. La comparten la de sesión y la de reto. */
 function celLinea(clase,icono,texto,cifra){
   return '<div class="cel-linea '+clase+'">'+ico(icono)+'<span>'+texto+'</span>'+
@@ -6046,10 +6080,18 @@ function celebrarSesion({records,hechasAntes,sesion}){
 
   document.getElementById('cel-tit').textContent=
     hechas===total?'¡Plan terminado!':'¡Sesión completada!';
+  const hoy=resumenSesion(act.sessions[sesion]);
   document.getElementById('cel-sub').textContent=
     ((dia&&verSesion(dia.name))||'Sesión')+' · '+hechas+' de '+total+' sesiones';
 
   const filas=[];
+  // Primero, lo de hoy: es lo que acabas de hacer.
+  if(hoy.series)filas.push(celLinea('lo-de-hoy','pesa',
+    '<b>'+hoy.series+'</b> serie'+(hoy.series===1?'':'s')+' · <b>'+hoy.reps+'</b> repeticiones',
+    hoy.kilos?num(hoy.kilos)+' kg':''));
+  const antes=sesionAnteriorIgual(act,sesion), prev=antes?resumenSesion(antes):null;
+  if(prev&&prev.kilos&&hoy.kilos>prev.kilos)filas.push(celLinea('hito','sube',
+    'Has movido <b>'+num(hoy.kilos-prev.kilos)+' kg más</b> que la última vez'+(antes.date?' ('+escaparHTML(antes.date)+')':'')));
   /* Como mucho tres marcas, y las de mayor salto primero. En las primeras
      semanas se superan casi todos los ejercicios a la vez: sin tope, la caja
      se convertía en una lista de la compra y no se leía ninguna. */
@@ -7606,21 +7648,8 @@ function updateHome(){
 
   set('home-prog-name',act?act.name:'Sin rutina activa');
   set('home-prog-meta',act
-    ?('Semana '+(semanaEnCurso(act)||1)+' de '+act.plan.length+' · '+done+'/'+total+' sesiones')
+    ?('Semana '+(semanaEnCurso(act)||1)+' de '+act.plan.length+' · '+done+' de '+total+' sesiones'+(pct?' ('+pct+' %)':''))
     :'Elige una rutina para empezar');
-  set('home-prog-pct',pct+'%');
-  const anillo=document.getElementById('home-anillo');
-  if(anillo){
-    const C=2*Math.PI*37;                       // r=37 en el viewBox de 88
-    anillo.setAttribute('stroke-dasharray',C.toFixed(1));
-    /* Se vacía y se rellena en el siguiente fotograma, así se ve crecer cada vez
-       que entras en Inicio y no solo la primera. Sin el salto de fotograma el
-       navegador junta las dos escrituras y no hay transición que animar. */
-    anillo.setAttribute('stroke-dashoffset',C.toFixed(1));
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      anillo.setAttribute('stroke-dashoffset',(C*(1-pct/100)).toFixed(1));
-    }));
-  }
 
   // Entrenamiento de hoy
   const tag=document.getElementById('hoy-tag');
@@ -7661,6 +7690,8 @@ function updateHome(){
     set('hoy-meta','Crea o activa una rutina para empezar.');
     if(cta)cta.textContent='Ver rutinas →';
   }
+  const hoyCard=document.getElementById('home-hoy');
+  if(hoyCard)hoyCard.style.display=(impuesta||prox)?'none':'';
 
   // Peso + chispa
   const pesos=medidas.filter(m=>m.peso!=null&&m.peso!=='');
@@ -7679,8 +7710,6 @@ function updateHome(){
   /* "0/6" en vez de "0%": dice lo mismo y además cuántas sesiones quedan, que
      es lo que se mira al empezar la semana (22/09/2026). El subtítulo largo se
      quitó con el rediseño. */
-  set('duo-adh',a?(a.hechas+'/'+a.previstas):'—');
-  set('duo-adh-sub',a?(a.hechas+' de '+a.previstas+' de la semana '+a.num):'Sin plan activo');
 
   /* Medirse cada semana (02/11/2026). En los datos de Jhon había cuatro medidas
      en cinco meses: dejó de apuntarlas a la tercera semana y ya no se podía ver
@@ -7690,13 +7719,6 @@ function updateHome(){
   const tarjetaPeso=document.getElementById('duo-peso-card');
   if(tarjetaPeso)tarjetaPeso.classList.toggle('toca-medir',tocaMedir);
   if(tocaMedir)set('duo-peso-sub','Toca medirte · semana '+a.num);
-  const barras=document.getElementById('duo-adh-barras');
-  if(barras){
-    barras.innerHTML=a
-      ? Array.from({length:a.previstas},(_,i)=>
-          '<i class="'+(i<a.hechas?'on':'')+'" style="height:'+(i<a.hechas?100:38)+'%"></i>').join('')
-      : '';
-  }
   pintarDial();
 }
 
@@ -7730,8 +7752,8 @@ function updateHome(){
    del dial la página sigue haciendo scroll. */
 const DIAL_SECCIONES=['Inicio','Entrenar','Resumen','Medidas','Ajustes'];
 const DIAL_PASO=360/DIAL_SECCIONES.length;
-// DIAL_ESPERA: de 1000 a 600 ms (29/10/2026, Jhon: «1 s es mucho»); se suma a lo que tarda el aro en asentarse.
-const DIAL_INCL_X=35, DIAL_INCL_Y=-22.75, DIAL_ESPERA=600;   // grados (los del prototipo) y ms
+// DIAL_ESPERA (entrar solo a los 600 ms) se quitó el 20/11/2026: ahora se entra siempre con un toque.
+const DIAL_INCL_X=35, DIAL_INCL_Y=-22.75;   // grados (los del prototipo)
 const DIAL_R1=130, DIAL_R2=196, DIAL_S1=72, DIAL_S2=122;      // radios de los aros, en unidades del viewBox (±210)
 const DIAL_ICONOS=[
   'M4 11 12 4l8 7v9h-5v-6H9v6H4z',
@@ -7832,9 +7854,9 @@ function dialPintarGiro(){
   /* El rótulo dice qué hará la esfera si la tocas (17/11/2026). «Espera…» solo
      mientras la barra cuenta de verdad (revisión de Ironio). */
   let nombre=DIAL_SECCIONES[e.sel], ayuda=e.desliza?'Suelta para ir a '+nombre
-    :menuDial.abierto?(e.sel===e.aqui?'Ya estás aquí · toca el cian para ver sus opciones':e.espera?'Espera y se abren sus opciones':'Toca el cian para ver sus opciones')
+    :menuDial.abierto?(e.sel===e.aqui?'Ya estás aquí · toca el cian para ver sus opciones':'Toca el cian para ver sus opciones')
     :e.sel===0?'Gira el aro para ir a otra sección'
-    :e.espera?'Espera y se abren sus opciones':'Toca la esfera para entrar en '+nombre;
+    :'Toca la esfera para entrar · el tramo, para ver opciones';
   if(e.nivel===1&&e.subs.length){
     document.getElementById('dial-svg-sub').style.transform='rotate('+dialSub.x.toFixed(2)+'deg)';
     for(const t of e.subEtq) t.up.setAttribute('transform','rotate('+(-dialSub.x).toFixed(2)+')');
@@ -7842,7 +7864,7 @@ function dialPintarGiro(){
     if(j!==e.subSel){ e.subSel=j; cambio=true; }
     e.subEtq.forEach((t,k)=>t.g.classList.toggle('sel',k===e.subSel));
     nombre=e.subs[e.subSel].n;
-    ayuda=e.espera?'Espera o toca la opción en cian':'Toca la opción en cian para abrirla · la esfera, para volver';
+    ayuda='Toca una opción para abrirla · la esfera, para volver';
   }
   if(cambio&&navigator.vibrate)try{navigator.vibrate(6);}catch(_){/* sin vibración */}
   const aro=document.getElementById('dial-aro');
@@ -7859,7 +7881,8 @@ function dialPintarGiro(){
   if(empezar){
     // En Inicio el rótulo es la sesión de hoy, y la esfera, su botón de empezar.
     nombre=sesion||'Inicio';
-    ayuda=ver?'Toca la esfera para verla':'Toca la esfera para empezar';
+    ayuda=ver?'Toca la esfera para verla':'Gira el aro para ir a otra sección';
+    const vt=document.getElementById('dial-empezar-txt'); if(vt)vt.textContent=ver?'Ver':'Empezar';
     document.getElementById('dial-centro').setAttribute('aria-label',(ver?'Ver: ':'Empezar: ')+sesion);
   }
   document.getElementById('dial-destino').textContent=e.nivel?DIAL_SECCIONES[e.sel]
@@ -7899,7 +7922,7 @@ function dialGirarDe(e,n,i,alFin){
 function dialGirarA(i,alFin){ dialGirarDe(dialEstado,5,i,alFin); }
 function dialGirarSubA(j,alFin){ dialGirarDe(dialSub,dialEstado.subs.length,j,alFin); }
 
-// La barra del segmento elegido: se llena en DIAL_ESPERA ms y entonces entra.
+// Restos de la barra de espera (quitada el 20/11/2026): limpia por si quedara alguna.
 function dialCancelarEspera(){
   const contaba=!!dialEstado.espera;
   clearTimeout(dialEstado.espera); dialEstado.espera=0;
@@ -7907,29 +7930,16 @@ function dialCancelarEspera(){
   const d=document.getElementById('dial'); if(d)d.classList.remove('cargando');
   if(contaba)dialPintarGiro();   // el rótulo deja de prometer «espera»
 }
-function dialEsperarYEntrar(){
-  dialCancelarEspera();
-  const e=dialEstado, dentro=e.nivel===1, n=dentro?e.subs.length:5, i=dentro?e.subSel:e.sel;
-  if(!dentro&&dialEnInicio(i)){ dialYaEstas(); return; }
-  const t=(dentro?e.subEtq:e.etiquetas||[])[i];
-  if(!t)return;
-  const p=360/n, rr=(dentro?DIAL_S2:DIAL_R2)+5, a0=i*p-p/2+4, a1=i*p+p/2-4;
-  const [x0,y0]=dialPunto(rr,a0), [x1,y1]=dialPunto(rr,a1);
-  const arco=dialNodo('path',{class:'dial-carga',
-    d:'M'+x0.toFixed(1)+' '+y0.toFixed(1)+'A'+rr+' '+rr+' 0 0 1 '+x1.toFixed(1)+' '+y1.toFixed(1)});
-  arco.style.setProperty('--L',(rr*(a1-a0)*Math.PI/180).toFixed(1));
-  arco.style.setProperty('--espera',DIAL_ESPERA+'ms');   // la barra y la entrada, a la vez
-  t.g.appendChild(arco);
-  e.espera=setTimeout(()=>{ dialCancelarEspera(); if(dentro)dialEntrarSub(i); else dialAbrirSubs(i); },DIAL_ESPERA);
-  if(!dentro){
-    // El anillo de la esfera se llena a la vez que la barra del segmento.
-    const d=document.getElementById('dial');
-    d.style.setProperty('--espera',DIAL_ESPERA+'ms'); d.classList.remove('cargando'); void d.offsetWidth; d.classList.add('cargando');
-  }
-  dialPintarGiro();
+/* Al pararse un giro hecho por la persona: solo elige, no entra (20/11/2026,
+   crítica Impeccable). Antes arrancaba la barra y a los DIAL_ESPERA ms abría
+   las opciones sola: si girabas y dudabas, la app hacía algo que no habías
+   pedido. Ahora entrar es siempre un toque: la esfera, o el tramo. */
+function dialAlParar(){ dialPintarGiro(); }
+// Tocar un tramo que no es el elegido: gira hasta él y abre sus opciones (es un toque, no una espera).
+function dialTocarTramo(i){
+  if(dialEnInicio(i)){ dialGirarA(i,dialYaEstas); return; }
+  dialGirarA(i,()=>dialAbrirSubs(i));
 }
-// Al pararse un giro hecho por la persona, arranca la barra.
-function dialAlParar(){ dialEsperarYEntrar(); }
 
 function dialAbrirSubs(i){
   dialCancelarEspera();
@@ -8082,7 +8092,7 @@ function iniciarDial(){
       tragarClicFantasma(ev&&ev.clientX,ev&&ev.clientY);
       if(dentro){
         // Tocar el cian entra ya; tocar otro gira hasta él y arranca la barra.
-        if(tocado===e.subSel)dialEntrarSub(tocado); else dialGirarSubA(tocado,dialAlParar);
+        if(tocado===e.subSel)dialEntrarSub(tocado); else dialGirarSubA(tocado,()=>dialEntrarSub(tocado));
       }else if(e.nivel===1){
         /* Con sus opciones abiertas, un segundo toque en la MISMA sección lleva
            a ella (25/10/2026, Jhon: desde un ejercicio, Inicio dos veces se
@@ -8092,7 +8102,7 @@ function iniciarDial(){
       }else if(tocado===e.sel){
         if(dialEnInicio(tocado))dialYaEstas(); else dialAbrirSubs(tocado);
       }
-      else dialGirarA(tocado,dialAlParar);
+      else dialTocarTramo(tocado);
       return;
     }
     const est=dentro?dialSub:e, p=360/(dentro?e.subs.length:5);
@@ -8148,10 +8158,15 @@ function miniDialA(id){
     b.classList.remove('apartado');
   miniVisibilidad();
 }
-// En Inicio, con el dial grande a la vista, sobra.
+/* En Inicio, con el dial grande a la vista, sobra. Y fuera de Inicio también
+   (20/11/2026, crítica Impeccable, aprobado por Jhon): dentro de las secciones
+   se navega con la tira de la cabecera, que siempre está en el mismo sitio; el
+   botón era una tercera forma de navegar y tapaba contenido («¿Cómo te has
+   sentido?», el final de la sesión). Solo asoma en Inicio al bajar, cuando el
+   dial grande se ha ido de la pantalla. */
 function miniVisibilidad(){
   const b=document.getElementById('dial-fab');
-  if(b)b.classList.toggle('oculto',miniEstado.seccion===0&&miniEstado.dialALaVista&&!menuDial.abierto);
+  if(b)b.classList.toggle('oculto',!menuDial.abierto&&(seccionActual()!==0||miniEstado.dialALaVista));
 }
 // Ajustes es un panel encima de la sección: si está abierto, estás en Ajustes.
 function seccionActual(){
@@ -8535,6 +8550,7 @@ function toggleConfigPanel(){
      plano va limitada (comprobarVersionEnSegundoPlano). */
   if(!p.classList.contains('hidden')){ pintarConfig(); pintarVersion(); pintarCopiaPrevia(); comprobarVersionNueva(false); pintarInstalar();
     if(window.pintarDiagCoach) window.pintarDiagCoach(); }
+  if(typeof miniVisibilidad==='function')miniVisibilidad();   // Ajustes es una sección: sin botón
 }
 
 function irAMedidas(){
@@ -9415,7 +9431,7 @@ function renderExButtons(){
       <div class="mos-pie">
         <span style="font-size:11px;color:var(--muted);">${ex.sets.length} series</span>
         ${curNotas[claveEjercicioLaxa(ex.name||'')]?'<span class="mos-nota-punto" title="Tu entrenador te dice cómo hacerlo"></span>':''}
-        ${done?'<span class="mos-badge" style="color:var(--green);background:rgba(45,122,79,0.14);">✓ Hecho</span>':''}
+        ${done?'<span class="mos-badge mos-badge-ok">✓ Hecho</span>':''}
       </div>
     </button>`;
   }).join('')+'</div>';

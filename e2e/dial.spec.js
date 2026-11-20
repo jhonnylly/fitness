@@ -25,7 +25,10 @@ test('arranca en Inicio, con la fecha y lo que toca hoy', async ({ page }) => {
   await expect(page.locator('#dial')).toHaveClass(/empezar/);
   await expect(page.locator('#dial-centro')).toHaveAttribute('aria-label', /^Empezar: .*Sesión 1/);
   await expect(page.locator('#dial-nombre')).toContainText(/Sesión 1/);
-  await expect(page.locator('#dial-ayuda')).toHaveText('Toca la esfera para empezar');
+  await expect(page.locator('#dial-ayuda')).toHaveText('Gira el aro para ir a otra sección');
+  // 20/11/2026: el verbo, escrito dentro de la esfera.
+  await expect(page.locator('#dial-centro .dial-empezar')).toBeVisible();
+  await expect(page.locator('#dial-centro .dial-empezar')).toHaveText(/Empezar/);
   await expect(page.locator('#dial-destino')).toBeEmpty();   // ya lo dice la tarjeta
   await expect(page.locator('#esf-semana-cuenta')).toHaveText(/0 de \d+ sesi/);
   await expect(page.locator('#esf-dias li')).toHaveCount(7);
@@ -51,7 +54,7 @@ test('girar hasta una sección muestra lo que hay en ella', async ({ page }) => 
   await expect(page.locator('#pane-inicio')).toHaveClass(/active/);   // con el teclado no entra solo
 });
 
-test('tocar una sección gira hasta ella y, al segundo, abre sus opciones', async ({ page }) => {
+test('tocar una sección gira hasta ella y abre sus opciones', async ({ page }) => {
   await appLista(page);
   await etiqueta(page, 'Resumen').click();
   await expect.poll(() => abierto(page)).toBe(true);
@@ -60,7 +63,7 @@ test('tocar una sección gira hasta ella y, al segundo, abre sus opciones', asyn
   await expect(page.locator('#dial-sub .dial-seg')).toHaveCount(2);
   await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
 
-  // Tocar otra opción gira hasta ella y, al segundo, entra.
+  // Tocar otra opción gira hasta ella y entra (es un toque: no hay espera).
   await tocarSub(page, 'Tus fotos');
   await expect(page.locator('#pane-resumen')).toHaveClass(/active/);
 
@@ -69,7 +72,9 @@ test('tocar una sección gira hasta ella y, al segundo, abre sus opciones', asyn
   expect(await seleccionada(page)).toBe('Inicio');
 });
 
-test('arrastrar el aro y soltarlo en una sección abre sus opciones', async ({ page }) => {
+/* 20/11/2026 (crítica Impeccable): soltar el aro solo ELIGE. Antes, a los
+   600 ms abría las opciones solo, aunque solo estuvieras dudando. */
+test('arrastrar el aro y soltarlo en una sección la elige sin abrir nada; un toque abre sus opciones', async ({ page }) => {
   await appLista(page);
   const caja = await page.locator('#dial').boundingBox();
   const cx = caja.x + caja.width / 2, cy = caja.y + caja.height / 2, r = caja.width * 0.44;
@@ -82,6 +87,11 @@ test('arrastrar el aro y soltarlo en una sección abre sus opciones', async ({ p
     await page.mouse.move(cx + r * Math.cos(a), cy + r * Math.sin(a));
   }
   await page.mouse.up();
+  await expect.poll(() => seleccionada(page)).toBe('Entrenar');
+  await page.waitForTimeout(1200);                 // antes, aquí se abría solo
+  expect(await abierto(page)).toBe(false);
+  await expect(page.locator('#dial-ayuda')).toHaveText(/Toca la esfera para entrar/);
+  await etiqueta(page, 'Entrenar').click();
   await expect.poll(() => abierto(page)).toBe(true);
   await expect(page.locator('#dial-nombre')).toHaveText('Semana en curso');
   // Tocar la opción cian entra ya: la semana en la que vas.

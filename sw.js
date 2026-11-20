@@ -22,7 +22,7 @@ const CACHE = 'fitness-v1';
 const ESENCIALES = [
   './',
   './index.html',
-  './img/esfera/esfera.png',            // la esfera de Inicio sin red (el vídeo no se guarda)
+  './img/esfera/esfera.webp',           // la esfera de Inicio sin red (el vídeo no se guarda)
   './img/ejercicios/lista.js',
   './img/ejercicios/musculos.js',
   './manifest.json',

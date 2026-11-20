@@ -53,53 +53,37 @@ async function appLista(page, { nombre = 'Prueba', rutina = /Primer Mes/ } = {})
 }
 
 /* Ir a una sección como lo haría una persona (desde el 21/10/2026 no hay
-   barra de pestañas): en Inicio, con el dial grande —tocar el segmento, que
-   gira hasta él, y el centro, que entra directo (aro 3D desde el 24/10)—; en las demás, con el botón
-   amarillo de abajo: mantenerlo y deslizar de lado hasta la sección. */
-const SECCIONES = ['Inicio', 'Entrenar', 'Resumen', 'Medidas', 'Ajustes'];
+   barra de pestañas): en Inicio, con el dial grande; en las demás, con la tira
+   de la cabecera (20/11/2026: el botón amarillo ya no sale dentro de las
+   secciones, y la tira lleva el nombre en sus cinco botones).
+   En el dial, tocar un tramo gira hasta él y abre sus opciones (sin espera,
+   20/11/2026); el centro es entonces «Volver», que las cierra dejando la
+   sección elegida, y otro toque en el centro entra directo. */
 async function irA(page, nombre){
-  if(await page.locator('#pane-inicio').evaluate(e => e.classList.contains('active'))){
+  if(await page.locator('#pane-inicio').evaluate(e => e.classList.contains('active'))
+     && await page.locator('#config-panel').evaluate(e => e.classList.contains('hidden'))){
     await page.evaluate(() => scrollTo(0, 0));
     if(nombre === 'Inicio'){ await page.locator('#dial-centro').click(); return; }
-    // Girar hasta la sección tocándola y entrar directo con el centro (el
-    // atajo: sin pasar por sus opciones).
     await page.locator(`#dial-etiquetas g[aria-label="${nombre}"]`).click();
+    await expect(page.locator('#dial')).toHaveClass(/\bsub\b/);
+    await page.locator('#dial-centro').click();                       // «Volver»
+    await expect(page.locator('#dial')).not.toHaveClass(/\bsub\b/);
     await expect.poll(() => page.locator('#dial-aro').getAttribute('aria-valuetext')).toBe(nombre);
-    /* Si la máquina va cargada, la barra puede acabar antes del toque y abrir
-       sus opciones (18/11/2026): entonces el centro es «Volver», que las
-       cierra y deja la sección elegida; el siguiente toque ya entra. Se para la
-       barra para no competir con ella. */
-    await page.evaluate(() => dialCancelarEspera());
-    if(await page.locator('#dial').evaluate(d => d.classList.contains('sub'))){
-      await page.locator('#dial-centro').click();
-      await expect(page.locator('#dial')).not.toHaveClass(/\bsub\b/);
-      await page.evaluate(() => dialCancelarEspera());
-    }
-    await page.locator('#dial-centro').click();
+    await page.locator('#dial-centro').click();                       // entra
     if(nombre === 'Ajustes') await expect(page.locator('#config-panel')).not.toHaveClass(/hidden/);
     else await expect(page.locator('#pane-inicio')).not.toHaveClass(/active/);
     return;
   }
-  /* Fuera de Inicio, el botón amarillo de abajo (25/10/2026): mantenerlo y
-     deslizar de lado gira el aro (MINI_GANANCIA grados por px) y al soltar
-     entra en la sección cian. Por el camino corto, como lo haría una persona. */
-  const fab = page.locator('#dial-fab');
-  // Al bajar por la pantalla el botón se aparta (25/10/2026): como una persona, se sube un poco.
-  await page.evaluate(() => { document.activeElement && document.activeElement.blur && document.activeElement.blur(); scrollTo(0, 0); });
-  await expect(fab).not.toHaveClass(/oculto|apartado/);
-  await page.waitForTimeout(400);                    // que acabe de asomar
-  const [desde, pxPorPaso] = await page.evaluate(() => [seccionActual(), DIAL_PASO / MINI_GANANCIA]);
-  let pasos = SECCIONES.indexOf(nombre) - desde;
-  if(pasos > 2) pasos -= 5;
-  if(pasos < -2) pasos += 5;
-  const caja = await fab.boundingBox();
-  const x = caja.x + caja.width / 2, y = caja.y + caja.height / 2;
-  await page.mouse.move(x, y);
-  await page.mouse.down();
-  for(let i = 1; i <= 20; i++) await page.mouse.move(x + pasos * pxPorPaso * i / 20, y);
-  await page.waitForTimeout(150);
-  await page.mouse.up();
-  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
+  // Fuera de Inicio: la tira visible (la de la sección, la de Ajustes o la de Mis rutinas).
+  await page.evaluate(() => scrollTo(0, 0));
+  const tira = page.locator('nav.cab-tira:visible').first();
+  await tira.getByRole('button', { name: nombre, exact: true }).click();
+  if(nombre === 'Ajustes') await expect(page.locator('#config-panel')).not.toHaveClass(/hidden/);
+  else{
+    await expect(page.locator('#config-panel')).toHaveClass(/hidden/);
+    const pane = { Inicio:'#pane-inicio', Entrenar:'#pane-log', Resumen:'#pane-resumen', Medidas:'#pane-medidas' }[nombre];
+    await expect(page.locator(pane)).toHaveClass(/active/);
+  }
 }
 
 /* La caja de algo del aro cuando ya ha dejado de girar (29/10/2026): medirla

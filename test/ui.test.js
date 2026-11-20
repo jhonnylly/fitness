@@ -3259,6 +3259,11 @@ async function appLista(page, url){
       r.abajo = caja.bottom <= H && H - caja.bottom < 40;
       r.tactil = caja.width >= 44 && caja.height >= 44;
       r.visible = !fab.classList.contains('oculto');
+      /* 20/11/2026 (crítica Impeccable, aprobado por Jhon): fuera de Inicio no
+         hay botón; se navega con la tira de la cabecera, con nombre en todos. */
+      const tira = [...document.querySelectorAll('#cab-tira button')];
+      r.tiraConNombres = tira.length === 5 && tira.every(b => { const sp = b.querySelector('span');
+        return sp && sp.getBoundingClientRect().width > 0 && sp.textContent.trim().length > 0; });
       const nav = document.getElementById('mini-dial');
       r.orden = [...nav.querySelectorAll('.tab')].map(b => b.textContent.trim());
       r.navOculta = nav.getBoundingClientRect().width <= 1;
@@ -3301,8 +3306,9 @@ async function appLista(page, url){
       showTab('inicio', document.getElementById('tab-inicio'));
       return r;
     });
-    ok(barra.fijo && barra.centrado && barra.abajo, 'el botón va fijo, abajo y en el centro');
-    ok(barra.tactil && barra.visible, 'es un blanco grande y se ve dentro de las secciones');
+    ok(barra.fijo && barra.tactil, 'el botón sigue fijo y con blanco grande (para Inicio al bajar)');
+    ok(!barra.visible, '🔴 dentro de las secciones NO hay botón (20/11/2026): manda la tira');
+    ok(barra.tiraConNombres, '🔴 la tira de la cabecera lleva el nombre en los 5 botones');
     ok(barra.orden.join(',') === 'Inicio,Entrenar,Resumen,Medidas,Ajustes',
        'los botones de sección siguen, en el orden del dial: '+barra.orden.join(' · '));
     /* 23/09/2026: se llamaba "Registrar" y varias personas no daban con ella
@@ -3317,45 +3323,59 @@ async function appLista(page, url){
     ok(barra.abreAjustes && barra.inicioSigueActivo,
        'Ajustes abre su panel sin cambiar de pestaña: no es una pestaña');
 
-    console.log('\n13ab. El anillo de progreso vuelve a Inicio');
+    console.log('\n13ab. La tarjeta del programa, sin anillo (20/11/2026)');
+    /* La crítica Impeccable del 20/11/2026 vio el mismo avance en cinco sitios
+       de Inicio. El anillo del «0 % HECHO» se fue; el porcentaje queda escrito
+       en la línea de debajo del nombre. */
     const anillo = await page.evaluate(async ()=>{
       const tic = (ms=80) => new Promise(res => setTimeout(res, ms));
       const act = getActive();
       const ses = getActiveSessions();
-      // Tres sesiones dadas por hechas, para que el anillo tenga algo que pintar.
       act.plan.flatMap(w => w.days.map(d => d.s)).slice(0, 3)
         .forEach(id => { if(!ses[id]) ses[id] = { date:'01/09', exercises:[] }; });
       showTab('inicio', document.getElementById('tab-inicio'));
       updateHome();
-      await tic(160);                                  // los dos fotogramas de la animación
-      const c = document.getElementById('home-anillo');
-      const C = 2 * Math.PI * 37;
-      const pct = parseInt(document.getElementById('home-prog-pct').textContent, 10);
-      return { hay: !!c,
-               pct,
-               offset: parseFloat(c.getAttribute('stroke-dashoffset')),
-               esperado: C * (1 - pct/100),
-               vacio: C,
-               nombre: document.getElementById('home-prog-name').textContent,
+      await tic(160);
+      return { hay: !!document.getElementById('home-anillo'),
+               adherencia: !!document.getElementById('duo-adh'),
+               hoyOculta: getComputedStyle(document.getElementById('home-hoy')).display === 'none',
                meta: document.getElementById('home-prog-meta').textContent,
                abreRutinas: !!document.querySelector('.hp-rutina[onclick^="toggleRoutinePanel"]'),
                pastillas: document.querySelectorAll('.hp-acciones .hp-accion').length,
-               // 24/09/2026: iban fuera de la tarjeta y parecían de otra sección.
                dentro: (()=>{ const t = document.querySelector('.hp').getBoundingClientRect();
                               const a = document.querySelector('.hp-acciones').getBoundingClientRect();
                               return a.top >= t.top && a.bottom <= t.bottom && a.left >= t.left && a.right <= t.right; })() };
     });
-    ok(anillo.hay, 'la tarjeta del programa vuelve a tener su anillo');
-    ok(anillo.pct > 0 && Math.abs(anillo.offset - anillo.esperado) < 1,
-       'y se rellena con el porcentaje de verdad ('+anillo.pct+'%)');
-    ok(anillo.offset < anillo.vacio - 1, 'no se queda vacío: se ve el avance');
-    ok(/sesiones/.test(anillo.meta) && /Semana/.test(anillo.meta),
-       'debajo del nombre, las semanas y las sesiones: '+anillo.meta);
+    ok(!anillo.hay && !anillo.adherencia, 'sin anillo ni tarjeta de adherencia: el avance no se repite');
+    ok(anillo.hoyOculta, 'con una sesión por hacer, la tarjeta «Entrenamiento de hoy» no duplica la esfera');
+    ok(/sesiones/.test(anillo.meta) && /Semana/.test(anillo.meta) && /%/.test(anillo.meta),
+       'debajo del nombre, semanas, sesiones y porcentaje: '+anillo.meta);
     ok(anillo.abreRutinas, 'tocar el nombre de la rutina sigue abriendo "Mis rutinas"');
-    /* 25/10/2026: «Borrar» se fue a Mis rutinas; en la portada era un toque
-       destructivo al lado de «Cambiar». */
     ok(anillo.pastillas === 2, 'quedan las pastillas de cambiar y añadir (borrar vive en Mis rutinas)');
     ok(anillo.dentro, 'y van DENTRO del borde de la tarjeta de la rutina, no sueltas debajo');
+
+    console.log('\n13ac. Al guardar: lo de hoy y el dial sin espera (20/11/2026)');
+    const hoyR = await page.evaluate(async ()=>{
+      const tic = (ms=80) => new Promise(res => setTimeout(res, ms));
+      const r = {};
+      r.res = resumenSesion({exercises:[{name:'A',sets:[{kg:'60',reps:'8'},{kg:'62,5',reps:'8'},{kg:'',reps:''}]},
+                                       {name:'B',sets:[{kg:'',reps:'12'}]}]});
+      // Girar el aro y dejarlo quieto ya NO abre nada solo.
+      showTab('inicio', document.getElementById('tab-inicio')); window.scrollTo(0,0);
+      await tic(200);
+      dialGirarA(2, dialAlParar);
+      await tic(1600);
+      r.sinSubs = dialEstado.nivel === 0 && !dialEstado.espera;
+      r.ayuda = document.getElementById('dial-ayuda').textContent;
+      dialReiniciar(); await tic(100);
+      r.empezar = getComputedStyle(document.querySelector('.dial-empezar')).display !== 'none';
+      return r;
+    });
+    ok(hoyR.res.series === 3 && hoyR.res.reps === 28 && hoyR.res.kilos === 980,
+       'cuenta series con repeticiones, reps y kilos×reps: '+JSON.stringify(hoyR.res));
+    ok(hoyR.sinSubs, '🔴 girar el aro y dudar no abre nada solo (antes, a los 600 ms)');
+    ok(/Toca la esfera/.test(hoyR.ayuda), 'y dice cómo entrar: '+hoyR.ayuda);
+    ok(hoyR.empezar, 'en Inicio, la esfera lleva «Empezar» escrito dentro');
 
     console.log('\n13zz. Medirse cada semana y recordar los cambios de ejercicio (02/11/2026)');
     const mejoras = await page.evaluate(async ()=>{

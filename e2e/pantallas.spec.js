@@ -28,94 +28,52 @@ test('Ajustes enseña la versión que lleva el código', async ({ page }) => {
   await expect(page.locator('#version-txt')).toHaveText(version);
 });
 
-/* El botón amarillo de abajo (25/10/2026, sustituye al mini-dial): escondido
-   mientras el dial grande está a la vista, y dentro de una sección lleva a
-   cualquier otra deslizándolo, también a las lejanas. */
-test('el botón de abajo lleva de una sección a otra', async ({ page }) => {
+/* Navegación dentro de las secciones (20/11/2026, crítica Impeccable,
+   aprobado por Jhon): solo la tira de la cabecera, con el nombre en sus cinco
+   botones. El botón amarillo ya no sale dentro de las secciones (era la
+   tercera forma de navegar y tapaba contenido); solo asoma en Inicio al bajar,
+   cuando el dial grande se ha ido de la pantalla. */
+test('la tira lleva de una sección a otra y el botón amarillo no sale dentro', async ({ page }) => {
   await appLista(page);
   const fab = page.locator('#dial-fab');
   await expect(fab).toHaveClass(/oculto/);
 
   await irA(page, 'Entrenar');
-  await expect(fab).not.toHaveClass(/oculto/);
-  await expect(page.locator('#tab-log')).toHaveClass(/active/);
+  await expect(fab).toHaveClass(/oculto/);
+  const botones = page.locator('#cab-tira button');
+  await expect(botones).toHaveCount(5);
+  for(const n of ['Inicio', 'Entrenar', 'Resumen', 'Medidas', 'Ajustes'])
+    await expect(page.locator('#cab-tira').getByText(n, { exact: true })).toBeVisible();
 
-  await irA(page, 'Medidas');                       // dos pasos
-  await expect(page.locator('#pane-medidas')).toHaveClass(/active/);
-  await irA(page, 'Inicio');                        // por el camino corto, dando la vuelta
-  await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
+  await irA(page, 'Medidas');
+  await expect(fab).toHaveClass(/oculto/);
+  await irA(page, 'Inicio');
   await expect(fab).toHaveClass(/oculto/);
 
-  // En Inicio, al bajar, asoma para no quedarse sin navegación. En un móvil
-  // bajo, que en uno alto Inicio casi cabe entero y el dial no llega a irse.
+  // En Inicio, al bajar, asoma para no quedarse sin navegación.
   await page.setViewportSize({ width: 390, height: 600 });
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
   await expect(fab).not.toHaveClass(/oculto/);
 });
 
-test('un toque en el botón abre el aro con tu sección marcada, y «Cerrar» lo devuelve a Inicio', async ({ page }) => {
-  await appLista(page);
-  await irA(page, 'Resumen');
-  await page.locator('#dial-fab').click();
-  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
-  await expect(page.locator('#dial')).toHaveClass(/flotante/);
-  await expect.poll(() => page.locator('#dial-aro').getAttribute('aria-valuetext')).toBe('Resumen');
-  await expect(page.locator('#dial-etiquetas g[aria-label="Resumen"]')).toHaveClass(/aqui/);
-  await expect(page.locator('#dial-ayuda')).toHaveText(/Ya estás aquí/);
-  await expect(page.locator('#dial-centro')).toHaveText(/Cerrar/);
-  await page.locator('#dial-centro').click();
-  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
-  await expect(page.locator('#pane-resumen')).toHaveClass(/active/);
-  // El aro vuelve a su sitio en Inicio.
-  expect(await page.evaluate(() => document.getElementById('dial-zona').contains(document.getElementById('dial')))).toBe(true);
-});
-
-test('desde el botón, una opción del aro lleva a su apartado', async ({ page }) => {
-  await appLista(page);
-  await irA(page, 'Entrenar');
-  await page.locator('#dial-fab').click();
-  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
-  await page.locator('#dial-etiquetas g[aria-label="Medidas"]').click();
-  await expect(page.locator('#dial')).toHaveClass(/sub/);
-  const c = await cajaQuieta(page.locator('#dial-sub g[aria-label="Historial"] .dial-ico'));
-  await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
-  await expect(page.locator('#pane-medidas')).toHaveClass(/active/);
-  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
-});
-
-test('desde el botón, Inicio ofrece volver a su pantalla', async ({ page }) => {
-  await appLista(page);
-  await irA(page, 'Resumen');
-  await page.locator('#dial-fab').click();
-  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
-  await page.locator('#dial-etiquetas g[aria-label="Inicio"]').click();
-  await expect(page.locator('#dial')).toHaveClass(/sub/);
-  await expect(page.locator('#dial-sub .dial-seg')).toHaveCount(4);
-  // La primera, ya en cian: un toque y estás en Inicio.
-  await expect(page.locator('#dial-nombre')).toHaveText('Pantalla de Inicio');
-  const c = await cajaQuieta(page.locator('#dial-sub g[aria-label="Pantalla de Inicio"] .dial-ico'));
-  await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
-  await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
-  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
-});
-
-test('el botón se aparta al bajar y al escribir, y vuelve al subir', async ({ page }) => {
-  await appLista(page);
+async function abrirDesdeInicioAbajo(page){
   await page.setViewportSize({ width: 390, height: 600 });
-  await irA(page, 'Medidas');
+  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(400);
+  /* Al bajar se aparta; como una persona, se sube un poco y vuelve (el dial
+     sigue fuera). Con la máquina cargada el navegador puede juntar los dos
+     desplazamientos en un fotograma: se reintenta, como haría el dedo. */
   const fab = page.locator('#dial-fab');
-  await expect(fab).not.toHaveClass(/apartado/);
-  await page.evaluate(() => scrollBy(0, 400));
-  await expect(fab).toHaveClass(/apartado/);
-  await page.evaluate(() => scrollBy(0, -120));
-  await expect(fab).not.toHaveClass(/apartado/);
-  // Mientras escribes el peso, también se aparta; al salir del campo, vuelve.
-  await page.evaluate(() => scrollTo(0, 0));
-  await page.locator('#med-peso').focus();
-  await expect(fab).toHaveClass(/apartado/);
-  await page.locator('#med-peso').blur();
-  await expect(fab).not.toHaveClass(/apartado/);
-});
+  for(let i = 0; i < 5; i++){
+    await page.evaluate(() => scrollBy(0, -50));
+    await page.waitForTimeout(250);
+    if(!/oculto|apartado/.test(await fab.getAttribute('class'))) break;
+  }
+  await expect(fab).not.toHaveClass(/oculto|apartado/);
+  await page.waitForTimeout(400);                    // que acabe de asomar
+  await tocar(page, fab);
+  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
+}
 
 /* Con TOQUES de verdad (touchscreen.tap), no clics de ratón: en el iPhone, tras
    un toque Safari dispara un click en el mismo punto, y si el aro ya se había
@@ -125,45 +83,38 @@ async function tocar(page, locator){
   const c = await cajaQuieta(locator);
   await page.touchscreen.tap(c.x + c.width / 2, c.y + c.height / 2);
 }
-test('desde un ejercicio, Inicio dos veces en el aro lleva a la pantalla de Inicio', async ({ page }) => {
+test('en Inicio, abajo, el botón abre el aro con Inicio marcado y «Cerrar» lo devuelve', async ({ page }) => {
   await appLista(page);
-  await page.evaluate(() => { goTo('log'); openWeekDetail(1); });
-  await page.evaluate(() => { const b = document.querySelector('#session-list [onclick]'); b && b.click(); });
-  await page.evaluate(() => { const b = document.querySelector('#ex-buttons-container [onclick]'); b && b.click(); });
-  await page.evaluate(() => scrollTo(0, 0));
-  await page.waitForTimeout(400);
-  await tocar(page, page.locator('#dial-fab'));
-  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
-  const inicio = page.locator('#dial-etiquetas g[aria-label="Inicio"] .dial-ico');
-  await tocar(page, inicio);
-  await expect(page.locator('#dial')).toHaveClass(/sub/);      // primer toque: sus opciones
-  await tocar(page, inicio);                                   // segundo toque: a Inicio
-  await page.waitForTimeout(800);                              // y el click fantasma, si lo hubiera
+  await abrirDesdeInicioAbajo(page);
+  await expect(page.locator('#dial')).toHaveClass(/flotante/);
+  await expect(page.locator('#dial-etiquetas g[aria-label="Inicio"]')).toHaveClass(/aqui/);
+  await expect(page.locator('#dial-centro')).toHaveText(/Cerrar/);
+  await page.locator('#dial-centro').click();
+  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
   await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
-  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
+  expect(await page.evaluate(() => document.getElementById('dial-zona').contains(document.getElementById('dial')))).toBe(true);
 });
 
-test('tocar fuera del aro no pulsa lo que hay debajo', async ({ page }) => {
+test('desde el botón, una opción del aro lleva a su apartado', async ({ page }) => {
   await appLista(page);
-  await irA(page, 'Entrenar');
-  await page.evaluate(() => scrollTo(0, 0));
-  await tocar(page, page.locator('#dial-fab'));
-  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
-  // Fuera del aro, justo encima de tu foto: si el click pasara, abriría «Tu cuenta».
-  await tocar(page, page.locator('#profile-pic'));
-  await page.waitForTimeout(800);
-  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
-  await expect(page.locator('#auth-panel')).toHaveClass(/hidden/);
-});
-
-test('tocar fuera del aro lo cierra sin cambiar de sección', async ({ page }) => {
-  await appLista(page);
-  await irA(page, 'Medidas');
-  await page.locator('#dial-fab').click();
-  await expect(page.locator('#dial-velo')).toHaveClass(/ver/);
-  await page.mouse.click(20, 20);
-  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
+  await abrirDesdeInicioAbajo(page);
+  await page.locator('#dial-etiquetas g[aria-label="Medidas"]').click();
+  await expect(page.locator('#dial')).toHaveClass(/sub/);
+  const c = await cajaQuieta(page.locator('#dial-sub g[aria-label="Historial"] .dial-ico'));
+  await page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
   await expect(page.locator('#pane-medidas')).toHaveClass(/active/);
+  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
+});
+
+test('tocar fuera del aro lo cierra sin pulsar lo que hay debajo', async ({ page }) => {
+  await appLista(page);
+  await abrirDesdeInicioAbajo(page);
+  await page.touchscreen.tap(20, 20);
+  await page.waitForTimeout(800);                    // y el click fantasma, si lo hubiera
+  await expect(page.locator('#dial-velo')).not.toHaveClass(/ver/);
+  await expect(page.locator('#pane-inicio')).toHaveClass(/active/);
+  await expect(page.locator('#auth-panel')).toHaveClass(/hidden/);
+  await expect(page.locator('#session-form')).toBeHidden();
 });
 
 test('deslizar el botón hasta Ajustes abre Ajustes y no cambia de sección', async ({ page }) => {
