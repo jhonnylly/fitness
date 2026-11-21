@@ -297,14 +297,22 @@ async function appLista(page, url){
       act.medidas = [];
       renderMedidas();
       const c = document.getElementById('medidas-content');
-      r.vacioMedidas = !!c.querySelector('.vacio-caja .vacio-btn') && /Sin medidas/.test(c.textContent);
+      /* 21/11/2026: sin botón; el formulario de encima ya tiene «Guardar medida». */
+      r.vacioMedidas = !!c.querySelector('.vacio-caja') && !c.querySelector('.vacio-btn') && /Sin medidas/.test(c.textContent);
+      /* 21/11/2026: la versión sigue arriba en Ajustes; vaciar la caché, en el grupo App. */
+      const app = [...document.querySelectorAll('#config-panel h3.aj-grupo')].find(h => h.textContent.trim() === 'App');
+      const cache = document.getElementById('cfg-cache-btn');
+      r.cacheEnApp = !!app && !!cache && !!(app.compareDocumentPosition(cache) & Node.DOCUMENT_POSITION_FOLLOWING)
+        && !!(document.getElementById('cfg-version').compareDocumentPosition(document.querySelector('#config-panel h3.aj-grupo')) & Node.DOCUMENT_POSITION_FOLLOWING)
+        && !document.querySelector('#config-panel .aj-cache');
       act.medidas = antes; renderMedidas();
       r.vacio = estadoVacio({ icono:'mas', titulo:'T <b>', texto:'x', boton:'B', accion:'void 0' });
       return r;
     });
     ok(varios.fotoConBoton, 'la foto del músculo también lleva el botón de plegar');
     ok(varios.primeraSinDelta, '🔴 la primera medida no sale comparada con unos kilos inventados');
-    ok(varios.vacioMedidas, 'sin medidas, la pantalla explica qué apuntar y lleva un botón');
+    ok(varios.vacioMedidas, 'sin medidas, la pantalla explica qué apuntar, sin repetir el botón del formulario');
+    ok(varios.cacheEnApp, 'Ajustes: la versión sigue arriba y «Vaciar caché» baja al grupo App');
     ok(/vacio-tit">T &lt;b&gt;/.test(varios.vacio) && /vacio-btn/.test(varios.vacio), 'las pantallas vacías escapan el texto');
     await page.evaluate(()=>openExDetail(0));
     const videos = await page.evaluate(()=>[...new Set(Object.values(VIDEO_EJERCICIO))]);
@@ -2083,9 +2091,14 @@ async function appLista(page, url){
                    bajoLaTira: atras.getBoundingClientRect().top >= document.getElementById('cab-tira').getBoundingClientRect().bottom - 1
                      && /Volver/.test(atras.textContent),
                    sinBotonViejo: !document.querySelector('#session-list-view .btn-volver') };
+      const tiraVis = () => v(document.getElementById('cab-tira'));
+      r.tiraEnSemana = tiraVis();
       openSession(act.plan[0].days[0].s);
       await tic();
       r.sesion = camino();
+      /* 21/11/2026: dentro de la sesión la tira no sale (cabecera más baja). */
+      r.tiraEnSesion = tiraVis();
+      r.altoCab = Math.round(document.querySelector('header').getBoundingClientRect().height);
       const cabVisible = () => v(document.getElementById('form-title'))
         && v(document.querySelector('#session-form > .card > .recordatorio-guardar'));
       r.cabEnSesion = cabVisible();
@@ -2123,7 +2136,9 @@ async function appLista(page, url){
       atras.click();
       await tic();
       r.cabVuelve = cabVisible();
-      volverAtras(); closeWeekDetail();
+      volverAtras(); await tic();
+      r.tiraVuelve = tiraVis();
+      closeWeekDetail();
       const safari = 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
       const chrome = 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/140.0 Mobile/15E148 Safari/604.1';
       const d = document.createElement('div');
@@ -2146,6 +2161,8 @@ async function appLista(page, url){
        '«Siguiente» dice cuál va después y lo abre: '+volver.siguiente.texto);
     ok(volver.siguiente.fin && volver.siguiente.vuelveALista,
        'en el último ejercicio, «Terminar la sesión» vuelve a la lista con «¿Cómo te has sentido?»');
+    ok(volver.tiraEnSemana && !volver.tiraEnSesion && volver.tiraVuelve,
+       'la tira de secciones se esconde dentro de la sesión y vuelve al salir (cabecera: '+volver.altoCab+' px)');
     ok(volver.siguiente.dupAlto < 44 && volver.siguiente.dupTactil,
        '«Duplicar sesión» ('+volver.siguiente.dupAlto+' px de dibujo) responde al toque en 44 px');
     ok(volver.safari.pasos === 4 && /•••/.test(volver.safari.texto) && /Compartir/.test(volver.safari.texto)
@@ -2676,7 +2693,7 @@ async function appLista(page, url){
       r.arriba = cuerpo.firstElementChild === c;
       r.alDia = { texto: c.textContent.replace(/\s+/g,' '), boton: !!document.getElementById('version-btn'), punto: punto() };
       r.sinTarjetaVieja = ![...panel.querySelectorAll('.section-title')].some(t => t.textContent.trim() === 'Versión');
-      r.vaciar = !!panel.querySelector('a[onclick^="limpiarCache"]');
+      r.vaciar = !!panel.querySelector('button[onclick^="limpiarCache"]');
       versionPublicada = '2099-01-01 00:00'; pintarVersion();
       r.nueva = { violeta: !!c.querySelector('.aviso-coach'), texto: c.textContent.replace(/\s+/g,' '),
                   boton: !!c.querySelector('button[onclick^="recargarUltimaVersion"]'), punto: punto(),

@@ -399,8 +399,6 @@ details.aj-mas>summary::after{content:'';width:8px;height:8px;border-right:2px s
 details.aj-mas[open]>summary::after{transform:rotate(225deg) translate(-2px,-2px);}
 details.aj-mas>summary:focus-visible{outline:2px solid var(--dial-cian);outline-offset:-2px;border-radius:var(--radius-sm);}
 details.aj-mas p{font-size:14px;color:var(--muted);line-height:1.55;margin:0 0 12px;max-width:65ch;}
-.aj-cache{text-align:right;margin:-4px 4px 4px;font-size:13px;}
-.aj-cache a{color:var(--muted);text-underline-offset:3px;}
 /* Interruptor (el de los ajustes del iPhone): encendido, en cian. */
 .interruptor{-webkit-appearance:none;appearance:none;flex:none;width:51px;height:31px;margin:0;padding:0;border:0;
   border-radius:999px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--border);position:relative;
@@ -1016,12 +1014,12 @@ body:not(.es-admin) #pane-cuentas{display:none;}
   top:min(0px,calc((100% - 44px) / 2));bottom:min(0px,calc((100% - 44px) / 2));
   left:min(0px,calc((100% - 44px) / 2));right:min(0px,calc((100% - 44px) / 2));}
 /* Lo mismo para los botones pequeños (.btn-sm: «Duplicar sesión», «Buscar
-   actualización», «Cambiar», «+ Añadir»… de 31 px) y el enlace de vaciar la
-   caché (18 px). Auditoría Impeccable del 21/11/2026. Sin z-index: no hace
-   falta subirlos por encima de nada y así no tapan menús ni capas. */
-.btn-sm,.aj-cache a{position:relative;}
-.aj-cache a{display:inline-block;}
-.btn-sm::after,.aj-cache a::after{content:'';position:absolute;
+   actualización», «Cambiar», «+ Añadir»… de 31 px). Auditoría Impeccable del
+   21/11/2026; el enlace de vaciar la caché (18 px) pasó a ser uno de ellos.
+   Sin z-index: no hace falta subirlos por encima de nada y así no tapan menús
+   ni capas. */
+.btn-sm{position:relative;}
+.btn-sm::after{content:'';position:absolute;
   top:min(0px,calc((100% - 44px) / 2));bottom:min(0px,calc((100% - 44px) / 2));
   left:min(0px,calc((100% - 44px) / 2));right:min(0px,calc((100% - 44px) / 2));}
 /* 56 px y cifra a 20 (18/10/2026, de las ideas de Grok que eligió Jhon): se
@@ -2231,9 +2229,10 @@ body:not(.es-admin) #pane-cuentas{display:none;}
          para actualizar había que bajar hasta ella; Jhon la quiso como un botón
          a mano y con aviso cuando hay una nueva. Lo pinta pintarVersion(). -->
     <div id="cfg-version"></div>
-    <div class="aj-cache">
-      <a href="#" onclick="limpiarCache();return false;">¿No se actualiza? Vaciar caché y recargar</a>
-    </div>
+    <!-- «¿No se actualiza? Vaciar caché y recargar» vivía aquí, debajo de la
+         versión: se bajó al grupo App el 21/11/2026 (auditoría Impeccable). Es
+         un remedio de vez en cuando y abría Ajustes antes que lo de entrenar.
+         La versión se queda ARRIBA: es donde Jhon mira si ya tiene la nueva. -->
 
     <!-- Quién ha pedido otro entrenador: FUERA de las tarjetas y arriba del
          todo, en violeta. Solo tiene contenido para el admin (pintarPeticionesEntrenador). -->
@@ -2338,6 +2337,13 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       </div>
         <!-- Solo aparece si la app guardó algo antes de sobrescribir. -->
         <div id="copia-previa"></div>
+      </div>
+      <div class="aj-fila aj-fila-col">
+        <span class="aj-texto"><span class="aj-et">¿No se actualiza?</span>
+          <span class="aj-ayuda">Si «Actualizar ahora» no trae la versión nueva, esto borra lo que la app guarda para funcionar sin conexión y la recarga. Tus entrenamientos no se tocan.</span></span>
+        <div class="action-row">
+          <button class="btn-sm" id="cfg-cache-btn" onclick="limpiarCache()">Vaciar caché y recargar</button>
+        </div>
       </div>
     </div>
     <!-- Se pinta sola si se puede instalar; si ya está instalada o el navegador
@@ -4015,7 +4021,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-11-21 15:22';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-11-21 15:46';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -6444,8 +6450,9 @@ function renderMedidas(){
   const c=document.getElementById('medidas-content');
   const med=getActiveMedidas();
 if(!med.length){c.innerHTML=estadoVacio({icono:'lista', titulo:'Sin medidas aún',
-  texto:'Apunta tu peso y tu cintura una vez por semana, siempre a la misma hora. Con dos medidas ya verás cuánto cambias.',
-  boton:'Apuntar la primera', accion:"document.getElementById('med-peso').focus()"});return;}
+  /* Sin botón desde el 21/11/2026 (auditoría): «Apuntar la primera» repetía el
+     «Guardar medida» del formulario que está justo encima. */
+  texto:'Apunta arriba tu peso y tu cintura una vez por semana, siempre a la misma hora. Con dos medidas ya verás cuánto cambias.'});return;}
   c.innerHTML=med.map((m,i)=>{
     /* La primera no tiene con qué compararse. Antes se comparaba con 110 kg y
        113 cm escritos a mano (las medidas de Jhon al empezar), y a cualquier
@@ -7578,8 +7585,15 @@ function pintarCabecera(){
   const h=document.querySelector('header'); if(!h)return;
   const enSeccion=seccionCab!=='inicio';
   h.classList.toggle('en-seccion',enSeccion);
+  /* Dentro de una sesión (y de sus ejercicios, cardio y nota) la tira no sale
+     (21/11/2026, auditoría Impeccable): la cabecera se comía ~1/4 de pantalla
+     en el gimnasio, donde lo que hace falta son las series. Para salir están
+     «Volver» y el camino, y fuera de la sesión la tira vuelve. */
+  const sf=document.getElementById('session-form');
+  const enSesion=seccionCab==='log'&&!!sf&&sf.style.display!=='none';
+  h.classList.toggle('en-sesion',enSesion);
   const tira=document.getElementById('cab-tira');
-  if(tira){ tira.hidden=!enSeccion; if(enSeccion)pintarTira(tira,MINI_SECCION[seccionCab]); }
+  if(tira){ tira.hidden=!enSeccion||enSesion; if(enSeccion&&!enSesion)pintarTira(tira,MINI_SECCION[seccionCab]); }
   pintarTira(document.getElementById('cfg-tira'),4);
   // Mis rutinas cuelga de la sección en la que estabas.
   const deDonde=MINI_SECCION[seccionCab]||0;
