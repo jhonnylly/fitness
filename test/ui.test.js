@@ -3429,6 +3429,18 @@ async function appLista(page, url){
       const act = getActive(), copia = JSON.stringify({s: act.sessions, m: act.medidas, p: act.plan});
       const sem = act.plan.find(w => w.num === semanaEnCurso(act)) || act.plan[0];
       const r = {};
+      /* 21/11/2026: sin ningún peso, la tarjeta es una fila baja que invita a
+         apuntarlo (sin «—» ni hueco de gráfica). Sin sesiones esta semana para
+         que no mande el «Toca medirte». */
+      const ses0 = act.sessions, med0 = act.medidas;
+      act.sessions = {}; act.medidas = [];
+      showTab('inicio', document.getElementById('tab-inicio')); updateHome();
+      const tp = document.getElementById('duo-peso-card');
+      r.sinDatos = tp.classList.contains('sin-datos') && /Apunta tu peso/.test(document.getElementById('duo-peso-sub').textContent)
+        && getComputedStyle(document.getElementById('duo-peso')).display === 'none';
+      act.medidas = [{semana: 1, peso: 80, fecha: '1/1/2026'}]; updateHome();
+      r.conDatos = !tp.classList.contains('sin-datos') && getComputedStyle(document.getElementById('duo-peso')).display !== 'none';
+      act.sessions = ses0; act.medidas = med0;
       // Una sesión hecha esta semana y ninguna medida de esta semana: toca medirse.
       act.medidas = act.medidas.filter(m => +m.semana !== +sem.num);
       act.sessions[sem.days[0].s] = act.sessions[sem.days[0].s] ||
@@ -3462,6 +3474,7 @@ async function appLista(page, url){
       const o = JSON.parse(copia); act.sessions = o.s; act.medidas = o.m; act.plan = o.p; save(); updateHome();
       return r;
     });
+    ok(mejoras.sinDatos && mejoras.conDatos, 'Inicio sin ningún peso: la tarjeta queda baja y dice «Apunta tu peso…»; con uno, vuelve el número');
     ok(mejoras.toca && /Toca medirte/.test(mejoras.texto),
        'con una sesión esta semana y sin medida, la tarjeta del peso dice: '+mejoras.texto);
     ok(mejoras.vaAMedidas, 'y tocarla lleva a Medidas');

@@ -307,6 +307,21 @@ header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform
    velocímetro de Medidas no se adivinaba). Icono encima, nombre debajo, todos
    del mismo ancho: la tira ya no se recoloca al cambiar de sección. */
 .cab-tira button span{display:block;font-size:11px;font-weight:800;letter-spacing:.02em;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+/* 21/11/2026 (auditoría): «Resumen» (53 px) llenaba los 53 px útiles de su
+   botón a 375 y rozaba el corte inclinado de la derecha, que a la altura del
+   nombre ya se come unos 5 px; a 320 «Entrenar», «Resumen» y «Medidas»
+   salían con puntos suspensivos. Sin espaciado extra, en 700, con 4 px entre
+   botones y el relleno cargado a la derecha (donde corta la inclinación
+   abajo), caben los cinco con aire, también a 320. */
+.cab-tira{gap:4px;}
+.cab-tira button{padding:4px 6px 4px 3px;}
+.cab-tira button span{font-weight:700;letter-spacing:0;}
+/* Pantallas de 320 (iPhone SE de 1.ª gen.): inclinación y relleno más cortos
+   para que quepan los nombres enteros. */
+@media(max-width:350px){
+  .cab-tira{gap:3px;}
+  .cab-tira button{padding:4px 2px;clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%);}
+}
 .cab-tira button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 .cab-tira button.aqui{background:var(--dial-cian);color:var(--dial-cian-tinta);}
 .cab-tira button:focus-visible{outline:2px solid #eef2fa;outline-offset:2px;}
@@ -1470,6 +1485,8 @@ body:not(.es-admin) #pane-cuentas{display:none;}
 .duo-mini{padding:11px 12px;}
 .duo-peso{cursor:pointer;}
 .duo-peso.toca-medir{border-color:var(--accent);}
+.duo-peso.sin-datos .duo-val,.duo-peso.sin-datos .chispa{display:none;}
+.duo-peso.sin-datos .duo-sub{font-size:13px;font-weight:700;color:var(--accent-ink);margin-top:6px;}
 .duo-peso.toca-medir .duo-sub{color:var(--accent-ink);font-weight:700;}
 .duo-mini .duo-val{font-size:22px;margin-top:3px;}
 .duo-mini .chispa,.duo-mini .adh-barras{height:20px;margin-top:5px;}
@@ -4021,7 +4038,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-11-21 15:46';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-11-21 16:00';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -7748,8 +7765,13 @@ function updateHome(){
     const d=+(ult.peso-pesos[pesos.length-2].peso).toFixed(1);
     set('duo-peso-sub',(d>0?'+':'')+num(d)+' kg desde la última medida');
   }else{
-    set('duo-peso-sub',ult?'Primera medida registrada':'Sin medidas aún');
+    set('duo-peso-sub',ult?'Primera medida registrada':'Apunta tu peso y verás cómo cambias →');
   }
+  /* Sin ningún peso (21/11/2026, auditoría): fuera la raya «—» y el hueco de
+     la minigráfica, que dejaban una tarjeta grande y vacía; queda una fila
+     baja que invita a apuntarlo (tocarla lleva a Medidas). */
+  const cardPeso=document.getElementById('duo-peso-card');
+  if(cardPeso)cardPeso.classList.toggle('sin-datos',!ult);
   pintarChispa(pesos.map(m=>+m.peso));
 
   // Adherencia
