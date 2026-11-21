@@ -52,7 +52,7 @@ Lo que la separa de Strong, Hevy o la app de un gimnasio:
 - Paleta «Señal»: marino + amarillo, con cian como «estás aquí». **No naranja**: se parecía a Basic-Fit.
 - El aro va EN 3D, inclinado, con la esfera dentro como centro y botón «▶ Empezar» (publicado el 18/11/2026; del 01/11 al 18/11 fue de frente). Por tramos y con relieve.
 - Las ilustraciones de músculos aún están en naranja: encargado rehacerlas en amarillo Señal (21/11/2026).
-- Titulares con serifa (decidido el 29/10/2026 para el rediseño).
+- Sin serifa: toda la app va en la letra del sistema y las cifras en Oswald (21/11/2026: la serifa decidida el 29/10 para el rediseño nunca se llegó a usar y se descarta).
 - Sin nombre de marca decidido: no inventar uno.
 
 ## Evidence on Hand

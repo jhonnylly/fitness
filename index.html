@@ -270,6 +270,7 @@ header{background:var(--dark);color:#eef2fa;padding:12px 16px;position:sticky;to
   background:none;border:none;padding:0;margin:0;color:inherit;font-family:inherit;
   cursor:pointer;display:block;max-width:100%;text-align:left;}
 .cab-saludo:active{opacity:.7;}
+.cab-saludo{padding:12px 0;margin:-12px 0;}
 /* ── CABECERA COMÚN (25/10/2026) ──
    Dentro de una sección la cabecera habla el idioma del dial: el nombre de la
    sección como rótulo (en vez de una frase), el camino recorrido cuando entras
@@ -277,7 +278,7 @@ header{background:var(--dark);color:#eef2fa;padding:12px 16px;position:sticky;to
    bajo la tira y con un botón «Volver» con texto) y la tira de 5 segmentos del dial con tu sección en cian, que se toca para ir a
    otra. Jhon eligió esta variante (la B) en un prototipo. En Inicio no hay
    tira: allí el propio dial dice dónde estás. La pinta pintarCabecera(). */
-header.en-seccion .cab-avatar{width:40px;height:40px;font-size:16px;}
+header.en-seccion .cab-avatar{width:44px;height:44px;font-size:17px;}
 header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform:uppercase;}
 .cab-ruta{display:flex;align-items:center;gap:12px;margin-top:10px;min-width:0;}
 .cab-atras{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 16px 0 8px;
@@ -330,7 +331,7 @@ header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform
    cabecera que las secciones (27/10/2026): por eso las reglas de arriba valen
    también para .cab-panel. */
 .cab-panel{background:var(--dark);color:#eef2fa;padding:12px 16px;flex:none;}
-.cab-panel .cab-avatar{width:40px;height:40px;font-size:16px;}
+.cab-panel .cab-avatar{width:44px;height:44px;font-size:17px;}
 .cab-panel .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform:uppercase;cursor:default;}
 .cab-panel .cab-saludo:active{opacity:1;}
 .recordatorio-guardar{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
@@ -1034,6 +1035,15 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    Sin z-index: no hace falta subirlos por encima de nada y así no tapan menús
    ni capas. */
 .btn-sm{position:relative;}
+/* Y la segunda auditoría del mismo día: el nombre de la rutina en Inicio
+   («Primer Mes ⌄», 24 px de alto), «Ya tengo cuenta · Iniciar sesión» en la
+   bienvenida (33). La foto y el título de la cabecera, que abren la cuenta,
+   llevan overflow:hidden (recortaría la capa): la foto pasa de 40 a 44 en las
+   secciones y el título gana alto con relleno y margen negativo, sin mover nada. */
+.hp-rutina,.ob-enlace{position:relative;}
+.hp-rutina::after,.ob-enlace::after{content:'';position:absolute;
+  top:min(0px,calc((100% - 44px) / 2));bottom:min(0px,calc((100% - 44px) / 2));
+  left:min(0px,calc((100% - 44px) / 2));right:min(0px,calc((100% - 44px) / 2));}
 .btn-sm::after{content:'';position:absolute;
   top:min(0px,calc((100% - 44px) / 2));bottom:min(0px,calc((100% - 44px) / 2));
   left:min(0px,calc((100% - 44px) / 2));right:min(0px,calc((100% - 44px) / 2));}
@@ -4038,7 +4048,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-11-21 16:00';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-11-21 16:33';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 

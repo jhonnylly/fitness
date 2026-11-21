@@ -2132,6 +2132,10 @@ async function appLista(page, url){
       const golpe = y => { const e = document.elementFromPoint(cx, y); return !!e && (e === dup || dup.contains(e)); };
       r.siguiente.dupAlto = Math.round(cd.height);
       r.siguiente.dupTactil = golpe(cd.top - 5) && golpe(cd.bottom + 5);
+      /* 2.ª auditoría del 21/11: la foto y el título de la cabecera, 44 px. */
+      const av = document.querySelector('header .cab-avatar').getBoundingClientRect();
+      const sa = document.querySelector('header .cab-saludo').getBoundingClientRect();
+      r.siguiente.cuenta44 = Math.round(av.width) >= 44 && Math.round(sa.height) >= 44;
       openExDetail(0); await tic();
       atras.click();
       await tic();
@@ -2165,6 +2169,7 @@ async function appLista(page, url){
        'la tira de secciones se esconde dentro de la sesión y vuelve al salir (cabecera: '+volver.altoCab+' px)');
     ok(volver.siguiente.dupAlto < 44 && volver.siguiente.dupTactil,
        '«Duplicar sesión» ('+volver.siguiente.dupAlto+' px de dibujo) responde al toque en 44 px');
+    ok(volver.siguiente.cuenta44, 'la foto y el título de la cabecera (abren tu cuenta) miden 44 px para el dedo');
     ok(volver.safari.pasos === 4 && /•••/.test(volver.safari.texto) && /Compartir/.test(volver.safari.texto)
        && /Añadir a pantalla de inicio/.test(volver.safari.texto) && /Ya la tengo/.test(volver.safari.texto),
        'en Safari de iPhone: 4 pasos, empezando por el botón •••');
