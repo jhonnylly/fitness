@@ -182,7 +182,10 @@
 /* Dónde se usan: las cifras que se leen como cifra, no cualquier número suelto
    dentro de una frase. Siempre con la del sistema detrás, que es la que pinta
    las letras que las acompañan. */
-.stat-val,.duo-val,.hp-centro b,.timer-secs,.mos-num,.racha-num{
+/* 21/11/2026 (auditoría): fuera .mos-num. Es el TÍTULO de las tarjetas de
+   semana, sesión y ejercicio («Semana 2», «Prensa 45°»): un nombre, no una
+   cifra, y el número salía con otra letra a mitad de palabra. */
+.stat-val,.duo-val,.hp-centro b,.timer-secs,.racha-num{
   font-family:'Cifras',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -319,6 +322,24 @@ header.en-seccion .cab-saludo{font-size:20px;letter-spacing:.08em;text-transform
   margin:-4px 0 10px;}
 .recordatorio-guardar b{color:var(--text);}
 .recordatorio-guardar.recordatorio-pie{margin:14px 0 4px;}
+/* «Siguiente ejercicio» al pie de las series (21/11/2026, auditoría Impeccable):
+   antes, para pasar al siguiente había que volver a la lista y buscarlo, y dos
+   avisos de texto lo compensaban. Tarjeta ancha y alta (objetivo de pulgar), en
+   superficie y no en amarillo: el amarillo de al lado es «Iniciar» el descanso,
+   que es lo que se pulsa entre series; esto se pulsa una vez por ejercicio. */
+.ex-siguiente{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;margin:14px 0 2px;
+  padding:10px 14px 10px 16px;background:var(--card);border:1.5px solid var(--border);
+  border-radius:var(--radius);color:var(--text);font-family:inherit;text-align:left;cursor:pointer;
+  transition:transform .12s ease, border-color .12s ease;}
+.ex-siguiente:active{transform:scale(.98);}
+.ex-siguiente:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px;}
+.ex-siguiente .exs-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.ex-siguiente .exs-etq{font-size:12px;font-weight:700;color:var(--muted);}
+.ex-siguiente .exs-nombre{font-size:16px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ex-siguiente .exs-flecha{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+  background:var(--accent-fill);color:var(--on-accent);}
+.ex-siguiente .exs-flecha svg{width:20px;height:20px;}
+.ex-siguiente.exs-fin{border-color:var(--accent);}
 /* Dentro de un ejercicio, del cardio o de la nota (27/09/2026, Jhon): la tarjeta
    de arriba se queda solo con "Volver a ejercicios". El nombre de la sesión y
    el aviso de guardar ocupaban un tercio de pantalla que hace falta para las
@@ -992,6 +1013,15 @@ body:not(.es-admin) #pane-cuentas{display:none;}
    los que ya sobran. */
 .sc-quitar,.hp-accion,.ex-quitar,.ex-editar{position:relative;z-index:1;}
 .sc-quitar::after,.hp-accion::after,.ex-quitar::after,.ex-editar::after{content:'';position:absolute;
+  top:min(0px,calc((100% - 44px) / 2));bottom:min(0px,calc((100% - 44px) / 2));
+  left:min(0px,calc((100% - 44px) / 2));right:min(0px,calc((100% - 44px) / 2));}
+/* Lo mismo para los botones pequeños (.btn-sm: «Duplicar sesión», «Buscar
+   actualización», «Cambiar», «+ Añadir»… de 31 px) y el enlace de vaciar la
+   caché (18 px). Auditoría Impeccable del 21/11/2026. Sin z-index: no hace
+   falta subirlos por encima de nada y así no tapan menús ni capas. */
+.btn-sm,.aj-cache a{position:relative;}
+.aj-cache a{display:inline-block;}
+.btn-sm::after,.aj-cache a::after{content:'';position:absolute;
   top:min(0px,calc((100% - 44px) / 2));bottom:min(0px,calc((100% - 44px) / 2));
   left:min(0px,calc((100% - 44px) / 2));right:min(0px,calc((100% - 44px) / 2));}
 /* 56 px y cifra a 20 (18/10/2026, de las ideas de Grok que eligió Jhon): se
@@ -2653,7 +2683,7 @@ body:not(.es-admin) #pane-cuentas{display:none;}
         <button class="btn btn-secondary" style="flex:1;" onclick="openCardioPanel()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3 4.7 13a4.5 4.5 0 0 1 6.4-6.3l.9.9.9-.9A4.5 4.5 0 0 1 19.3 13z"/></svg> Cardio</button>
         <button class="btn btn-secondary" style="flex:1;" onclick="openNotaPanel()"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg> Nota</button>
       </div>
-      <div class="card" style="margin-top:8px;">
+      <div class="card" id="sesion-sentir" style="margin-top:8px;">
         <div class="section-title">¿Cómo te has sentido?</div>
         <div style="display:flex;justify-content:space-around;padding:8px 0;">
           <button class="feeling-btn" onclick="selectFeeling('😴')" id="feel-0">😴<span>Cansado</span></button>
@@ -2730,7 +2760,9 @@ body:not(.es-admin) #pane-cuentas{display:none;}
       <!-- Aquí abajo y no arriba (27/09/2026, Jhon): dentro de un ejercicio la
            cabecera se queda solo en "Volver a ejercicios" para ganar pantalla,
            y el aviso cae donde acabas, después de apuntar las series. -->
-      <div class="recordatorio-guardar recordatorio-pie"><svg class="ico-btn" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Al terminar la sesión, vuelve a ejercicios y pulsa <b>Guardar sesión</b></span></div>
+      <!-- 21/11/2026: aquí iba «Al terminar la sesión, vuelve a ejercicios y
+           pulsa Guardar sesión». Lo sustituye el botón «Siguiente» / «Terminar
+           la sesión», que va justo debajo de las series (lo pinta renderEx). -->
     </div>
 
     <!-- Panel cardio -->
@@ -3983,7 +4015,7 @@ function ponerSync(color,texto){
    ACTUALIZAR EN CADA DESPLIEGUE. Sirve para dos cosas: que se vea qué versión
    hay cargada (GitHub Pages cachea el HTML y es fácil estar probando la de
    ayer sin saberlo) y para detectar que hay una más nueva. */
-const APP_VERSION='2026-11-20 12:43';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
+const APP_VERSION='2026-11-21 15:22';   // ← ponerla con `date +'%Y-%m-%d %H:%M'`, NUNCA a ojo
 
 const LOCAL_KEY='jhon_db_v2';
 
@@ -5652,6 +5684,7 @@ function renderEx(){
     </div>
     ${filaDescanso(ex)}
     ${lineaPesoOrientativo(ex,u)}
+    ${botonSiguienteEjercicio()}
   `;
   pintarImagenEjercicio();
   pintarGraficaCargasEjercicio();
@@ -9634,6 +9667,39 @@ function openExDetail(ei){
   document.getElementById('ex-detail-view').style.display='block';
   renderEx();
   window.scrollTo(0,0);
+}
+
+/* «Siguiente: X» al pie de las series; en el último, «Terminar la sesión»
+   (21/11/2026). Sigue el orden de la lista, que es el que la persona ha
+   dejado (se puede reordenar arrastrando). */
+function botonSiguienteEjercicio(){
+  if(curExIndex===null||!curEx.length)return '';
+  const flecha='<span class="exs-flecha" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>';
+  const sig=curEx[curExIndex+1];
+  if(sig){
+    const nombre=escaparHTML(sig.name||'Ejercicio sin nombre');
+    return `<button type="button" class="ex-siguiente" onclick="irASiguienteEjercicio()" aria-label="Siguiente ejercicio: ${nombre}">
+      <span class="exs-txt"><span class="exs-etq">Siguiente · ${curExIndex+2} de ${curEx.length}</span><span class="exs-nombre">${nombre}</span></span>${flecha}</button>`;
+  }
+  return `<button type="button" class="ex-siguiente exs-fin" onclick="terminarEjercicios()">
+      <span class="exs-txt"><span class="exs-etq">Último ejercicio</span><span class="exs-nombre">Terminar la sesión</span></span>${flecha}</button>`;
+}
+
+function irASiguienteEjercicio(){
+  if(curExIndex===null||!curEx[curExIndex+1])return;
+  pararVideoEjercicio(true);
+  openExDetail(curExIndex+1);
+}
+
+/* Vuelve a la lista y baja a «¿Cómo te has sentido?», con «Guardar sesión»
+   justo debajo: guardar sigue siendo un gesto aparte (puede faltar cardio o la
+   nota), pero ya no hay que ir a buscarlo. */
+function terminarEjercicios(){
+  closeExDetail();
+  const tarjeta=document.getElementById('sesion-sentir');
+  if(!tarjeta)return;
+  const suave=!matchMedia('(prefers-reduced-motion: reduce)').matches;
+  requestAnimationFrame(()=>tarjeta.scrollIntoView({behavior:suave?'smooth':'auto',block:'start'}));
 }
 
 function closeExDetail(){

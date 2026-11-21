@@ -2093,11 +2093,33 @@ async function appLista(page, url){
       await tic();
       r.ejercicio = camino();
       r.flechaSigue = v(atras);
-      /* 27/09/2026 (Jhon): dentro del ejercicio, arriba nada más que volver;
-         el aviso de guardar, al pie del ejercicio. */
+      /* 27/09/2026 (Jhon): dentro del ejercicio, arriba nada más que volver.
+         21/11/2026: el aviso de guardar del pie lo sustituye «Siguiente». */
       r.cabEnEjercicio = v(document.getElementById('form-title'))
         || v(document.querySelector('#session-form > .card > .recordatorio-guardar'));
-      r.avisoAlPie = v(document.querySelector('#ex-detail-view .recordatorio-pie'));
+      r.avisoAlPie = !document.querySelector('#ex-detail-view .recordatorio-pie')
+        && v(document.querySelector('#ex-detail-view .ex-siguiente'));
+      /* «Siguiente» abre el de después; en el último, «Terminar la sesión»
+         vuelve a la lista con «¿Cómo te has sentido?» y «Guardar sesión». */
+      const n = curEx.length;
+      const sig = document.querySelector('#ex-detail-view .ex-siguiente');
+      r.siguiente = { texto: sig.textContent.replace(/\s+/g,' '), nombre2: curEx[1] && curEx[1].name };
+      sig.click(); await tic();
+      r.siguiente.abreEl2 = curExIndex === 1 && document.getElementById('ex-detail-title').value === r.siguiente.nombre2;
+      openExDetail(n-1); await tic();
+      const fin = document.querySelector('#ex-detail-view .ex-siguiente');
+      r.siguiente.fin = fin.classList.contains('exs-fin') && /Terminar la sesión/.test(fin.textContent);
+      fin.click(); await tic();
+      r.siguiente.vuelveALista = curExIndex === null && v(document.getElementById('sesion-sentir'));
+      /* 21/11/2026: los .btn-sm (31 px) tocan en 44 sin cambiar de tamaño:
+         unos px por encima y por debajo del dibujo siguen siendo el botón. */
+      const dup = document.querySelector('#ex-list-view .acciones-fila .btn-sm');
+      dup.scrollIntoView({block:'center'}); await tic();
+      const cd = dup.getBoundingClientRect(), cx = cd.left + cd.width/2;
+      const golpe = y => { const e = document.elementFromPoint(cx, y); return !!e && (e === dup || dup.contains(e)); };
+      r.siguiente.dupAlto = Math.round(cd.height);
+      r.siguiente.dupTactil = golpe(cd.top - 5) && golpe(cd.bottom + 5);
+      openExDetail(0); await tic();
       atras.click();
       await tic();
       r.cabVuelve = cabVisible();
@@ -2118,7 +2140,14 @@ async function appLista(page, url){
     ok(/Semana 1 › /.test(volver.sesion) && volver.ejercicio.startsWith(volver.sesion+' › ') && volver.flechaSigue,
        'el camino crece al entrar en la sesión y en el ejercicio: '+volver.ejercicio);
     ok(volver.cabEnSesion && !volver.cabEnEjercicio && volver.avisoAlPie && volver.cabVuelve,
-       'dentro del ejercicio no se repite el nombre de la sesión y el aviso de guardar va al pie; al volver, reaparecen');
+       'dentro del ejercicio no se repite el nombre de la sesión y al pie va «Siguiente»; al volver, reaparecen');
+    ok(/Siguiente · 2 de \d+/.test(volver.siguiente.texto) && volver.siguiente.texto.includes(volver.siguiente.nombre2)
+       && volver.siguiente.abreEl2,
+       '«Siguiente» dice cuál va después y lo abre: '+volver.siguiente.texto);
+    ok(volver.siguiente.fin && volver.siguiente.vuelveALista,
+       'en el último ejercicio, «Terminar la sesión» vuelve a la lista con «¿Cómo te has sentido?»');
+    ok(volver.siguiente.dupAlto < 44 && volver.siguiente.dupTactil,
+       '«Duplicar sesión» ('+volver.siguiente.dupAlto+' px de dibujo) responde al toque en 44 px');
     ok(volver.safari.pasos === 4 && /•••/.test(volver.safari.texto) && /Compartir/.test(volver.safari.texto)
        && /Añadir a pantalla de inicio/.test(volver.safari.texto) && /Ya la tengo/.test(volver.safari.texto),
        'en Safari de iPhone: 4 pasos, empezando por el botón •••');
